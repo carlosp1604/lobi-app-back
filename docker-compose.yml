@@ -1,0 +1,38 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: lobi_db
+    restart: unless-stopped
+    ports:
+      - "${CONTAINER_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${CONTAINER_DB:-lobi}
+      POSTGRES_USER: ${CONTAINER_USER:-lobi_user}
+      POSTGRES_PASSWORD: ${CONTAINER_PASSWORD:-lobi_pass}
+    volumes:
+      - lobi_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CONTAINER_USER:-lobi_user} -d ${CONTAINER_DB:-lobi}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: lobi_pgadmin
+    restart: unless-stopped
+    depends_on:
+      - db
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@lobi.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    volumes:
+      - lobi_pgadmin:/var/lib/pgadmin
+
+volumes:
+  lobi_pg_data:
+  lobi_pgadmin:
