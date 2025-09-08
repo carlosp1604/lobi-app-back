@@ -21,14 +21,22 @@
     "prepare": "husky",
     "husky:init": "husky init",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "migration:create": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:create src/db/migrations/InitSchema",
+    "migration:run": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:run -d src/config/data-source.ts",
+    "migration:revert": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:revert -d src/config/data-source.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
+    "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/typeorm": "^11.0.0",
+    "dotenv": "^17.2.2",
+    "pg": "^8.16.3",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "typeorm": "^0.3.26"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
