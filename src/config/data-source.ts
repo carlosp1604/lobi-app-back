@@ -11,7 +11,7 @@ export default new DataSource({
   type: 'postgres',
   host: databaseConfig.host,
   database: databaseConfig.database,
-  username: databaseConfig.user,
+  username: databaseConfig.username,
   port: databaseConfig.port,
   password: databaseConfig.password,
   logging: databaseConfig.logging,

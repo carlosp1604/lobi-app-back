@@ -2,7 +2,7 @@ export class DatabaseConfigProvider {
   readonly host: string
   readonly port: number
   readonly database: string
-  readonly user: string
+  readonly username: string
   readonly password: string
   readonly logging: boolean
 
@@ -10,7 +10,7 @@ export class DatabaseConfigProvider {
     this.host = this.parseString('DATABASE_HOST')
     this.port = this.parseInteger('DATABASE_PORT', 5432)
     this.database = this.parseString('DATABASE_NAME')
-    this.user = this.parseString('DATABASE_USER')
+    this.username = this.parseString('DATABASE_USER')
     this.password = this.parseString('DATABASE_PASSWORD')
     this.logging = (process.env.DATABASE_LOGGING ?? 'false') === 'true'
   }
