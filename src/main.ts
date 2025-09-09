@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
-import { getDatabaseConfig } from '~/src/config'
+import { getDatabaseConfig } from '~/src/db/config'
 import { LOGGER_SERVICE_INTERFACE, LoggerServiceInterface } from '~/src/shared/Domain/LoggerServiceInterface'
 import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { fastifyAdapter } from '~/src/shared/Infrastructure/FastifyAdapter'

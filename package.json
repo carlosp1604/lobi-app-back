@@ -2,7 +2,7 @@
   "name": "lobi-app-back",
   "version": "0.0.1",
   "description": "TFG back-end",
-  "repository":  "git@github.com:carlosp1604/lobi-app-back.git",
+  "repository": "git@github.com:carlosp1604/lobi-app-back.git",
   "author": "Carlos Ponton",
   "private": true,
   "license": "MIT",
@@ -24,8 +24,8 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "migration:create": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:create src/db/migrations/InitSchema",
-    "migration:run": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:run -d src/config/data-source.ts",
-    "migration:revert": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:revert -d src/config/data-source.ts"
+    "migration:run": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:run -d src/db/config/data-source.ts",
+    "migration:revert": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:revert -d src/db/config/data-source.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -47,6 +47,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@testcontainers/postgresql": "^11.5.1",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
@@ -65,6 +66,7 @@
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
+    "testcontainers": "^11.5.1",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
@@ -79,6 +81,7 @@
     ]
   },
   "jest": {
+    "testTimeout": 60000,
     "moduleFileExtensions": [
       "js",
       "json",

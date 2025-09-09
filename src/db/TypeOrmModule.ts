@@ -1,6 +1,6 @@
 // src/db/TypeOrmModule.ts
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { getDatabaseConfig } from '~/src/config'
+import { getDatabaseConfig } from '~/src/db/config'
 
 export const DatabaseModule = TypeOrmModule.forRootAsync({
   useFactory: () => {
