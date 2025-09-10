@@ -6,6 +6,7 @@ import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { fastifyAdapter } from '~/src/shared/Infrastructure/FastifyAdapter'
 import * as Sentry from '@sentry/node'
 import { SentryExceptionFilter } from '~/src/shared/Infrastructure/SentryExceptionFilter'
+import { validationPipe } from '~/src/shared/Infrastructure/GlobalValidationPipe'
 
 function setUpSentry() {
   Sentry.init({
@@ -27,6 +28,7 @@ async function bootstrap() {
 
   app.useLogger(logger)
   app.useGlobalFilters(app.get(SentryExceptionFilter))
+  app.useGlobalPipes(validationPipe)
 
   await app.listen(process.env.PORT ?? 3000)
 }

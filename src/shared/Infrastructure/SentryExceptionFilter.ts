@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/node'
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException } from '@nestjs/common'
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'
 import { FastifyReply, FastifyRequest } from 'fastify'
 
 function safeRedactBody(body: unknown): unknown {
@@ -22,24 +22,25 @@ function safeRedactBody(body: unknown): unknown {
   }
 }
 
-function toSafeMessage(exception: unknown): string {
-  const defaultMessage = 'Internal server error'
+function toSafeResponse(exception: unknown): object | string {
+  // TODO: Extract this code to a APIExceptionCodes file
+  const INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR'
 
-  const rawResponse = exception instanceof HttpException ? exception.getResponse() : (exception as Error)?.message || defaultMessage
-
-  let safeMessage = defaultMessage
-
-  if (typeof rawResponse === 'string') {
-    safeMessage = rawResponse
+  if (exception instanceof HttpException) {
+    return exception.getResponse()
   }
 
-  if (typeof rawResponse === 'object') {
-    if (rawResponse && 'message' in rawResponse && typeof rawResponse.message === 'string') {
-      safeMessage = rawResponse.message
+  if (exception instanceof Error) {
+    return {
+      code: 'id' in exception ? exception.id : INTERNAL_SERVER_ERROR,
+      message: exception.message,
     }
   }
 
-  return safeMessage
+  return {
+    message: 'Internal server error',
+    code: INTERNAL_SERVER_ERROR,
+  }
 }
 
 @Catch()
@@ -49,51 +50,51 @@ export class SentryExceptionFilter implements ExceptionFilter {
     const response = context.getResponse<FastifyReply>()
     const request = context.getRequest<FastifyRequest>()
 
-    const status = exception instanceof HttpException ? exception.getStatus() : 500
+    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR
 
-    const rawResponse =
-      exception instanceof HttpException ? exception.getResponse() : (exception as Error)?.message || 'Internal server error'
+    const safeResponse = toSafeResponse(exception)
 
-    const safeMessage = toSafeMessage(rawResponse)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+    if (status === HttpStatus.INTERNAL_SERVER_ERROR) {
+      const route = request.routeOptions?.url ?? request.url
+      const urlWithoutQuery = (request.url || '').split('?')[0]
 
-    const route = request.routeOptions?.url ?? request.url
-    const urlWithoutQuery = (request.url || '').split('?')[0]
+      const headers = { ...request.headers }
+      delete headers.authorization
+      delete headers.cookie
+      delete headers['set-cookie']
 
-    const headers = { ...request.headers }
-    delete headers.authorization
-    delete headers.cookie
-    delete headers['set-cookie']
+      const safeBody = safeRedactBody(request.body)
 
-    const safeBody = safeRedactBody(request.body)
+      Sentry.withScope((scope) => {
+        scope.setTag('request_id', String(request.id))
+        scope.setTag('status', String(status))
+        scope.setTag('method', request.method)
+        scope.setTag('route', route)
+        scope.setTag('url', urlWithoutQuery)
 
-    Sentry.withScope((scope) => {
-      scope.setTag('request_id', String(request.id))
-      scope.setTag('status', String(status))
-      scope.setTag('method', request.method)
-      scope.setTag('route', route)
-      scope.setTag('url', urlWithoutQuery)
+        // TODO: Add user information from auth middleware
+        // Sentry.setUser({})
 
-      // TODO: Add user information from auth middleware
-      // Sentry.setUser({})
+        scope.setContext('request', {
+          method: request.method,
+          url: urlWithoutQuery,
+          query: request.query,
+          params: request.params,
+          headers: headers,
+          ip: request.ip,
+        })
 
-      scope.setContext('request', {
-        method: request.method,
-        url: urlWithoutQuery,
-        query: request.query,
-        params: request.params,
-        headers: headers,
-        ip: request.ip,
+        if (safeBody !== undefined) {
+          scope.setExtra('body', safeBody)
+        }
+
+        scope.setTransactionName(`${request.method} ${route}`)
+        scope.setFingerprint(['{{ default }}', request.method, route, String(status)])
+
+        Sentry.captureException(exception)
       })
-
-      if (safeBody !== undefined) {
-        scope.setExtra('body', safeBody)
-      }
-
-      scope.setTransactionName(`${request.method} ${route}`)
-      scope.setFingerprint(['{{ default }}', request.method, route, String(status)])
-
-      Sentry.captureException(exception)
-    })
+    }
 
     if (response.sent || response.raw?.headersSent || response.raw?.writableEnded) {
       return
@@ -101,7 +102,7 @@ export class SentryExceptionFilter implements ExceptionFilter {
 
     response.status(status).send({
       statusCode: status,
-      message: safeMessage,
+      response: safeResponse,
       timestamp: new Date().toISOString(),
       path: request.url,
     })
