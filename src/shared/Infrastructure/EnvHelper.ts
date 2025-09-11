@@ -40,6 +40,10 @@ export const EnvSchema = z
     TRUST_PROXY: z.coerce.boolean().optional().default(false),
     RATE_MAX: z.coerce.number().int().positive().default(200),
     RATE_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+
+    API_DOCS_TITLE: z.string(),
+    API_DOCS_DESCRIPTION: z.string(),
+    API_DOCS_VERSION: z.string(),
   })
   .transform((env) => ({
     ...env,

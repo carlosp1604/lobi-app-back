@@ -7,6 +7,7 @@ import { SentryExceptionFilter } from '~/src/shared/Infrastructure/SentryExcepti
 import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { buildFastifyApplication } from '~/src/shared/Infrastructure/FastifyApplication'
 import { LOGGER_SERVICE_INTERFACE, LoggerServiceInterface } from '~/src/shared/Domain/LoggerServiceInterface'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 
 /**
  * This project provides only an API | CSP = off
@@ -33,6 +34,16 @@ function setUpSentry() {
   })
 }
 
+function setUpSwagger(app: NestFastifyApplication): void {
+  const config = new DocumentBuilder()
+    .setTitle(env.API_DOCS_TITLE)
+    .setDescription(env.API_DOCS_DESCRIPTION)
+    .setVersion(env.API_DOCS_VERSION)
+    .build()
+  const documentFactory = () => SwaggerModule.createDocument(app, config)
+  SwaggerModule.setup('api/docs', app, documentFactory)
+}
+
 async function bootstrap() {
   setUpSentry()
 
@@ -46,6 +57,7 @@ async function bootstrap() {
 
   await setUpHelmet(app)
   await app.register(compress, { global: true })
+  setUpSwagger(app)
 
   await app.listen(env.PORT)
 }
