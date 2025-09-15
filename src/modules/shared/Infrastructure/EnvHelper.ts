@@ -44,6 +44,7 @@ export const EnvSchema = z
     API_DOCS_TITLE: z.string(),
     API_DOCS_DESCRIPTION: z.string(),
     API_DOCS_VERSION: z.string(),
+    COOKIE_SECRET: z.string().nonempty().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
   })
   .transform((env) => ({
     ...env,

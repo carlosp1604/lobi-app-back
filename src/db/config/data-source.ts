@@ -1,7 +1,7 @@
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import dotenv from 'dotenv'
-import { env } from '~/src/shared/Infrastructure/EnvHelper'
+import { env } from '~/src/modules/shared/Infrastructure/EnvHelper'
 
 dotenv.config()
 

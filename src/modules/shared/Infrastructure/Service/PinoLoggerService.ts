@@ -1,4 +1,4 @@
-import { LoggerMetaData, LoggerServiceInterface } from '~/src/shared/Domain/LoggerServiceInterface'
+import { LoggerMetaData, LoggerServiceInterface } from '~/src/modules/shared/Domain/LoggerServiceInterface'
 import { Injectable, Scope } from '@nestjs/common'
 import type { Logger } from 'pino'
 

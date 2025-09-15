@@ -1,8 +1,8 @@
 import { Module, Global } from '@nestjs/common'
 import pino, { Logger } from 'pino'
-import { PinoLoggerService } from '~/src/shared/Infrastructure/Service/PinoLoggerService'
-import { LOGGER_SERVICE_INTERFACE, LoggerServiceInterface } from '~/src/shared/Domain/LoggerServiceInterface'
-import { env } from '~/src/shared/Infrastructure/EnvHelper'
+import { PinoLoggerService } from '~/src/modules/shared/Infrastructure/Service/PinoLoggerService'
+import { LOGGER_SERVICE_INTERFACE, LoggerServiceInterface } from '~/src/modules/shared/Domain/LoggerServiceInterface'
+import { env } from '~/src/modules/shared/Infrastructure/EnvHelper'
 
 export const PINO_LOGGER = 'PINO_LOGGER'
 
