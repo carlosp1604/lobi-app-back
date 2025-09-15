@@ -1,5 +1,5 @@
 import { TypeOrmModule } from '@nestjs/typeorm'
-import { env } from '~/src/modules/shared/Infrastructure/EnvHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
 
 export const DatabaseModule = TypeOrmModule.forRootAsync({
   useFactory: () => {

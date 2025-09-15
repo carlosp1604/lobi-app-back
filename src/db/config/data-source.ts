@@ -1,7 +1,8 @@
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import dotenv from 'dotenv'
-import { env } from '~/src/modules/shared/Infrastructure/EnvHelper'
+// eslint-disable-next-line no-restricted-imports
+import { env } from '../../modules/Shared/Infrastructure/EnvHelper'
 
 dotenv.config()
 
