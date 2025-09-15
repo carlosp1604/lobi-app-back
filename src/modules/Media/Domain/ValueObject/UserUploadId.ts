@@ -1,5 +1,5 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
-import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
+import { UserUploadDomainException } from '~/src/modules/Media/Domain/UserUploadDomainException'
 
 export class UserUploadId extends ValueObject<string> {
   private constructor(value: string) {
@@ -8,7 +8,7 @@ export class UserUploadId extends ValueObject<string> {
     super(normalized)
 
     if (!this.isValidId(normalized)) {
-      throw UserDomainException.invalidUserId(value)
+      throw UserUploadDomainException.invalidUserUploadId(value)
     }
   }
 
