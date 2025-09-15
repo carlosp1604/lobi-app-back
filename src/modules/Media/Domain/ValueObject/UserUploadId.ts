@@ -3,9 +3,11 @@ import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainExcept
 
 export class UserUploadId extends ValueObject<string> {
   private constructor(value: string) {
-    super(value)
+    const normalized = value.trim()
 
-    if (!this.isValidId(value)) {
+    super(normalized)
+
+    if (!this.isValidId(normalized)) {
       throw UserDomainException.invalidUserId(value)
     }
   }
@@ -15,6 +17,8 @@ export class UserUploadId extends ValueObject<string> {
   }
 
   private isValidId(value: string): boolean {
-    return /^[0-9a-fA-F-]{36}$/.test(value)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+    return uuidRegex.test(value)
   }
 }

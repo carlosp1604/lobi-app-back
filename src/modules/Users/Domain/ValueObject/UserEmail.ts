@@ -3,9 +3,11 @@ import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainExcept
 
 export class UserEmail extends ValueObject<string> {
   private constructor(value: string) {
-    super(value)
+    const normalized = value.trim()
 
-    if (!this.isValidEmail(value)) {
+    super(normalized)
+
+    if (!this.isValidEmail(normalized)) {
       throw UserDomainException.invalidUserEmail(value)
     }
   }

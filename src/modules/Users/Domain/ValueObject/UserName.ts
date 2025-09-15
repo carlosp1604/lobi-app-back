@@ -3,9 +3,11 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
 
 export class UserName extends ValueObject<string> {
   private constructor(value: string) {
-    super(value)
+    const normalized = value.trim()
 
-    if (!this.isValidName(value)) {
+    super(normalized)
+
+    if (!this.isValidName(normalized)) {
       throw UserDomainException.invalidUserName(value)
     }
   }
@@ -15,6 +17,8 @@ export class UserName extends ValueObject<string> {
   }
 
   private isValidName(value: string): boolean {
-    return value.length >= 1 && value.length <= 255
+    const userNameRegex = /^[\p{L} \-']{2,255}$/u
+
+    return userNameRegex.test(value)
   }
 }

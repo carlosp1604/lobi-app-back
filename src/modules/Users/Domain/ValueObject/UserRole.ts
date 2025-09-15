@@ -1,14 +1,14 @@
 import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
 
-export enum ValidRoles {
+export enum ValidUserRoles {
   SPORTMAN = 'sportman',
   OWNER = 'owner',
   ADMIN = 'admin',
 }
 
-export class UserRole extends ValueObject<ValidRoles> {
-  private constructor(value: ValidRoles) {
+export class UserRole extends ValueObject<ValidUserRoles> {
+  private constructor(value: ValidUserRoles) {
     super(value)
 
     if (!this.isValidUserRole(value)) {
@@ -17,10 +17,10 @@ export class UserRole extends ValueObject<ValidRoles> {
   }
 
   static fromString(value: string): UserRole {
-    return new UserRole(value as ValidRoles)
+    return new UserRole(value as ValidUserRoles)
   }
 
   private isValidUserRole(value: string): boolean {
-    return Object.values(ValidRoles).includes(value as ValidRoles)
+    return Object.values(ValidUserRoles).includes(value as ValidUserRoles)
   }
 }
