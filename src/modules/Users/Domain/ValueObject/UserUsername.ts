@@ -15,7 +15,7 @@ export class UserUsername extends ValueObject<string> {
   }
 
   private isValidUsername(value: string): boolean {
-    const usernameRegex = /^[a-zA-Z0-9._]{4,32}$/
+    const usernameRegex = /^(?=.{6,32}$)(?![_.])(?!.*[_.]{2})[a-zA-Z0-9._]+(?<![_.])$/
     return usernameRegex.test(value)
   }
 }
