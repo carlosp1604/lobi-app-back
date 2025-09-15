@@ -1,5 +1,5 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
-import { UserDomainException } from '~/src/modules/Auth/Domain/UserDomainException'
+import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
 
 export class UserId extends ValueObject<string> {
   private constructor(value: string) {

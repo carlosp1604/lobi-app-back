@@ -1,9 +1,9 @@
-import { UserId } from '~/src/modules/Auth/Domain/ValueObject/UserId'
-import { UserEmail } from '~/src/modules/Auth/Domain/ValueObject/UserEmail'
-import { UserName } from '~/src/modules/Auth/Domain/ValueObject/UserName'
-import { UserUsername } from '~/src/modules/Auth/Domain/ValueObject/UserUsername'
-import { UserStatus } from '~/src/modules/Auth/Domain/ValueObject/UserStatus'
-import { UserRole } from '~/src/modules/Auth/Domain/ValueObject/UserRole'
+import { UserId } from '~/src/modules/Users/Domain/ValueObject/UserId'
+import { UserEmail } from '~/src/modules/Users/Domain/ValueObject/UserEmail'
+import { UserName } from '~/src/modules/Users/Domain/ValueObject/UserName'
+import { UserUsername } from '~/src/modules/Users/Domain/ValueObject/UserUsername'
+import { UserStatus } from '~/src/modules/Users/Domain/ValueObject/UserStatus'
+import { UserRole } from '~/src/modules/Users/Domain/ValueObject/UserRole'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
 
 export class User {
