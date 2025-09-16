@@ -1,5 +1,6 @@
 import { EntitySchema } from 'typeorm'
 import { User } from '~/src/modules/User/Domain/User'
+import { UserCredentialRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 
 export interface UserRawModel {
   id: string
@@ -15,7 +16,7 @@ export interface UserRawModel {
   deleted_at: string | null
 }
 
-type UserRawModelWithRelations = UserRawModel
+type UserRawModelWithRelations = UserRawModel & { credential: UserCredentialRaw }
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
   name: 'User',
@@ -75,6 +76,18 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       type: 'timestamptz',
       deleteDate: true,
       nullable: true,
+    },
+  },
+  relations: {
+    credential: {
+      type: 'one-to-one',
+      target: 'UserCredential',
+      joinColumn: {
+        name: 'id',
+        referencedColumnName: 'user_id',
+      },
+      inverseSide: 'user',
+      cascade: true,
     },
   },
 })
