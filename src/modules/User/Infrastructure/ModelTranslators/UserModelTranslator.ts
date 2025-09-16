@@ -1,4 +1,3 @@
-import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/UserEntity'
 import { User } from '~/src/modules/User/Domain/User'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
@@ -7,6 +6,7 @@ import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
+import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 
 export class UserModelTranslator {
   public static toDomain(rawModel: UserRawModel): User {

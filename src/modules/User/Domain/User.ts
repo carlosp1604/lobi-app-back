@@ -52,7 +52,7 @@ export class User {
     name: UserName,
     role: UserRole,
     userUploadId: UserUploadId | null,
-    now: Date = new Date(),
+    now: Date,
   ): User {
     const status = UserStatus.active()
     const emailVerifiedAt = now
