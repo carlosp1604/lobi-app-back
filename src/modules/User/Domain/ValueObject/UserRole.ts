@@ -1,8 +1,8 @@
-import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
 
 export enum ValidUserRoles {
-  SPORTMAN = 'sportman',
+  SPORTSMAN = 'sportsman',
   OWNER = 'owner',
   ADMIN = 'admin',
 }
@@ -18,6 +18,14 @@ export class UserRole extends ValueObject<ValidUserRoles> {
 
   static fromString(value: string): UserRole {
     return new UserRole(value as ValidUserRoles)
+  }
+
+  static sportsman(): UserRole {
+    return new UserRole(ValidUserRoles.SPORTSMAN)
+  }
+
+  static owner(): UserRole {
+    return new UserRole(ValidUserRoles.OWNER)
   }
 
   private isValidUserRole(value: string): boolean {

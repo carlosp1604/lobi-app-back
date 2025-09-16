@@ -9,9 +9,16 @@ export abstract class ValueObject<T> {
     return this._value
   }
 
-  equals(vo?: ValueObject<T>): boolean {
-    if (!vo) return false
-    return this._value === vo._value
+  public equals(vo?: ValueObject<T>): boolean {
+    if (vo === null || vo === undefined) {
+      return false
+    }
+
+    if (vo.constructor !== this.constructor) {
+      return false
+    }
+
+    return this.value === vo.value
   }
 
   toString(): string {

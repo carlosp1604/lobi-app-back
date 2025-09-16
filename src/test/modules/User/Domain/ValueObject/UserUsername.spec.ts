@@ -1,6 +1,6 @@
 import fc from 'fast-check'
-import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
-import { UserUsername } from '~/src/modules/Users/Domain/ValueObject/UserUsername'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
+import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 
 const invalidCases: Array<string> = [
   '',

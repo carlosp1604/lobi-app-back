@@ -1,4 +1,4 @@
-import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
 
 export class UserName extends ValueObject<string> {

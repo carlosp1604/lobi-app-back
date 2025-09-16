@@ -1,4 +1,4 @@
-import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
 
 export enum ValidUserStatus {
@@ -17,6 +17,10 @@ export class UserStatus extends ValueObject<ValidUserStatus> {
 
   static active(): UserStatus {
     return new UserStatus(ValidUserStatus.ACTIVE)
+  }
+
+  static deactivated(): UserStatus {
+    return new UserStatus(ValidUserStatus.DEACTIVATED)
   }
 
   static fromString(value: string): UserStatus {

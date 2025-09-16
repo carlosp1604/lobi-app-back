@@ -1,9 +1,9 @@
-import { UserId } from '~/src/modules/Users/Domain/ValueObject/UserId'
-import { UserEmail } from '~/src/modules/Users/Domain/ValueObject/UserEmail'
-import { UserName } from '~/src/modules/Users/Domain/ValueObject/UserName'
-import { UserUsername } from '~/src/modules/Users/Domain/ValueObject/UserUsername'
-import { UserStatus } from '~/src/modules/Users/Domain/ValueObject/UserStatus'
-import { UserRole } from '~/src/modules/Users/Domain/ValueObject/UserRole'
+import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
+import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
+import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
+import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
 
 export class User {
@@ -13,11 +13,11 @@ export class User {
   public readonly name: UserName
   public readonly status: UserStatus
   public readonly role: UserRole
-  public readonly user_upload_id: UserUploadId | null
-  public readonly email_verified_at: Date
-  public readonly created_at: Date
-  public readonly updated_at: Date
-  public readonly deleted_at: Date | null
+  public readonly userUploadId: UserUploadId | null
+  public readonly emailVerifiedAt: Date
+  public readonly createdAt: Date
+  public readonly updatedAt: Date
+  public readonly deletedAt: Date | null
 
   constructor(
     id: UserId,
@@ -26,11 +26,11 @@ export class User {
     name: UserName,
     status: UserStatus,
     role: UserRole,
-    user_upload_id: UserUploadId | null,
-    email_verified_at: Date,
-    created_at: Date,
-    updated_at: Date,
-    deleted_at: Date | null,
+    userUploadId: UserUploadId | null,
+    emailVerifiedAt: Date,
+    createdAt: Date,
+    updatedAt: Date,
+    deletedAt: Date | null,
   ) {
     this.id = id
     this.email = email
@@ -38,11 +38,11 @@ export class User {
     this.name = name
     this.status = status
     this.role = role
-    this.user_upload_id = user_upload_id
-    this.created_at = created_at
-    this.updated_at = updated_at
-    this.deleted_at = deleted_at
-    this.email_verified_at = email_verified_at
+    this.userUploadId = userUploadId
+    this.createdAt = createdAt
+    this.updatedAt = updatedAt
+    this.deletedAt = deletedAt
+    this.emailVerifiedAt = emailVerifiedAt
   }
 
   public static create(

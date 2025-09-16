@@ -1,5 +1,5 @@
 import { EntitySchema } from 'typeorm'
-import { User } from '~/src/modules/Users/Domain/User'
+import { User } from '~/src/modules/User/Domain/User'
 
 export interface UserRawModel {
   id: string

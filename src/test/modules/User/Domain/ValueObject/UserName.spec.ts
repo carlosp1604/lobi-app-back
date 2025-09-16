@@ -1,6 +1,6 @@
 import fc from 'fast-check'
-import { UserDomainException } from '~/src/modules/Users/Domain/UserDomainException'
-import { UserName } from '~/src/modules/Users/Domain/ValueObject/UserName'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
+import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 
 const invalidCases: string[] = ['', 'a', '   ', 'a'.repeat(256), 'Pepe!', '1234', 'J\nP']
 
