@@ -18,7 +18,7 @@ export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelatio
   tableName: 'user_credentials',
   columns: {
     user_id: {
-      type: 'string',
+      type: 'uuid',
       primary: true,
       nullable: false,
     },
@@ -54,8 +54,12 @@ export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelatio
     user: {
       type: 'one-to-one',
       target: 'User',
-      joinColumn: { name: 'user_id' },
+      joinColumn: {
+        name: 'user_id',
+        referencedColumnName: 'id',
+      },
       onDelete: 'CASCADE',
+      lazy: true,
     },
   },
 })

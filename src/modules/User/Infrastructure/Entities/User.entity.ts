@@ -55,7 +55,7 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       nullable: false,
     },
     user_upload_id: {
-      type: String,
+      type: 'uuid',
       nullable: true,
     },
     email_verified_at: {
@@ -82,6 +82,7 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
     credential: {
       type: 'one-to-one',
       target: 'UserCredential',
+      lazy: true,
       joinColumn: {
         name: 'id',
         referencedColumnName: 'user_id',
