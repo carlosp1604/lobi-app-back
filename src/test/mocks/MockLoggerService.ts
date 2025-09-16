@@ -1,4 +1,4 @@
-import { LoggerMetaData, LoggerServiceInterface } from '~/src/modules/shared/Domain/LoggerServiceInterface'
+import { LoggerMetaData, LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 export class MockLoggerService implements LoggerServiceInterface {

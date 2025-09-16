@@ -1,12 +1,12 @@
 import * as Sentry from '@sentry/node'
 import helmet from '@fastify/helmet'
 import compress from '@fastify/compress'
-import { env } from '~/src/modules/shared/Infrastructure/EnvHelper'
-import { validationPipe } from '~/src/modules/shared/Infrastructure/GlobalValidationPipe'
-import { SentryExceptionFilter } from '~/src/modules/shared/Infrastructure/SentryExceptionFilter'
+import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
+import { validationPipe } from '~/src/modules/Shared/Infrastructure/GlobalValidationPipe'
+import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/SentryExceptionFilter'
 import { NestFastifyApplication } from '@nestjs/platform-fastify'
-import { buildFastifyApplication } from '~/src/modules/shared/Infrastructure/FastifyApplication'
-import { LOGGER_SERVICE_INTERFACE, LoggerServiceInterface } from '~/src/modules/shared/Domain/LoggerServiceInterface'
+import { buildFastifyApplication } from '~/src/modules/Shared/Infrastructure/FastifyApplication'
+import { LOGGER_SERVICE_INTERFACE, LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 
 /**
