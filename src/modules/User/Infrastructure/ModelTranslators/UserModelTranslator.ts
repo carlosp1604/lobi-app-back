@@ -10,12 +10,6 @@ import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.en
 
 export class UserModelTranslator {
   public static toDomain(rawModel: UserRawModel): User {
-    let deletedAt: Date | null = null
-
-    if (rawModel.deleted_at) {
-      deletedAt = new Date(rawModel.deleted_at)
-    }
-
     return new User(
       UserId.fromString(rawModel.id),
       UserEmail.fromString(rawModel.email),
@@ -24,10 +18,10 @@ export class UserModelTranslator {
       UserStatus.fromString(rawModel.status),
       UserRole.fromString(rawModel.role),
       rawModel.user_upload_id ? UserUploadId.fromString(rawModel.user_upload_id) : null,
-      new Date(rawModel.email_verified_at),
-      new Date(rawModel.created_at),
-      new Date(rawModel.updated_at),
-      deletedAt,
+      rawModel.email_verified_at,
+      rawModel.created_at,
+      rawModel.updated_at,
+      rawModel.deleted_at,
     )
   }
 
@@ -40,10 +34,10 @@ export class UserModelTranslator {
       status: domain.status.toString(),
       role: domain.role.toString(),
       user_upload_id: domain.userUploadId ? domain.userUploadId.toString() : null,
-      email_verified_at: domain.emailVerifiedAt.toISOString(),
-      created_at: domain.createdAt.toISOString(),
-      updated_at: domain.updatedAt.toISOString(),
-      deleted_at: domain.deletedAt ? domain.deletedAt.toISOString() : null,
+      email_verified_at: domain.emailVerifiedAt,
+      created_at: domain.createdAt,
+      updated_at: domain.updatedAt,
+      deleted_at: domain.deletedAt,
     }
   }
 }

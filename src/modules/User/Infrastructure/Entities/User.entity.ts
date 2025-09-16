@@ -10,10 +10,10 @@ export interface UserRawModel {
   status: string
   role: string
   user_upload_id: string | null
-  email_verified_at: string
-  created_at: string
-  updated_at: string
-  deleted_at: string | null
+  email_verified_at: Date
+  created_at: Date
+  updated_at: Date
+  deleted_at: Date | null
 }
 
 type UserRawModelWithRelations = UserRawModel & { credential: UserCredentialRaw }
