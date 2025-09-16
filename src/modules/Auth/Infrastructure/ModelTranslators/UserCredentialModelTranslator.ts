@@ -1,0 +1,30 @@
+import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { UserCredentialRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
+import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
+import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
+
+export class UserCredentialModelTranslator {
+  public static toDomain(raw: UserCredentialRaw): UserCredential {
+    return new UserCredential(
+      UserId.fromString(raw.user_id),
+      PasswordHash.fromString(raw.password_hash),
+      raw.failed_attempts,
+      raw.locked_until,
+      raw.last_login_at,
+      raw.created_at,
+      raw.updated_at,
+    )
+  }
+
+  public static toRow(domain: UserCredential): UserCredentialRaw {
+    return {
+      user_id: domain.userId.toString(),
+      password_hash: domain.passwordHash.toString(),
+      failed_attempts: domain.failedAttempts,
+      locked_until: domain.lockedUntil,
+      last_login_at: domain.lastLoginAt,
+      created_at: domain.createdAt,
+      updated_at: domain.updatedAt,
+    }
+  }
+}

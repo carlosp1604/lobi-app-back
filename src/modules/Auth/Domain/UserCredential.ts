@@ -6,8 +6,7 @@ export class UserCredential {
   public readonly passwordHash: PasswordHash
   public readonly failedAttempts: number
   public readonly lockedUntil: Date | null
-  public readonly passwordSetAt: Date
-  public readonly lastUsedAt: Date
+  public readonly lastLoginAt: Date | null
   public readonly createdAt: Date
   public readonly updatedAt: Date
 
@@ -16,8 +15,7 @@ export class UserCredential {
     passwordHash: PasswordHash,
     failedAttempts: number,
     lockedUntil: Date | null,
-    passwordSetAt: Date,
-    lastUsedAt: Date,
+    lastLoginAt: Date | null,
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -25,8 +23,7 @@ export class UserCredential {
     this.passwordHash = passwordHash
     this.failedAttempts = failedAttempts
     this.lockedUntil = lockedUntil
-    this.passwordSetAt = passwordSetAt
-    this.lastUsedAt = lastUsedAt
+    this.lastLoginAt = lastLoginAt
     this.createdAt = createdAt
     this.updatedAt = updatedAt
   }
