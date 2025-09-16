@@ -9,7 +9,7 @@ export class UserDomainException extends DomainException {
   public static invalidUserRoleId = 'user_domain_invalid_user_role'
 
   private constructor(message: string, id: string) {
-    super(message, id)
+    super(message, id, UserDomainException.name)
   }
 
   public static invalidUserId(userId: string) {

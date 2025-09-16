@@ -4,7 +4,7 @@ export class UserCredentialDomainException extends DomainException {
   public static invalidPasswordHashId = 'user_credential_invalid_password'
 
   private constructor(message: string, id: string) {
-    super(message, id)
+    super(message, id, UserCredentialDomainException.name)
   }
 
   public static invalidPasswordHash() {

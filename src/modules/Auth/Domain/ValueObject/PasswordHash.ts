@@ -1,5 +1,5 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
-import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/ValueObject/UserCredentialDomainException'
+import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 
 export class PasswordHash extends ValueObject<string> {
   private constructor(value: string) {
