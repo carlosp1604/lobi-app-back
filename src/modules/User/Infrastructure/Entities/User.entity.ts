@@ -23,13 +23,12 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
   target: User,
   columns: {
     id: {
-      type: 'string',
+      type: 'uuid',
       primary: true,
       nullable: false,
     },
     email: {
       type: 'citext',
-      length: 320,
       unique: true,
       nullable: false,
     },
@@ -65,10 +64,12 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
     created_at: {
       type: 'timestamptz',
       createDate: true,
+      default: () => 'now()',
     },
     updated_at: {
       type: 'timestamptz',
       updateDate: true,
+      default: () => 'now()',
     },
     deleted_at: {
       type: 'timestamptz',
