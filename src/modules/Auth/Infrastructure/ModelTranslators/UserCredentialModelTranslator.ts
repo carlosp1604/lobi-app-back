@@ -16,7 +16,7 @@ export class UserCredentialModelTranslator {
     )
   }
 
-  public static toRow(domain: UserCredential): UserCredentialRaw {
+  public static toDatabase(domain: UserCredential): UserCredentialRaw {
     return {
       user_id: domain.userId.toString(),
       password_hash: domain.passwordHash.toString(),

@@ -1,6 +1,8 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 
+const BCRYPT_REGEX = /^\$2[aby]\$(0[4-9]|[12]\d|3[01])\$[./A-Za-z0-9]{53}$/
+
 export class PasswordHash extends ValueObject<string> {
   private constructor(value: string) {
     super(value)
@@ -15,8 +17,6 @@ export class PasswordHash extends ValueObject<string> {
   }
 
   private isValid(value: string): boolean {
-    const hashRegex = /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/
-
     if (!value) {
       return false
     }
@@ -29,6 +29,6 @@ export class PasswordHash extends ValueObject<string> {
       return false
     }
 
-    return hashRegex.test(value)
+    return BCRYPT_REGEX.test(value)
   }
 }
