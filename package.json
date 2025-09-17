@@ -105,7 +105,16 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!dist/**",
+      "!src/main.ts",
+      "!src/app.module.ts",
+      "!src/db/**",
+      "!src/modules/**/Infrastructure/Module/**/*.ts",
+      "!src/modules/**/Infrastructure/Entities/**/*.ts",
+      "!src/modules/Shared/Infrastructure/EnvHelper.ts",
+      "!src/modules/Shared/Infrastructure/FastifyApplication.ts",
+      "!src/modules/Shared/Infrastructure/GlobalValidationPipe.ts"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
