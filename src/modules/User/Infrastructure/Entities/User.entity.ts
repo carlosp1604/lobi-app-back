@@ -1,6 +1,7 @@
 import { EntitySchema } from 'typeorm'
 import { User } from '~/src/modules/User/Domain/User'
 import { UserCredentialRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
+import { UserSessionRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 
 export interface UserRawModel {
   id: string
@@ -16,7 +17,10 @@ export interface UserRawModel {
   deleted_at: Date | null
 }
 
-type UserRawModelWithRelations = UserRawModel & { credential: UserCredentialRaw }
+type UserRawModelWithRelations = UserRawModel & {
+  credential: UserCredentialRaw
+  sessions: Array<UserSessionRaw>
+}
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
   name: 'User',
@@ -89,6 +93,13 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       },
       inverseSide: 'user',
       cascade: true,
+    },
+    sessions: {
+      type: 'one-to-many',
+      target: 'UserSession',
+      inverseSide: 'user',
+      lazy: true,
+      cascade: false,
     },
   },
 })
