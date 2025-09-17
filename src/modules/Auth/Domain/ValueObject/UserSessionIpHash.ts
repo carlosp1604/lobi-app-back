@@ -1,0 +1,16 @@
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { HashValueObject } from '~/src/modules/Shared/Domain/HashValueObject'
+
+export class UserSessionIpHash extends HashValueObject {
+  private constructor(value: string) {
+    super(value)
+
+    if (!this.isValidHash(value)) {
+      throw UserSessionDomainException.invalidUserSessionIpHash()
+    }
+  }
+
+  static fromString(value: string): UserSessionIpHash {
+    return new UserSessionIpHash(value)
+  }
+}

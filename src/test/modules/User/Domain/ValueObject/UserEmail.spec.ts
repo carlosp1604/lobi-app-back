@@ -1,6 +1,7 @@
 import fc from 'fast-check'
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
+import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 
 const invalidCases: Array<string> = [
   '',
@@ -28,8 +29,9 @@ describe('UserEmail', () => {
   })
 
   it('should store the correct value', () => {
-    const emailValueObject = UserEmail.fromString('valid-email@example.com')
+    const validValue = UserEmailMother.valid().toString()
+    const emailValueObject = UserEmail.fromString(validValue)
 
-    expect(emailValueObject.value).toEqual('valid-email@example.com')
+    expect(emailValueObject.value).toEqual(validValue)
   })
 })

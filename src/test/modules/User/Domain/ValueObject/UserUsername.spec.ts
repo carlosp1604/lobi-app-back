@@ -1,6 +1,7 @@
 import fc from 'fast-check'
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
+import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 
 const invalidCases: Array<string> = [
   '',
@@ -58,8 +59,9 @@ describe('UserUsername', () => {
   })
 
   it('should store the correct value', () => {
-    const usernameValueObject = UserUsername.fromString('valid_us3rn4me')
+    const validValue = UserUsernameMother.valid().toString()
+    const usernameValueObject = UserUsername.fromString(validValue)
 
-    expect(usernameValueObject.value).toEqual('valid_us3rn4me')
+    expect(usernameValueObject.value).toEqual(validValue)
   })
 })
