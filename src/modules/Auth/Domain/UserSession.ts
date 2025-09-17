@@ -29,7 +29,7 @@ export class UserSession {
   public readonly createdAt: Date
   public updatedAt: Date
 
-  private constructor(
+  public constructor(
     id: UserSessionId,
     userId: UserId,
     tokenHash: UserSessionHash,
