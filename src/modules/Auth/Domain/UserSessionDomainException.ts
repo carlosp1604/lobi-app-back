@@ -4,13 +4,14 @@ export class UserSessionDomainException extends DomainException {
   public static invalidUserSessionIdId = 'user_session_invalid_user_session_id'
   public static invalidUserSessionHashId = 'user_session_invalid_user_session_hash'
   public static invalidUserSessionIpHashId = 'user_session_invalid_user_session_ip_hash'
+  public static invalidUserAgentId = 'user_session_invalid_user_agent'
 
   private constructor(message: string, id: string) {
     super(message, id, UserSessionDomainException.name)
   }
 
   public static invalidUserSessionId(userId: string) {
-    return new UserSessionDomainException(`${userId} is not a valid User ID`, this.invalidUserSessionIdId)
+    return new UserSessionDomainException(`${userId} is not a valid User Session ID`, this.invalidUserSessionIdId)
   }
 
   public static invalidUserSessionHash() {
@@ -19,5 +20,9 @@ export class UserSessionDomainException extends DomainException {
 
   public static invalidUserSessionIpHash() {
     return new UserSessionDomainException('Invalid session ip format', this.invalidUserSessionIpHashId)
+  }
+
+  public static invalidUserAgent(userAgent: string) {
+    return new UserSessionDomainException(`${userAgent} is not a valid User Agent`, this.invalidUserAgentId)
   }
 }
