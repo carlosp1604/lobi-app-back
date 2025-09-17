@@ -18,6 +18,7 @@ const invalidCases: string[] = [
   '$2b$99$' + 'a'.repeat(53),
   '$2b$10$' + 'a'.repeat(54),
   '$2b$10$' + '****'.repeat(13),
+  'a'.repeat(256),
 ]
 
 describe('PasswordHash', () => {
