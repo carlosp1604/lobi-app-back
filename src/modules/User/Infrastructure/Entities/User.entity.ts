@@ -1,5 +1,6 @@
 import { EntitySchema } from 'typeorm'
 import { User } from '~/src/modules/User/Domain/User'
+import { UserCredentialRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 
 export interface UserRawModel {
   id: string
@@ -9,13 +10,13 @@ export interface UserRawModel {
   status: string
   role: string
   user_upload_id: string | null
-  email_verified_at: string
-  created_at: string
-  updated_at: string
-  deleted_at: string | null
+  email_verified_at: Date
+  created_at: Date
+  updated_at: Date
+  deleted_at: Date | null
 }
 
-type UserRawModelWithRelations = UserRawModel
+type UserRawModelWithRelations = UserRawModel & { credential: UserCredentialRaw }
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
   name: 'User',
@@ -23,13 +24,12 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
   target: User,
   columns: {
     id: {
-      type: 'string',
+      type: 'uuid',
       primary: true,
       nullable: false,
     },
     email: {
       type: 'citext',
-      length: 320,
       unique: true,
       nullable: false,
     },
@@ -55,7 +55,7 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       nullable: false,
     },
     user_upload_id: {
-      type: String,
+      type: 'uuid',
       nullable: true,
     },
     email_verified_at: {
@@ -65,15 +65,30 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
     created_at: {
       type: 'timestamptz',
       createDate: true,
+      default: () => 'now()',
     },
     updated_at: {
       type: 'timestamptz',
       updateDate: true,
+      default: () => 'now()',
     },
     deleted_at: {
       type: 'timestamptz',
       deleteDate: true,
       nullable: true,
+    },
+  },
+  relations: {
+    credential: {
+      type: 'one-to-one',
+      target: 'UserCredential',
+      lazy: true,
+      joinColumn: {
+        name: 'id',
+        referencedColumnName: 'user_id',
+      },
+      inverseSide: 'user',
+      cascade: true,
     },
   },
 })

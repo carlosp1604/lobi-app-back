@@ -11,6 +11,7 @@ import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.en
 
 describe('UserModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
+  const now = new Date(isoDate)
 
   const baseRaw: UserRawModel = {
     id: UserIdMother.valid().toString(),
@@ -20,9 +21,9 @@ describe('UserModelTranslator', () => {
     status: UserStatus.active().toString(),
     role: UserRole.sportsman().toString(),
     user_upload_id: UserUploadIdMother.valid().toString(),
-    email_verified_at: isoDate,
-    created_at: isoDate,
-    updated_at: isoDate,
+    email_verified_at: now,
+    created_at: now,
+    updated_at: now,
     deleted_at: null,
   }
 
@@ -44,7 +45,7 @@ describe('UserModelTranslator', () => {
     })
 
     it('returns correct data when user_upload_id or deleted_at are NULL', () => {
-      const raw = { ...baseRaw, user_upload_id: null, deleted_at: isoDate }
+      const raw = { ...baseRaw, user_upload_id: null, deleted_at: now }
 
       const result = UserModelTranslator.toDomain(raw)
 
@@ -62,8 +63,6 @@ describe('UserModelTranslator', () => {
   })
 
   describe('toDatabase', () => {
-    const now = new Date(isoDate)
-
     let userTestBuilder = new UserTestBuilder()
 
     beforeEach(() => {
@@ -93,10 +92,10 @@ describe('UserModelTranslator', () => {
         status: String(UserStatus.active()),
         role: String(UserRole.sportsman()),
         user_upload_id: user.userUploadId?.toString(),
-        email_verified_at: now.toISOString(),
-        created_at: now.toISOString(),
-        updated_at: now.toISOString(),
-        deleted_at: now.toISOString(),
+        email_verified_at: now,
+        created_at: now,
+        updated_at: now,
+        deleted_at: now,
       })
     })
 

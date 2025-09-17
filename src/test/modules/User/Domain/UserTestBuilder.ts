@@ -6,12 +6,16 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
+import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
+import { UserNameMother } from '~/src/test/mothers/UserNameMother'
+import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 
 export class UserTestBuilder {
-  private _id = UserId.fromString('05a1d9b1-9d24-42b8-b482-c862a668f4a4')
-  private _email = UserEmail.fromString('test@example.com')
-  private _username = UserUsername.fromString('tester')
-  private _name = UserName.fromString('Test User')
+  private _id = UserIdMother.valid()
+  private _email = UserEmailMother.valid()
+  private _username = UserUsernameMother.valid()
+  private _name = UserNameMother.valid()
   private _status = UserStatus.active()
   private _role = UserRole.sportsman()
   private _uploadId: UserUploadId | null = null

@@ -10,8 +10,7 @@ export class CreateUsersTable1757947731179 implements MigrationInterface {
         columns: [
           {
             name: 'id',
-            type: 'varchar',
-            length: '36',
+            type: 'uuid',
             isPrimary: true,
             isNullable: false,
             isGenerated: false,
@@ -49,8 +48,7 @@ export class CreateUsersTable1757947731179 implements MigrationInterface {
           },
           {
             name: 'user_upload_id',
-            type: 'varchar',
-            length: '36',
+            type: 'uuid',
             isNullable: true,
           },
           {
