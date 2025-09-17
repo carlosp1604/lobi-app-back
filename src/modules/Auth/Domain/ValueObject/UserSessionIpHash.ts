@@ -1,5 +1,5 @@
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
-import { HashValueObject } from '~/src/modules/Shared/Domain/HashValueObject'
+import { HashValueObject } from '~/src/modules/Shared/Domain/ValueObject/HashValueObject'
 
 export class UserSessionIpHash extends HashValueObject {
   private constructor(value: string) {

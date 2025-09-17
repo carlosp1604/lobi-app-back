@@ -1,4 +1,4 @@
-import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
+import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 
 const HASH_REGEX = /^[A-Za-z0-9+/]{43}=$/
 

@@ -1,5 +1,5 @@
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
-import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
+import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 
 export enum ValidUserStatus {
   ACTIVE = 'active',

@@ -1,4 +1,4 @@
-import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
+import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 
 class DummyVO extends ValueObject<string> {
   static fromString(value: string) {

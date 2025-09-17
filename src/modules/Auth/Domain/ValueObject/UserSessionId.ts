@@ -1,7 +1,7 @@
-import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { UuidValueObject } from '~/src/modules/Shared/Domain/ValueObject/UuidValueObject'
 
-export class UserSessionId extends ValueObject<string> {
+export class UserSessionId extends UuidValueObject {
   private constructor(value: string) {
     const normalized = value.trim()
 
@@ -14,11 +14,5 @@ export class UserSessionId extends ValueObject<string> {
 
   static fromString(value: string): UserSessionId {
     return new UserSessionId(value)
-  }
-
-  private isValidId(value: string): boolean {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-    return uuidRegex.test(value)
   }
 }

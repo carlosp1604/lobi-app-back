@@ -1,4 +1,4 @@
-import { HashValueObject } from '~/src/modules/Shared/Domain/HashValueObject'
+import { HashValueObject } from '~/src/modules/Shared/Domain/ValueObject/HashValueObject'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
 export class UserSessionHash extends HashValueObject {
