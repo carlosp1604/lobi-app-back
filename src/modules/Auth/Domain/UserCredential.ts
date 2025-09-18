@@ -4,11 +4,11 @@ import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash
 export class UserCredential {
   public readonly userId: UserId
   public readonly passwordHash: PasswordHash
-  public readonly failedAttempts: number
-  public readonly lockedUntil: Date | null
-  public readonly lastLoginAt: Date | null
+  private _failedAttempts: number
+  private _lockedUntil: Date | null
+  private _lastLoginAt: Date | null
   public readonly createdAt: Date
-  public readonly updatedAt: Date
+  private _updatedAt: Date
 
   constructor(
     userId: UserId,
@@ -21,10 +21,56 @@ export class UserCredential {
   ) {
     this.userId = userId
     this.passwordHash = passwordHash
-    this.failedAttempts = failedAttempts
-    this.lockedUntil = lockedUntil
-    this.lastLoginAt = lastLoginAt
+    this._failedAttempts = failedAttempts
+    this._lockedUntil = lockedUntil
+    this._lastLoginAt = lastLoginAt
     this.createdAt = createdAt
-    this.updatedAt = updatedAt
+    this._updatedAt = updatedAt
+  }
+
+  public get failedAttempts(): number {
+    return this._failedAttempts
+  }
+
+  public get lastLoginAt(): Date | null {
+    return this._lastLoginAt
+  }
+
+  public get lockedUntil(): Date | null {
+    return this._lockedUntil
+  }
+
+  public get updatedAt(): Date {
+    return this._updatedAt
+  }
+
+  public incrementFailedAttempts(now: Date): void {
+    if (this._failedAttempts <= 0) {
+      this._failedAttempts = 1
+    } else {
+      this._failedAttempts = this.failedAttempts + 1
+    }
+
+    this._updatedAt = now
+  }
+
+  public lock(lockUntil: Date, now: Date): void {
+    this._lockedUntil = lockUntil
+    this._updatedAt = now
+  }
+
+  public releaseLock(now: Date): void {
+    this._lockedUntil = null
+    this._updatedAt = now
+  }
+
+  public resetAfterSuccessfulLogin(now: Date): void {
+    this._lockedUntil = null
+    this._failedAttempts = 0
+    this._updatedAt = now
+  }
+
+  public isLocked(now: Date): boolean {
+    return !!this._lockedUntil && this._lockedUntil > now
   }
 }
