@@ -1,4 +1,4 @@
-import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject'
+import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 
 const BCRYPT_REGEX = /^\$2[aby]\$(0[4-9]|[12]\d|3[01])\$[./A-Za-z0-9]{53}$/
