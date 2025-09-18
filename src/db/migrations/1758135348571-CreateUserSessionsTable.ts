@@ -109,20 +109,27 @@ export class CreateUserSessionsTable1758135348571 implements MigrationInterface 
     // Optimize queries
     await queryRunner.query(`
       CREATE INDEX index_user_sessions_active
-      ON user_sessions (user_id, expires_at)
-      WHERE revoked_at IS NULL
+        ON user_sessions (user_id, expires_at)
+        WHERE revoked_at IS NULL
     `)
 
     await queryRunner.query(`
       CREATE INDEX index_user_sessions_device_active
-      ON user_sessions (user_id, ip_hash, user_agent, device_country, device_city, device_timezone)
-      WHERE revoked_at IS NULL
+        ON user_sessions (user_id, ip_hash, user_agent, device_country, device_city, device_timezone)
+        WHERE revoked_at IS NULL
+    `)
+
+    await queryRunner.query(`
+      CREATE INDEX index_user_sessions_active_created_at
+        ON user_sessions (user_id, created_at)
+        WHERE revoked_at IS NULL
     `)
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('DROP INDEX IF EXISTS index_user_sessions_device_active')
     await queryRunner.query('DROP INDEX IF EXISTS index_user_sessions_active')
+    await queryRunner.query('DROP INDEX IF EXISTS index_user_sessions_active_created_at')
     await queryRunner.dropIndex('user_sessions', 'index_user_sessions_expires_at')
     await queryRunner.dropIndex('user_sessions', 'index_user_sessions_user_id')
     await queryRunner.dropForeignKey('user_sessions', 'foreign_key_user_sessions_user')
