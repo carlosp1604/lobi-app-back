@@ -8,5 +8,5 @@ export interface UserRepositoryInterface {
    * @param email User email
    * @returns the User if found, otherwise null
    */
-  findByEmailWithCredentials(email: string): Promise<User>
+  findByEmailWithCredentials(email: string): Promise<User | null>
 }

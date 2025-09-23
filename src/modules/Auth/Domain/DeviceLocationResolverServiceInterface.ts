@@ -4,7 +4,7 @@ export interface DeviceLocation {
   timezone: string
 }
 
-export interface DeviceLocationServiceInterface {
+export interface DeviceLocationResolverServiceInterface {
   /**
    * Resolves the device location for the given IP address
    * @param ip the IP address to resolve

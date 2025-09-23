@@ -2,7 +2,7 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { DomainEventDomainException } from '~/src/modules/Shared/Domain/DomainEventDomainException'
 
 export enum ValidDomainEventNames {
-  LOGIN_NEW_DEVICE = 'loginNewDevice',
+  SUCCESSFUL_LOGIN = 'successFulLogin',
   FAILED_LOGIN_ATTEMPT = 'failedLoginAttempt',
   LOCKED_LOGIN = 'lockedLogin',
 }
@@ -20,8 +20,8 @@ export class DomainEventName extends ValueObject<ValidDomainEventNames> {
     return new DomainEventName(value as ValidDomainEventNames)
   }
 
-  static loginNewDevice(): DomainEventName {
-    return new DomainEventName(ValidDomainEventNames.LOGIN_NEW_DEVICE)
+  static successfulLogin(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.SUCCESSFUL_LOGIN)
   }
 
   static failedLoginAttempt(): DomainEventName {

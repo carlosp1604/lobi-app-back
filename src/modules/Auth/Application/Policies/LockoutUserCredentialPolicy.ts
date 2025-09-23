@@ -6,7 +6,10 @@ export class LockoutPolicy {
 
   public evaluateLock(credential: UserCredential): Date | null {
     const attempts = credential.failedAttempts
-    if (attempts < 5) return null
+
+    if (attempts < 5) {
+      return null
+    }
 
     const now = this.clock.now()
 
@@ -23,18 +26,5 @@ export class LockoutPolicy {
     }
 
     return new Date(now.getTime() + 24 * 60 * 60 * 1000)
-  }
-
-  public shouldReset(credential: UserCredential): boolean {
-    if (credential.failedAttempts < 20) {
-      return false
-    }
-
-    if (!credential.lockedUntil) {
-      return false
-    }
-
-    const now = this.clock.now()
-    return credential.lockedUntil.getTime() <= now.getTime()
   }
 }

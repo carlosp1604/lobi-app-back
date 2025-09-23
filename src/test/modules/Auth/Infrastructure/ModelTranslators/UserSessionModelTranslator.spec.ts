@@ -81,7 +81,7 @@ describe('UserSessionModelTranslator', () => {
       sessionBuilder = new UserSessionTestBuilder()
         .withId(UserSessionIdMother.valid())
         .withUserId(UserIdMother.valid())
-        .withRefreshTokenHash(UserSessionHashMother.valid())
+        .withTokenHash(UserSessionHashMother.valid())
         .withExpiresAt(now)
         .withRevokedAt(null)
         .withIpHash(UserSessionIpHashMother.valid())

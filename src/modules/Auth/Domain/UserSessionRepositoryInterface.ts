@@ -11,25 +11,26 @@ export interface UserSessionRepositoryInterface {
 
   /**
    * Counts the number of active sessions for the given user
-   * @param userId the ID of the user
+   * @param userId User ID
    * @param context the transactional context
    * @returns the number of active sessions
    */
   countActiveSessions(userId: string, context: TxContext): Promise<number>
 
   /**
-   * Revokes the oldest session if the number of active sessions exceeds the given maximum
-   * @param userId the ID of the user
-   * @param context the transactional context
+   * Revokes the oldest sessions for the given user until the number
+   * of active sessions does not exceed the specified maximum
+   * @param userId User ID
    * @param maxSessions the maximum allowed number of active sessions
+   * @param context the transactional context
+   * @returns a promise that resolves when the sessions have been revoked
    */
-  revokeOldestIfExceeds(userId: string, maxSessions: number, context: TxContext): Promise<void>
+  revokeOldest(userId: string, maxSessions: number, context: TxContext): Promise<void>
 
   /**
    * Checks whether a session already exists for the given device
    * @param userSession the session containing device information
-   * @param context the transactional context
    * @returns true if a session for the device exists, otherwise false
    */
-  existsDevice(userSession: UserSession, context: TxContext): Promise<boolean>
+  existsDevice(userSession: UserSession): Promise<boolean>
 }

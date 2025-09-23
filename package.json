@@ -41,6 +41,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "dotenv": "^17.2.2",
+    "ipaddr.js": "^2.2.0",
     "pg": "^8.16.3",
     "pino": "^9.9.4",
     "reflect-metadata": "^0.2.2",

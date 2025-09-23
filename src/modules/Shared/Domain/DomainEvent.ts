@@ -6,6 +6,8 @@ import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/
 export type EventPayload = Record<string, unknown>
 export type EventMetadata = Record<string, unknown>
 
+const CurrentDomainEventVersion = 1
+
 export class DomainEvent {
   private constructor(
     public readonly id: DomainEventId,
@@ -17,4 +19,16 @@ export class DomainEvent {
     public readonly version: number,
     public readonly occurredAt: Date,
   ) {}
+
+  static create(
+    id: DomainEventId,
+    name: DomainEventName,
+    aggregateType: DomainEventAggregateType,
+    aggregateId: DomainEventAggregateId,
+    payload: EventPayload,
+    metadata: EventMetadata,
+    now: Date,
+  ) {
+    return new DomainEvent(id, name, aggregateType, aggregateId, payload, metadata, CurrentDomainEventVersion, now)
+  }
 }

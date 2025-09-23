@@ -66,7 +66,7 @@ export class User {
     return new User(userId, email, username, name, status, role, userUploadId, emailVerifiedAt, now, now, null)
   }
 
-  public credential(): UserCredential | null {
+  public get credential(): UserCredential | null {
     return this._credential.getOrNull()
   }
 }

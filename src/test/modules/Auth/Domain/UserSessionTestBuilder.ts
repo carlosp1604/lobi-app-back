@@ -32,7 +32,7 @@ export class UserSessionTestBuilder {
     return this
   }
 
-  withRefreshTokenHash(hash: UserSessionHash) {
+  withTokenHash(hash: UserSessionHash) {
     this._tokenHash = hash
     return this
   }

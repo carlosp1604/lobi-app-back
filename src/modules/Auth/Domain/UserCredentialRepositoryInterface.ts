@@ -1,7 +1,7 @@
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 
-export interface UserCredentialRepository {
+export interface UserCredentialRepositoryInterface {
   /**
    * Persists the updated failed-attempts counter for the given UserCredential
    * @param userCredential UserCredential to update
@@ -21,5 +21,5 @@ export interface UserCredentialRepository {
    * @param userCredential UserCredential to update
    * @param context the transactional context
    */
-  saveLoginAccess(userCredential: UserCredential, context: TxContext): Promise<void>
+  saveLoginSuccess(userCredential: UserCredential, context: TxContext): Promise<void>
 }

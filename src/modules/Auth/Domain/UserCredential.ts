@@ -68,6 +68,7 @@ export class UserCredential {
     this._lockedUntil = null
     this._failedAttempts = 0
     this._updatedAt = now
+    this._lastLoginAt = now
   }
 
   public isLocked(now: Date): boolean {

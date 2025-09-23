@@ -16,12 +16,16 @@ export class UserAgent extends ValueObject<string> {
     return new UserAgent(value)
   }
 
-  private isValid(v: string): boolean {
-    if (!v || v.length > 512) {
+  static unknown(): UserAgent {
+    return new UserAgent('unknown')
+  }
+
+  private isValid(value: string): boolean {
+    if (!value || value.length > 512) {
       return false
     }
 
-    if (/[^\x20-\x7E]/.test(v)) {
+    if (/[^\x20-\x7E]/.test(value)) {
       return false
     }
 
