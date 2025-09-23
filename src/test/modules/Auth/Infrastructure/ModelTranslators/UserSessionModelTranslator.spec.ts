@@ -1,5 +1,5 @@
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
-import { UserSessionRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
+import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
@@ -11,7 +11,7 @@ describe('UserSessionModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
-  const baseRaw: UserSessionRaw = {
+  const baseRaw: UserSessionRawModel = {
     id: UserSessionIdMother.valid().toString(),
     user_id: UserIdMother.valid().toString(),
     token_hash: UserSessionHashMother.valid().toString(),
@@ -45,11 +45,10 @@ describe('UserSessionModelTranslator', () => {
     })
 
     it('returns correct data when nullable fields are null', () => {
-      const raw: UserSessionRaw = {
+      const raw: UserSessionRawModel = {
         ...baseRaw,
         revoked_at: null,
         ip_hash: null,
-        user_agent: null,
         device_country: null,
         device_city: null,
         device_timezone: null,
@@ -59,7 +58,6 @@ describe('UserSessionModelTranslator', () => {
 
       expect(result.revokedAt).toBeNull()
       expect(result.ipHash).toBeNull()
-      expect(result.userAgent).toBeNull()
       expect(result.deviceCountry).toBeNull()
       expect(result.deviceCity).toBeNull()
       expect(result.deviceTimezone).toBeNull()
@@ -118,7 +116,6 @@ describe('UserSessionModelTranslator', () => {
       const session = sessionBuilder
         .withRevokedAt(null)
         .withIpHash(null)
-        .withUserAgent(null)
         .withDeviceCountry(null)
         .withDeviceCity(null)
         .withDeviceTimezone(null)
@@ -128,7 +125,6 @@ describe('UserSessionModelTranslator', () => {
 
       expect(raw.revoked_at).toBeNull()
       expect(raw.ip_hash).toBeNull()
-      expect(raw.user_agent).toBeNull()
       expect(raw.device_country).toBeNull()
       expect(raw.device_city).toBeNull()
       expect(raw.device_timezone).toBeNull()

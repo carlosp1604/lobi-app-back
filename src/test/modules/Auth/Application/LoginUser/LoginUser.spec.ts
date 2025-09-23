@@ -5,8 +5,7 @@ import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/Use
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
-import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGenerator'
-import { TokenHasherServiceInterface } from '~/src/modules/Auth/Domain/TokenHasherServiceInterface'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { LockoutPolicy } from '~/src/modules/Auth/Application/Policies/LockoutUserCredentialPolicy'
@@ -34,6 +33,7 @@ import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
+import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 
 describe('LoginUser', () => {
   const fakeContext: TxContext = { __opaque_tx_context: true }
@@ -70,7 +70,7 @@ describe('LoginUser', () => {
   const mockedDomainEventRepository = mock<DomainEventRepositoryInterface>()
   const mockedPasswordHasher = mock<PasswordHasherServiceInterface>()
   const mockedTokenGenerator = mock<TokenGeneratorApplicationServiceInterface>()
-  const mockedTokenHasher = mock<TokenHasherServiceInterface>()
+  const mockedHasher = mock<HasherServiceInterface>()
   const mockedDeviceLocationResolver = mock<DeviceLocationResolverServiceInterface>()
   const mockedMaxSessionPolicy = mock<MaxSessionsPolicy>({ maxSessions: 3 })
   const mockedLockoutPolicy = mock<LockoutPolicy>()
@@ -89,7 +89,7 @@ describe('LoginUser', () => {
       mockedDomainEventRepository,
       mockedPasswordHasher,
       mockedTokenGenerator,
-      mockedTokenHasher,
+      mockedHasher,
       mockedDeviceLocationResolver,
       mockedMaxSessionPolicy,
       mockedLockoutPolicy,
@@ -117,8 +117,8 @@ describe('LoginUser', () => {
       })
       mockedUserRepository.findByEmailWithCredentials.mockResolvedValueOnce(user)
       mockedPasswordHasher.compare.mockResolvedValue(true)
-      mockedTokenHasher.hash.mockResolvedValueOnce(validIpHash.toString())
-      mockedTokenHasher.hash.mockResolvedValueOnce(validHashToken.toString())
+      mockedHasher.hash.mockResolvedValueOnce(validIpHash.toString())
+      mockedHasher.hash.mockResolvedValueOnce(validHashToken.toString())
       mockedTokenGenerator.generateSessionToken.mockResolvedValueOnce('refresh-clear')
       mockedTokenGenerator.generateAccessToken.mockResolvedValueOnce('access.jwt.mock')
       mockedSessionsRepository.existsDevice.mockResolvedValue(true)
@@ -197,7 +197,7 @@ describe('LoginUser', () => {
       const useCase = buildUseCase()
       await useCase.execute(input)
 
-      expect(mockedTokenHasher.hash).toHaveBeenCalledTimes(2)
+      expect(mockedHasher.hash).toHaveBeenCalledTimes(2)
       expect(mockedUserRepository.findByEmailWithCredentials).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isValid).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isPublic).toHaveBeenCalledTimes(1)
@@ -217,24 +217,21 @@ describe('LoginUser', () => {
       expect(mockedCredential.isLocked).toHaveBeenCalledTimes(1)
       expect(mockedCredential.resetAfterSuccessfulLogin).toHaveBeenCalledTimes(1)
 
-      expect(mockedTokenHasher.hash).toHaveBeenNthCalledWith(1, 'normalized-ip')
+      expect(mockedHasher.hash).toHaveBeenNthCalledWith(1, 'normalized-ip')
       expect(mockedUserRepository.findByEmailWithCredentials).toHaveBeenCalledWith('test@example.com')
       expect(mockedPasswordHasher.compare).toHaveBeenCalledWith('secret', validPasswordHash.toString())
       expect(mockedIpValidator.isValid).toHaveBeenCalledWith('203.0.113.10')
       expect(mockedIpValidator.isPublic).toHaveBeenCalledWith('203.0.113.10')
       expect(mockedIpValidator.normalize).toHaveBeenCalledWith('203.0.113.10')
       expect(mockedDeviceLocationResolver.resolve).toHaveBeenCalledWith('normalized-ip')
-      expect(mockedTokenGenerator.generateSessionToken).toHaveBeenCalledWith(
-        validUserId.toString(),
-        expectedSessionId.toString(),
-        new Date(now.getTime() + sessionTtlMilliseconds),
-      )
+      expect(mockedTokenGenerator.generateSessionToken).toHaveBeenCalledWith()
       expect(mockedTokenGenerator.generateAccessToken).toHaveBeenCalledWith(
         validUserId.toString(),
         expectedSessionId.toString(),
         new Date(now.getTime() + accessTtlMilliseconds),
+        now,
       )
-      expect(mockedTokenHasher.hash).toHaveBeenNthCalledWith(2, 'refresh-clear')
+      expect(mockedHasher.hash).toHaveBeenNthCalledWith(2, 'refresh-clear')
       expect(mockedSessionsRepository.existsDevice).toHaveBeenCalledWith(
         expect.objectContaining({
           createdAt: now,
@@ -452,12 +449,12 @@ describe('LoginUser', () => {
         expect(mockedIpValidator.isValid).not.toHaveBeenCalled()
         expect(mockedIpValidator.isPublic).not.toHaveBeenCalled()
         expect(mockedIpValidator.normalize).not.toHaveBeenCalled()
-        expect(mockedTokenHasher.hash).not.toHaveBeenCalled()
+        expect(mockedHasher.hash).not.toHaveBeenCalled()
         expect(mockedLogger.warn).not.toHaveBeenCalled()
       }
 
       it('should return error when user does not exist', async () => {
-        mockedTokenHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
+        mockedHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
         mockedUserRepository.findByEmailWithCredentials.mockResolvedValueOnce(null)
 
         const result = await buildUseCase().execute(baseInput)
@@ -471,7 +468,7 @@ describe('LoginUser', () => {
       })
 
       it('should return error if user is removed or deactivated', async () => {
-        mockedTokenHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
+        mockedHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
 
         const userDeleted = new UserTestBuilder()
           .withId(validUserId)
@@ -494,7 +491,7 @@ describe('LoginUser', () => {
       })
 
       it('should return error if user does not have a credential', async () => {
-        mockedTokenHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
+        mockedHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
 
         const userNoCredentials = new UserTestBuilder()
           .withId(validUserId)
@@ -517,7 +514,7 @@ describe('LoginUser', () => {
       })
 
       it('should return error if user credential is locked', async () => {
-        mockedTokenHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
+        mockedHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
 
         const mockedCredential = mock<UserCredential>()
         mockedCredential.isLocked.mockReturnValue(true)
@@ -546,7 +543,7 @@ describe('LoginUser', () => {
     describe('when password does not match', () => {
       beforeEach(() => {
         const ipHash = UserSessionIpHashMother.valid().toString()
-        mockedTokenHasher.hash.mockResolvedValueOnce(ipHash)
+        mockedHasher.hash.mockResolvedValueOnce(ipHash)
 
         mockedCredential.isLocked.mockReturnValue(false)
 
@@ -652,7 +649,7 @@ describe('LoginUser', () => {
     })
 
     it('should throw error if an unexpected error occurs', async () => {
-      mockedTokenHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
+      mockedHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
       mockedUserRepository.findByEmailWithCredentials.mockImplementationOnce(() => {
         throw Error('Unexpected Error')
       })

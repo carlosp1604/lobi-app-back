@@ -10,14 +10,6 @@ export interface UserSessionRepositoryInterface {
   save(userSession: UserSession, context: TxContext): Promise<void>
 
   /**
-   * Counts the number of active sessions for the given user
-   * @param userId User ID
-   * @param context the transactional context
-   * @returns the number of active sessions
-   */
-  countActiveSessions(userId: string, context: TxContext): Promise<number>
-
-  /**
    * Revokes the oldest sessions for the given user until the number
    * of active sessions does not exceed the specified maximum
    * @param userId User ID

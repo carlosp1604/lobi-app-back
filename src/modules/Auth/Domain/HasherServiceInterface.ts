@@ -1,4 +1,4 @@
-export interface TokenHasherServiceInterface {
+export interface HasherServiceInterface {
   /**
    * Hashes the given clear text
    * @param clear the plain text value to hash

@@ -17,23 +17,23 @@ describe('create', () => {
   let id: UserSessionId
   let userId: UserId
   let tokenHash: UserSessionHash
+  let userAgent: UserAgent = UserAgentMother.valid()
 
   beforeEach(() => {
     id = UserSessionIdMother.valid()
     userId = UserIdMother.valid()
     tokenHash = UserSessionHashMother.valid()
+    userAgent = UserAgentMother.valid()
   })
 
   it('should initialize the User instance correctly', () => {
     const userSessionIpHash: UserSessionIpHash = UserSessionIpHashMother.valid()
-    const userAgent: UserAgent = UserAgentMother.valid()
     const deviceCountry = 'ES'
     const deviceCity = 'Madrid'
     const deviceTimezone = 'Europe/Madrid'
 
-    const session = UserSession.create(id, userId, tokenHash, expiresAt, now, {
+    const session = UserSession.create(id, userId, tokenHash, userAgent, expiresAt, now, {
       ipHash: userSessionIpHash,
-      userAgent: userAgent,
       deviceCountry,
       deviceCity,
       deviceTimezone,
@@ -54,10 +54,9 @@ describe('create', () => {
   })
 
   it('should set to NULL when optional params are not given', () => {
-    const session = UserSession.create(id, userId, tokenHash, expiresAt, now, {})
+    const session = UserSession.create(id, userId, tokenHash, userAgent, expiresAt, now, {})
 
     expect(session.ipHash).toBeNull()
-    expect(session.userAgent).toBeNull()
     expect(session.deviceCountry).toBeNull()
     expect(session.deviceCity).toBeNull()
     expect(session.deviceTimezone).toBeNull()

@@ -1,6 +1,6 @@
 import { User } from '~/src/modules/User/Domain/User'
 
-// type UserRepositoryRelationships = 'credentials'
+export type UserRepositoryRelationships = 'credential'
 
 export interface UserRepositoryInterface {
   /**

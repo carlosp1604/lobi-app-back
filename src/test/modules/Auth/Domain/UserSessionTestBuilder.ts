@@ -7,13 +7,14 @@ import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMot
 import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
 import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 
 export class UserSessionTestBuilder {
   private _id = UserSessionIdMother.valid()
   private _userId = UserIdMother.valid()
   private _tokenHash = UserSessionIpHashMother.valid()
   private _ipHash: UserSessionIpHash | null = null
-  private _userAgent: UserAgent | null = null
+  private _userAgent: UserAgent = UserAgentMother.valid()
   private _deviceCountry: string | null = null
   private _deviceCity: string | null = null
   private _deviceTimezone: string | null = null
@@ -42,7 +43,7 @@ export class UserSessionTestBuilder {
     return this
   }
 
-  withUserAgent(userAgent: UserAgent | null) {
+  withUserAgent(userAgent: UserAgent) {
     this._userAgent = userAgent
     return this
   }

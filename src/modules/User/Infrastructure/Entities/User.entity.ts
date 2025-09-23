@@ -1,7 +1,7 @@
 import { EntitySchema } from 'typeorm'
 import { User } from '~/src/modules/User/Domain/User'
-import { UserCredentialRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
-import { UserSessionRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
+import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
+import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 
 export interface UserRawModel {
   id: string
@@ -17,9 +17,9 @@ export interface UserRawModel {
   deleted_at: Date | null
 }
 
-type UserRawModelWithRelations = UserRawModel & {
-  credential: UserCredentialRaw
-  sessions: Array<UserSessionRaw>
+export type UserRawModelWithRelations = UserRawModel & {
+  credential: UserCredentialRawModel | null
+  sessions: Promise<Array<UserSessionRawModel>>
 }
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
@@ -85,8 +85,8 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
   relations: {
     credential: {
       type: 'one-to-one',
-      target: 'UserCredential',
-      lazy: true,
+      target: 'UserCredentialEntity',
+      lazy: false,
       joinColumn: {
         name: 'id',
         referencedColumnName: 'user_id',
@@ -96,7 +96,7 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
     },
     sessions: {
       type: 'one-to-many',
-      target: 'UserSession',
+      target: 'UserSessionEntity',
       inverseSide: 'user',
       lazy: true,
       cascade: false,

@@ -11,8 +11,7 @@ import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceI
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
-import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGenerator'
-import { TokenHasherServiceInterface } from '~/src/modules/Auth/Domain/TokenHasherServiceInterface'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { LockoutPolicy } from '~/src/modules/Auth/Application/Policies/LockoutUserCredentialPolicy'
@@ -31,6 +30,7 @@ import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObjec
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
+import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 
 interface NormalizedIpWithHash {
   normalizedIp: string
@@ -51,7 +51,7 @@ export class LoginUser {
     private readonly domainEventRepository: DomainEventRepositoryInterface,
     private readonly passwordHasher: PasswordHasherServiceInterface,
     private readonly tokenGenerator: TokenGeneratorApplicationServiceInterface,
-    private readonly tokenHasher: TokenHasherServiceInterface,
+    private readonly hasherService: HasherServiceInterface,
     private readonly deviceLocationResolver: DeviceLocationResolverServiceInterface,
     private readonly maxSessionsPolicy: MaxSessionsPolicy,
     private readonly lockoutPolicy: LockoutPolicy,
@@ -117,13 +117,12 @@ export class LoginUser {
 
     const sessionId = UserSessionId.fromString(this.idGeneratorService.generateId())
     const sessionExpiresAt = new Date(now.getTime() + this.refreshTtlMilliseconds)
-    const clearSessionToken = await this.tokenGenerator.generateSessionToken(user.id.toString(), sessionId.toString(), sessionExpiresAt)
-    const hashedToken = await this.tokenHasher.hash(clearSessionToken)
+    const clearSessionToken = await this.tokenGenerator.generateSessionToken()
+    const hashedToken = await this.hasherService.hash(clearSessionToken)
     const sessionHash = UserSessionHash.fromString(hashedToken)
 
-    const session = UserSession.create(sessionId, user.id, sessionHash, sessionExpiresAt, now, {
+    const session = UserSession.create(sessionId, user.id, sessionHash, userAgent, sessionExpiresAt, now, {
       ipHash: sessionIpHash,
-      userAgent,
       deviceCountry: deviceLocation.country,
       deviceCity: deviceLocation.city,
       deviceTimezone: deviceLocation.timezone,
@@ -132,7 +131,7 @@ export class LoginUser {
     const isNewDevice = !(await this.sessionsRepository.existsDevice(session))
 
     const accessExpiresAt = new Date(now.getTime() + this.accessTtlMilliseconds)
-    const accessToken = await this.tokenGenerator.generateAccessToken(user.id.toString(), sessionId.toString(), accessExpiresAt)
+    const accessToken = await this.tokenGenerator.generateAccessToken(user.id.toString(), sessionId.toString(), accessExpiresAt, now)
 
     await this.saveSuccessfulLogin(credentials, user, session, isNewDevice, deviceLocation, now)
 
@@ -197,7 +196,7 @@ export class LoginUser {
     if (this.ipValidator.isValid(ip) && this.ipValidator.isPublic(ip)) {
       normalizedIp = this.ipValidator.normalize(ip)
 
-      const ipHash = await this.tokenHasher.hash(normalizedIp)
+      const ipHash = await this.hasherService.hash(normalizedIp)
 
       sessionIpHash = UserSessionIpHash.fromString(ipHash)
 
@@ -336,7 +335,7 @@ export class LoginUser {
         },
         {
           ipHash: session.ipHash ? session.ipHash.toString() : null,
-          ua: (session.userAgent as UserAgent).toString(),
+          ua: session.userAgent.toString(),
         },
         now,
       )

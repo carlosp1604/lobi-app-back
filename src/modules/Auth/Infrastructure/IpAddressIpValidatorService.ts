@@ -1,6 +1,8 @@
 import ipaddr from 'ipaddr.js'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
+import { Injectable } from '@nestjs/common'
 
+@Injectable()
 export class IpAddressIpValidatorService implements IpValidatorServiceInterface {
   /**
    * Checks whether the given IP address is valid (IPv4 or IPv6)

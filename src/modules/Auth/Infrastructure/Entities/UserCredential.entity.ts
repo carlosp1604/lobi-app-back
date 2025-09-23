@@ -1,7 +1,7 @@
 import { EntitySchema } from 'typeorm'
 import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 
-export type UserCredentialRaw = {
+export type UserCredentialRawModel = {
   user_id: string
   password_hash: string
   failed_attempts: number
@@ -11,7 +11,7 @@ export type UserCredentialRaw = {
   updated_at: Date
 }
 
-type UserCredentialRawWitRelationships = UserCredentialRaw & { user: UserRawModel }
+type UserCredentialRawWitRelationships = UserCredentialRawModel & { user: Promise<UserRawModel> }
 
 export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelationships>({
   name: 'UserCredential',
@@ -53,7 +53,7 @@ export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelatio
   relations: {
     user: {
       type: 'one-to-one',
-      target: 'User',
+      target: 'UserEntity',
       joinColumn: {
         name: 'user_id',
         referencedColumnName: 'id',

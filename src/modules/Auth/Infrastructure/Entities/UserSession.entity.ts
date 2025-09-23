@@ -1,13 +1,14 @@
 import { EntitySchema } from 'typeorm'
+import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 
-export interface UserSessionRaw {
+export interface UserSessionRawModel {
   id: string
   user_id: string
   token_hash: string
   expires_at: Date
   revoked_at: Date | null
   ip_hash: string | null
-  user_agent: string | null
+  user_agent: string
   device_country: string | null
   device_city: string | null
   device_timezone: string | null
@@ -15,7 +16,7 @@ export interface UserSessionRaw {
   updated_at: Date
 }
 
-type UserSessionRawWithRelationships = UserSessionRaw & { user: UserSessionRaw }
+type UserSessionRawWithRelationships = UserSessionRawModel & { user: Promise<UserRawModel> }
 
 export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationships>({
   name: 'UserSession',
@@ -51,7 +52,7 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
     user_agent: {
       type: String,
       length: 512,
-      nullable: true,
+      nullable: false,
     },
     device_country: {
       type: String,
@@ -82,7 +83,7 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
   relations: {
     user: {
       type: 'many-to-one',
-      target: 'User',
+      target: 'UserEntity',
       joinColumn: {
         name: 'user_id',
         referencedColumnName: 'id',

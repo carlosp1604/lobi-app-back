@@ -1,5 +1,5 @@
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserCredentialRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
+import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
@@ -8,7 +8,7 @@ describe('UserCredentialModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
-  const baseRaw: UserCredentialRaw = {
+  const baseRaw: UserCredentialRawModel = {
     user_id: UserIdMother.valid().toString().toString(),
     password_hash: PasswordHashMother.valid().toString(),
     failed_attempts: 0,
