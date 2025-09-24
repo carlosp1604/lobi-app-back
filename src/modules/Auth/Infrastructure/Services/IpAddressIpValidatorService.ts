@@ -1,4 +1,4 @@
-import ipaddr from 'ipaddr.js'
+import ipaddr, { IPv6 } from 'ipaddr.js'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
 import { Injectable } from '@nestjs/common'
 
@@ -25,9 +25,13 @@ export class IpAddressIpValidatorService implements IpValidatorServiceInterface 
    */
   public isPublic(ip: string): boolean {
     try {
-      const address = ipaddr.parse(ip)
-      const range = address.range()
-      return range === 'unicast'
+      let address = ipaddr.parse(ip)
+
+      if (address.kind() === 'ipv6' && (address as IPv6).isIPv4MappedAddress()) {
+        address = (address as IPv6).toIPv4Address()
+      }
+
+      return address.range() === 'unicast'
     } catch {
       return false
     }
