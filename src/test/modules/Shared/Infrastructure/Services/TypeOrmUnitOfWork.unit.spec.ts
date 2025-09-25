@@ -107,6 +107,18 @@ describe('TypeOrmUnitOfWork', () => {
       expect(mockedRunner.rollbackTransaction).toHaveBeenCalledTimes(1)
       expect(mockedRunner.release).toHaveBeenCalledTimes(1)
     })
+
+    it('should not throw error if release fails', async () => {
+      mockedRunner.commitTransaction.mockResolvedValueOnce(undefined)
+      mockedRunner.release.mockRejectedValueOnce(new Error('Unexpected rollback error'))
+
+      const uow = new TypeOrmUnitOfWork(mockedDataSource)
+
+      await expect(uow.runInTransaction(async () => Promise.resolve('ok'))).resolves.toBe('ok')
+
+      expect(mockedRunner.commitTransaction).toHaveBeenCalled()
+      expect(mockedRunner.release).toHaveBeenCalled()
+    })
   })
 
   describe('getManagerFrom', () => {

@@ -109,6 +109,7 @@
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "coverageProvider": "babel",
     "collectCoverageFrom": [
       "**/*.(t|j)s",
       "!dist/**",

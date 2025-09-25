@@ -1,17 +1,14 @@
 import { EntityManager, QueryRunner, DataSource } from 'typeorm'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
-import { Injectable } from '@nestjs/common'
-import { InjectDataSource } from '@nestjs/typeorm'
 
 export class TypeOrmTxContext implements TxContext {
   readonly __opaque_tx_context = true
   constructor(public readonly manager: EntityManager) {}
 }
 
-@Injectable()
 export class TypeOrmUnitOfWork implements UnitOfWork {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   public async runInTransaction<T>(work: (context: TxContext) => Promise<T>): Promise<T> {
     const runner: QueryRunner = this.dataSource.createQueryRunner()
@@ -27,7 +24,11 @@ export class TypeOrmUnitOfWork implements UnitOfWork {
       await runner.rollbackTransaction().catch(() => {})
       throw exception
     } finally {
-      await runner.release().catch(() => {})
+      try {
+        await runner.release()
+      } catch {
+        /* empty */
+      }
     }
   }
 
