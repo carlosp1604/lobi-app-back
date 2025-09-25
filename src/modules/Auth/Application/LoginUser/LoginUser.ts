@@ -14,7 +14,7 @@ import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/Passwo
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
-import { LockoutPolicy } from '~/src/modules/Auth/Application/Policies/LockoutUserCredentialPolicy'
+import { LockoutUserCredentialPolicy } from '~/src/modules/Auth/Domain/Policies/LockoutUserCredentialPolicy'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -54,7 +54,7 @@ export class LoginUser {
     private readonly hasherService: HasherServiceInterface,
     private readonly deviceLocationResolver: DeviceLocationResolverServiceInterface,
     private readonly maxSessionsPolicy: MaxSessionsPolicy,
-    private readonly lockoutPolicy: LockoutPolicy,
+    private readonly lockoutPolicy: LockoutUserCredentialPolicy,
     private readonly clock: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -265,7 +265,7 @@ export class LoginUser {
     if (!passwordMatches) {
       credentials.incrementFailedAttempts(now)
 
-      const lockUntil = this.lockoutPolicy.evaluateLock(credentials)
+      const lockUntil = this.lockoutPolicy.evaluateLock(credentials, now)
 
       if (lockUntil) {
         credentials.lock(lockUntil, now)

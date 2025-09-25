@@ -8,7 +8,7 @@ import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/Passwo
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
-import { LockoutPolicy } from '~/src/modules/Auth/Application/Policies/LockoutUserCredentialPolicy'
+import { LockoutUserCredentialPolicy } from '~/src/modules/Auth/Domain/Policies/LockoutUserCredentialPolicy'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -73,7 +73,7 @@ describe('LoginUser', () => {
   const mockedHasher = mock<HasherServiceInterface>()
   const mockedDeviceLocationResolver = mock<DeviceLocationResolverServiceInterface>()
   const mockedMaxSessionPolicy = mock<MaxSessionsPolicy>({ maxSessions: 3 })
-  const mockedLockoutPolicy = mock<LockoutPolicy>()
+  const mockedLockoutPolicy = mock<LockoutUserCredentialPolicy>()
   const mockedClock = mock<ClockServiceInterface>()
   const mockedUnitOfWork = mock<UnitOfWork>()
   const mockedIpValidator = mock<IpValidatorServiceInterface>()
@@ -600,7 +600,7 @@ describe('LoginUser', () => {
         expect(mockedCredential.lock).not.toHaveBeenCalled()
         expect(mockedCredentialsRepository.saveLock).not.toHaveBeenCalled()
 
-        expect(mockedLockoutPolicy.evaluateLock).toHaveBeenCalledWith(mockedCredential)
+        expect(mockedLockoutPolicy.evaluateLock).toHaveBeenCalledWith(mockedCredential, now)
         expect(mockedCredential.incrementFailedAttempts).toHaveBeenCalledWith(now)
         expect(mockedCredentialsRepository.saveFailedAttempts).toHaveBeenCalledWith(mockedCredential, fakeContext)
         expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(expect.objectContaining(expectedDomainEvent), fakeContext)

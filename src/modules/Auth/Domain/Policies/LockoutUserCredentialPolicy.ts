@@ -1,17 +1,12 @@
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
-import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 
-export class LockoutPolicy {
-  constructor(private readonly clock: ClockServiceInterface) {}
-
-  public evaluateLock(credential: UserCredential): Date | null {
+export class LockoutUserCredentialPolicy {
+  public evaluateLock(credential: UserCredential, now: Date): Date | null {
     const attempts = credential.failedAttempts
 
     if (attempts < 5) {
       return null
     }
-
-    const now = this.clock.now()
 
     if (attempts < 10) {
       return new Date(now.getTime() + 1 * 60 * 1000)
