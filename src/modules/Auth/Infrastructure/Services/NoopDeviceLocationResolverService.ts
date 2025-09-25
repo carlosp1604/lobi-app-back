@@ -1,8 +1,10 @@
-import { DeviceLocation } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
-import { Injectable } from '@nestjs/common'
+import {
+  DeviceLocation,
+  DeviceLocationResolverServiceInterface,
+} from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 
-@Injectable()
-export class DeviceLocationResolverServiceInterface implements DeviceLocationResolverServiceInterface {
+// TODO: Implement
+export class NoopDeviceLocationResolverService implements DeviceLocationResolverServiceInterface {
   /**
    * Resolves the device location for the given IP address
    * @param ip the IP address to resolve
