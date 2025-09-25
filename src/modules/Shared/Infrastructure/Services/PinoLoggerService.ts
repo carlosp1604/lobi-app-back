@@ -1,8 +1,6 @@
 import { LoggerMetaData, LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { Injectable, Scope } from '@nestjs/common'
 import type { Logger } from 'pino'
 
-@Injectable({ scope: Scope.REQUEST })
 export class PinoLoggerService implements LoggerServiceInterface {
   constructor(private readonly pino: Logger) {}
 
