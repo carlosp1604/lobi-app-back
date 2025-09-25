@@ -1,8 +1,6 @@
 import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import bcrypt from 'bcrypt'
-import { Injectable } from '@nestjs/common'
 
-@Injectable()
 export class BCryptPasswordHasherService implements PasswordHasherServiceInterface {
   constructor(private readonly saltRounds: number) {}
 
