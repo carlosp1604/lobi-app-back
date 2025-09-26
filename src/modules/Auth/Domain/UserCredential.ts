@@ -45,11 +45,7 @@ export class UserCredential {
   }
 
   public incrementFailedAttempts(now: Date): void {
-    if (this._failedAttempts <= 0) {
-      this._failedAttempts = 1
-    } else {
-      this._failedAttempts = this.failedAttempts + 1
-    }
+    this._failedAttempts = Math.max(0, this._failedAttempts) + 1
 
     this._updatedAt = now
   }
