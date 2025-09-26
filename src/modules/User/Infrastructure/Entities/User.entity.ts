@@ -17,10 +17,11 @@ export interface UserRawModel {
   deleted_at: Date | null
 }
 
-export type UserRawModelWithRelations = UserRawModel & {
-  credential: UserCredentialRawModel | null
-  sessions: Promise<Array<UserSessionRawModel>>
-}
+export type UserRawModelWithRelations = UserRawModel &
+  Partial<{
+    credential: UserCredentialRawModel | null
+    sessions: Promise<Array<UserSessionRawModel>>
+  }>
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
   name: 'User',

@@ -7,13 +7,15 @@ import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
-import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.entity'
+import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/User.entity'
+import { RelationshipDomainException } from '~/src/modules/Shared/Domain/Relationship/RelationshipDomainException'
+import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 describe('UserModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
-  const baseRaw: UserRawModel = {
+  const baseRaw: UserRawModelWithRelations = {
     id: UserIdMother.valid().toString(),
     email: UserEmailMother.valid().toString(),
     username: UserUsernameMother.valid().toString(),
@@ -28,29 +30,72 @@ describe('UserModelTranslator', () => {
   }
 
   describe('toDomain', () => {
-    it('returns correct data', () => {
-      const result = UserModelTranslator.toDomain(baseRaw)
+    describe('without relationships', () => {
+      it('returns correct data', () => {
+        const result = UserModelTranslator.toDomain(baseRaw)
 
-      expect(result.id.toString()).toBe(baseRaw.id)
-      expect(result.email.toString()).toBe(baseRaw.email)
-      expect(result.username.toString()).toBe(baseRaw.username)
-      expect(result.name.toString()).toBe(baseRaw.name)
-      expect(result.status.equals(UserStatus.active())).toBe(true)
-      expect(result.role.equals(UserRole.sportsman())).toBe(true)
-      expect(result.userUploadId?.toString()).toBe(baseRaw.user_upload_id)
-      expect(result.emailVerifiedAt.toISOString()).toBe(isoDate)
-      expect(result.createdAt.toISOString()).toBe(isoDate)
-      expect(result.updatedAt.toISOString()).toBe(isoDate)
-      expect(result.deletedAt).toBeNull()
+        expect(result.id.toString()).toBe(baseRaw.id)
+        expect(result.email.toString()).toBe(baseRaw.email)
+        expect(result.username.toString()).toBe(baseRaw.username)
+        expect(result.name.toString()).toBe(baseRaw.name)
+        expect(result.status.equals(UserStatus.active())).toBe(true)
+        expect(result.role.equals(UserRole.sportsman())).toBe(true)
+        expect(result.userUploadId?.toString()).toBe(baseRaw.user_upload_id)
+        expect(result.emailVerifiedAt.toISOString()).toBe(isoDate)
+        expect(result.createdAt.toISOString()).toBe(isoDate)
+        expect(result.updatedAt.toISOString()).toBe(isoDate)
+        expect(result.deletedAt).toBeNull()
+        expect(() => result.credential).toThrow(RelationshipDomainException.relationNotLoaded())
+      })
+
+      it('returns correct data when user_upload_id or deleted_at are NULL', () => {
+        const raw = { ...baseRaw, user_upload_id: null, deleted_at: now }
+
+        const result = UserModelTranslator.toDomain(raw)
+
+        expect(result.userUploadId).toBeNull()
+        expect(result.deletedAt?.toISOString()).toBe(isoDate)
+      })
     })
 
-    it('returns correct data when user_upload_id or deleted_at are NULL', () => {
-      const raw = { ...baseRaw, user_upload_id: null, deleted_at: now }
+    describe('with relationships', () => {
+      it('should load credential relationship as missing if credential = NULL in raw model', () => {
+        const rawWithRelationship = {
+          ...baseRaw,
+          credential: null,
+        }
 
-      const result = UserModelTranslator.toDomain(raw)
+        const result = UserModelTranslator.toDomain(rawWithRelationship, ['credential'])
 
-      expect(result.userUploadId).toBeNull()
-      expect(result.deletedAt?.toISOString()).toBe(isoDate)
+        expect(result.id.toString()).toBe(baseRaw.id)
+        expect(result.email.toString()).toBe(baseRaw.email)
+        expect(result.username.toString()).toBe(baseRaw.username)
+        expect(result.credential).toBeNull()
+      })
+
+      it('should load credential relationship correctly when is present', () => {
+        const rawCredential = {
+          user_id: UserIdMother.valid().toString(),
+          password_hash: PasswordHashMother.valid().toString(),
+          failed_attempts: 0,
+          locked_until: null,
+          last_login_at: null,
+          created_at: now,
+          updated_at: now,
+        }
+
+        const rawWithRelationship = {
+          ...baseRaw,
+          credential: rawCredential,
+        }
+
+        const result = UserModelTranslator.toDomain(rawWithRelationship, ['credential'])
+
+        expect(result.id.toString()).toBe(baseRaw.id)
+        expect(result.email.toString()).toBe(baseRaw.email)
+        expect(result.username.toString()).toBe(baseRaw.username)
+        expect(result.credential?.userId.toString()).toBe(rawCredential.user_id)
+      })
     })
 
     it('does not mutate input', () => {

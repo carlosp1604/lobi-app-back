@@ -16,7 +16,7 @@ export interface UserSessionRawModel {
   updated_at: Date
 }
 
-type UserSessionRawWithRelationships = UserSessionRawModel & { user: Promise<UserRawModel> }
+type UserSessionRawWithRelationships = UserSessionRawModel & Partial<{ user: Promise<UserRawModel> }>
 
 export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationships>({
   name: 'UserSession',

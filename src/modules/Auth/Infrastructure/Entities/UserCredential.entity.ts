@@ -11,7 +11,7 @@ export type UserCredentialRawModel = {
   updated_at: Date
 }
 
-type UserCredentialRawWitRelationships = UserCredentialRawModel & { user: Promise<UserRawModel> }
+type UserCredentialRawWitRelationships = UserCredentialRawModel & Partial<{ user: Promise<UserRawModel> }>
 
 export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelationships>({
   name: 'UserCredential',
