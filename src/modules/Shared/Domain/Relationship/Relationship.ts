@@ -31,6 +31,7 @@ export class Relationship<T> {
 
   update(value: T): void {
     this.ensureLoaded()
+
     this._value = value
     this._state = 'PRESENT'
     this._dirty = true
@@ -38,9 +39,11 @@ export class Relationship<T> {
 
   remove(): void {
     this.ensureLoaded()
+
     if (this._state === 'MISSING') {
       throw RelationshipDomainException.cannotDeleteRelation()
     }
+
     this._value = null
     this._state = 'MISSING'
     this._dirty = true
@@ -59,7 +62,10 @@ export class Relationship<T> {
   }
 
   getOrNull(): T | null {
-    if (this._state === 'NOT_LOADED') throw RelationshipDomainException.relationNotLoaded()
+    if (this._state === 'NOT_LOADED') {
+      throw RelationshipDomainException.relationNotLoaded()
+    }
+
     return this._value
   }
 
@@ -71,15 +77,13 @@ export class Relationship<T> {
     return this._dirty
   }
 
-  markClean(): void {
-    this._dirty = false
-  }
-
   isLoaded(): boolean {
     return this._state !== 'NOT_LOADED'
   }
 
   private ensureLoaded(): void {
-    if (this._state === 'NOT_LOADED') throw RelationshipDomainException.relationNotLoaded()
+    if (this._state === 'NOT_LOADED') {
+      throw RelationshipDomainException.relationNotLoaded()
+    }
   }
 }
