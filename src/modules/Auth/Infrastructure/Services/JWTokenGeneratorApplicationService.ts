@@ -1,9 +1,7 @@
 import crypto from 'crypto'
 import jwt, { SignOptions } from 'jsonwebtoken'
 import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
-import { Injectable } from '@nestjs/common'
 
-@Injectable()
 export class JWTokenGeneratorApplicationService implements TokenGeneratorApplicationServiceInterface {
   constructor(
     private readonly accessSecret: string,
@@ -48,6 +46,6 @@ export class JWTokenGeneratorApplicationService implements TokenGeneratorApplica
    * @returns the generated session token
    */
   public generateSessionToken(): Promise<string> {
-    return Promise.resolve(crypto.randomBytes(48).toString('base64url'))
+    return Promise.resolve(crypto.randomBytes(48).toString('base64'))
   }
 }
