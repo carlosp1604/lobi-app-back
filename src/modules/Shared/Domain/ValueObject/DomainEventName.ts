@@ -4,7 +4,6 @@ import { DomainEventDomainException } from '~/src/modules/Shared/Domain/DomainEv
 export enum ValidDomainEventNames {
   SUCCESSFUL_LOGIN = 'successFulLogin',
   FAILED_LOGIN_ATTEMPT = 'failedLoginAttempt',
-  LOCKED_LOGIN = 'lockedLogin',
 }
 
 export class DomainEventName extends ValueObject<ValidDomainEventNames> {
@@ -26,10 +25,6 @@ export class DomainEventName extends ValueObject<ValidDomainEventNames> {
 
   static failedLoginAttempt(): DomainEventName {
     return new DomainEventName(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
-  }
-
-  static lockedLogin(): DomainEventName {
-    return new DomainEventName(ValidDomainEventNames.LOCKED_LOGIN)
   }
 
   private isValidDomainEventName(value: string): boolean {

@@ -6,7 +6,7 @@ import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/
 export type EventPayload = Record<string, unknown>
 export type EventMetadata = Record<string, unknown>
 
-const CurrentDomainEventVersion = 1
+export const CurrentDomainEventVersion = 1
 
 export class DomainEvent {
   private constructor(

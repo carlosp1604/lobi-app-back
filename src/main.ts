@@ -6,8 +6,9 @@ import { validationPipe } from '~/src/modules/Shared/Infrastructure/GlobalValida
 import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/SentryExceptionFilter'
 import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { buildFastifyApplication } from '~/src/modules/Shared/Infrastructure/FastifyApplication'
-import { LOGGER_SERVICE_INTERFACE, LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
+import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { LOGGER_SERVICE_INTERFACE } from '~/src/modules/Shared/Infrastructure/Module/PinoLoggerModule'
 
 /**
  * This project provides only an API | CSP = off
