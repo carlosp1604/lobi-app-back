@@ -3,11 +3,9 @@ import { User } from '~/src/modules/User/Domain/User'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/UserModelTranslator'
-import { Inject, Injectable } from '@nestjs/common'
 
-@Injectable()
 export class PostgresqlUserRepository implements UserRepositoryInterface {
-  constructor(@Inject() private readonly entityManagerResolver: TypeOrmManagerResolver) {}
+  constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
 
   /**
    * Finds a user and its credentials by email.

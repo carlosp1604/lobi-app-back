@@ -19,7 +19,7 @@ export interface UserSessionRawModel {
 type UserSessionRawWithRelationships = UserSessionRawModel & Partial<{ user: Promise<UserRawModel> }>
 
 export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationships>({
-  name: 'UserSession',
+  name: 'UserSessionEntity',
   tableName: 'user_sessions',
   columns: {
     id: {

@@ -1,5 +1,4 @@
 import { EntitySchema } from 'typeorm'
-import { User } from '~/src/modules/User/Domain/User'
 import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 
@@ -24,9 +23,8 @@ export type UserRawModelWithRelations = UserRawModel &
   }>
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
-  name: 'User',
+  name: 'UserEntity',
   tableName: 'users',
-  target: User,
   columns: {
     id: {
       type: 'uuid',

@@ -3,7 +3,6 @@ import { Test } from '@nestjs/testing'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
 import { startPostgresContainer } from './utils/postgres-testcontainer'
-import { MockLoggerService } from '~/src/test/mocks/MockLoggerService'
 
 describe('App (integration)', () => {
   let app: INestApplication
@@ -36,7 +35,6 @@ describe('App (integration)', () => {
 
     app = moduleRef.createNestApplication()
     dataSource = app.get(DataSource)
-    app.useLogger(new MockLoggerService())
     await app.init()
   })
 

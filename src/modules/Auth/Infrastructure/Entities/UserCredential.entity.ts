@@ -14,7 +14,7 @@ export type UserCredentialRawModel = {
 type UserCredentialRawWitRelationships = UserCredentialRawModel & Partial<{ user: Promise<UserRawModel> }>
 
 export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelationships>({
-  name: 'UserCredential',
+  name: 'UserCredentialEntity',
   tableName: 'user_credentials',
   columns: {
     user_id: {
