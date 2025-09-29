@@ -32,8 +32,4 @@ export class LoginUserApplicationError extends Error {
       this.userDoesNotHaveCredentialsId,
     )
   }
-
-  public static userLockedLogin(userId: string) {
-    return new LoginUserApplicationError(`Login is locked for User identified by ID ${userId}`, this.userLockedLoginId)
-  }
 }

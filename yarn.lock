@@ -830,6 +830,16 @@
     "@types/node" "*"
     jest-mock "30.0.5"
 
+"@jest/environment@30.2.0":
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/@jest/environment/-/environment-30.2.0.tgz#1e673cdb8b93ded707cf6631b8353011460831fa"
+  integrity sha512-/QPTL7OBJQ5ac09UDRa3EQes4gt1FTEG/8jZ/4v5IVzx+Cv7dLxlVIvfvSVRiiX2drWyXeBjkMSR8hvOWSog5g==
+  dependencies:
+    "@jest/fake-timers" "30.2.0"
+    "@jest/types" "30.2.0"
+    "@types/node" "*"
+    jest-mock "30.2.0"
+
 "@jest/expect-utils@30.1.2":
   version "30.1.2"
   resolved "https://registry.npmjs.org/@jest/expect-utils/-/expect-utils-30.1.2.tgz#88ea18040f707c9fadb6fd9e77568cae5266cee8"
@@ -856,6 +866,18 @@
     jest-message-util "30.1.0"
     jest-mock "30.0.5"
     jest-util "30.0.5"
+
+"@jest/fake-timers@30.2.0":
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/@jest/fake-timers/-/fake-timers-30.2.0.tgz#0941ddc28a339b9819542495b5408622dc9e94ec"
+  integrity sha512-HI3tRLjRxAbBy0VO8dqqm7Hb2mIa8d5bg/NJkyQcOk7V118ObQML8RC5luTF/Zsg4474a+gDvhce7eTnP4GhYw==
+  dependencies:
+    "@jest/types" "30.2.0"
+    "@sinonjs/fake-timers" "^13.0.0"
+    "@types/node" "*"
+    jest-message-util "30.2.0"
+    jest-mock "30.2.0"
+    jest-util "30.2.0"
 
 "@jest/get-type@30.1.0":
   version "30.1.0"
@@ -980,6 +1002,19 @@
   version "30.0.5"
   resolved "https://registry.npmjs.org/@jest/types/-/types-30.0.5.tgz#29a33a4c036e3904f1cfd94f6fe77f89d2e1cc05"
   integrity sha512-aREYa3aku9SSnea4aX6bhKn4bgv3AXkgijoQgbYV3yvbiGt6z+MQ85+6mIhx9DsKW2BuB/cLR/A+tcMThx+KLQ==
+  dependencies:
+    "@jest/pattern" "30.0.1"
+    "@jest/schemas" "30.0.5"
+    "@types/istanbul-lib-coverage" "^2.0.6"
+    "@types/istanbul-reports" "^3.0.4"
+    "@types/node" "*"
+    "@types/yargs" "^17.0.33"
+    chalk "^4.1.2"
+
+"@jest/types@30.2.0":
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/@jest/types/-/types-30.2.0.tgz#1c678a7924b8f59eafd4c77d56b6d0ba976d62b8"
+  integrity sha512-H9xg1/sfVvyfU7o3zMfBEjQ1gcsdeTMgqHoYdN79tuLqfTtuu7WckRA1R5whDwOzxaZAeMKTYWqP+WCAi0CHsg==
   dependencies:
     "@jest/pattern" "30.0.1"
     "@jest/schemas" "30.0.5"
@@ -5175,6 +5210,19 @@ jest-environment-node@30.1.2:
     jest-util "30.0.5"
     jest-validate "30.1.0"
 
+jest-environment-node@^30.2.0:
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/jest-environment-node/-/jest-environment-node-30.2.0.tgz#3def7980ebd2fd86e74efd4d2e681f55ab38da0f"
+  integrity sha512-ElU8v92QJ9UrYsKrxDIKCxu6PfNj4Hdcktcn0JX12zqNdqWHB0N+hwOnnBBXvjLd2vApZtuLUGs1QSY+MsXoNA==
+  dependencies:
+    "@jest/environment" "30.2.0"
+    "@jest/fake-timers" "30.2.0"
+    "@jest/types" "30.2.0"
+    "@types/node" "*"
+    jest-mock "30.2.0"
+    jest-util "30.2.0"
+    jest-validate "30.2.0"
+
 jest-haste-map@30.1.0:
   version "30.1.0"
   resolved "https://registry.npmjs.org/jest-haste-map/-/jest-haste-map-30.1.0.tgz#e54d84e07fac15ea3a98903b735048e36d7d2ed3"
@@ -5226,6 +5274,21 @@ jest-message-util@30.1.0:
     slash "^3.0.0"
     stack-utils "^2.0.6"
 
+jest-message-util@30.2.0:
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/jest-message-util/-/jest-message-util-30.2.0.tgz#fc97bf90d11f118b31e6131e2b67fc4f39f92152"
+  integrity sha512-y4DKFLZ2y6DxTWD4cDe07RglV88ZiNEdlRfGtqahfbIjfsw1nMCPx49Uev4IA/hWn3sDKyAnSPwoYSsAEdcimw==
+  dependencies:
+    "@babel/code-frame" "^7.27.1"
+    "@jest/types" "30.2.0"
+    "@types/stack-utils" "^2.0.3"
+    chalk "^4.1.2"
+    graceful-fs "^4.2.11"
+    micromatch "^4.0.8"
+    pretty-format "30.2.0"
+    slash "^3.0.0"
+    stack-utils "^2.0.6"
+
 jest-mock-extended@^4.0.0:
   version "4.0.0"
   resolved "https://registry.npmjs.org/jest-mock-extended/-/jest-mock-extended-4.0.0.tgz#fe8cfa686c7ada4be2e7f7a3eced794b1338c18b"
@@ -5241,6 +5304,15 @@ jest-mock@30.0.5:
     "@jest/types" "30.0.5"
     "@types/node" "*"
     jest-util "30.0.5"
+
+jest-mock@30.2.0:
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/jest-mock/-/jest-mock-30.2.0.tgz#69f991614eeb4060189459d3584f710845bff45e"
+  integrity sha512-JNNNl2rj4b5ICpmAcq+WbLH83XswjPbjH4T7yvGzfAGCPh1rw+xVNbtk+FnRslvt9lkCcdn9i1oAoKUuFsOxRw==
+  dependencies:
+    "@jest/types" "30.2.0"
+    "@types/node" "*"
+    jest-util "30.2.0"
 
 jest-pnp-resolver@^1.2.3:
   version "1.2.3"
@@ -5369,6 +5441,18 @@ jest-util@30.0.5:
     graceful-fs "^4.2.11"
     picomatch "^4.0.2"
 
+jest-util@30.2.0:
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/jest-util/-/jest-util-30.2.0.tgz#5142adbcad6f4e53c2776c067a4db3c14f913705"
+  integrity sha512-QKNsM0o3Xe6ISQU869e+DhG+4CK/48aHYdJZGlFQVTjnbvgpcKyxpzk29fGiO7i/J8VENZ+d2iGnSsvmuHywlA==
+  dependencies:
+    "@jest/types" "30.2.0"
+    "@types/node" "*"
+    chalk "^4.1.2"
+    ci-info "^4.2.0"
+    graceful-fs "^4.2.11"
+    picomatch "^4.0.2"
+
 jest-validate@30.1.0:
   version "30.1.0"
   resolved "https://registry.npmjs.org/jest-validate/-/jest-validate-30.1.0.tgz#585aae6c9ee1ac138dbacbece8a7838ca7773e60"
@@ -5380,6 +5464,18 @@ jest-validate@30.1.0:
     chalk "^4.1.2"
     leven "^3.1.0"
     pretty-format "30.0.5"
+
+jest-validate@30.2.0:
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/jest-validate/-/jest-validate-30.2.0.tgz#273eaaed4c0963b934b5b31e96289edda6e0a2ef"
+  integrity sha512-FBGWi7dP2hpdi8nBoWxSsLvBFewKAg0+uSQwBaof4Y4DPgBabXgpSYC5/lR7VmnIlSpASmCi/ntRWPbv7089Pw==
+  dependencies:
+    "@jest/get-type" "30.1.0"
+    "@jest/types" "30.2.0"
+    camelcase "^6.3.0"
+    chalk "^4.1.2"
+    leven "^3.1.0"
+    pretty-format "30.2.0"
 
 jest-watcher@30.1.3:
   version "30.1.3"
@@ -6461,6 +6557,15 @@ pretty-format@30.0.5, pretty-format@^30.0.0:
   version "30.0.5"
   resolved "https://registry.npmjs.org/pretty-format/-/pretty-format-30.0.5.tgz#e001649d472800396c1209684483e18a4d250360"
   integrity sha512-D1tKtYvByrBkFLe2wHJl2bwMJIiT8rW+XA+TiataH79/FszLQMrpGEvzUVkzPau7OCO0Qnrhpe87PqtOAIB8Yw==
+  dependencies:
+    "@jest/schemas" "30.0.5"
+    ansi-styles "^5.2.0"
+    react-is "^18.3.1"
+
+pretty-format@30.2.0:
+  version "30.2.0"
+  resolved "https://registry.npmjs.org/pretty-format/-/pretty-format-30.2.0.tgz#2d44fe6134529aed18506f6d11509d8a62775ebe"
+  integrity sha512-9uBdv/B4EefsuAL+pWqueZyZS2Ba+LxfFeQ9DN14HU4bN8bhaxKdkpjpB6fs9+pSjIBu+FXQHImEg8j/Lw0+vA==
   dependencies:
     "@jest/schemas" "30.0.5"
     ansi-styles "^5.2.0"

@@ -14,7 +14,6 @@ import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/Passwo
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
-import { LockoutUserCredentialPolicy } from '~/src/modules/Auth/Domain/Policies/LockoutUserCredentialPolicy'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -54,7 +53,6 @@ export class LoginUser {
     private readonly hasherService: HasherServiceInterface,
     private readonly deviceLocationResolver: DeviceLocationResolverServiceInterface,
     private readonly maxSessionsPolicy: MaxSessionsPolicy,
-    private readonly lockoutPolicy: LockoutUserCredentialPolicy,
     private readonly clock: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -78,7 +76,7 @@ export class LoginUser {
     const userEmail = validateUserEmailResult.value
     const userAgent = this.validateUserAgent(request.userAgent, userEmail)
 
-    const getUserWithCredentialsResult = await this.getAndValidateUserWithCredentials(userEmail, now)
+    const getUserWithCredentialsResult = await this.getAndValidateUserWithCredentials(userEmail)
 
     if (!getUserWithCredentialsResult.success) {
       return getUserWithCredentialsResult
@@ -153,7 +151,7 @@ export class LoginUser {
     }
   }
 
-  private async getAndValidateUserWithCredentials(userEmail: UserEmail, now: Date): Promise<Result<User, LoginUserApplicationError>> {
+  private async getAndValidateUserWithCredentials(userEmail: UserEmail): Promise<Result<User, LoginUserApplicationError>> {
     const userWithCredentials = await this.usersRepository.findByEmailWithCredentials(userEmail.toString())
 
     if (!userWithCredentials) {
@@ -166,10 +164,6 @@ export class LoginUser {
 
     if (!userWithCredentials.credential) {
       return fail(LoginUserApplicationError.userDoesNotHaveCredentials(userWithCredentials.id.toString()))
-    }
-
-    if (userWithCredentials.credential.isLocked(now)) {
-      return fail(LoginUserApplicationError.userLockedLogin(userWithCredentials.id.toString()))
     }
 
     return success(userWithCredentials)
@@ -263,20 +257,21 @@ export class LoginUser {
     const passwordMatches = await this.passwordHasher.compare(password, credentials.passwordHash.toString())
 
     if (!passwordMatches) {
-      credentials.incrementFailedAttempts(now)
+      //TODO: This might need be changed when locks mechanism is implemented
+      //credentials.incrementFailedAttempts(now)
 
-      const lockUntil = this.lockoutPolicy.evaluateLock(credentials, now)
+      //const lockUntil = this.lockoutPolicy.evaluateLock(credentials, now)
 
-      if (lockUntil) {
-        credentials.lock(lockUntil, now)
-      }
+      //if (lockUntil) {
+      //credentials.lock(lockUntil, now)
+      //}
 
       await this.unitOfWork.runInTransaction(async (ctx) => {
-        await this.credentialsRepository.saveFailedAttempts(credentials, ctx)
+        //await this.credentialsRepository.saveFailedAttempts(credentials, ctx)
 
-        if (lockUntil) {
-          await this.credentialsRepository.saveLock(credentials, ctx)
-        }
+        //if (lockUntil) {
+        //await this.credentialsRepository.saveLock(credentials, ctx)
+        //}
 
         const domainEvent = DomainEvent.create(
           DomainEventId.fromString(this.idGeneratorService.generateId()),

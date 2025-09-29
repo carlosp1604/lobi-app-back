@@ -1,14 +1,12 @@
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { Inject, Injectable } from '@nestjs/common'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
 import { UserSessionEntity } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 
-@Injectable()
 export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInterface {
-  constructor(@Inject() private readonly entityManagerResolver: TypeOrmManagerResolver) {}
+  constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
 
   /**
    * Persists the given user session

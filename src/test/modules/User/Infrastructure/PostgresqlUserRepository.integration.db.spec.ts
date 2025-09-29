@@ -1,9 +1,4 @@
 import 'reflect-metadata'
-import { DataSource, QueryRunner } from 'typeorm'
-import { startPostgresContainer } from '~/src/test/utils/postgres-testcontainer'
-import { Test } from '@nestjs/testing'
-import { TypeOrmModule } from '@nestjs/typeorm'
-import { INestApplication } from '@nestjs/common'
 import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserEntity, UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.entity'
@@ -16,14 +11,11 @@ import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
-import { UserSessionEntity } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 import { User } from '~/src/modules/User/Domain/User'
+import { QueryRunner } from 'typeorm'
+import { withTransaction } from '~/src/test/utils/withTransaction'
 
 describe('PostgresqlUserRepository', () => {
-  let app: INestApplication
-  let dataSource: DataSource
-  let stop: () => Promise<void>
-
   const userId = UserIdMother.valid()
   const userEmail = UserEmailMother.valid()
   const now = new Date('2025-09-26T14:11:25Z')
@@ -52,64 +44,17 @@ describe('PostgresqlUserRepository', () => {
     updated_at: now,
   }
 
-  beforeAll(async () => {
-    const pg = await startPostgresContainer()
-
-    stop = async () => {
-      await pg.container.stop()
-    }
-
-    const moduleRef = await Test.createTestingModule({
-      imports: [
-        TypeOrmModule.forRoot({
-          type: 'postgres',
-          host: pg.host,
-          port: pg.port,
-          username: pg.user,
-          password: pg.pass,
-          database: pg.db,
-          synchronize: false,
-          migrationsRun: true,
-          logging: false,
-          entities: [UserEntity, UserCredentialEntity, UserSessionEntity],
-          migrations: ['./src/db/migrations/*.{ts,js}'],
-        }),
-      ],
-    }).compile()
-
-    app = moduleRef.createNestApplication()
-    dataSource = app.get(DataSource)
-    await app.init()
-  })
-
-  afterAll(async () => {
-    await app.close()
-    if (stop) {
-      await stop()
-    }
-  })
-
-  let runner: QueryRunner
-
-  beforeEach(async () => {
-    runner = dataSource.createQueryRunner()
-    await runner.connect()
-    await runner.startTransaction()
-  })
-
-  afterEach(async () => {
-    try {
-      await runner.rollbackTransaction()
-    } finally {
-      await runner.release()
-    }
-  })
-
   const checkUserFound = (result: User | null) => {
     expect(result).toBeTruthy()
     expect(result?.id.toString()).toBe(userId.toString())
     expect(() => result?.credential).not.toThrow()
   }
+
+  let runner: QueryRunner
+
+  withTransaction((queryRunner) => {
+    runner = queryRunner
+  })
 
   it('should find user with credential and translate to domain correctly', async () => {
     const userRepository = runner.manager.getRepository(UserEntity)

@@ -8,7 +8,6 @@ import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/Passwo
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
-import { LockoutUserCredentialPolicy } from '~/src/modules/Auth/Domain/Policies/LockoutUserCredentialPolicy'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -73,7 +72,6 @@ describe('LoginUser', () => {
   const mockedHasher = mock<HasherServiceInterface>()
   const mockedDeviceLocationResolver = mock<DeviceLocationResolverServiceInterface>()
   const mockedMaxSessionPolicy = mock<MaxSessionsPolicy>({ maxSessions: 3 })
-  const mockedLockoutPolicy = mock<LockoutUserCredentialPolicy>()
   const mockedClock = mock<ClockServiceInterface>()
   const mockedUnitOfWork = mock<UnitOfWork>()
   const mockedIpValidator = mock<IpValidatorServiceInterface>()
@@ -92,7 +90,6 @@ describe('LoginUser', () => {
       mockedHasher,
       mockedDeviceLocationResolver,
       mockedMaxSessionPolicy,
-      mockedLockoutPolicy,
       mockedClock,
       mockedUnitOfWork,
       mockedLogger,
@@ -122,7 +119,6 @@ describe('LoginUser', () => {
       mockedTokenGenerator.generateSessionToken.mockResolvedValueOnce('refresh-clear')
       mockedTokenGenerator.generateAccessToken.mockResolvedValueOnce('access.jwt.mock')
       mockedSessionsRepository.existsDevice.mockResolvedValue(true)
-      mockedLockoutPolicy.evaluateLock.mockReturnValue(null)
 
       input = {
         email: 'test@example.com',
@@ -203,9 +199,6 @@ describe('LoginUser', () => {
       expect(mockedIpValidator.isPublic).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.normalize).toHaveBeenCalledTimes(1)
       expect(mockedPasswordHasher.compare).toHaveBeenCalledTimes(1)
-      expect(mockedLockoutPolicy.evaluateLock).not.toHaveBeenCalled()
-      expect(mockedCredentialsRepository.saveFailedAttempts).not.toHaveBeenCalled()
-      expect(mockedCredentialsRepository.saveLock).not.toHaveBeenCalled()
       expect(mockedDeviceLocationResolver.resolve).toHaveBeenCalledTimes(1)
       expect(mockedTokenGenerator.generateAccessToken).toHaveBeenCalledTimes(1)
       expect(mockedTokenGenerator.generateSessionToken).toHaveBeenCalledTimes(1)
@@ -214,7 +207,6 @@ describe('LoginUser', () => {
       expect(mockedCredentialsRepository.saveLoginSuccess).toHaveBeenCalledTimes(1)
       expect(mockedSessionsRepository.revokeOldest).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
-      expect(mockedCredential.isLocked).toHaveBeenCalledTimes(1)
       expect(mockedCredential.resetAfterSuccessfulLogin).toHaveBeenCalledTimes(1)
 
       expect(mockedHasher.hash).toHaveBeenNthCalledWith(1, 'normalized-ip')
@@ -293,7 +285,6 @@ describe('LoginUser', () => {
         }),
         fakeContext,
       )
-      expect(mockedCredential.isLocked).toHaveBeenCalledWith(now)
       expect(mockedCredential.resetAfterSuccessfulLogin).toHaveBeenCalledWith(now)
     })
 
@@ -444,7 +435,7 @@ describe('LoginUser', () => {
       expect(mockedUserRepository.findByEmailWithCredentials).not.toHaveBeenCalled()
     })
 
-    describe('when user does not exist, does not have credentials or is locked', () => {
+    describe('when user does not exist or does not have credentials', () => {
       const checkFlowHasStoppedCorrectly = () => {
         expect(mockedIpValidator.isValid).not.toHaveBeenCalled()
         expect(mockedIpValidator.isPublic).not.toHaveBeenCalled()
@@ -512,40 +503,12 @@ describe('LoginUser', () => {
 
         checkFlowHasStoppedCorrectly()
       })
-
-      it('should return error if user credential is locked', async () => {
-        mockedHasher.hash.mockResolvedValueOnce(UserSessionIpHashMother.valid().toString())
-
-        const mockedCredential = mock<UserCredential>()
-        mockedCredential.isLocked.mockReturnValue(true)
-
-        const userWithCredentialsLocked = new UserTestBuilder()
-          .withId(validUserId)
-          .withEmail(validEmail)
-          .withStatus(UserStatus.active())
-          .withCredential(Relationship.loaded(mockedCredential))
-          .withDeletedAt(null)
-          .build()
-
-        mockedUserRepository.findByEmailWithCredentials.mockResolvedValueOnce(userWithCredentialsLocked)
-
-        const result = await buildUseCase().execute(baseInput)
-
-        expect(result).toMatchObject({
-          success: false,
-          error: LoginUserApplicationError.userLockedLogin(userWithCredentialsLocked.id.toString()),
-        })
-
-        checkFlowHasStoppedCorrectly()
-      })
     })
 
-    describe('when password does not match', () => {
+    describe('when passwords do not match', () => {
       beforeEach(() => {
         const ipHash = UserSessionIpHashMother.valid().toString()
         mockedHasher.hash.mockResolvedValueOnce(ipHash)
-
-        mockedCredential.isLocked.mockReturnValue(false)
 
         const user = new UserTestBuilder()
           .withId(validUserId)
@@ -580,10 +543,9 @@ describe('LoginUser', () => {
         },
       }
 
-      it('should return error when lock must not be applied', async () => {
+      it('should return error and create the correct domain event when session hash ip is not NULL', async () => {
         mockedIpValidator.isValid.mockReturnValueOnce(true)
         mockedDeviceLocationResolver.resolve.mockResolvedValueOnce(null)
-        mockedLockoutPolicy.evaluateLock.mockReturnValueOnce(null)
 
         const result = await buildUseCase().execute(baseInput)
 
@@ -594,39 +556,12 @@ describe('LoginUser', () => {
 
         expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
         expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
-        expect(mockedLockoutPolicy.evaluateLock).toHaveBeenCalledTimes(1)
-        expect(mockedCredentialsRepository.saveFailedAttempts).toHaveBeenCalledTimes(1)
         expect(mockedIdGenerator.generateId).toHaveBeenCalledTimes(1)
-        expect(mockedCredential.lock).not.toHaveBeenCalled()
-        expect(mockedCredentialsRepository.saveLock).not.toHaveBeenCalled()
-
-        expect(mockedLockoutPolicy.evaluateLock).toHaveBeenCalledWith(mockedCredential, now)
-        expect(mockedCredential.incrementFailedAttempts).toHaveBeenCalledWith(now)
-        expect(mockedCredentialsRepository.saveFailedAttempts).toHaveBeenCalledWith(mockedCredential, fakeContext)
         expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(expect.objectContaining(expectedDomainEvent), fakeContext)
-      })
-
-      it('should return error and save lock when a lock must be applied', async () => {
-        mockedIpValidator.isValid.mockReturnValueOnce(true)
-        mockedLockoutPolicy.evaluateLock.mockReturnValueOnce(new Date(now.getTime() + 500))
-
-        const result = await buildUseCase().execute(baseInput)
-
-        expect(result).toMatchObject({
-          success: false,
-          error: LoginUserApplicationError.invalidCredentials(validUserId.toString()),
-        })
-
-        expect(mockedCredential.lock).toHaveBeenCalledTimes(1)
-        expect(mockedCredentialsRepository.saveLock).toHaveBeenCalledTimes(1)
-
-        expect(mockedCredential.lock).toHaveBeenCalledWith(new Date(now.getTime() + 500), now)
-        expect(mockedCredentialsRepository.saveLock).toHaveBeenCalledWith(mockedCredential, fakeContext)
       })
 
       it('should return error and create the correct domain event when session hash ip is NULL', async () => {
         mockedIpValidator.isValid.mockReturnValueOnce(false)
-        mockedLockoutPolicy.evaluateLock.mockReturnValueOnce(null)
 
         const result = await buildUseCase().execute(baseInput)
 
