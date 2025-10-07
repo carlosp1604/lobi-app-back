@@ -205,7 +205,7 @@ describe('LoginUser', () => {
       expect(mockedSessionsRepository.existsDevice).toHaveBeenCalledTimes(1)
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedCredentialsRepository.saveLoginSuccess).toHaveBeenCalledTimes(1)
-      expect(mockedSessionsRepository.revokeOldest).toHaveBeenCalledTimes(1)
+      expect(mockedSessionsRepository.revokeOldestAndSave).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedCredential.resetAfterSuccessfulLogin).toHaveBeenCalledTimes(1)
 
@@ -241,12 +241,7 @@ describe('LoginUser', () => {
         }),
       )
       expect(mockedCredentialsRepository.saveLoginSuccess).toHaveBeenCalledWith(mockedCredential, fakeContext)
-      expect(mockedSessionsRepository.revokeOldest).toHaveBeenCalledWith(
-        validUserId.toString(),
-        mockedMaxSessionPolicy.maxSessions,
-        fakeContext,
-      )
-      expect(mockedSessionsRepository.save).toHaveBeenCalledWith(
+      expect(mockedSessionsRepository.revokeOldestAndSave).toHaveBeenCalledWith(
         expect.objectContaining({
           createdAt: now,
           deviceCity: 'Madrid',
@@ -261,6 +256,7 @@ describe('LoginUser', () => {
           userAgent: expectedUA,
           userId: validUserId,
         }),
+        mockedMaxSessionPolicy.maxSessions,
         fakeContext,
       )
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(
@@ -362,13 +358,6 @@ describe('LoginUser', () => {
           id: expectedSessionId,
           userAgent: expectedUnknownUA,
         }),
-      )
-      expect(mockedSessionsRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: expectedSessionId,
-          userAgent: expectedUnknownUA,
-        }),
-        fakeContext,
       )
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({

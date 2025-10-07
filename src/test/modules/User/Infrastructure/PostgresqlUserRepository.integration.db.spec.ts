@@ -55,39 +55,40 @@ describe('PostgresqlUserRepository', () => {
   withTransaction((queryRunner) => {
     runner = queryRunner
   })
+  describe('findByEmailWithCredentials', () => {
+    it('should find user with credential and translate to domain correctly', async () => {
+      const userRepository = runner.manager.getRepository(UserEntity)
+      await userRepository.save(baseRawUser)
 
-  it('should find user with credential and translate to domain correctly', async () => {
-    const userRepository = runner.manager.getRepository(UserEntity)
-    await userRepository.save(baseRawUser)
+      const credentialRepository = runner.manager.getRepository(UserCredentialEntity)
+      await credentialRepository.save(rawCredential)
 
-    const credentialRepository = runner.manager.getRepository(UserCredentialEntity)
-    await credentialRepository.save(rawCredential)
+      const repo = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-    const repo = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      const result = await repo.findByEmailWithCredentials(userEmail.toString())
 
-    const result = await repo.findByEmailWithCredentials(userEmail.toString())
+      checkUserFound(result)
+      expect(result?.credential?.userId.toString()).toBe(userId.toString())
+    })
 
-    checkUserFound(result)
-    expect(result?.credential?.userId.toString()).toBe(userId.toString())
-  })
+    it('should find user without credential and translate to domain correctly', async () => {
+      const userRepository = runner.manager.getRepository(UserEntity)
+      await userRepository.save(baseRawUser)
 
-  it('should find user without credential and translate to domain correctly', async () => {
-    const userRepository = runner.manager.getRepository(UserEntity)
-    await userRepository.save(baseRawUser)
+      const repo = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-    const repo = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      const result = await repo.findByEmailWithCredentials(userEmail.toString())
 
-    const result = await repo.findByEmailWithCredentials(userEmail.toString())
+      checkUserFound(result)
+      expect(result?.credential).toBeNull()
+    })
 
-    checkUserFound(result)
-    expect(result?.credential).toBeNull()
-  })
+    it('should return null if user does not exist', async () => {
+      const repo = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-  it('should return null if user does not exist', async () => {
-    const repo = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      const result = await repo.findByEmailWithCredentials(userEmail.toString())
 
-    const result = await repo.findByEmailWithCredentials(userEmail.toString())
-
-    expect(result).toBeNull()
+      expect(result).toBeNull()
+    })
   })
 })

@@ -24,40 +24,67 @@ export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInt
   }
 
   /**
-   * Revokes the oldest sessions for the given user until the number
-   * of active sessions does not exceed the specified maximum
-   * @param userId User ID
-   * @param maxSessions the maximum allowed number of active sessions
+   * Revokes the oldest sessions for the given user (if necessary) and
+   * persists the given new session atomically, ensuring the maximum number
+   * of active sessions is not exceeded.
+   *
+   * @param userSession the new session to insert
+   * @param maxSessions the maximum allowed number of active sessions (including this new one)
    * @param context the transactional context
-   * @returns a promise that resolves when the sessions have been revoked
+   * @returns a promise that resolves with the number of sessions revoked and the id of the inserted session
    */
-  public async revokeOldest(userId: string, maxSessions: number, context: TxContext): Promise<void> {
+  public async revokeOldestAndSave(userSession: UserSession, maxSessions: number, context: TxContext): Promise<void> {
     const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userSessionRawModel = UserSessionModelTranslator.toDatabase(userSession)
+
+    const params = [
+      userSessionRawModel.user_id,
+      maxSessions,
+      userSessionRawModel.id,
+      userSessionRawModel.token_hash,
+      userSessionRawModel.expires_at,
+      userSessionRawModel.ip_hash,
+      userSessionRawModel.user_agent,
+      userSessionRawModel.device_country,
+      userSessionRawModel.device_city,
+      userSessionRawModel.device_timezone,
+    ]
 
     await entityManager.query(
       `
-      WITH active AS (
-        SELECT id, created_at
-        FROM user_sessions
-        WHERE user_id = $1
-          AND revoked_at IS NULL
-          AND expires_at > NOW()
-      ORDER BY created_at ASC
-      FOR UPDATE SKIP LOCKED
-      ), numbered AS (
-        SELECT id, row_number() OVER (ORDER BY created_at) AS rn, count(*) OVER () AS cnt
-        FROM active
-      ), to_revoke AS (
-        SELECT id
-        FROM numbered
-        WHERE rn <= GREATEST(cnt - ($2 - 1), 0)
-      )
-      UPDATE user_sessions s
-      SET revoked_at = NOW(), updated_at = NOW()
-      FROM to_revoke tr
-      WHERE s.id = tr.id;
-    `,
-      [userId, maxSessions],
+        WITH lock AS (SELECT pg_advisory_xact_lock(hashtextextended(($1::uuid)::text, 0))), active AS (
+          SELECT id, created_at
+          FROM user_sessions
+          WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > NOW()
+          ORDER BY created_at ASC
+          FOR UPDATE
+        ), numbered AS (
+          SELECT id, row_number() OVER (ORDER BY created_at) AS rn, count(*) OVER () AS cnt
+          FROM active
+        ), to_revoke AS (
+          SELECT id
+          FROM numbered
+          WHERE rn <= GREATEST(cnt - ($2 - 1), 0)
+        ), revoked AS (
+          UPDATE user_sessions s
+          SET revoked_at = NOW(), updated_at = NOW()
+          FROM to_revoke tr
+          WHERE s.id = tr.id
+          RETURNING s.id
+        ), inserted AS (
+          INSERT INTO user_sessions
+          (id, user_id, token_hash, expires_at, ip_hash, user_agent,
+          device_country, device_city, device_timezone, created_at, updated_at)
+          VALUES
+          ($3, $1, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+          RETURNING id
+        )
+        SELECT
+          (SELECT count(*) FROM revoked) AS revoked_count,
+          (SELECT id FROM inserted) AS session_id;
+      `,
+      params,
     )
   }
 
@@ -76,17 +103,17 @@ export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInt
     const queryBuilder = userSessionRepository
       .createQueryBuilder('s')
       .select('1')
-      .where('s.user_id = :uid', { uid: userSessionRawModel.id })
+      .where('s.user_id = :user_id', { user_id: userSessionRawModel.user_id })
       .andWhere('s.revoked_at IS NULL')
       .andWhere('s.expires_at > NOW()')
 
     if (userSessionRawModel.ip_hash) {
       queryBuilder
-        .andWhere('s.ip_hash = :ipHash', { ipHash: userSessionRawModel.ip_hash })
-        .andWhere('s.user_agent = :user_agent', { user_agent_id: userSessionRawModel.user_agent })
+        .andWhere('s.ip_hash = :ip_hash', { ip_hash: userSessionRawModel.ip_hash })
+        .andWhere('s.user_agent = :user_agent', { user_agent: userSessionRawModel.user_agent })
     } else {
       queryBuilder.andWhere('s.ip_hash IS NULL')
-      queryBuilder.andWhere('s.user_agent = :ua', { ua: userSessionRawModel.user_agent })
+      queryBuilder.andWhere('s.user_agent = :user_agent', { user_agent: userSessionRawModel.user_agent })
     }
 
     queryBuilder.limit(1)

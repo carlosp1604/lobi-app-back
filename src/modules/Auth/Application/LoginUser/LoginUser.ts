@@ -311,9 +311,7 @@ export class LoginUser {
     await this.unitOfWork.runInTransaction(async (ctx) => {
       await this.credentialsRepository.saveLoginSuccess(credentials, ctx)
 
-      await this.sessionsRepository.revokeOldest(user.id.toString(), this.maxSessionsPolicy.maxSessions, ctx)
-
-      await this.sessionsRepository.save(session, ctx)
+      await this.sessionsRepository.revokeOldestAndSave(session, this.maxSessionsPolicy.maxSessions, ctx)
 
       const domainEvent = DomainEvent.create(
         DomainEventId.fromString(this.idGeneratorService.generateId()),

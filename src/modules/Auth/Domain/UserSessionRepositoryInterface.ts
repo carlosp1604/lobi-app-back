@@ -10,14 +10,16 @@ export interface UserSessionRepositoryInterface {
   save(userSession: UserSession, context: TxContext): Promise<void>
 
   /**
-   * Revokes the oldest sessions for the given user until the number
-   * of active sessions does not exceed the specified maximum
-   * @param userId User ID
-   * @param maxSessions the maximum allowed number of active sessions
+   * Revokes the oldest sessions for the given user (if necessary) and
+   * persists the given new session atomically, ensuring the maximum number
+   * of active sessions is not exceeded.
+   *
+   * @param userSession the new session to insert
+   * @param maxSessions the maximum allowed number of active sessions (including this new one)
    * @param context the transactional context
-   * @returns a promise that resolves when the sessions have been revoked
+   * @returns a promise that resolves with the number of sessions revoked and the id of the inserted session
    */
-  revokeOldest(userId: string, maxSessions: number, context: TxContext): Promise<void>
+  revokeOldestAndSave(userSession: UserSession, maxSessions: number, context: TxContext): Promise<void>
 
   /**
    * Checks whether a session already exists for the given device
