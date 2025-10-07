@@ -68,8 +68,8 @@ describe('PostgreSqlUserSessionRepository', () => {
       expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(UserSessionEntity)
       expect(userSessionModelTranslatorSpy).toHaveBeenCalledTimes(1)
       expect(userSessionModelTranslatorSpy).toHaveBeenCalledWith(userSession)
-      expect(mockedUserSessionRepository.save).toHaveBeenCalledTimes(1)
-      expect(mockedUserSessionRepository.save).toHaveBeenCalledWith(expectedRawUserSession)
+      expect(mockedUserSessionRepository.insert).toHaveBeenCalledTimes(1)
+      expect(mockedUserSessionRepository.insert).toHaveBeenCalledWith(expectedRawUserSession)
     })
 
     it('should throw error if resolver throws', async () => {
@@ -85,7 +85,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     it('should throw error if ORM/Database fails', async () => {
       mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
       jest.spyOn(UserSessionModelTranslator, 'toDatabase').mockReturnValueOnce(expectedRawUserSession)
-      mockedUserSessionRepository.save.mockImplementationOnce(() => {
+      mockedUserSessionRepository.insert.mockImplementationOnce(() => {
         throw new Error('Something went wrong')
       })
 

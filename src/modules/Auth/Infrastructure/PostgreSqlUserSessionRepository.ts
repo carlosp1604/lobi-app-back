@@ -20,7 +20,7 @@ export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInt
 
     const userSessionRawModel = UserSessionModelTranslator.toDatabase(userSession)
 
-    await userSessionRepository.save(userSessionRawModel)
+    await userSessionRepository.insert(userSessionRawModel)
   }
 
   /**

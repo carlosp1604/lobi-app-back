@@ -35,6 +35,7 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
       type: String,
       length: 44,
       nullable: false,
+      unique: true,
     },
     expires_at: {
       type: 'timestamptz',

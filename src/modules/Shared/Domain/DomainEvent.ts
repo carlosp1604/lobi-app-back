@@ -3,8 +3,11 @@ import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainE
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 
-export type EventPayload = Record<string, unknown>
-export type EventMetadata = Record<string, unknown>
+type JsonPrimitive = string | number | boolean | null
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
+
+export type EventPayload = Record<string, JsonValue>
+export type EventMetadata = Record<string, JsonValue>
 
 export const CurrentDomainEventVersion = 1
 

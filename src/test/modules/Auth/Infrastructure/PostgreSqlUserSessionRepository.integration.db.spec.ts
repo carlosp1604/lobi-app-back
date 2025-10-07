@@ -28,7 +28,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     return {
       id: overrides.id ?? UserSessionIdMother.valid().toString(),
       user_id: overrides.user_id ?? UserIdMother.valid().toString(),
-      token_hash: overrides.token_hash ?? UserSessionHashMother.valid().toString(),
+      token_hash: overrides.token_hash ?? UserSessionHashMother.random().toString(),
       revoked_at: overrides.revoked_at ?? null,
       expires_at: overrides.expires_at ?? new Date(Date.now() + 60 * 60 * 1000),
       ip_hash: overrides.ip_hash ?? null,
@@ -145,6 +145,21 @@ describe('PostgreSqlUserSessionRepository', () => {
 
       await assertAnotherUserSessionIstNotRevoked(userSessionRepository, session2Id)
       assertActives(rows, [session1Id, userSessionToSaveId.toString()])
+    })
+
+    it('should throw error if session already exists', async () => {
+      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+      const context = new TypeOrmTxContext(runner.manager)
+      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
+
+      const rawSession = makeRawSession({
+        id: userSessionToSave.id.toString(),
+        user_id: userSessionToSave.userId.toString(),
+      })
+
+      await userSessionRepository.save(rawSession)
+
+      await expect(repository.revokeOldestAndSave(userSessionToSave, 2, context)).rejects.toThrow()
     })
 
     it('should revoke the oldest sessions and inserts the new one', async () => {
@@ -361,6 +376,7 @@ describe('PostgreSqlUserSessionRepository', () => {
         ...baseRawUserSession,
         id: UserSessionIdMother.valid().toString(),
         user_agent: UserAgentMother.random().toString(),
+        token_hash: UserSessionHashMother.random().toString(),
       })
 
       const userSession = userSessionTestBuilder.build()

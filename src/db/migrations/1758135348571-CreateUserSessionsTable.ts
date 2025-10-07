@@ -22,6 +22,7 @@ export class CreateUserSessionsTable1758135348571 implements MigrationInterface 
             type: 'varchar',
             length: '44',
             isNullable: false,
+            isUnique: true,
           },
           {
             name: 'expires_at',

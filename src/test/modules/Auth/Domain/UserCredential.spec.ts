@@ -1,5 +1,6 @@
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
+import { compareExceptModifiedFields } from '~/src/test/utils/snapshot'
 
 interface UserCredentialSnapshot {
   userId: string
@@ -29,22 +30,6 @@ describe('UserCredential', () => {
       createdAt: userCredential.createdAt,
       updatedAt: userCredential.updatedAt,
     }
-  }
-
-  const compareExceptModifiedFields = (
-    before: UserCredentialSnapshot,
-    after: UserCredentialSnapshot,
-    changed: (keyof UserCredentialSnapshot)[],
-  ) => {
-    const b: Partial<UserCredentialSnapshot> = { ...before }
-    const a: Partial<UserCredentialSnapshot> = { ...after }
-
-    for (const k of changed) {
-      delete b[k]
-      delete a[k]
-    }
-
-    expect(a).toEqual(b)
   }
 
   describe('incrementFailedAttempts', () => {

@@ -5,6 +5,7 @@ const { DataSource } = require('typeorm')
 const { UserEntity } = require('../../../modules/User/Infrastructure/Entities/User.entity')
 const { UserSessionEntity } = require('../../../modules/Auth/Infrastructure/Entities/UserSession.entity')
 const { UserCredentialEntity } = require('../../../modules/Auth/Infrastructure/Entities/UserCredential.entity')
+const { DomainEventEntity } = require('../../../modules/Shared/Infrastructure/Entities/DomainEvent.entity')
 const NodeEnvironment = require('jest-environment-node').TestEnvironment
 
 class TestEnvironment extends NodeEnvironment {
@@ -40,7 +41,7 @@ class TestEnvironment extends NodeEnvironment {
           synchronize: false,
           migrationsRun: false,
           logging: false,
-          entities: [UserEntity, UserSessionEntity, UserCredentialEntity],
+          entities: [UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity],
         }),
       ],
     }).compile()
