@@ -1,12 +1,13 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
-import { DomainEventEntity, DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/DomainEvent.entity'
 import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { EntityManager, Repository } from 'typeorm'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { DomainEventModelTranslator } from '~/src/modules/Shared/Infrastructure/ModelTranslators/DomainEventModelTranslator'
+import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
+import { makeRawDomainEvent } from '~/src/test/modules/Shared/Infrastructure/DomainEventRawTestMaker'
 
 describe('PostgreSqlDomainEventRepository', () => {
   const now = new Date('2025-10-07T15:07:33Z')
@@ -27,16 +28,9 @@ describe('PostgreSqlDomainEventRepository', () => {
 
     const domainEvent = new DomainEventTestBuilder().build()
 
-    const expectedRawDomainEvent: DomainEventRawModel = {
-      id: 'test-domain-event-id',
-      name: 'test-domain-event-name',
-      aggregate_id: 'test-domain-event-aggregate-id',
-      aggregate_type: 'test-aggregate-type',
+    const expectedRawDomainEvent = makeRawDomainEvent({
       occurred_at: now,
-      metadata: { arguments: 1, result: 'ok', a: null },
-      payload: {},
-      version: 1,
-    }
+    })
 
     beforeEach(() => {
       mockedEntityManager.getRepository.mockReturnValueOnce(mockedDomainEventRepository)

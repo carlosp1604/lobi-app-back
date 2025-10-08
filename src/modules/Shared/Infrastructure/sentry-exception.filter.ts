@@ -23,7 +23,7 @@ function safeRedactBody(body: unknown): unknown {
 }
 
 function toSafeResponse(exception: unknown): object | string {
-  // TODO: Extract this code to a APIExceptionCodes file
+  // TODO: Extract this code to an APIExceptionCodes file
   const INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR'
 
   if (exception instanceof HttpException) {

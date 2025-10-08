@@ -1,8 +1,8 @@
-import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { User } from '~/src/modules/User/Domain/User'
-import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/User.entity'
+import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/UserModelTranslator'
+import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
+import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 
 export class PostgresqlUserRepository implements UserRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}

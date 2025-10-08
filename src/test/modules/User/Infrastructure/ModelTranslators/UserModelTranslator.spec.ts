@@ -7,27 +7,19 @@ import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
-import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 import { RelationshipDomainException } from '~/src/modules/Shared/Domain/Relationship/RelationshipDomainException'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
+import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 
 describe('UserModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
-  const baseRaw: UserRawModelWithRelations = {
-    id: UserIdMother.valid().toString(),
-    email: UserEmailMother.valid().toString(),
-    username: UserUsernameMother.valid().toString(),
-    name: UserNameMother.valid().toString(),
-    status: UserStatus.active().toString(),
-    role: UserRole.sportsman().toString(),
-    user_upload_id: UserUploadIdMother.valid().toString(),
+  const baseRaw = makeRawUser({
     email_verified_at: now,
     created_at: now,
     updated_at: now,
-    deleted_at: null,
-  }
+  })
 
   describe('toDomain', () => {
     describe('without relationships', () => {

@@ -2,40 +2,21 @@ import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/User.entity'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
-import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
-import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
 import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
-import { DomainEventEntity, DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/DomainEvent.entity'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
+import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { DomainEventEntity, DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
+import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 
 describe('PostgreSqlDomainEventRepository', () => {
   const userId = UserIdMother.valid()
   const domainEventId = DomainEventIdMother.valid()
   const now = new Date('2025-10-07T19:31:57Z')
-
-  const rawUser: UserRawModelWithRelations = {
-    id: userId.toString(),
-    email: UserEmailMother.valid().toString(),
-    username: UserUsernameMother.valid().toString(),
-    name: UserNameMother.valid().toString(),
-    status: UserStatus.active().toString(),
-    role: UserRole.sportsman().toString(),
-    user_upload_id: UserUploadIdMother.valid().toString(),
-    email_verified_at: new Date(),
-    created_at: new Date(),
-    updated_at: new Date(),
-    deleted_at: null,
-  }
 
   let runner: QueryRunner
 
@@ -60,12 +41,15 @@ describe('PostgreSqlDomainEventRepository', () => {
 
     beforeEach(async () => {
       const userRepository = runner.manager.getRepository(UserEntity)
+      const rawUser = makeRawUser({
+        id: userId.toString(),
+      })
       await userRepository.save(rawUser)
 
       domainEventTestBuilder = new DomainEventTestBuilder()
         .withId(domainEventId)
-        .withMetadata({ property: 'value' })
-        .withPayload({ property: 'value' })
+        .withMetadata({ metaProperty: 'value' })
+        .withPayload({ payloadProperty: 'value' })
         .withName(DomainEventName.successfulLogin())
         .withAggregateType(DomainEventAggregateType.user())
         .withAggregateId(DomainEventIdMother.valid())

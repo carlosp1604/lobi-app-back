@@ -1,5 +1,5 @@
-import { DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/DomainEvent.entity'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
+import { DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 
 export class DomainEventModelTranslator {
   public static toDatabase(domain: DomainEvent): DomainEventRawModel {

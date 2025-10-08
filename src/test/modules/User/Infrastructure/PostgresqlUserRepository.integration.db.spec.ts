@@ -1,48 +1,37 @@
 import 'reflect-metadata'
-import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEntity, UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
-import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
-import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
-import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { User } from '~/src/modules/User/Domain/User'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
+import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
+import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
+import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 
 describe('PostgresqlUserRepository', () => {
   const userId = UserIdMother.valid()
   const userEmail = UserEmailMother.valid()
   const now = new Date('2025-09-26T14:11:25Z')
 
-  const baseRawUser: UserRawModel = {
+  const baseRawUser = makeRawUser({
     id: userId.toString(),
     email: userEmail.toString(),
-    username: UserUsernameMother.valid().toString(),
-    name: UserNameMother.valid().toString(),
-    status: UserStatus.active().toString(),
-    role: UserRole.sportsman().toString(),
-    user_upload_id: UserUploadIdMother.valid().toString(),
     email_verified_at: now,
     created_at: now,
     updated_at: now,
-    deleted_at: null,
-  }
+  })
 
-  const rawCredential = {
+  const rawCredential = makeRawUserCredential({
     user_id: userId.toString(),
-    password_hash: PasswordHashMother.valid().toString(),
     failed_attempts: 0,
     locked_until: null,
     last_login_at: null,
     created_at: now,
     updated_at: now,
-  }
+  })
 
   const checkUserFound = (result: User | null) => {
     expect(result).toBeTruthy()

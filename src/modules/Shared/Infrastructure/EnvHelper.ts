@@ -44,7 +44,27 @@ export const EnvSchema = z
     API_DOCS_TITLE: z.string(),
     API_DOCS_DESCRIPTION: z.string(),
     API_DOCS_VERSION: z.string(),
-    // COOKIE_SECRET: z.string().nonempty().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
+    // COOKIE_SECRET: z.string.trim().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
+
+    ACCESS_TTL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(15 * 60 * 1000),
+    ACCESS_ISSUER: z.url().default('http://localhost:3000'),
+    ACCESS_AUDIENCE: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]+$/, 'Invalid audience')
+      .default('lobi-web'),
+    ACCESS_SECRET: z.string().trim().min(64, { message: 'ACCESS_SECRET must have at least 64 characters' }),
+    REFRESH_TTL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(7 * 24 * 60 * 60 * 1000),
+    SALT_ROUNDS: z.coerce.number().int().positive().default(12),
+    HASH_SECRET: z.string().trim().min(32, { message: 'HASH_SECRET must have at least 32 characters' }),
+    USER_MAX_SESSIONS: z.coerce.number().int().positive().default(6),
   })
   .transform((env) => ({
     ...env,

@@ -3,16 +3,13 @@ import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import {
-  UserSessionEntity,
-  UserSessionRawModel,
-  UserSessionRawWithRelationships,
-} from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import SpyInstance = jest.SpyInstance
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
+import { UserSessionEntity, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 
 describe('PostgreSqlUserSessionRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
@@ -33,20 +30,12 @@ describe('PostgreSqlUserSessionRepository', () => {
 
     const userSession = new UserSessionTestBuilder().build()
 
-    const expectedRawUserSession: UserSessionRawModel = {
-      id: 'tests-session-id',
-      user_id: 'tests-user_id',
-      token_hash: 'test-token-hash',
+    const expectedRawUserSession = makeRawSession({
       expires_at: new Date(now.getTime() + 600),
       revoked_at: null,
       ip_hash: null,
       user_agent: 'LobiApp/1.0 (CarlosP at the controls)',
-      device_country: null,
-      device_city: null,
-      device_timezone: null,
-      created_at: now,
-      updated_at: now,
-    }
+    })
 
     beforeEach(() => {
       mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserSessionRepository)
@@ -113,20 +102,12 @@ describe('PostgreSqlUserSessionRepository', () => {
     const maxSessions = 3
     const userSession = new UserSessionTestBuilder().build()
 
-    const expectedRawUserSession: UserSessionRawModel = {
-      id: 'tests-session-id',
-      user_id: 'tests-user_id',
-      token_hash: 'test-token-hash',
+    const expectedRawUserSession = makeRawSession({
       expires_at: new Date(now.getTime() + 600),
       revoked_at: null,
       ip_hash: null,
       user_agent: 'LobiApp/1.0 (CarlosP at the controls)',
-      device_country: null,
-      device_city: null,
-      device_timezone: null,
-      created_at: now,
-      updated_at: now,
-    }
+    })
 
     it('should call services correctly', async () => {
       mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
@@ -206,20 +187,12 @@ describe('PostgreSqlUserSessionRepository', () => {
     const mockedQueryBuilder = mock<SelectQueryBuilder<UserSessionRawWithRelationships>>()
     const userSession = new UserSessionTestBuilder().build()
 
-    const baseExpectedRawUserSession: UserSessionRawModel = {
-      id: 'tests-session-id',
-      user_id: 'tests-user_id',
-      token_hash: 'test-token-hash',
+    const baseExpectedRawUserSession = makeRawSession({
       expires_at: new Date(now.getTime() + 600),
-      revoked_at: null,
       ip_hash: null,
+      revoked_at: null,
       user_agent: 'LobiApp/1.0 (CarlosP at the controls)',
-      device_country: null,
-      device_city: null,
-      device_timezone: null,
-      created_at: now,
-      updated_at: now,
-    }
+    })
 
     beforeEach(() => {
       mockReset(mockedQueryBuilder)
@@ -243,7 +216,7 @@ describe('PostgreSqlUserSessionRepository', () => {
       expect(mockedUserSessionRepository.createQueryBuilder).toHaveBeenCalledTimes(1)
       expect(mockedUserSessionRepository.createQueryBuilder).toHaveBeenCalledWith('s')
       expect(mockedQueryBuilder.select).toHaveBeenCalledWith('1')
-      expect(mockedQueryBuilder.where).toHaveBeenCalledWith('s.user_id = :user_id', { user_id: 'tests-user_id' })
+      expect(mockedQueryBuilder.where).toHaveBeenCalledWith('s.user_id = :user_id', { user_id: baseExpectedRawUserSession.user_id })
       expect(mockedQueryBuilder.andWhere).toHaveBeenNthCalledWith(1, 's.revoked_at IS NULL')
       expect(mockedQueryBuilder.andWhere).toHaveBeenNthCalledWith(2, 's.expires_at > NOW()')
     }

@@ -2,13 +2,13 @@ import * as Sentry from '@sentry/node'
 import helmet from '@fastify/helmet'
 import compress from '@fastify/compress'
 import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
-import { validationPipe } from '~/src/modules/Shared/Infrastructure/GlobalValidationPipe'
-import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/SentryExceptionFilter'
 import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { buildFastifyApplication } from '~/src/modules/Shared/Infrastructure/FastifyApplication'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { LOGGER_SERVICE_INTERFACE } from '~/src/modules/Shared/Infrastructure/Module/PinoLoggerModule'
+import { LOGGER_SERVICE } from '~/src/modules/Shared/Infrastructure/logger.module'
+import { validationPipe } from '~/src/modules/Shared/Infrastructure/global-validation.pipe'
+import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentry-exception.filter'
 
 /**
  * This project provides only an API | CSP = off
@@ -50,7 +50,7 @@ async function bootstrap() {
 
   const app = await buildFastifyApplication()
 
-  const logger = app.get<LoggerServiceInterface>(LOGGER_SERVICE_INTERFACE)
+  const logger = await app.resolve<LoggerServiceInterface>(LOGGER_SERVICE)
 
   app.useLogger(logger)
   app.useGlobalFilters(app.get(SentryExceptionFilter))

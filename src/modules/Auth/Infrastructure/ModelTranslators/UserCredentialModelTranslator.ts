@@ -1,7 +1,7 @@
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
+import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 
 export class UserCredentialModelTranslator {
   public static toDomain(raw: UserCredentialRawModel): UserCredential {

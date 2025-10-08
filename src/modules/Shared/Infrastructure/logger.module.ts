@@ -5,7 +5,7 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
 
 export const PINO_LOGGER = 'PINO_LOGGER'
-export const LOGGER_SERVICE_INTERFACE = 'LOGGER_SERVICE_INTERFACE'
+export const LOGGER_SERVICE = 'LOGGER_SERVICE'
 
 @Global()
 @Module({
@@ -27,12 +27,12 @@ export const LOGGER_SERVICE_INTERFACE = 'LOGGER_SERVICE_INTERFACE'
         }),
     },
     {
-      provide: LOGGER_SERVICE_INTERFACE,
+      provide: LOGGER_SERVICE,
       useFactory: (base: Logger): LoggerServiceInterface => new PinoLoggerService(base),
       inject: [PINO_LOGGER],
       scope: Scope.REQUEST,
     },
   ],
-  exports: [LOGGER_SERVICE_INTERFACE],
+  exports: [LOGGER_SERVICE],
 })
-export class PinoLoggerModule {}
+export class LoggerModule {}

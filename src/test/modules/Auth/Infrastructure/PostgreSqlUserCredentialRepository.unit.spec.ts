@@ -2,12 +2,13 @@
 import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { EntityManager, Repository } from 'typeorm'
-import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
+import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 
 describe('PostgreSqlUserCredentialRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
@@ -28,15 +29,15 @@ describe('PostgreSqlUserCredentialRepository', () => {
     const userCredential = new UserCredentialTestBuilder().withFailedAttempts(10).build()
     const context: TxContext = { __opaque_tx_context: true }
 
-    const rawUserCredential = {
+    const rawUserCredential = makeRawUserCredential({
       user_id: userId.toString(),
       password_hash: 'expected-hash',
+      created_at: now,
+      updated_at: now,
       failed_attempts: 0,
       locked_until: null,
       last_login_at: now,
-      created_at: now,
-      updated_at: now,
-    }
+    })
 
     beforeEach(() => {
       mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserCredentialRepository)

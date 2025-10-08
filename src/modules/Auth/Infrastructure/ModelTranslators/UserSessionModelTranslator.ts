@@ -1,10 +1,10 @@
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
 import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
+import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 
 export class UserSessionModelTranslator {
   public static toDomain(raw: UserSessionRawModel): UserSession {

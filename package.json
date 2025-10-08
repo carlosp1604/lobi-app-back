@@ -112,8 +112,10 @@
       "!src/app.module.ts",
       "!src/db/**",
       "!src/test/**",
-      "!src/modules/**/Infrastructure/Module/**/*.ts",
-      "!src/modules/**/Infrastructure/Entities/**/*.ts",
+      "!src/modules/**/Infrastructure/**/**.module.ts",
+      "!src/modules/**/Infrastructure/**/**.tokens.ts",
+      "!src/modules/**/Infrastructure/**/**.controller.ts",
+      "!src/modules/**/Infrastructure/**/**.entity.ts",
       "!src/modules/Shared/Infrastructure/EnvHelper.ts",
       "!src/modules/Shared/Infrastructure/FastifyApplication.ts",
       "!src/modules/Shared/Infrastructure/GlobalValidationPipe.ts"

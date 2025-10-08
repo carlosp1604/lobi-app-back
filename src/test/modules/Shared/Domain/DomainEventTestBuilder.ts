@@ -7,8 +7,11 @@ import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/
 import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { DomainEventAggregateIdMother } from '~/src/test/mothers/DomainEventAggregateIdMother'
 
-export type EventPayload = Record<string, unknown>
-export type EventMetadata = Record<string, unknown>
+type JsonPrimitive = string | number | boolean | null
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
+
+export type EventPayload = Record<string, JsonValue>
+export type EventMetadata = Record<string, JsonValue>
 
 export class DomainEventTestBuilder {
   private _id: DomainEventId = DomainEventIdMother.valid()

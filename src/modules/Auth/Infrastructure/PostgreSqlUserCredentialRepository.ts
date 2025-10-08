@@ -2,8 +2,8 @@ import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/Use
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
+import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 
 export class PostgreSqlUserCredentialRepository implements UserCredentialRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}

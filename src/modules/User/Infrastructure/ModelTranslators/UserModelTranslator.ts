@@ -6,11 +6,11 @@ import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
-import { UserRawModel, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 import { UserRepositoryRelationships } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { Relationship } from '~/src/modules/Shared/Domain/Relationship/Relationship'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
+import { UserRawModel, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 
 export class UserModelTranslator {
   public static toDomain(rawModel: UserRawModelWithRelations, relationShips: ReadonlyArray<UserRepositoryRelationships> = []): User {

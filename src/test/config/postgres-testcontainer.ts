@@ -33,10 +33,3 @@ export async function getPostgresTestContainer(): Promise<PostgresContainerConfi
 
   return instance
 }
-
-export async function stopPostgresTestContainer(): Promise<void> {
-  if (instance) {
-    await instance.container.stop()
-    instance = null
-  }
-}

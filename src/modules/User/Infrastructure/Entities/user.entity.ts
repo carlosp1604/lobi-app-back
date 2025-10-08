@@ -1,6 +1,6 @@
 import { EntitySchema } from 'typeorm'
-import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
-import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
+import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
+import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 
 export interface UserRawModel {
   id: string

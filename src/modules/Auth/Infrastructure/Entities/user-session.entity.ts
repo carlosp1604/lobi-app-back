@@ -1,5 +1,5 @@
 import { EntitySchema } from 'typeorm'
-import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/User.entity'
+import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 
 export interface UserSessionRawModel {
   id: string

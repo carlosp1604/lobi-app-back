@@ -2,8 +2,8 @@ import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/Doma
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/DomainEvent.entity'
 import { DomainEventModelTranslator } from '~/src/modules/Shared/Infrastructure/ModelTranslators/DomainEventModelTranslator'
+import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 
 export class PostgreSqlDomainEventRepository implements DomainEventRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}

@@ -3,7 +3,7 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
-import { UserSessionEntity } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
+import { UserSessionEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 
 export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}

@@ -1,10 +1,5 @@
 import { QueryRunner, Repository } from 'typeorm'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
-import {
-  UserSessionEntity,
-  UserSessionRawModel,
-  UserSessionRawWithRelationships,
-} from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { mock, mockReset } from 'jest-mock-extended'
@@ -12,53 +7,21 @@ import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUni
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
-import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/User.entity'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
-import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
-import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import {
+  UserSessionEntity,
+  UserSessionRawModel,
+  UserSessionRawWithRelationships,
+} from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
+import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 
 describe('PostgreSqlUserSessionRepository', () => {
-  const makeRawSession = (overrides: Partial<UserSessionRawModel> = {}): UserSessionRawModel => {
-    return {
-      id: overrides.id ?? UserSessionIdMother.valid().toString(),
-      user_id: overrides.user_id ?? UserIdMother.valid().toString(),
-      token_hash: overrides.token_hash ?? UserSessionHashMother.random().toString(),
-      revoked_at: overrides.revoked_at ?? null,
-      expires_at: overrides.expires_at ?? new Date(Date.now() + 60 * 60 * 1000),
-      ip_hash: overrides.ip_hash ?? null,
-      user_agent: overrides.user_agent ?? UserAgentMother.valid().toString(),
-      device_country: overrides.device_country ?? null,
-      device_city: overrides.device_city ?? null,
-      device_timezone: overrides.device_timezone ?? null,
-      created_at: overrides.created_at ?? new Date(),
-      updated_at: overrides.updated_at ?? new Date(),
-    }
-  }
-
   const userId = UserIdMother.valid()
   const anotherUserId = UserIdMother.valid()
-  const anotherUserEmail = UserEmailMother.random()
-  const anotherUserUsername = UserUsernameMother.random()
-
-  const rawUser: UserRawModelWithRelations = {
-    id: userId.toString(),
-    email: UserEmailMother.valid().toString(),
-    username: UserUsernameMother.valid().toString(),
-    name: UserNameMother.valid().toString(),
-    status: UserStatus.active().toString(),
-    role: UserRole.sportsman().toString(),
-    user_upload_id: UserUploadIdMother.valid().toString(),
-    email_verified_at: new Date(),
-    created_at: new Date(),
-    updated_at: new Date(),
-    deleted_at: null,
-  }
 
   let runner: QueryRunner
 
@@ -90,13 +53,14 @@ describe('PostgreSqlUserSessionRepository', () => {
 
     beforeEach(async () => {
       const userRepository = runner.manager.getRepository(UserEntity)
-      await userRepository.save(rawUser)
-      await userRepository.save({
-        ...rawUser,
-        id: anotherUserId.toString(),
-        username: anotherUserUsername.toString(),
-        email: anotherUserEmail.toString(),
+      const rawUser = makeRawUser({
+        id: userId.toString(),
       })
+      const anotherRawUser = makeRawUser({
+        id: anotherUserId.toString(),
+      })
+      await userRepository.save(rawUser)
+      await userRepository.save(anotherRawUser)
     })
 
     const assertActives = (rows: Array<UserSessionRawWithRelationships>, expectedSessions: Array<string>) => {
@@ -256,6 +220,9 @@ describe('PostgreSqlUserSessionRepository', () => {
         .withRevokedAt(null)
 
       const userRepository = runner.manager.getRepository(UserEntity)
+      const rawUser = makeRawUser({
+        id: userId.toString(),
+      })
       await userRepository.save(rawUser)
     })
 
@@ -344,12 +311,10 @@ describe('PostgreSqlUserSessionRepository', () => {
 
     it('should return false when session exists but belongs to another user', async () => {
       const userRepository = runner.manager.getRepository(UserEntity)
-      await userRepository.save({
-        ...rawUser,
+      const anotherRawUser = makeRawUser({
         id: anotherUserId.toString(),
-        username: anotherUserUsername.toString(),
-        email: anotherUserEmail.toString(),
       })
+      await userRepository.save(anotherRawUser)
 
       const anotherUserSession = { ...baseRawUserSession, user_id: anotherUserId.toString() }
 

@@ -3,17 +3,12 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { mock, mockReset } from 'jest-mock-extended'
 import { EntityManager, Repository } from 'typeorm'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
-import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/User.entity'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
-import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
-import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
 import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/UserModelTranslator'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
+import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 
 describe('PostgresqlUserRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
@@ -30,23 +25,18 @@ describe('PostgresqlUserRepository', () => {
   })
 
   describe('findByEmailWithCredentials', () => {
-    const userId = UserIdMother.valid().toString()
+    const userId = UserIdMother.valid()
+    const userEmail = UserEmailMother.random()
 
-    const rawUser: UserRawModelWithRelations = {
-      id: userId,
-      email: UserEmailMother.valid().toString(),
-      username: UserUsernameMother.valid().toString(),
-      name: UserNameMother.valid().toString(),
-      status: UserStatus.active().toString(),
-      role: UserRole.sportsman().toString(),
-      user_upload_id: UserUploadIdMother.valid().toString(),
+    const rawUser = makeRawUser({
+      id: userId.toString(),
+      email: userEmail.toString(),
       email_verified_at: now,
       created_at: now,
       updated_at: now,
-      deleted_at: null,
-    }
+    })
 
-    const expectedUser = new UserTestBuilder().withId(UserId.fromString(userId)).build()
+    const expectedUser = new UserTestBuilder().withId(userId).build()
 
     describe('happy path', () => {
       beforeEach(() => {
