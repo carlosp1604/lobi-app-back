@@ -104,8 +104,21 @@ describe('PostgreSqlUserSessionRepository', () => {
 
       const byId = new Map(rows.map((r) => [r.id, r]))
 
-      expect(byId.get(userSessionToSaveId.toString())).not.toBeNull()
-      expect(byId.get(session1Id)!.revoked_at).toBeNull()
+      const inserted = byId.get(userSessionToSaveId.toString())!
+
+      expect(inserted).toBeTruthy()
+
+      expect(inserted.user_id).toBe(userSessionToSave.userId.toString())
+      expect(inserted.token_hash).toBe(userSessionToSave.tokenHash.toString())
+      expect(inserted.expires_at.getTime()).toBe(userSessionToSave.expiresAt.getTime())
+
+      // NOW() from database, we can not check exact date
+      expect(inserted.created_at.getTime()).toBeCloseTo(inserted.updated_at.getTime(), -1)
+      expect(inserted.ip_hash).toBe(userSessionToSave.ipHash?.toString() ?? null)
+      expect(inserted.user_agent).toBe(userSessionToSave.userAgent.toString())
+      expect(inserted.device_country).toBe(userSessionToSave.deviceCountry ?? null)
+      expect(inserted.device_city).toBe(userSessionToSave.deviceCity ?? null)
+      expect(inserted.device_timezone).toBe(userSessionToSave.deviceTimezone ?? null)
 
       await assertAnotherUserSessionIstNotRevoked(userSessionRepository, session2Id)
       assertActives(rows, [session1Id, userSessionToSaveId.toString()])
@@ -127,6 +140,11 @@ describe('PostgreSqlUserSessionRepository', () => {
     })
 
     it('should revoke the oldest sessions and inserts the new one', async () => {
+      const dbNow = async () => {
+        const result: Array<{ now: Date }> = await runner.manager.query('SELECT NOW()')
+        return new Date(result[0].now).getTime()
+      }
+
       const repository = new PostgreSqlUserSessionRepository(mockedResolver)
       const context = new TypeOrmTxContext(runner.manager)
       const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
@@ -174,16 +192,24 @@ describe('PostgreSqlUserSessionRepository', () => {
 
       await userSessionRepository.save([s1, s2, s3, s4, s5, s6, s7])
 
+      const before = await dbNow()
+
       await repository.revokeOldestAndSave(userSessionToSave, 2, context)
+
+      const after = await dbNow()
 
       const rows = await getUserSessions(userSessionRepository, userId.toString())
 
       const byId = new Map(rows.map((r) => [r.id, r]))
 
       expect(byId.get(userSessionToSaveId.toString())).not.toBeNull()
-      expect(byId.get(session1Id)!.revoked_at).toBeTruthy()
-      expect(byId.get(session2Id)!.revoked_at).toBeTruthy()
-      expect(byId.get(session3Id)!.revoked_at).toBeTruthy()
+
+      // Check revoked_at was set correctly by database
+      for (const revokedSession of [byId.get(session1Id), byId.get(session2Id), byId.get(session3Id)]) {
+        expect(revokedSession!.revoked_at).toBeTruthy()
+        expect(revokedSession!.revoked_at?.getTime()).toBeGreaterThanOrEqual(before)
+        expect(revokedSession!.revoked_at?.getTime()).toBeLessThanOrEqual(after)
+      }
       expect(byId.get(session4Id)!.revoked_at).toBeNull()
 
       expect(byId.get(session5Id)!.revoked_at).toBeTruthy()

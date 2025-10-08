@@ -126,11 +126,10 @@ export class LoginUser {
       deviceTimezone: deviceLocation.timezone,
     })
 
-    const isNewDevice = !(await this.sessionsRepository.existsDevice(session))
-
     const accessExpiresAt = new Date(now.getTime() + this.accessTtlMilliseconds)
     const accessToken = await this.tokenGenerator.generateAccessToken(user.id.toString(), sessionId.toString(), accessExpiresAt, now)
 
+    const isNewDevice = !(await this.sessionsRepository.existsDevice(session))
     await this.saveSuccessfulLogin(credentials, user, session, isNewDevice, deviceLocation, now)
 
     return success({

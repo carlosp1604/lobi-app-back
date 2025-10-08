@@ -5,7 +5,6 @@ export class LoginUserApplicationError extends Error {
   public static userNotFoundId = 'user_login_user_not_found'
   public static invalidCredentialsId = 'user_login_invalid_credentials'
   public static userDoesNotHaveCredentialsId = 'user_login_user_does_not_have_credentials'
-  public static userLockedLoginId = 'user_login_user_locked_login'
   public static invalidUserEmailId = 'user_login_invalid_user_email'
 
   private constructor(message: string, id: string) {
