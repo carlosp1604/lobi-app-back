@@ -2,7 +2,7 @@ import { Global, Module, Scope } from '@nestjs/common'
 import pino, { Logger } from 'pino'
 import { PinoLoggerService } from '~/src/modules/Shared/Infrastructure/Services/PinoLoggerService'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 export const PINO_LOGGER = 'PINO_LOGGER'
 export const LOGGER_SERVICE = 'LOGGER_SERVICE'
@@ -14,7 +14,7 @@ export const LOGGER_SERVICE = 'LOGGER_SERVICE'
       provide: PINO_LOGGER,
       useFactory: (): Logger =>
         pino({
-          level: env.isProduction ? 'info' : 'debug',
+          level: env.isProduction ? 'info' : env.isTesting ? 'silent' : 'debug',
           transport: env.isProduction
             ? undefined
             : {

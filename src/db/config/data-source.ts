@@ -2,7 +2,7 @@ import 'reflect-metadata'
 import { DataSource } from 'typeorm'
 import dotenv from 'dotenv'
 // eslint-disable-next-line no-restricted-imports
-import { env } from '../../modules/Shared/Infrastructure/EnvHelper'
+import { env } from '../../modules/Shared/Infrastructure/env.loader'
 
 dotenv.config()
 

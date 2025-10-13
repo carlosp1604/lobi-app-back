@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { ThrottlerModule } from '@nestjs/throttler'
-import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 @Module({
   imports: [

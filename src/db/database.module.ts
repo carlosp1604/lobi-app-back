@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common'
 import { getDataSourceToken, TypeOrmModule } from '@nestjs/typeorm'
-import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { DataSource } from 'typeorm'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'

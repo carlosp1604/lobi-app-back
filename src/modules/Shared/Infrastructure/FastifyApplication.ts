@@ -1,6 +1,6 @@
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify'
 import type { FastifyRequest, FastifyReply } from 'fastify'
-import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from '~/src/app.module'
 import { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface'

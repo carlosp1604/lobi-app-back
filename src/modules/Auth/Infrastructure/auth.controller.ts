@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
-import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import { LOGIN_USER } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-user-body.dto'
@@ -25,11 +25,26 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() body: LoginUserBodyDto, @Req() request: FastifyRequest, @Res({ passthrough: true }) response: FastifyReply) {
+    let ip = ''
+    let userAgent = ''
+
+    if (request.headers['x-forwarded-for']) {
+      ip = String(request.headers['x-forwarded-for']).split(',')[0]?.trim()
+    } else {
+      if (request.ip) {
+        ip = request.ip
+      }
+    }
+
+    if (request.headers['user-agent']) {
+      userAgent = String(request.headers['user-agent'])
+    }
+
     const requestDto: LoginUserApplicationRequestDto = {
       email: body.email,
       password: body.password,
-      ip: (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? request.ip ?? '',
-      userAgent: request.headers['user-agent'] ?? '',
+      ip,
+      userAgent,
     }
 
     const result = await this.loginUser.execute(requestDto)
@@ -47,7 +62,7 @@ export class AuthController {
 
       if (
         result.error.id === LoginUserApplicationError.invalidCredentialsId ||
-        result.error.id === LoginUserApplicationError.userNotFoundId ||
+        result.error.id === LoginUserApplicationError.userDoesNotHaveCredentialsId ||
         result.error.id === LoginUserApplicationError.userNotFoundId
       ) {
         response.status(HttpStatus.UNAUTHORIZED)

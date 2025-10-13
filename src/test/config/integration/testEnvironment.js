@@ -5,6 +5,7 @@ const { UserEntity } = require('../../../modules/User/Infrastructure/Entities/us
 const { UserSessionEntity } = require('../../../modules/Auth/Infrastructure/Entities/user-session.entity')
 const { UserCredentialEntity } = require('../../../modules/Auth/Infrastructure/Entities/user-credential.entity')
 const { DomainEventEntity } = require('../../../modules/Shared/Infrastructure/Entities/domain-event.entity')
+const path = require('path')
 const NodeEnvironment = require('jest-environment-node').TestEnvironment
 
 class TestEnvironment extends NodeEnvironment {
@@ -63,8 +64,6 @@ class TestEnvironment extends NodeEnvironment {
     if (app) {
       await app.close()
     }
-
-    await app.close()
 
     this.global.nestApp = null
     this.global.dataSource = null

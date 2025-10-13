@@ -1,7 +1,4 @@
 import { z } from 'zod'
-import dotenv from 'dotenv'
-
-dotenv.config()
 
 const CorsOriginsSchema = z
   .string()
@@ -23,6 +20,10 @@ export const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
+
+    CONTAINER_DB: z.string(),
+    CONTAINER_USER: z.string(),
+    CONTAINER_PASSWORD: z.string(),
 
     DATABASE_HOST: z.string(),
     DATABASE_PORT: z.coerce.number().int().positive().default(5432),
@@ -70,8 +71,7 @@ export const EnvSchema = z
   .transform((env) => ({
     ...env,
     isProduction: env.NODE_ENV === 'production',
+    isTesting: env.NODE_ENV === 'test',
   }))
 
 export type Env = z.infer<typeof EnvSchema>
-
-export const env: Env = EnvSchema.parse(process.env)

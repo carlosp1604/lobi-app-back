@@ -1,4 +1,6 @@
 import { StartedPostgreSqlContainer, PostgreSqlContainer } from '@testcontainers/postgresql'
+// eslint-disable-next-line no-restricted-imports
+import { env } from '../../modules/Shared/Infrastructure/env.loader'
 
 export interface PostgresContainerConfig {
   host: string
@@ -17,9 +19,9 @@ export async function getPostgresTestContainer(): Promise<PostgresContainerConfi
   }
 
   const container = await new PostgreSqlContainer('postgres:16-alpine')
-    .withDatabase('testdb')
-    .withUsername('test')
-    .withPassword('test')
+    .withDatabase(env.CONTAINER_DB)
+    .withUsername(env.CONTAINER_USER)
+    .withPassword(env.CONTAINER_PASSWORD)
     .start()
 
   instance = {
