@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node'
 import helmet from '@fastify/helmet'
 import compress from '@fastify/compress'
+import fastifyCookie from '@fastify/cookie'
 import { env } from '~/src/modules/Shared/Infrastructure/EnvHelper'
 import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { buildFastifyApplication } from '~/src/modules/Shared/Infrastructure/FastifyApplication'
@@ -58,6 +59,7 @@ async function bootstrap() {
 
   await setUpHelmet(app)
   await app.register(compress, { global: true })
+  await app.register(fastifyCookie, { secret: env.COOKIE_SECRET })
   setUpSwagger(app)
 
   await app.listen(env.PORT)

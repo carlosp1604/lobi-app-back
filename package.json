@@ -32,6 +32,7 @@
     "migration:revert": "ts-node --project tsconfig.typeorm.json ./node_modules/typeorm/cli.js migration:revert -d src/db/config/data-source.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/static": "^8.2.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -183,9 +184,7 @@
           "^typeorm$": "<rootDir>/node_modules/typeorm/index.js",
           "^typeorm/(.*)$": "<rootDir>/node_modules/typeorm/$1"
         },
-        "setupFilesAfterEnv": [
-          "<rootDir>/src/test/config/integration/jest.setup.js"
-        ],
+        "setupFilesAfterEnv": ["<rootDir>/src/test/config/integration/jest.setup.js"],
         "globalSetup": "<rootDir>/src/test/config/integration/global.setup.js",
         "globalTeardown": "<rootDir>/src/test/config/integration/global.teardown.js"
       },
@@ -198,9 +197,7 @@
           "ts"
         ],
         "rootDir": ".",
-        "testMatch": [
-          "<rootDir>/**/*\\.e2e\\.spec\\.ts"
-        ],
+        "testMatch": ["<rootDir>/**/*\\.e2e\\.spec\\.ts"],
         "transform": {
           "^.+\\.(t|j)s$": "ts-jest"
         },

@@ -44,7 +44,6 @@ export const EnvSchema = z
     API_DOCS_TITLE: z.string(),
     API_DOCS_DESCRIPTION: z.string(),
     API_DOCS_VERSION: z.string(),
-    // COOKIE_SECRET: z.string.trim().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
 
     ACCESS_TTL_MS: z.coerce
       .number()
@@ -65,6 +64,8 @@ export const EnvSchema = z
     SALT_ROUNDS: z.coerce.number().int().positive().default(12),
     HASH_SECRET: z.string().trim().min(32, { message: 'HASH_SECRET must have at least 32 characters' }),
     USER_MAX_SESSIONS: z.coerce.number().int().positive().default(6),
+
+    COOKIE_SECRET: z.string().trim().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
   })
   .transform((env) => ({
     ...env,
