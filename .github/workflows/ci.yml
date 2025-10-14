@@ -11,6 +11,9 @@ jobs:
     name: Lint & Format Check
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Environment
         uses: ./.github/workflows/setup
 
@@ -22,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint]
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Environment
         uses: ./.github/workflows/setup
 
@@ -67,6 +73,9 @@ jobs:
           --health-retries 5
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Environment
         uses: ./.github/workflows/setup
 
@@ -75,12 +84,6 @@ jobs:
 
       - name: Run integration-db tests
         run: yarn test-integration-db
-        env:
-          DATABASE_HOST: localhost
-          DATABASE_PORT: 5432
-          DATABASE_USER: lobi_user
-          DATABASE_PASSWORD: lobi_pass
-          DATABASE_NAME: lobi_test
 
       - name: Run E2E tests
         run: yarn test-e2e
