@@ -42,6 +42,10 @@ jobs:
       NODE_ENV: test
       DOTENV_CONFIG_QUIET: true
 
+      CONTAINER_DB: ""
+      CONTAINER_USER: ""
+      CONTAINER_PASSWORD: ""
+
       DATABASE_HOST: localhost
       DATABASE_PORT: 5432
       DATABASE_USER: lobi_user
