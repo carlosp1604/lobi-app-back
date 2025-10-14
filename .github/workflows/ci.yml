@@ -71,7 +71,7 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: lobi_user
-          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           POSTGRES_DB: lobi_test
         ports:
           - 5432:5432
