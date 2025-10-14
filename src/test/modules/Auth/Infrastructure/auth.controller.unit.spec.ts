@@ -9,6 +9,8 @@ import { AUTH_LOGIN_INVALID_EMAIL, AUTH_LOGIN_UNAUTHORIZED } from '~/src/modules
 import { INTERNAL_SERVER_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { mock, mockReset } from 'jest-mock-extended'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 
 describe('AuthController', () => {
   let controller: AuthController
@@ -16,6 +18,7 @@ describe('AuthController', () => {
 
   const mockedResponse = mock<FastifyReply>()
   const mockedUseCase = mock<LoginUser>()
+  const mockedConfigService = mock<ConfigService<Env, true>>()
 
   const base = new Date('2025-10-13T14:00:00.014Z')
 
@@ -25,11 +28,15 @@ describe('AuthController', () => {
     jest.clearAllMocks()
 
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [AuthController],
+      controllers: [ConfigModule, AuthController],
       providers: [
         {
           provide: LOGIN_USER,
           useValue: mockedUseCase,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockedConfigService,
         },
       ],
     }).compile()
@@ -64,6 +71,7 @@ describe('AuthController', () => {
           success: true,
           value: expectedResponse,
         })
+        mockedConfigService.get.mockReturnValueOnce(false)
       })
 
       it('should call to the use-case correctly when headers includes ip and user-agent', async () => {
@@ -115,6 +123,8 @@ describe('AuthController', () => {
       it('should set cookies and return correct data', async () => {
         const result = await controller.login(mockBody, mockedRequest, mockedResponse)
 
+        expect(mockedConfigService.get).toHaveBeenCalledTimes(1)
+        expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
         expect(mockedUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
           password: mockBody.password,

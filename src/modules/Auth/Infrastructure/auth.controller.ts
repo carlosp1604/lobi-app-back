@@ -1,5 +1,4 @@
 import type { FastifyReply, FastifyRequest } from 'fastify'
-import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import { LOGIN_USER } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-user-body.dto'
@@ -8,19 +7,18 @@ import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginU
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import { AUTH_LOGIN_INVALID_EMAIL, AUTH_LOGIN_UNAUTHORIZED } from '~/src/modules/Auth/Infrastructure/ApiCodes'
 import { Body, Controller, Post, Inject, Res, Req, HttpStatus, HttpCode } from '@nestjs/common'
-
-const cookieBase = {
-  path: '/',
-  sameSite: 'strict' as const,
-  secure: env.isProduction,
-}
+import { ConfigService } from '@nestjs/config'
+import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 
 const REFRESH_COOKIE = 'x-refresh-token'
 const ACCESS_COOKIE = 'x-access-token'
 
 @Controller('auth')
 export class AuthController {
-  constructor(@Inject(LOGIN_USER) private readonly loginUser: LoginUser) {}
+  constructor(
+    @Inject(LOGIN_USER) private readonly loginUser: LoginUser,
+    private readonly configService: ConfigService<Env, true>,
+  ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -85,14 +83,19 @@ export class AuthController {
 
     const { accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt } = result.value
 
+    const cookieBase = {
+      path: '/',
+      sameSite: 'strict' as const,
+      httpOnly: true,
+      secure: this.configService.get('isProduction', { infer: true }),
+    }
+
     response.setCookie(REFRESH_COOKIE, refreshToken, {
       ...cookieBase,
-      httpOnly: true,
       expires: refreshTokenExpiresAt,
     })
     response.setCookie(ACCESS_COOKIE, accessToken, {
       ...cookieBase,
-      httpOnly: true,
       expires: accessTokenExpiresAt,
     })
 

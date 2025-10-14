@@ -21,6 +21,8 @@ import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify
 import fastifyCookie from '@fastify/cookie'
 import { validationPipe } from '~/src/modules/Shared/Infrastructure/global-validation.pipe'
 import { AUTH_LOGIN_UNAUTHORIZED } from '~/src/modules/Auth/Infrastructure/ApiCodes'
+import { ConfigModule } from '@nestjs/config'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 describe('AuthController', () => {
   let app: NestFastifyApplication
@@ -31,7 +33,17 @@ describe('AuthController', () => {
     dataSource = global.dataSource
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [LoggerModule, RateLimitModule, SharedModule, DatabaseModule, AuthModule],
+      imports: [
+        await ConfigModule.forRoot({
+          isGlobal: true,
+          load: [() => env],
+        }),
+        LoggerModule,
+        RateLimitModule,
+        SharedModule,
+        DatabaseModule,
+        AuthModule,
+      ],
     })
       .overrideProvider(DataSource)
       .useValue(dataSource)

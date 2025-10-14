@@ -18,10 +18,6 @@ module.exports = async () => {
     databasePass = pg.pass
     databasePort = String(pg.port)
   } else {
-    if (!env.DATABASE_USER || !env.DATABASE_PORT || !env.DATABASE_NAME || !env.DATABASE_HOST || !env.DATABASE_PASSWORD) {
-      throw new Error('DATABASE_* env vars not set')
-    }
-
     globalThis.__PG_TESTCONTAINER__ = null
     databasePort = String(env.DATABASE_PORT)
     databaseDb = env.DATABASE_NAME

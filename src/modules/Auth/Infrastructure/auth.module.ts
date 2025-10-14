@@ -20,7 +20,6 @@ import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastru
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { BCryptPasswordHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptPasswordHasherService'
-import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
 import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
 import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
@@ -47,9 +46,11 @@ import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.enti
 import { UserSessionEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity])],
+  imports: [ConfigModule, TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity])],
   controllers: [AuthController],
   providers: [
     {
@@ -82,29 +83,37 @@ import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/
     },
     {
       provide: PASSWORD_HASHER,
-      useFactory: () => {
-        return new BCryptPasswordHasherService(env.SALT_ROUNDS)
+      useFactory: (configService: ConfigService<Env, true>) => {
+        return new BCryptPasswordHasherService(configService.get('SALT_ROUNDS', { infer: true }))
       },
+      inject: [ConfigService],
     },
     {
       provide: TOKEN_GENERATOR,
-      useFactory: () => {
-        return new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE)
+      useFactory: (configService: ConfigService<Env, true>) => {
+        return new JWTokenGeneratorApplicationService(
+          configService.get('ACCESS_SECRET', { infer: true }),
+          configService.get('ACCESS_ISSUER', { infer: true }),
+          configService.get('ACCESS_AUDIENCE', { infer: true }),
+        )
       },
+      inject: [ConfigService],
     },
     {
       provide: HASHER_SERVICE,
-      useFactory: () => {
-        return new NodeHasherService(env.HASH_SECRET)
+      useFactory: (configService: ConfigService<Env, true>) => {
+        return new NodeHasherService(configService.get<string>('HASH_SECRET', { infer: true }))
       },
+      inject: [ConfigService],
     },
     { provide: DEVICE_LOCATION_RESOLVER, useClass: NoopDeviceLocationResolverService },
     { provide: IP_VALIDATOR, useClass: IpAddressIpValidatorService },
     {
       provide: MAX_SESSIONS_POLICY,
-      useFactory: () => {
-        return new MaxSessionsPolicy({ maxActive: env.USER_MAX_SESSIONS })
+      useFactory: (configService: ConfigService<Env, true>) => {
+        return new MaxSessionsPolicy({ maxActive: configService.get('USER_MAX_SESSIONS', { infer: true }) })
       },
+      inject: [ConfigService],
     },
     {
       provide: LOGIN_USER,
@@ -123,6 +132,7 @@ import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/
         loggerService: LoggerServiceInterface,
         idGeneratorService: IdGeneratorServiceInterface,
         ipValidator: IpValidatorServiceInterface,
+        configService: ConfigService<Env, true>,
       ) =>
         new LoginUser(
           usersRepository,
@@ -139,8 +149,8 @@ import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/
           loggerService,
           idGeneratorService,
           ipValidator,
-          env.ACCESS_TTL_MS,
-          env.REFRESH_TTL_MS,
+          configService.get('ACCESS_TTL_MS', { infer: true }),
+          configService.get('REFRESH_TTL_MS', { infer: true }),
         ),
       inject: [
         USER_REPOSITORY,
@@ -157,6 +167,7 @@ import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/
         LOGGER_SERVICE,
         ID_GENERATOR,
         IP_VALIDATOR,
+        ConfigService,
       ],
     },
   ],

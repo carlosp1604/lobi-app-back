@@ -1,28 +1,31 @@
 import { Global, Module } from '@nestjs/common'
 import { getDataSourceToken, TypeOrmModule } from '@nestjs/typeorm'
-import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { DataSource } from 'typeorm'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { TYPEORM_MANAGER_RESOLVER, UNIT_OF_WORK } from '~/src/db/config/typeorm.tokens'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 
 @Global()
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
+      useFactory: (configService: ConfigService<Env, true>) => ({
         type: 'postgres',
-        host: env.DATABASE_HOST,
-        database: env.DATABASE_NAME,
-        username: env.DATABASE_USER,
-        port: env.DATABASE_PORT,
-        password: env.DATABASE_PASSWORD,
-        logging: env.DATABASE_LOGGING,
+        host: configService.get('DATABASE_HOST', { infer: true }),
+        database: configService.get('DATABASE_NAME', { infer: true }),
+        username: configService.get('DATABASE_USER', { infer: true }),
+        port: configService.get('DATABASE_PORT', { infer: true }),
+        password: configService.get('DATABASE_PASSWORD', { infer: true }),
+        logging: configService.get('DATABASE_LOGGING', { infer: true }),
         autoLoadEntities: true,
         synchronize: false,
         migrationsRun: false,
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
       }),
+      inject: [ConfigService],
     }),
   ],
   providers: [
