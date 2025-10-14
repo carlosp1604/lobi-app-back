@@ -1,30 +1,27 @@
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
-import { UserSessionRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserSession.entity'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
+import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
+import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 
 describe('UserSessionModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
-  const baseRaw: UserSessionRaw = {
-    id: UserSessionIdMother.valid().toString(),
-    user_id: UserIdMother.valid().toString(),
-    token_hash: UserSessionHashMother.valid().toString(),
-    expires_at: now,
-    revoked_at: null,
-    ip_hash: UserSessionIpHashMother.valid().toString(),
-    user_agent: UserAgentMother.valid().toString(),
+  const baseRaw = makeRawSession({
     device_country: 'ES',
     device_city: 'Madrid',
     device_timezone: 'Europe/Madrid',
     created_at: now,
     updated_at: now,
-  }
+    ip_hash: UserSessionIpHashMother.valid().toString(),
+    revoked_at: null,
+    expires_at: now,
+  })
 
   describe('toDomain', () => {
     it('returns correct data', () => {
@@ -45,11 +42,10 @@ describe('UserSessionModelTranslator', () => {
     })
 
     it('returns correct data when nullable fields are null', () => {
-      const raw: UserSessionRaw = {
+      const raw: UserSessionRawModel = {
         ...baseRaw,
         revoked_at: null,
         ip_hash: null,
-        user_agent: null,
         device_country: null,
         device_city: null,
         device_timezone: null,
@@ -59,7 +55,6 @@ describe('UserSessionModelTranslator', () => {
 
       expect(result.revokedAt).toBeNull()
       expect(result.ipHash).toBeNull()
-      expect(result.userAgent).toBeNull()
       expect(result.deviceCountry).toBeNull()
       expect(result.deviceCity).toBeNull()
       expect(result.deviceTimezone).toBeNull()
@@ -81,7 +76,7 @@ describe('UserSessionModelTranslator', () => {
       sessionBuilder = new UserSessionTestBuilder()
         .withId(UserSessionIdMother.valid())
         .withUserId(UserIdMother.valid())
-        .withRefreshTokenHash(UserSessionHashMother.valid())
+        .withTokenHash(UserSessionHashMother.valid())
         .withExpiresAt(now)
         .withRevokedAt(null)
         .withIpHash(UserSessionIpHashMother.valid())
@@ -118,7 +113,6 @@ describe('UserSessionModelTranslator', () => {
       const session = sessionBuilder
         .withRevokedAt(null)
         .withIpHash(null)
-        .withUserAgent(null)
         .withDeviceCountry(null)
         .withDeviceCity(null)
         .withDeviceTimezone(null)
@@ -128,7 +122,6 @@ describe('UserSessionModelTranslator', () => {
 
       expect(raw.revoked_at).toBeNull()
       expect(raw.ip_hash).toBeNull()
-      expect(raw.user_agent).toBeNull()
       expect(raw.device_country).toBeNull()
       expect(raw.device_city).toBeNull()
       expect(raw.device_timezone).toBeNull()

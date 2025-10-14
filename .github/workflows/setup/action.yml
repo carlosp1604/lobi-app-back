@@ -1,0 +1,20 @@
+name: 'Setup Node.js Environment'
+description: 'Checks out code, sets up Node.js, and installs dependencies with caching'
+runs:
+  using: 'composite'
+  steps:
+    - name: Use Node.js 20
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'yarn'
+
+    - name: Set npm registry
+      run: |
+        npm config set registry https://registry.npmjs.org/
+        yarn config set registry https://registry.npmjs.org/
+      shell: bash
+
+    - name: Install deps
+      run: yarn install --frozen-lockfile
+      shell: bash

@@ -1,22 +1,19 @@
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserCredentialRaw } from '~/src/modules/Auth/Infrastructure/Entities/UserCredential.entity'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
+import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 
 describe('UserCredentialModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
-  const baseRaw: UserCredentialRaw = {
-    user_id: UserIdMother.valid().toString().toString(),
-    password_hash: PasswordHashMother.valid().toString(),
-    failed_attempts: 0,
+  const baseRaw = makeRawUserCredential({
     locked_until: null,
     last_login_at: now,
     created_at: now,
     updated_at: now,
-  }
+  })
 
   describe('toDomain', () => {
     it('returns correct data', () => {

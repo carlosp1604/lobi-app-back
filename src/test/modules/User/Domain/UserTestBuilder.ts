@@ -10,6 +10,8 @@ import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { Relationship } from '~/src/modules/Shared/Domain/Relationship/Relationship'
+import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 
 export class UserTestBuilder {
   private _id = UserIdMother.valid()
@@ -23,6 +25,7 @@ export class UserTestBuilder {
   private _createdAt = new Date()
   private _updatedAt = new Date()
   private _deletedAt: Date | null = new Date()
+  private _credential: Relationship<UserCredential> = Relationship.notLoaded()
 
   withId(userId: UserId) {
     this._id = userId
@@ -79,6 +82,12 @@ export class UserTestBuilder {
     return this
   }
 
+  withCredential(relationship: Relationship<UserCredential>) {
+    this._credential = relationship
+
+    return this
+  }
+
   build(): User {
     return new User(
       this._id,
@@ -92,6 +101,7 @@ export class UserTestBuilder {
       this._createdAt,
       this._updatedAt,
       this._deletedAt,
+      this._credential,
     )
   }
 }

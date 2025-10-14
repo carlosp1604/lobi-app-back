@@ -1,0 +1,2 @@
+export const CLOCK_SERVICE = 'CLOCK_SERVICE'
+export const ID_GENERATOR = 'ID_GENERATOR'

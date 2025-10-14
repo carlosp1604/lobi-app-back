@@ -2,15 +2,28 @@ import { Module } from '@nestjs/common'
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { ConfigModule } from '@nestjs/config'
-import { DatabaseModule } from '~/src/db/TypeOrmModule'
-import { PinoLoggerModule } from '~/src/modules/Shared/Infrastructure/Module/PinoLoggerModule'
-import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/SentryExceptionFilter'
-import { RateLimitModule } from '~/src/modules/Shared/Infrastructure/Module/RateLimitModule'
+import { LoggerModule } from '~/src/modules/Shared/Infrastructure/logger.module'
 import { APP_GUARD } from '@nestjs/core'
 import { ThrottlerGuard } from '@nestjs/throttler'
+import { SharedModule } from '~/src/modules/Shared/Infrastructure/shared.module'
+import { AuthModule } from '~/src/modules/Auth/Infrastructure/auth.module'
+import { DatabaseModule } from '~/src/db/database.module'
+import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentry-exception.filter'
+import { RateLimitModule } from '~/src/modules/Shared/Infrastructure/rate-limit.module'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 @Module({
-  imports: [ConfigModule.forRoot(), DatabaseModule, PinoLoggerModule, RateLimitModule],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [() => env],
+    }),
+    DatabaseModule,
+    LoggerModule,
+    RateLimitModule,
+    SharedModule,
+    AuthModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,
@@ -20,6 +33,6 @@ import { ThrottlerGuard } from '@nestjs/throttler'
       useClass: ThrottlerGuard,
     },
   ],
-  exports: [SentryExceptionFilter],
+  exports: [SentryExceptionFilter, ConfigModule],
 })
 export class AppModule {}

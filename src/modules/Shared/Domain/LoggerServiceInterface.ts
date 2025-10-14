@@ -50,5 +50,3 @@ export interface LoggerServiceInterface {
    */
   verbose(message: string, metadata?: LoggerMetaData): void
 }
-
-export const LOGGER_SERVICE_INTERFACE = Symbol('LOGGER_SERVICE_INTERFACE')

@@ -1,0 +1,15 @@
+import { Module } from '@nestjs/common'
+import { ThrottlerModule } from '@nestjs/throttler'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+
+@Module({
+  imports: [
+    ThrottlerModule.forRoot([
+      {
+        ttl: env.RATE_WINDOW_MS,
+        limit: env.RATE_MAX,
+      },
+    ]),
+  ],
+})
+export class RateLimitModule {}

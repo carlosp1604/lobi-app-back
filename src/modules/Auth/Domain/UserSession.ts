@@ -6,7 +6,6 @@ import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 
 interface CreateUserSessionExtraParams {
   ipHash: UserSessionIpHash | null
-  userAgent: UserAgent | null
   deviceCountry: string | null
   deviceCity: string | null
   deviceTimezone?: string | null
@@ -21,7 +20,7 @@ export class UserSession {
   public expiresAt: Date
   public revokedAt: Date | null
   public ipHash: UserSessionIpHash | null
-  public userAgent: UserAgent | null
+  public userAgent: UserAgent
   public deviceCountry: string | null
   public deviceCity: string | null
   public deviceTimezone: string | null
@@ -36,7 +35,7 @@ export class UserSession {
     expiresAt: Date,
     revokedAt: Date | null,
     ipHash: UserSessionIpHash | null,
-    userAgent: UserAgent | null,
+    userAgent: UserAgent,
     deviceCountry: string | null,
     deviceCity: string | null,
     deviceTimezone: string | null,
@@ -61,6 +60,7 @@ export class UserSession {
     id: UserSessionId,
     userId: UserId,
     tokenHash: UserSessionHash,
+    userAgent: UserAgent,
     expiresAt: Date,
     now: Date,
     optionalParameters: CreateUserSessionOptionalParams,
@@ -72,7 +72,7 @@ export class UserSession {
       expiresAt,
       null,
       optionalParameters?.ipHash ?? null,
-      optionalParameters?.userAgent ?? null,
+      userAgent,
       optionalParameters?.deviceCountry ?? null,
       optionalParameters?.deviceCity ?? null,
       optionalParameters?.deviceTimezone ?? null,
