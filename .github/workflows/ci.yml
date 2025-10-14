@@ -89,7 +89,7 @@ jobs:
         uses: ./.github/workflows/setup
 
       - name: Build Project
-        run: yan build
+        run: yarn build
 
       - name: Run integration-db tests
         run: yarn test-integration-db
