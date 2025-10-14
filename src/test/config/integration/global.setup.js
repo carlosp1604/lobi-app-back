@@ -1,32 +1,38 @@
 const { getPostgresTestContainer } = require('../postgres-testcontainer')
-const path = require('path')
-const { DataSource } = require('typeorm')
+const { env } = require('../../../modules/Shared/Infrastructure/env.loader')
 
 module.exports = async () => {
-  const pg = await getPostgresTestContainer()
+  let databaseHost
+  let databasePort
+  let databaseDb
+  let databaseUser
+  let databasePass
 
-  globalThis.__PG_TESTCONTAINER__ = pg.container
+  if (!process.env.CI) {
+    const pg = await getPostgresTestContainer()
 
-  process.env.PGTEST_HOST = pg.host
-  process.env.PGTEST_PORT = String(pg.port)
-  process.env.PGTEST_DB = pg.db
-  process.env.PGTEST_USER = pg.user
-  process.env.PGTEST_PASS = pg.pass
+    globalThis.__PG_TESTCONTAINER__ = pg.container
+    databaseHost = pg.host
+    databaseDb = pg.db
+    databaseUser = pg.user
+    databasePass = pg.pass
+    databasePort = String(pg.port)
+  } else {
+    if (!env.DATABASE_USER || !env.DATABASE_PORT || !env.DATABASE_NAME || !env.DATABASE_HOST || !env.DATABASE_PASSWORD) {
+      throw new Error('DATABASE_* env vars not set')
+    }
 
-  const dataSource = new DataSource({
-    type: 'postgres',
-    host: pg.host,
-    port: pg.port,
-    username: pg.user,
-    password: pg.pass,
-    database: pg.db,
-    synchronize: false,
-    migrationsRun: false,
-    logging: false,
-    migrations: [path.join(process.cwd(), 'src/db/migrations/*.{ts,js}')],
-  })
+    globalThis.__PG_TESTCONTAINER__ = null
+    databasePort = String(env.DATABASE_PORT)
+    databaseDb = env.DATABASE_NAME
+    databaseUser = env.DATABASE_USER
+    databasePass = env.DATABASE_PASSWORD
+    databaseHost = env.DATABASE_HOST
+  }
 
-  await dataSource.initialize()
-  await dataSource.runMigrations()
-  await dataSource.destroy()
+  process.env.PGTEST_HOST = databaseHost
+  process.env.PGTEST_PORT = databasePort
+  process.env.PGTEST_DB = databaseDb
+  process.env.PGTEST_USER = databaseUser
+  process.env.PGTEST_PASS = databasePass
 }

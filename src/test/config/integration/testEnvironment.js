@@ -42,6 +42,7 @@ class TestEnvironment extends NodeEnvironment {
           migrationsRun: false,
           logging: false,
           entities: [UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity],
+          migrations: [path.join(process.cwd(), 'dist/db/migrations/*.js')],
         }),
       ],
     }).compile()
@@ -53,6 +54,9 @@ class TestEnvironment extends NodeEnvironment {
     if (!dataSource.isInitialized) {
       await dataSource.initialize()
     }
+
+    await dataSource.dropDatabase()
+    await dataSource.runMigrations()
 
     this.global.nestApp = app
     this.global.dataSource = dataSource
