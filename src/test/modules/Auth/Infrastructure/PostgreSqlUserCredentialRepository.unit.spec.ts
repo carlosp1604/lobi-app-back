@@ -1,13 +1,16 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
 import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { EntityManager, Repository } from 'typeorm'
+import { EntityManager, EntitySchema, Repository } from 'typeorm'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
+import {
+  UserCredentialEntity,
+  UserCredentialRawWitRelationships,
+} from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 
 describe('PostgreSqlUserCredentialRepository', () => {
@@ -101,6 +104,138 @@ describe('PostgreSqlUserCredentialRepository', () => {
       const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
 
       await expect(repository.saveLoginSuccess(userCredential, context)).rejects.toThrow(
+        Error('Something went wrong while translating entity to database'),
+      )
+    })
+  })
+
+  describe('findByUserId', () => {
+    const userId = UserIdMother.valid()
+    const context: TxContext = { __opaque_tx_context: true }
+
+    const rawUserCredential = makeRawUserCredential({
+      user_id: userId.toString(),
+    })
+
+    const expectedUserCredential = new UserCredentialTestBuilder().withUserId(userId).build()
+
+    beforeEach(() => {
+      mockReset(mockedResolver)
+      mockReset(mockedEntityManager)
+    })
+
+    const checkCommonCalls = () => {
+      expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+      expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
+      expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
+      expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(UserCredentialEntity)
+      expect(mockedUserCredentialRepository.findOneBy).toHaveBeenCalledTimes(1)
+      expect(mockedUserCredentialRepository.findOneBy).toHaveBeenCalledWith({ user_id: userId.toString() })
+    }
+
+    it('should call services correctly when userCredential is found', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserCredentialRepository)
+      mockedUserCredentialRepository.findOneBy.mockResolvedValueOnce(
+        rawUserCredential as unknown as EntitySchema<UserCredentialRawWitRelationships>,
+      )
+
+      const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
+
+      const userCredentialModelTranslatorSpy = jest
+        .spyOn(UserCredentialModelTranslator, 'toDomain')
+        .mockReturnValueOnce(expectedUserCredential)
+
+      await repository.findByUserId(userId.toString(), context)
+
+      checkCommonCalls()
+      expect(userCredentialModelTranslatorSpy).toHaveBeenCalledTimes(1)
+      expect(userCredentialModelTranslatorSpy).toHaveBeenCalledWith(rawUserCredential)
+    })
+
+    it('should call services correctly when userCredential is not found', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserCredentialRepository)
+      mockedUserCredentialRepository.findOneBy.mockResolvedValueOnce(null)
+
+      const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
+
+      const userCredentialModelTranslatorSpy = jest
+        .spyOn(UserCredentialModelTranslator, 'toDomain')
+        .mockReturnValueOnce(expectedUserCredential)
+
+      await repository.findByUserId(userId.toString(), context)
+
+      checkCommonCalls()
+      expect(userCredentialModelTranslatorSpy).not.toHaveBeenCalled()
+    })
+
+    it('should return the correct data when userCredential is found', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserCredentialRepository)
+      mockedUserCredentialRepository.findOneBy.mockResolvedValueOnce(
+        rawUserCredential as unknown as EntitySchema<UserCredentialRawWitRelationships>,
+      )
+
+      const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
+
+      jest.spyOn(UserCredentialModelTranslator, 'toDomain').mockReturnValueOnce(expectedUserCredential)
+
+      const result = await repository.findByUserId(userId.toString(), context)
+
+      expect(result).toBe(expectedUserCredential)
+    })
+
+    it('should return NULL when userCredential is not found', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserCredentialRepository)
+      mockedUserCredentialRepository.findOneBy.mockResolvedValueOnce(null)
+
+      const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
+
+      const result = await repository.findByUserId(userId.toString(), context)
+
+      expect(result).toBe(null)
+    })
+
+    it('should throw error if resolver throws', async () => {
+      mockedResolver.resolve.mockImplementationOnce(() => {
+        throw new Error('Something went wrong while resolving entity manager')
+      })
+
+      const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
+
+      await expect(repository.findByUserId(userId.toString(), context)).rejects.toThrow(
+        Error('Something went wrong while resolving entity manager'),
+      )
+    })
+
+    it('should throw error if ORM/Database fails', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserCredentialRepository)
+      mockedUserCredentialRepository.findOneBy.mockImplementationOnce(() => {
+        throw new Error('Something went wrong')
+      })
+
+      const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
+
+      await expect(repository.findByUserId(userId.toString(), context)).rejects.toThrow(Error('Something went wrong'))
+    })
+
+    it('should throw error if translator fails', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserCredentialRepository)
+      mockedUserCredentialRepository.findOneBy.mockResolvedValueOnce(
+        rawUserCredential as unknown as EntitySchema<UserCredentialRawWitRelationships>,
+      )
+
+      jest.spyOn(UserCredentialModelTranslator, 'toDomain').mockImplementationOnce(() => {
+        throw new Error('Something went wrong while translating entity to database')
+      })
+
+      const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
+
+      await expect(repository.findByUserId(userId.toString(), context)).rejects.toThrow(
         Error('Something went wrong while translating entity to database'),
       )
     })

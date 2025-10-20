@@ -19,7 +19,7 @@ export interface UserRawModel {
 export type UserRawModelWithRelations = UserRawModel &
   Partial<{
     credential: UserCredentialRawModel | null
-    sessions: Promise<Array<UserSessionRawModel>>
+    sessions: Array<UserSessionRawModel>
   }>
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
@@ -97,7 +97,7 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       type: 'one-to-many',
       target: 'UserSessionEntity',
       inverseSide: 'user',
-      lazy: true,
+      lazy: false,
       cascade: false,
     },
   },

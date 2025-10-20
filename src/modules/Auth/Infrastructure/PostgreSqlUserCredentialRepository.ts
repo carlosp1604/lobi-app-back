@@ -28,4 +28,24 @@ export class PostgreSqlUserCredentialRepository implements UserCredentialReposit
       updated_at,
     })
   }
+
+  /**
+   * Finds the UserCredential entity for a given user ID
+   * @param userId User ID
+   * @param context The transactional context
+   * @returns UserCredential entity if found, otherwise null
+   */
+  public async findByUserId(userId: string, context?: TxContext): Promise<UserCredential | null> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userCredentialRepository = entityManager.getRepository(UserCredentialEntity)
+
+    const userCredential = await userCredentialRepository.findOneBy({ user_id: userId })
+
+    if (!userCredential) {
+      return null
+    }
+
+    return UserCredentialModelTranslator.toDomain(userCredential)
+  }
 }

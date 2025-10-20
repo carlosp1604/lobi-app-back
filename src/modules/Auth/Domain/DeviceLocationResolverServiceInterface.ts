@@ -1,7 +1,6 @@
-export interface DeviceLocation {
-  country: string
+export interface ResolvedDeviceLocation {
+  countryCode: string
   city: string
-  timezone: string
 }
 
 export interface DeviceLocationResolverServiceInterface {
@@ -10,5 +9,5 @@ export interface DeviceLocationResolverServiceInterface {
    * @param ip the IP address to resolve
    * @returns the resolved DeviceLocation, or null if not available
    */
-  resolve(ip: string): Promise<DeviceLocation | null>
+  resolve(ip: string): Promise<ResolvedDeviceLocation | null>
 }

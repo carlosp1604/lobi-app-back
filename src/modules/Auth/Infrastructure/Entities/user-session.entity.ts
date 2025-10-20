@@ -9,9 +9,8 @@ export interface UserSessionRawModel {
   revoked_at: Date | null
   ip_hash: string | null
   user_agent: string
-  device_country: string | null
+  device_country_code: string | null
   device_city: string | null
-  device_timezone: string | null
   created_at: Date
   updated_at: Date
 }
@@ -55,7 +54,7 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
       length: 512,
       nullable: false,
     },
-    device_country: {
+    device_country_code: {
       type: String,
       length: 2,
       nullable: true,
@@ -63,11 +62,6 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
     device_city: {
       type: String,
       length: 255,
-      nullable: true,
-    },
-    device_timezone: {
-      type: String,
-      length: 64,
       nullable: true,
     },
     created_at: {

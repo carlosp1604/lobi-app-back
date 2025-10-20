@@ -18,9 +18,6 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
-import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
-import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
-import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
@@ -29,43 +26,40 @@ import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObjec
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
-import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
+import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
+import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 
 interface NormalizedIpWithHash {
   normalizedIp: string
   hashedIp: UserSessionIpHash
 }
 
-interface ResolvedDeviceLocation {
-  country: string | null
-  city: string | null
-  timezone: string | null
-}
-
 export class LoginUser {
   constructor(
-    private readonly usersRepository: UserRepositoryInterface,
-    private readonly credentialsRepository: UserCredentialRepositoryInterface,
-    private readonly sessionsRepository: UserSessionRepositoryInterface,
+    private readonly userRepository: UserRepositoryInterface,
+    private readonly credentialRepository: UserCredentialRepositoryInterface,
+    private readonly sessionRepository: UserSessionRepositoryInterface,
     private readonly domainEventRepository: DomainEventRepositoryInterface,
     private readonly passwordHasher: PasswordHasherServiceInterface,
-    private readonly tokenGenerator: TokenGeneratorApplicationServiceInterface,
+    private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly hasherService: HasherServiceInterface,
     private readonly deviceLocationResolver: DeviceLocationResolverServiceInterface,
     private readonly maxSessionsPolicy: MaxSessionsPolicy,
-    private readonly clock: ClockServiceInterface,
+    private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
     private readonly idGeneratorService: IdGeneratorServiceInterface,
     private readonly ipValidator: IpValidatorServiceInterface,
-    private readonly accessTtlMilliseconds: number,
-    private readonly refreshTtlMilliseconds: number,
   ) {}
 
   public async execute(
     request: LoginUserApplicationRequestDto,
   ): Promise<Result<LoginUserApplicationResponseDto, LoginUserApplicationError>> {
-    const now = this.clock.now()
+    const now = this.clockService.now()
 
     const validateUserEmailResult = this.validateUserEmail(request.email)
 
@@ -76,69 +70,76 @@ export class LoginUser {
     const userEmail = validateUserEmailResult.value
     const userAgent = this.validateUserAgent(request.userAgent, userEmail)
 
-    const getUserWithCredentialsResult = await this.getAndValidateUserWithCredentials(userEmail)
+    return this.unitOfWork.runInTransaction(async (context) => {
+      const getAndValidateUserResult = await this.getAndValidateUser(userEmail, context)
 
-    if (!getUserWithCredentialsResult.success) {
-      return getUserWithCredentialsResult
-    }
+      if (!getAndValidateUserResult.success) {
+        return getAndValidateUserResult
+      }
 
-    const user: User = getUserWithCredentialsResult.value
-    const credentials: UserCredential = user.credential as UserCredential
+      const user: User = getAndValidateUserResult.value
 
-    const validateAndHashIpResult = await this.validateAndHashIp(request.ip, userAgent, user)
+      const getUserCredential = await this.getUserCredential(user.id, context)
 
-    let sessionIpHash: UserSessionIpHash | null = null
-    let normalizedIp: string | null = null
+      if (!getUserCredential.success) {
+        return getUserCredential
+      }
 
-    if (validateAndHashIpResult) {
-      sessionIpHash = validateAndHashIpResult.hashedIp
-      normalizedIp = validateAndHashIpResult.normalizedIp
-    }
+      const credentials = getUserCredential.value
 
-    const deviceLocation = await this.resolveDeviceLocation(normalizedIp, userEmail, userAgent)
+      const validateAndHashIpResult = await this.validateAndHashIp(request.ip, userAgent, user)
 
-    const validatePasswordResult = await this.validateCredentials(
-      credentials,
-      request.password,
-      user,
-      sessionIpHash,
-      userAgent,
-      deviceLocation,
-      now,
-    )
+      let sessionIpHash: UserSessionIpHash | null = null
+      let normalizedIp: string | null = null
 
-    if (!validatePasswordResult.success) {
-      return validatePasswordResult
-    }
+      if (validateAndHashIpResult) {
+        sessionIpHash = validateAndHashIpResult.hashedIp
+        normalizedIp = validateAndHashIpResult.normalizedIp
+      }
 
-    credentials.resetAfterSuccessfulLogin(now)
+      const deviceLocation = await this.resolveDeviceLocation(normalizedIp, userEmail, userAgent)
 
-    const sessionId = UserSessionId.fromString(this.idGeneratorService.generateId())
-    const sessionExpiresAt = new Date(now.getTime() + this.refreshTtlMilliseconds)
-    const clearSessionToken = await this.tokenGenerator.generateSessionToken()
-    const hashedToken = await this.hasherService.hash(clearSessionToken)
-    const sessionHash = UserSessionHash.fromString(hashedToken)
+      const passwordMatches = await this.passwordHasher.compare(request.password, credentials.passwordHash.toString())
 
-    const session = UserSession.create(sessionId, user.id, sessionHash, userAgent, sessionExpiresAt, now, {
-      ipHash: sessionIpHash,
-      deviceCountry: deviceLocation.country,
-      deviceCity: deviceLocation.city,
-      deviceTimezone: deviceLocation.timezone,
-    })
+      if (!passwordMatches) {
+        const domainEvent = this.buildFailedAttemptDomainEvent(user.id, deviceLocation, sessionIpHash, userAgent, now)
 
-    const accessExpiresAt = new Date(now.getTime() + this.accessTtlMilliseconds)
-    const accessToken = await this.tokenGenerator.generateAccessToken(user.id.toString(), sessionId.toString(), accessExpiresAt, now)
+        await this.domainEventRepository.save(domainEvent, context)
 
-    const isNewDevice = !(await this.sessionsRepository.existsDevice(session))
-    await this.saveSuccessfulLogin(credentials, user, session, isNewDevice, deviceLocation, now)
+        return fail(LoginUserApplicationError.invalidCredentials(user.id.toString()))
+      }
 
-    return success({
-      accessToken,
-      refreshToken: clearSessionToken,
-      sessionId: sessionId.toString(),
-      accessTokenExpiresAt: accessExpiresAt,
-      refreshTokenExpiresAt: sessionExpiresAt,
-      isNewDevice,
+      credentials.resetAfterSuccessfulLogin(now)
+
+      const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
+        await this.generateTokensService.generate(user.id, now, userAgent, sessionIpHash, deviceLocation)
+
+      const activeSessions = await this.sessionRepository.findUserActiveSessions(user.id.toString(), now, context)
+
+      const isNewDevice = !activeSessions.find((activeSession) => activeSession.isSameDeviceAs(session))
+
+      const sessionsToRevoke = this.maxSessionsPolicy.sessionsToRevoke(activeSessions)
+
+      await this.credentialRepository.saveLoginSuccess(credentials, context)
+
+      const revokeAndPersistSessionsResult = await this.revokeAndPersistSessions(sessionsToRevoke, session, now, context)
+
+      if (!revokeAndPersistSessionsResult.success) {
+        return revokeAndPersistSessionsResult
+      }
+
+      const domainEvent = this.buildSuccessfulLoginDomainEvent(session, isNewDevice, now)
+
+      await this.domainEventRepository.save(domainEvent, context)
+
+      return success({
+        accessToken,
+        refreshToken,
+        sessionId: session.id.toString(),
+        accessTokenExpiresAt,
+        refreshTokenExpiresAt,
+        isNewDevice,
+      })
     })
   }
 
@@ -150,22 +151,28 @@ export class LoginUser {
     }
   }
 
-  private async getAndValidateUserWithCredentials(userEmail: UserEmail): Promise<Result<User, LoginUserApplicationError>> {
-    const userWithCredentials = await this.usersRepository.findByEmailWithCredentials(userEmail.toString())
+  private async getAndValidateUser(userEmail: UserEmail, context: TxContext): Promise<Result<User, LoginUserApplicationError>> {
+    const user = await this.userRepository.findByEmailWithLock(userEmail.toString(), context)
 
-    if (!userWithCredentials) {
+    if (!user) {
       return fail(LoginUserApplicationError.userNotFound(userEmail.toString()))
     }
 
-    if (userWithCredentials.deletedAt || !userWithCredentials.status.equals(UserStatus.active())) {
+    if (user.deletedAt || !user.status.equals(UserStatus.active())) {
       return fail(LoginUserApplicationError.userNotFound(userEmail.toString()))
     }
 
-    if (!userWithCredentials.credential) {
-      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(userWithCredentials.id.toString()))
+    return success(user)
+  }
+
+  private async getUserCredential(userId: UserId, context: TxContext): Promise<Result<UserCredential, LoginUserApplicationError>> {
+    const userCredential = await this.credentialRepository.findByUserId(userId.toString(), context)
+
+    if (!userCredential) {
+      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(userId.toString()))
     }
 
-    return success(userWithCredentials)
+    return success(userCredential)
   }
 
   private validateUserAgent(userAgent: string, userEmail: UserEmail): UserAgent {
@@ -212,127 +219,123 @@ export class LoginUser {
     normalizedIp: string | null,
     userEmail: UserEmail,
     userAgent: UserAgent,
-  ): Promise<ResolvedDeviceLocation> {
-    let country: string | null = null
-    let city: string | null = null
-    let timezone: string | null = null
-
+  ): Promise<DeviceLocation | null> {
     if (normalizedIp) {
       try {
-        const deviceLocation = await this.deviceLocationResolver.resolve(normalizedIp)
+        const resolvedDeviceLocation = await this.deviceLocationResolver.resolve(normalizedIp)
 
-        if (deviceLocation) {
-          country = deviceLocation.country
-          city = deviceLocation.city
-          timezone = deviceLocation.timezone
+        if (!resolvedDeviceLocation) {
+          return null
         }
-      } catch (exception: unknown) {
-        const error = exception instanceof Error ? exception : new Error(String(exception))
 
-        this.loggerService.error('Device location resolver failed', error.stack, {
+        return DeviceLocation.fromProps({ city: resolvedDeviceLocation.city, countryCode: resolvedDeviceLocation.countryCode })
+      } catch (exception: unknown) {
+        const stack = exception instanceof Error ? exception.stack : String(exception)
+
+        this.loggerService.error('Device location resolver failed', stack, {
           userEmail: userEmail.toString(),
           ip: normalizedIp,
           userAgent: userAgent.toString(),
+          error: exception,
         })
       }
     }
 
-    return {
-      country,
-      city,
-      timezone,
-    }
+    return null
   }
 
-  private async validateCredentials(
-    credentials: UserCredential,
-    password: string,
-    user: User,
-    ipHash: UserSessionIpHash | null,
-    userAgent: UserAgent,
-    deviceLocation: ResolvedDeviceLocation,
+  private async revokeAndPersistSessions(
+    sessionsToRevoke: Array<UserSession>,
+    newSession: UserSession,
     now: Date,
+    context: TxContext,
   ): Promise<Result<void, LoginUserApplicationError>> {
-    const passwordMatches = await this.passwordHasher.compare(password, credentials.passwordHash.toString())
+    for (const session of sessionsToRevoke) {
+      try {
+        session.revoke(now)
+      } catch (exception: unknown) {
+        if (exception instanceof UserSessionDomainException) {
+          this.loggerService.error('Cannot revoke session', exception.stack, {
+            sessionId: session.id.toString(),
+            userId: session.userId.toString(),
+            revokedAt: session.revokedAt,
+            expiresAt: session.expiresAt,
+          })
 
-    if (!passwordMatches) {
-      //TODO: This might need be changed when locks mechanism is implemented
-      //credentials.incrementFailedAttempts(now)
+          return fail(LoginUserApplicationError.cannotRevokeSession(exception.message))
+        }
 
-      //const lockUntil = this.lockoutPolicy.evaluateLock(credentials, now)
+        const stack = exception instanceof Error ? exception.stack : String(exception)
 
-      //if (lockUntil) {
-      //credentials.lock(lockUntil, now)
-      //}
+        this.loggerService.error('Unexpected error while revoking session', stack, {
+          sessionId: session.id.toString(),
+          userId: session.userId.toString(),
+          revokedAt: session.revokedAt,
+          expiresAt: session.expiresAt,
+          error: exception,
+        })
 
-      await this.unitOfWork.runInTransaction(async (ctx) => {
-        //await this.credentialsRepository.saveFailedAttempts(credentials, ctx)
-
-        //if (lockUntil) {
-        //await this.credentialsRepository.saveLock(credentials, ctx)
-        //}
-
-        const domainEvent = DomainEvent.create(
-          DomainEventId.fromString(this.idGeneratorService.generateId()),
-          DomainEventName.failedLoginAttempt(),
-          DomainEventAggregateType.user(),
-          DomainEventAggregateId.fromString(user.id.toString()),
-          {
-            userId: user.id.toString(),
-            country: deviceLocation.country,
-            city: deviceLocation.city,
-            timezone: deviceLocation.timezone,
-          },
-          {
-            ipHash: ipHash ? ipHash.toString() : null,
-            ua: userAgent.toString(),
-          },
-          now,
-        )
-
-        await this.domainEventRepository.save(domainEvent, ctx)
-      })
-
-      return fail(LoginUserApplicationError.invalidCredentials(user.id.toString()))
+        throw Error(`Unexpected error while revoking session ${session.id.toString()}`)
+      }
     }
+
+    const sessionsToPersist = [...sessionsToRevoke, newSession]
+    await this.sessionRepository.save(sessionsToPersist, context)
 
     return success(undefined)
   }
 
-  private async saveSuccessfulLogin(
-    credentials: UserCredential,
-    user: User,
-    session: UserSession,
-    isNewDevice: boolean,
-    deviceLocation: ResolvedDeviceLocation,
+  private buildFailedAttemptDomainEvent(
+    userId: UserId,
+    deviceLocation: DeviceLocation | null,
+    ipHash: UserSessionIpHash | null,
+    userAgent: UserAgent,
     now: Date,
-  ): Promise<void> {
-    await this.unitOfWork.runInTransaction(async (ctx) => {
-      await this.credentialsRepository.saveLoginSuccess(credentials, ctx)
+  ): DomainEvent {
+    return DomainEvent.create(
+      DomainEventId.fromString(this.idGeneratorService.generateId()),
+      DomainEventName.failedLoginAttempt(),
+      DomainEventAggregateType.user(),
+      DomainEventAggregateId.fromString(userId.toString()),
+      {
+        userId: userId.toString(),
+        deviceLocation: deviceLocation
+          ? {
+              city: deviceLocation.city,
+              countryCode: deviceLocation.countryCode,
+            }
+          : null,
+      },
+      {
+        ipHash: ipHash ? ipHash.toString() : null,
+        ua: userAgent.toString(),
+      },
+      now,
+    )
+  }
 
-      await this.sessionsRepository.revokeOldestAndSave(session, this.maxSessionsPolicy.maxSessions, ctx)
-
-      const domainEvent = DomainEvent.create(
-        DomainEventId.fromString(this.idGeneratorService.generateId()),
-        DomainEventName.successfulLogin(),
-        DomainEventAggregateType.user(),
-        DomainEventAggregateId.fromString(user.id.toString()),
-        {
-          userId: user.id.toString(),
-          sessionId: session.id.toString(),
-          isNewDevice,
-          country: deviceLocation.country,
-          city: deviceLocation.city,
-          timezone: deviceLocation.timezone,
-        },
-        {
-          ipHash: session.ipHash ? session.ipHash.toString() : null,
-          ua: session.userAgent.toString(),
-        },
-        now,
-      )
-
-      await this.domainEventRepository.save(domainEvent, ctx)
-    })
+  private buildSuccessfulLoginDomainEvent(session: UserSession, isNewDevice: boolean, now: Date): DomainEvent {
+    return DomainEvent.create(
+      DomainEventId.fromString(this.idGeneratorService.generateId()),
+      DomainEventName.successfulLogin(),
+      DomainEventAggregateType.user(),
+      DomainEventAggregateId.fromString(session.userId.toString()),
+      {
+        userId: session.userId.toString(),
+        deviceLocation: session.deviceLocation
+          ? {
+              city: session.deviceLocation.city,
+              countryCode: session.deviceLocation.countryCode,
+            }
+          : null,
+        sessionId: session.id.toString(),
+        isNewDevice,
+      },
+      {
+        ipHash: session.ipHash ? session.ipHash.toString() : null,
+        ua: session.userAgent.toString(),
+      },
+      now,
+    )
   }
 }

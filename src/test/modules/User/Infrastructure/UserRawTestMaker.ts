@@ -5,7 +5,6 @@ import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
-import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
 
 export const makeRawUser = (overrides: Partial<UserRawModelWithRelations> = {}): UserRawModelWithRelations => {
   return {
@@ -15,7 +14,7 @@ export const makeRawUser = (overrides: Partial<UserRawModelWithRelations> = {}):
     name: overrides.name ?? UserNameMother.valid().toString(),
     status: overrides.status ?? UserStatus.active().toString(),
     role: overrides.role ?? UserRole.sportsman().toString(),
-    user_upload_id: overrides.user_upload_id ?? UserUploadIdMother.valid().toString(),
+    user_upload_id: overrides.user_upload_id ?? null,
     email_verified_at: overrides.email_verified_at ?? new Date(),
     created_at: overrides.created_at ?? new Date(),
     updated_at: overrides.updated_at ?? new Date(),

@@ -6,6 +6,7 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import {
   DEVICE_LOCATION_RESOLVER,
   DOMAIN_EVENT_REPOSITORY,
+  GENERATE_TOKENS_SERVICE,
   HASHER_SERVICE,
   IP_VALIDATOR,
   LOGIN_USER,
@@ -48,6 +49,7 @@ import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities
 import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
+import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 
 @Module({
   imports: [ConfigModule, TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity])],
@@ -102,7 +104,7 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
     {
       provide: HASHER_SERVICE,
       useFactory: (configService: ConfigService<Env, true>) => {
-        return new NodeHasherService(configService.get<string>('HASH_SECRET', { infer: true }))
+        return new NodeHasherService(configService.get('HASH_SECRET', { infer: true }))
       },
       inject: [ConfigService],
     },
@@ -111,9 +113,21 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
     {
       provide: MAX_SESSIONS_POLICY,
       useFactory: (configService: ConfigService<Env, true>) => {
-        return new MaxSessionsPolicy({ maxActive: configService.get('USER_MAX_SESSIONS', { infer: true }) })
+        return new MaxSessionsPolicy(configService.get('USER_MAX_SESSIONS', { infer: true }))
       },
       inject: [ConfigService],
+    },
+    {
+      provide: GENERATE_TOKENS_SERVICE,
+      useFactory: (
+        idGeneratorService: IdGeneratorServiceInterface,
+        tokenGenerator: TokenGeneratorApplicationServiceInterface,
+        hasherService: HasherServiceInterface,
+        configService: ConfigService<Env, true>,
+      ) => {
+        return new GenerateTokensApplicationService(idGeneratorService, tokenGenerator, hasherService, configService)
+      },
+      inject: [ID_GENERATOR, TOKEN_GENERATOR, HASHER_SERVICE, ConfigService],
     },
     {
       provide: LOGIN_USER,
@@ -123,7 +137,7 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
         sessionsRepository: UserSessionRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
         passwordHasher: PasswordHasherServiceInterface,
-        tokenGenerator: TokenGeneratorApplicationServiceInterface,
+        generateTokensService: GenerateTokensApplicationService,
         hasherService: HasherServiceInterface,
         deviceLocationResolver: DeviceLocationResolverServiceInterface,
         maxSessionsPolicy: MaxSessionsPolicy,
@@ -132,7 +146,6 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
         loggerService: LoggerServiceInterface,
         idGeneratorService: IdGeneratorServiceInterface,
         ipValidator: IpValidatorServiceInterface,
-        configService: ConfigService<Env, true>,
       ) =>
         new LoginUser(
           usersRepository,
@@ -140,7 +153,7 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
           sessionsRepository,
           domainEventRepository,
           passwordHasher,
-          tokenGenerator,
+          generateTokensService,
           hasherService,
           deviceLocationResolver,
           maxSessionsPolicy,
@@ -149,8 +162,6 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
           loggerService,
           idGeneratorService,
           ipValidator,
-          configService.get('ACCESS_TTL_MS', { infer: true }),
-          configService.get('REFRESH_TTL_MS', { infer: true }),
         ),
       inject: [
         USER_REPOSITORY,
@@ -158,7 +169,7 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
         USER_SESSION_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
         PASSWORD_HASHER,
-        TOKEN_GENERATOR,
+        GENERATE_TOKENS_SERVICE,
         HASHER_SERVICE,
         DEVICE_LOCATION_RESOLVER,
         MAX_SESSIONS_POLICY,
@@ -167,7 +178,6 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
         LOGGER_SERVICE,
         ID_GENERATOR,
         IP_VALIDATOR,
-        ConfigService,
       ],
     },
   ],

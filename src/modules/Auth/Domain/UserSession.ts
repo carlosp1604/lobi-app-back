@@ -3,15 +3,8 @@ import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-
-interface CreateUserSessionExtraParams {
-  ipHash: UserSessionIpHash | null
-  deviceCountry: string | null
-  deviceCity: string | null
-  deviceTimezone?: string | null
-}
-
-export type CreateUserSessionOptionalParams = Partial<CreateUserSessionExtraParams>
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 
 export class UserSession {
   public readonly id: UserSessionId
@@ -21,9 +14,7 @@ export class UserSession {
   public revokedAt: Date | null
   public ipHash: UserSessionIpHash | null
   public userAgent: UserAgent
-  public deviceCountry: string | null
-  public deviceCity: string | null
-  public deviceTimezone: string | null
+  public deviceLocation: DeviceLocation | null
 
   public readonly createdAt: Date
   public updatedAt: Date
@@ -36,9 +27,7 @@ export class UserSession {
     revokedAt: Date | null,
     ipHash: UserSessionIpHash | null,
     userAgent: UserAgent,
-    deviceCountry: string | null,
-    deviceCity: string | null,
-    deviceTimezone: string | null,
+    deviceLocation: DeviceLocation | null,
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -49,9 +38,7 @@ export class UserSession {
     this.revokedAt = revokedAt
     this.ipHash = ipHash
     this.userAgent = userAgent
-    this.deviceCountry = deviceCountry
-    this.deviceCity = deviceCity
-    this.deviceTimezone = deviceTimezone
+    this.deviceLocation = deviceLocation
     this.createdAt = createdAt
     this.updatedAt = updatedAt
   }
@@ -63,21 +50,35 @@ export class UserSession {
     userAgent: UserAgent,
     expiresAt: Date,
     now: Date,
-    optionalParameters: CreateUserSessionOptionalParams,
+    ipHash: UserSessionIpHash | null,
+    deviceLocation: DeviceLocation | null,
   ): UserSession {
-    return new UserSession(
-      id,
-      userId,
-      tokenHash,
-      expiresAt,
-      null,
-      optionalParameters?.ipHash ?? null,
-      userAgent,
-      optionalParameters?.deviceCountry ?? null,
-      optionalParameters?.deviceCity ?? null,
-      optionalParameters?.deviceTimezone ?? null,
-      now,
-      now,
-    )
+    return new UserSession(id, userId, tokenHash, expiresAt, null, ipHash, userAgent, deviceLocation, now, now)
+  }
+
+  public revoke(now: Date): void {
+    if (this.revokedAt !== null) {
+      throw UserSessionDomainException.sessionAlreadyRevoked(this.id.toString())
+    }
+
+    if (this.expiresAt.getTime() <= now.getTime()) {
+      throw UserSessionDomainException.sessionNotActive(this.id.toString())
+    }
+
+    this.revokedAt = now
+  }
+
+  public isSameDeviceAs(session: UserSession): boolean {
+    const sameUa = this.userAgent.equals(session.userAgent)
+
+    if (!this.ipHash && !session.ipHash) {
+      return sameUa
+    }
+
+    if (this.ipHash && session.ipHash && this.ipHash.equals(session.ipHash)) {
+      return sameUa
+    }
+
+    return false
   }
 }

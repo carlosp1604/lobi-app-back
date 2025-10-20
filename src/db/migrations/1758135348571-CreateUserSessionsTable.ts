@@ -47,7 +47,7 @@ export class CreateUserSessionsTable1758135348571 implements MigrationInterface 
             isNullable: false,
           },
           {
-            name: 'device_country',
+            name: 'device_country_code',
             type: 'varchar',
             length: '2',
             isNullable: true,
@@ -56,12 +56,6 @@ export class CreateUserSessionsTable1758135348571 implements MigrationInterface 
             name: 'device_city',
             type: 'varchar',
             length: '255',
-            isNullable: true,
-          },
-          {
-            name: 'device_timezone',
-            type: 'varchar',
-            length: '64',
             isNullable: true,
           },
           {

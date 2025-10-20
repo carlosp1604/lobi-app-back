@@ -7,15 +7,16 @@ import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
 describe('UserSessionModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
   const baseRaw = makeRawSession({
-    device_country: 'ES',
+    device_country_code: 'ES',
     device_city: 'Madrid',
-    device_timezone: 'Europe/Madrid',
     created_at: now,
     updated_at: now,
     ip_hash: UserSessionIpHashMother.valid().toString(),
@@ -24,7 +25,7 @@ describe('UserSessionModelTranslator', () => {
   })
 
   describe('toDomain', () => {
-    it('returns correct data', () => {
+    it('returns rhe correct data', () => {
       const result = UserSessionModelTranslator.toDomain(baseRaw)
 
       expect(result.id.toString()).toBe(baseRaw.id)
@@ -34,30 +35,26 @@ describe('UserSessionModelTranslator', () => {
       expect(result.revokedAt).toBeNull()
       expect(result.ipHash?.toString()).toBe(baseRaw.ip_hash)
       expect(result.userAgent?.toString()).toBe(baseRaw.user_agent)
-      expect(result.deviceCountry).toBe('ES')
-      expect(result.deviceCity).toBe('Madrid')
-      expect(result.deviceTimezone).toBe('Europe/Madrid')
+      expect(result.deviceLocation?.countryCode).toBe('ES')
+      expect(result.deviceLocation?.city).toBe('Madrid')
       expect(result.createdAt.toISOString()).toBe(isoDate)
       expect(result.updatedAt.toISOString()).toBe(isoDate)
     })
 
-    it('returns correct data when nullable fields are null', () => {
+    it('returns the correct data when nullable fields are null', () => {
       const raw: UserSessionRawModel = {
         ...baseRaw,
         revoked_at: null,
         ip_hash: null,
-        device_country: null,
+        device_country_code: null,
         device_city: null,
-        device_timezone: null,
       }
 
       const result = UserSessionModelTranslator.toDomain(raw)
 
       expect(result.revokedAt).toBeNull()
       expect(result.ipHash).toBeNull()
-      expect(result.deviceCountry).toBeNull()
-      expect(result.deviceCity).toBeNull()
-      expect(result.deviceTimezone).toBeNull()
+      expect(result.deviceLocation).toBeNull()
     })
 
     it('does not mutate input', () => {
@@ -71,6 +68,7 @@ describe('UserSessionModelTranslator', () => {
 
   describe('toDatabase', () => {
     let sessionBuilder = new UserSessionTestBuilder()
+    const validDeviceLocation = DeviceLocationMother.valid()
 
     beforeEach(() => {
       sessionBuilder = new UserSessionTestBuilder()
@@ -81,14 +79,12 @@ describe('UserSessionModelTranslator', () => {
         .withRevokedAt(null)
         .withIpHash(UserSessionIpHashMother.valid())
         .withUserAgent(UserAgentMother.valid())
-        .withDeviceCountry('ES')
-        .withDeviceCity('Madrid')
-        .withDeviceTimezone('Europe/Madrid')
+        .withDeviceLocation(validDeviceLocation)
         .withCreatedAt(now)
         .withUpdatedAt(now)
     })
 
-    it('returns correct data', () => {
+    it('returns the correct data', () => {
       const session = sessionBuilder.build()
 
       const raw = UserSessionModelTranslator.toDatabase(session)
@@ -101,30 +97,42 @@ describe('UserSessionModelTranslator', () => {
         revoked_at: null,
         ip_hash: session.ipHash?.toString(),
         user_agent: session.userAgent?.toString(),
-        device_country: 'ES',
-        device_city: 'Madrid',
-        device_timezone: 'Europe/Madrid',
+        device_country_code: validDeviceLocation.countryCode,
+        device_city: validDeviceLocation.city,
         created_at: now,
         updated_at: now,
       })
     })
 
     it('returns correct data when nullable fields are null', () => {
-      const session = sessionBuilder
-        .withRevokedAt(null)
-        .withIpHash(null)
-        .withDeviceCountry(null)
-        .withDeviceCity(null)
-        .withDeviceTimezone(null)
-        .build()
+      const session = sessionBuilder.withRevokedAt(null).withIpHash(null).withDeviceLocation(null).build()
 
       const raw = UserSessionModelTranslator.toDatabase(session)
 
       expect(raw.revoked_at).toBeNull()
       expect(raw.ip_hash).toBeNull()
-      expect(raw.device_country).toBeNull()
+      expect(raw.device_country_code).toBeNull()
       expect(raw.device_city).toBeNull()
-      expect(raw.device_timezone).toBeNull()
+    })
+
+    it('should throw an error if device location data is partial (city is null)', () => {
+      const raw: UserSessionRawModel = {
+        ...baseRaw,
+        device_country_code: 'ES',
+        device_city: null,
+      }
+
+      expect(() => UserSessionModelTranslator.toDomain(raw)).toThrow(UserSessionDomainException.invalidDeviceCity(''))
+    })
+
+    it('should throw an error if device location data is partial (countryCode is null)', () => {
+      const raw: UserSessionRawModel = {
+        ...baseRaw,
+        device_country_code: null,
+        device_city: 'Madrid',
+      }
+
+      expect(() => UserSessionModelTranslator.toDomain(raw)).toThrow(UserSessionDomainException.invalidDeviceCountryCode(''))
     })
 
     it('does not mutate input', () => {
@@ -133,14 +141,13 @@ describe('UserSessionModelTranslator', () => {
       const snapshot = {
         id: session.id.toString(),
         userId: session.userId.toString(),
-        token_hash: session.tokenHash.toString(),
+        tokenHash: session.tokenHash.toString(),
         expiresAt: session.expiresAt,
         revokedAt: session.revokedAt,
         ipHash: session.ipHash?.toString(),
         userAgent: session.userAgent?.toString(),
-        deviceCountry: session.deviceCountry,
-        deviceCity: session.deviceCity,
-        deviceTimezone: session.deviceTimezone,
+        deviceCountryCode: session.deviceLocation?.countryCode,
+        deviceCity: session.deviceLocation?.city,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
       }
@@ -149,14 +156,13 @@ describe('UserSessionModelTranslator', () => {
 
       expect(session.id.toString()).toBe(snapshot.id)
       expect(session.userId.toString()).toBe(snapshot.userId)
-      expect(session.tokenHash.toString()).toBe(snapshot.token_hash)
+      expect(session.tokenHash.toString()).toBe(snapshot.tokenHash)
       expect(session.expiresAt).toBe(snapshot.expiresAt)
       expect(session.revokedAt).toBe(snapshot.revokedAt)
       expect(session.ipHash?.toString()).toBe(snapshot.ipHash)
       expect(session.userAgent?.toString()).toBe(snapshot.userAgent)
-      expect(session.deviceCountry).toBe(snapshot.deviceCountry)
-      expect(session.deviceCity).toBe(snapshot.deviceCity)
-      expect(session.deviceTimezone).toBe(snapshot.deviceTimezone)
+      expect(session.deviceLocation?.countryCode).toBe(snapshot.deviceCountryCode)
+      expect(session.deviceLocation?.city).toBe(snapshot.deviceCity)
       expect(session.createdAt).toBe(snapshot.createdAt)
       expect(session.updatedAt).toBe(snapshot.updatedAt)
     })

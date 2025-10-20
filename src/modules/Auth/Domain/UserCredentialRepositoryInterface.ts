@@ -5,7 +5,15 @@ export interface UserCredentialRepositoryInterface {
   /**
    * Persists the last successful login access for the given UserCredential
    * @param userCredential UserCredential to update
-   * @param context the transactional context
+   * @param context The transactional context
    */
   saveLoginSuccess(userCredential: UserCredential, context: TxContext): Promise<void>
+
+  /**
+   * Finds the UserCredential entity for a given user ID
+   * @param userId User ID
+   * @param context The transactional context
+   * @returns UserCredential entity if found, otherwise null
+   */
+  findByUserId(userId: string, context?: TxContext): Promise<UserCredential | null>
 }

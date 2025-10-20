@@ -8,6 +8,7 @@ import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSession
 import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 
 export class UserSessionTestBuilder {
   private _id = UserSessionIdMother.valid()
@@ -15,9 +16,7 @@ export class UserSessionTestBuilder {
   private _tokenHash = UserSessionIpHashMother.valid()
   private _ipHash: UserSessionIpHash | null = null
   private _userAgent: UserAgent = UserAgentMother.valid()
-  private _deviceCountry: string | null = null
-  private _deviceCity: string | null = null
-  private _deviceTimezone: string | null = null
+  private _deviceLocation: DeviceLocation | null = null
   private _revokedAt: Date | null = null
   private _expiresAt = new Date()
   private _createdAt = new Date()
@@ -48,18 +47,8 @@ export class UserSessionTestBuilder {
     return this
   }
 
-  withDeviceCountry(deviceCountry: string | null) {
-    this._deviceCountry = deviceCountry
-    return this
-  }
-
-  withDeviceCity(deviceCity: string | null) {
-    this._deviceCity = deviceCity
-    return this
-  }
-
-  withDeviceTimezone(deviceTimezone: string | null) {
-    this._deviceTimezone = deviceTimezone
+  withDeviceLocation(deviceLocation: DeviceLocation | null) {
+    this._deviceLocation = deviceLocation
     return this
   }
 
@@ -92,9 +81,7 @@ export class UserSessionTestBuilder {
       this._revokedAt,
       this._ipHash,
       this._userAgent,
-      this._deviceCountry,
-      this._deviceCity,
-      this._deviceTimezone,
+      this._deviceLocation,
       this._createdAt,
       this._updatedAt,
     )

@@ -8,7 +8,6 @@ import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastru
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { BCryptPasswordHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptPasswordHasherService'
-import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
 import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
 import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
@@ -36,17 +35,25 @@ import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessi
 import { LoginUserApplicationResponseDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationResponseDto'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
+import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
+import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
+import { ConfigService } from '@nestjs/config'
 
 describe('LoginUser', () => {
+  const now = new Date()
+
   const userId = UserIdMother.valid()
   const userEmail = UserEmailMother.random()
   const expectedUserAgent = UserAgentMother.random()
+
   let userRepository: Repository<UserRawModelWithRelations>
   let userCredentialRepository: Repository<UserCredentialRawWitRelationships>
   let userSessionRepository: Repository<UserSessionRawWithRelationships>
   let domainEventRepository: Repository<DomainEventRawModel>
-  const now = new Date()
   let rawUser: UserRawModelWithRelations
+
+  const MOCK_ACCESS_TTL_MS = 900000
+  const MOCK_REFRESH_TTL_MS = 604800000
 
   let runner: QueryRunner
 
@@ -58,6 +65,17 @@ describe('LoginUser', () => {
 
   beforeEach(async () => {
     mockReset(mockedResolver)
+    mockReset(mockedConfigService)
+
+    mockedConfigService.get.mockImplementation((key: string) => {
+      if (key === 'REFRESH_TTL_MS') {
+        return MOCK_REFRESH_TTL_MS
+      }
+      if (key === 'ACCESS_TTL_MS') {
+        return MOCK_ACCESS_TTL_MS
+      }
+      return null
+    })
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
@@ -72,7 +90,9 @@ describe('LoginUser', () => {
       status: UserStatus.active().toString(),
     })
     await userRepository.save(rawUser)
+
     const userPassword = await passwordHasher.hash('expected-password')
+
     const rawUserCredential = makeRawUserCredential({
       user_id: userId.toString(),
       password_hash: userPassword,
@@ -82,14 +102,10 @@ describe('LoginUser', () => {
     await userCredentialRepository.save(rawUserCredential)
   })
 
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
+  const mockedConfigService = mock<ConfigService>()
   const passwordHasher = new BCryptPasswordHasherService(1)
   const hasherService = new NodeHasherService('test-hash-secret')
-  const refreshTtl = 600000
-  const accessTtl = 6000
+  const idGenerator = new NodeIdGeneratorService()
   const maxSessions = 4
 
   const buildUseCase = () => {
@@ -99,17 +115,21 @@ describe('LoginUser', () => {
       new PostgreSqlUserSessionRepository(mockedResolver),
       new PostgreSqlDomainEventRepository(mockedResolver),
       passwordHasher,
-      new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience'),
+      new GenerateTokensApplicationService(
+        idGenerator,
+        new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience'),
+        hasherService,
+        mockedConfigService,
+      ),
       hasherService,
       new NoopDeviceLocationResolverService(),
-      new MaxSessionsPolicy({ maxActive: maxSessions }),
+      new MaxSessionsPolicy(maxSessions),
       new ClockServiceMock(now),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
       new LoggerServiceMock(),
-      new NodeIdGeneratorService(),
+      idGenerator,
       new IpAddressIpValidatorService(),
-      accessTtl,
-      refreshTtl,
     )
   }
 
@@ -134,8 +154,8 @@ describe('LoginUser', () => {
           accessToken: expect.any(String),
           refreshToken: expect.any(String),
           sessionId: expect.any(String),
-          accessTokenExpiresAt: new Date(now.getTime() + accessTtl),
-          refreshTokenExpiresAt: new Date(now.getTime() + refreshTtl),
+          accessTokenExpiresAt: new Date(now.getTime() + MOCK_ACCESS_TTL_MS),
+          refreshTokenExpiresAt: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
           isNewDevice: newDevice,
         }),
       })
@@ -188,14 +208,13 @@ describe('LoginUser', () => {
       expect(userSession!.user_id).toBe(userId.toString())
       expect(userSession!.user_agent).toBe(expectedUserAgent.toString())
       expect(userSession!.ip_hash).toBeNull()
-      expect(userSession!.device_country).toBeNull()
+      expect(userSession!.device_country_code).toBeNull()
       expect(userSession!.device_city).toBeNull()
-      expect(userSession!.device_timezone).toBeNull()
       expect(userSession!.token_hash).toBe(expectedSessionHash)
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(userSession!.token_hash).not.toBe(result.value!.refreshToken)
-      expect(userSession!.expires_at.getTime()).toBe(now.getTime() + refreshTtl)
+      expect(userSession!.expires_at.getTime()).toBe(now.getTime() + MOCK_REFRESH_TTL_MS)
 
       expect(userCredential).toBeTruthy()
       expect(userCredential!.last_login_at!.getTime()).toBe(now.getTime())
@@ -211,9 +230,7 @@ describe('LoginUser', () => {
       expect(payload.userId).toBe(userId.toString())
       expect(payload.sessionId).toBe(sessionId)
       expect(payload.isNewDevice).toBe(true)
-      expect(payload.country).toBeNull()
-      expect(payload.city).toBeNull()
-      expect(payload.timezone).toBeNull()
+      expect(payload.deviceLocation)
 
       const meta = domainEvent!.metadata
       expect(meta.ipHash).toBeNull()
@@ -224,21 +241,21 @@ describe('LoginUser', () => {
       const rawSession1 = makeRawSession({
         user_id: userId.toString(),
         revoked_at: null,
-        expires_at: new Date(now.getTime() + refreshTtl),
+        expires_at: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
         created_at: new Date(now.getTime() - 10),
       })
 
       const rawSession2 = makeRawSession({
         user_id: userId.toString(),
         revoked_at: null,
-        expires_at: new Date(now.getTime() + refreshTtl),
+        expires_at: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
         created_at: new Date(now.getTime() - 9),
       })
 
       const rawSession3 = makeRawSession({
         user_id: userId.toString(),
         revoked_at: null,
-        expires_at: new Date(now.getTime() + refreshTtl),
+        expires_at: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
         created_at: new Date(now.getTime() - 8),
       })
 
@@ -247,7 +264,7 @@ describe('LoginUser', () => {
       const rawSessionSameDevice = makeRawSession({
         user_id: userId.toString(),
         revoked_at: null,
-        expires_at: new Date(now.getTime() + refreshTtl),
+        expires_at: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
         ip_hash: ipHash,
         user_agent: 'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.8) Gecko/2009032711 Ubuntu/9.04 (Jaunty Jackalope) Firefox/3.0.8',
         created_at: new Date(now.getTime()),
@@ -319,14 +336,13 @@ describe('LoginUser', () => {
         'Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.9.0.8) Gecko/2009032711 Ubuntu/9.04 (Jaunty Jackalope) Firefox/3.0.8',
       )
       expect(newUserSession.ip_hash).toBe(ipHash)
-      expect(newUserSession.device_country).toBeNull()
+      expect(newUserSession.device_country_code).toBeNull()
       expect(newUserSession.device_city).toBeNull()
-      expect(newUserSession.device_timezone).toBeNull()
       expect(newUserSession.token_hash).toBe(expectedSessionHash)
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(newUserSession.token_hash).not.toBe(result.value!.refreshToken)
-      expect(newUserSession.expires_at.getTime()).toBe(now.getTime() + refreshTtl)
+      expect(newUserSession.expires_at.getTime()).toBe(now.getTime() + MOCK_REFRESH_TTL_MS)
 
       expect(userCredential).toBeTruthy()
       expect(userCredential!.last_login_at!.getTime()).toBe(now.getTime())
@@ -342,9 +358,7 @@ describe('LoginUser', () => {
       expect(payload.userId).toBe(userId.toString())
       expect(payload.sessionId).toBe(sessionId)
       expect(payload.isNewDevice).toBe(false)
-      expect(payload.country).toBeNull()
-      expect(payload.city).toBeNull()
-      expect(payload.timezone).toBeNull()
+      expect(payload.deviceLocation).toBeNull()
 
       const meta = domainEvent!.metadata
       expect(meta.ipHash).toBe(ipHash)

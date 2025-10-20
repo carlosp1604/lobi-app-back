@@ -1,5 +1,5 @@
 import {
-  DeviceLocation,
+  ResolvedDeviceLocation,
   DeviceLocationResolverServiceInterface,
 } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 
@@ -11,7 +11,7 @@ export class NoopDeviceLocationResolverService implements DeviceLocationResolver
    * @returns the resolved DeviceLocation, or null if not available
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public resolve(ip: string): Promise<DeviceLocation | null> {
+  public resolve(ip: string): Promise<ResolvedDeviceLocation | null> {
     return Promise.resolve(null)
   }
 }

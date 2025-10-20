@@ -1,28 +1,22 @@
 import { QueryRunner, Repository } from 'typeorm'
-import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { mock, mockReset } from 'jest-mock-extended'
-import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
-import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
-import {
-  UserSessionEntity,
-  UserSessionRawModel,
-  UserSessionRawWithRelationships,
-} from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
-import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
+import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
+import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
+import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
+import { UserSessionEntity, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
+import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
+import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 
 describe('PostgreSqlUserSessionRepository', () => {
-  const userId = UserIdMother.valid()
-  const anotherUserId = UserIdMother.valid()
-
   let runner: QueryRunner
 
   withTransaction((queryRunner) => {
@@ -41,340 +35,259 @@ describe('PostgreSqlUserSessionRepository', () => {
     jest.restoreAllMocks()
   })
 
-  describe('revokeOldestAndSave', () => {
-    const base = new Date()
+  const checkSession = (userSession: UserSession, rawUserSession: UserSessionRawWithRelationships) => {
+    expect(userSession.userId.toString()).toBe(rawUserSession.user_id)
+    expect(userSession.createdAt.getTime()).toBe(rawUserSession.created_at.getTime())
+    expect(userSession.updatedAt.getTime()).toBe(rawUserSession.updated_at.getTime())
+    expect(userSession.expiresAt.getTime()).toBe(rawUserSession.expires_at.getTime())
 
-    const userSessionToSaveId = UserIdMother.valid()
-    const userSessionToSave = new UserSessionTestBuilder()
-      .withId(userSessionToSaveId)
-      .withUserId(userId)
-      .withExpiresAt(new Date(base.getTime() + 60 * 60 * 1000))
-      .build()
+    if (userSession.revokedAt) {
+      expect(userSession.revokedAt.getTime()).toBe(rawUserSession.revoked_at?.getTime())
+    } else {
+      expect(userSession.revokedAt).toBe(null)
+      expect(rawUserSession.revoked_at).toBe(null)
+    }
+    expect(userSession.ipHash).toBe(null)
+    expect(rawUserSession.ip_hash).toBe(null)
+
+    if (userSession.deviceLocation) {
+      expect(userSession.deviceLocation?.countryCode).toBe(rawUserSession.device_country_code)
+      expect(userSession.deviceLocation?.city).toBe(rawUserSession.device_city)
+    } else {
+      expect(userSession.deviceLocation).toBe(null)
+      expect(rawUserSession.device_city).toBe(null)
+      expect(rawUserSession.device_country_code).toBe(null)
+    }
+
+    expect(userSession.userAgent.toString()).toBe(rawUserSession.user_agent)
+    expect(userSession.tokenHash.toString()).toBe(rawUserSession.token_hash)
+  }
+
+  describe('findUserActiveSessions', () => {
+    const now = new Date('2025-10-20T10:40:00Z')
+    const expiresAt = new Date(now.getTime() + 3600)
+    const expiredDate = new Date(expiresAt.getTime() - 3600)
+    const userId = UserIdMother.valid()
+
+    let repository: PostgreSqlUserSessionRepository
+    let context: TypeOrmTxContext
+    let userSessionRepository: Repository<UserSessionRawWithRelationships>
+
+    const rawActiveSession1 = makeRawSession({
+      user_id: userId.toString(),
+      revoked_at: null,
+      expires_at: expiresAt,
+    })
+
+    const rawActiveSession2 = makeRawSession({
+      user_id: userId.toString(),
+      revoked_at: null,
+      expires_at: expiresAt,
+    })
+
+    const rawExpiredSession = makeRawSession({
+      user_id: userId.toString(),
+      revoked_at: null,
+      expires_at: expiredDate,
+    })
+
+    const rawRevokedSession = makeRawSession({
+      user_id: userId.toString(),
+      revoked_at: now,
+      expires_at: expiresAt,
+    })
 
     beforeEach(async () => {
       const userRepository = runner.manager.getRepository(UserEntity)
+
       const rawUser = makeRawUser({
         id: userId.toString(),
       })
-      const anotherRawUser = makeRawUser({
-        id: anotherUserId.toString(),
-      })
+
       await userRepository.save(rawUser)
-      await userRepository.save(anotherRawUser)
+
+      repository = new PostgreSqlUserSessionRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      context = new TypeOrmTxContext(runner.manager)
+      userSessionRepository = runner.manager.getRepository(UserSessionEntity)
     })
 
-    const assertActives = (rows: Array<UserSessionRawWithRelationships>, expectedSessions: Array<string>) => {
-      const active = rows.filter((userSessionRaw) => !userSessionRaw.revoked_at && userSessionRaw.expires_at.getTime() > base.getTime())
-      expect(active.map((userSessionRaw) => userSessionRaw.id).sort()).toEqual(expectedSessions.sort())
-    }
+    it('should return an empty array when user does not have any active session', async () => {
+      const result = await repository.findUserActiveSessions(userId.toString(), now, context)
 
-    const getUserSessions = async (userSessionRepository: Repository<UserSessionRawWithRelationships>, userId: string) => {
-      return userSessionRepository.find({ where: { user_id: userId }, order: { created_at: 'ASC' } })
-    }
-
-    const assertAnotherUserSessionIstNotRevoked = async (
-      userSessionRepository: Repository<UserSessionRawWithRelationships>,
-      sessionId: string,
-    ) => {
-      const other: UserSessionRawModel | null = await userSessionRepository.findOneBy({ id: sessionId })
-      expect(other!.revoked_at).toBeNull()
-    }
-
-    it('should not revoke any session and inserts the new one', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-      const context = new TypeOrmTxContext(runner.manager)
-      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
-
-      const session1Id = UserIdMother.valid().toString()
-      const session2Id = UserIdMother.valid().toString()
-
-      const s1 = makeRawSession({
-        user_id: userId.toString(),
-        created_at: new Date(base),
-        id: session1Id,
-      })
-
-      const s2 = makeRawSession({ user_id: anotherUserId.toString(), id: session2Id })
-
-      await userSessionRepository.save([s1, s2])
-
-      await repository.revokeOldestAndSave(userSessionToSave, 2, context)
-
-      const rows = await getUserSessions(userSessionRepository, userId.toString())
-
-      const byId = new Map(rows.map((r) => [r.id, r]))
-
-      const inserted = byId.get(userSessionToSaveId.toString())!
-
-      expect(inserted).toBeTruthy()
-
-      expect(inserted.user_id).toBe(userSessionToSave.userId.toString())
-      expect(inserted.token_hash).toBe(userSessionToSave.tokenHash.toString())
-      expect(inserted.expires_at.getTime()).toBe(userSessionToSave.expiresAt.getTime())
-
-      // NOW() from database, we can not check exact date
-      expect(inserted.created_at.getTime()).toBeCloseTo(inserted.updated_at.getTime(), -1)
-      expect(inserted.ip_hash).toBe(userSessionToSave.ipHash?.toString() ?? null)
-      expect(inserted.user_agent).toBe(userSessionToSave.userAgent.toString())
-      expect(inserted.device_country).toBe(userSessionToSave.deviceCountry ?? null)
-      expect(inserted.device_city).toBe(userSessionToSave.deviceCity ?? null)
-      expect(inserted.device_timezone).toBe(userSessionToSave.deviceTimezone ?? null)
-
-      await assertAnotherUserSessionIstNotRevoked(userSessionRepository, session2Id)
-      assertActives(rows, [session1Id, userSessionToSaveId.toString()])
+      expect(result).toEqual([])
     })
 
-    it('should throw error if session already exists', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-      const context = new TypeOrmTxContext(runner.manager)
-      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
+    it('should return only active sessions (not revoked and not expired)', async () => {
+      await userSessionRepository.save([rawActiveSession1, rawExpiredSession, rawRevokedSession])
 
-      const rawSession = makeRawSession({
-        id: userSessionToSave.id.toString(),
-        user_id: userSessionToSave.userId.toString(),
-      })
+      const result = await repository.findUserActiveSessions(userId.toString(), now, context)
 
-      await userSessionRepository.save(rawSession)
-
-      await expect(repository.revokeOldestAndSave(userSessionToSave, 2, context)).rejects.toThrow()
+      expect(result).toHaveLength(1)
+      checkSession(result[0], rawActiveSession1)
     })
 
-    it('should revoke the oldest sessions and inserts the new one', async () => {
-      const dbNow = async () => {
-        const result: Array<{ now: Date }> = await runner.manager.query('SELECT NOW()')
-        return new Date(result[0].now).getTime()
-      }
+    it('should not return active sessions for a different user', async () => {
+      const anotherUserId = UserIdMother.valid()
+      const otherUserRaw = makeRawUser({ id: anotherUserId.toString() })
+      await runner.manager.getRepository(UserEntity).save(otherUserRaw)
 
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-      const context = new TypeOrmTxContext(runner.manager)
-      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
-
-      const session1Id = UserIdMother.valid().toString()
-      const session2Id = UserIdMother.valid().toString()
-      const session3Id = UserIdMother.valid().toString()
-      const session4Id = UserIdMother.valid().toString()
-      const session5Id = UserIdMother.valid().toString()
-      const session6Id = UserIdMother.valid().toString()
-      const session7Id = UserIdMother.valid().toString()
-
-      const s1 = makeRawSession({
-        user_id: userId.toString(),
-        created_at: new Date(base),
-        id: session1Id,
-      })
-      const s2 = makeRawSession({
-        user_id: userId.toString(),
-        created_at: new Date(base.getTime() + 1),
-        id: session2Id,
-      })
-      const s3 = makeRawSession({
-        user_id: userId.toString(),
-        created_at: new Date(base.getTime() + 2),
-        id: session3Id,
-      })
-      const s4 = makeRawSession({
-        user_id: userId.toString(),
-        created_at: new Date(base.getTime() + 3),
-        id: session4Id,
-      })
-      const s5 = makeRawSession({
-        user_id: userId.toString(),
-        revoked_at: new Date(base.getTime() + 4),
-        id: session5Id,
-      })
-      const s6 = makeRawSession({
-        user_id: userId.toString(),
-        expires_at: new Date(base.getTime() - 3600),
-        id: session6Id,
+      const anotherUserActiveSession = makeRawSession({
+        user_id: anotherUserId.toString(),
+        revoked_at: null,
+        expires_at: expiresAt,
       })
 
-      const s7 = makeRawSession({ user_id: anotherUserId.toString(), id: session7Id })
+      await userSessionRepository.save(anotherUserActiveSession)
 
-      await userSessionRepository.save([s1, s2, s3, s4, s5, s6, s7])
+      const result = await repository.findUserActiveSessions(userId.toString(), now, context)
 
-      const before = await dbNow()
+      expect(result).toEqual([])
+    })
 
-      await repository.revokeOldestAndSave(userSessionToSave, 2, context)
+    it('should return multiple active sessions', async () => {
+      await userSessionRepository.save([rawActiveSession1, rawActiveSession2, rawExpiredSession, rawRevokedSession])
 
-      const after = await dbNow()
+      const result = await repository.findUserActiveSessions(userId.toString(), now, context)
 
-      const rows = await getUserSessions(userSessionRepository, userId.toString())
-
-      const byId = new Map(rows.map((r) => [r.id, r]))
-
-      expect(byId.get(userSessionToSaveId.toString())).not.toBeNull()
-
-      // Check revoked_at was set correctly by database
-      for (const revokedSession of [byId.get(session1Id), byId.get(session2Id), byId.get(session3Id)]) {
-        expect(revokedSession!.revoked_at).toBeTruthy()
-        expect(revokedSession!.revoked_at?.getTime()).toBeGreaterThanOrEqual(before)
-        expect(revokedSession!.revoked_at?.getTime()).toBeLessThanOrEqual(after)
-      }
-      expect(byId.get(session4Id)!.revoked_at).toBeNull()
-
-      expect(byId.get(session5Id)!.revoked_at).toBeTruthy()
-      expect(byId.get(session6Id)!.expires_at.getTime()).toBeLessThan(base.getTime())
-
-      await assertAnotherUserSessionIstNotRevoked(userSessionRepository, session7Id)
-      assertActives(rows, [session4Id, userSessionToSaveId.toString()])
+      expect(result).toHaveLength(2)
+      expect(result.some((session) => session.id.toString() === rawActiveSession1.id)).toBe(true)
+      expect(result.some((session) => session.id.toString() === rawActiveSession2.id)).toBe(true)
     })
   })
 
-  describe('existsDevice', () => {
-    const base = new Date()
-
-    const expectedIpHash = UserSessionIpHashMother.valid()
-    const expectedUserAgent = UserAgentMother.valid()
-    const expectedExpiresAt = new Date(base.getTime() + 3600)
-
-    const baseRawUserSession = makeRawSession({
-      user_id: userId.toString(),
-      user_agent: expectedUserAgent.toString(),
-      ip_hash: expectedIpHash.toString(),
-      expires_at: expectedExpiresAt,
-      revoked_at: null,
-    })
+  describe('save', () => {
+    const now = new Date('2025-10-17T15:26:21Z')
+    const expiresAt = new Date(now.getTime() + 3600)
+    const userId = UserIdMother.valid()
+    const userEmail = UserEmailMother.valid()
 
     let userSessionTestBuilder = new UserSessionTestBuilder()
 
     beforeEach(async () => {
-      userSessionTestBuilder = new UserSessionTestBuilder()
-        .withUserId(userId)
-        .withUserAgent(expectedUserAgent)
-        .withIpHash(expectedIpHash)
-        .withExpiresAt(expectedExpiresAt)
-        .withRevokedAt(null)
-
       const userRepository = runner.manager.getRepository(UserEntity)
+
       const rawUser = makeRawUser({
         id: userId.toString(),
+        email: userEmail.toString(),
       })
       await userRepository.save(rawUser)
+
+      userSessionTestBuilder = new UserSessionTestBuilder()
+        .withUserAgent(UserAgentMother.random())
+        .withCreatedAt(now)
+        .withUpdatedAt(now)
+        .withIpHash(null)
+        .withRevokedAt(null)
+        .withExpiresAt(expiresAt)
+        .withDeviceLocation(null)
+        .withUserId(userId)
     })
 
-    it('should return true when user_id, ip_hash and user_agent match and session is active (not revoked and not expired)', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+    const countSessions = async () => {
+      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
 
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
+      return await userSessionRepository.count()
+    }
 
-      await sessionsRepository.save(baseRawUserSession)
+    const getSessions = async () => {
+      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
+      return await userSessionRepository.find()
+    }
 
-      const userSession = userSessionTestBuilder.build()
+    it('should insert new  user sessions correctly', async () => {
+      const userSession1 = userSessionTestBuilder
+        .withId(UserSessionIdMother.valid())
+        .withTokenHash(UserSessionHashMother.random())
+        .build()
+      const userSession2 = userSessionTestBuilder
+        .withId(UserSessionIdMother.valid())
+        .withTokenHash(UserSessionHashMother.random())
+        .build()
 
-      const found = await repository.existsDevice(userSession)
+      const repository = new PostgreSqlUserSessionRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-      expect(found).toBe(true)
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const sessionsNumberBefore = await countSessions()
+      const sessionsBefore = await getSessions()
+
+      await repository.save([userSession1, userSession2], context)
+
+      const sessionsAfter = await getSessions()
+      const sessionsNumberAfter = await countSessions()
+
+      expect(sessionsNumberBefore).toBe(0)
+      expect(sessionsNumberAfter).toBe(2)
+      expect(sessionsBefore).toEqual([])
+      expect(sessionsAfter.length).toBe(2)
+
+      const savedSession1 = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === userSession1.id.toString())
+      const savedSession2 = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === userSession2.id.toString())
+
+      expect(savedSession1).toBeTruthy()
+      expect(savedSession2).toBeTruthy()
+      checkSession(userSession1, savedSession1!)
+      checkSession(userSession2, savedSession2!)
     })
 
-    it('should return false if user session is expired', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+    it('should save new session and update the existing one correctly', async () => {
+      const userSessionHash = UserSessionHashMother.valid()
+      const existingSessionId = UserSessionIdMother.valid()
+      const revokedAt = new Date(now.getTime() - 3600)
 
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
-
-      const pastExpiresAt = new Date(base.getTime() - 3600)
-      await sessionsRepository.save({ ...baseRawUserSession, expires_at: pastExpiresAt })
-      const userSession = userSessionTestBuilder.build()
-
-      const found = await repository.existsDevice(userSession)
-
-      expect(found).toBe(false)
-    })
-
-    it('should return false if user session is revoked', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
-
-      const pastRevokedAt = new Date(base.getTime() - 3600)
-      await sessionsRepository.save({ ...baseRawUserSession, revoked_at: pastRevokedAt })
-      const userSession = userSessionTestBuilder.build()
-
-      const found = await repository.existsDevice(userSession)
-
-      expect(found).toBe(false)
-    })
-
-    it('should return true if ip_hash is NULL but user_agent does match', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
-
-      await sessionsRepository.save({ ...baseRawUserSession, ip_hash: null })
-
-      const userSession = userSessionTestBuilder.withIpHash(null).build()
-      const found = await repository.existsDevice(userSession)
-
-      expect(found).toBe(true)
-    })
-
-    it('should return false if ip_hash does not match', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
-
-      const anotherIpHash = UserSessionIpHashMother.random()
-      await sessionsRepository.save({ ...baseRawUserSession, ip_hash: expectedIpHash.toString() })
-      const userSession = userSessionTestBuilder.withIpHash(anotherIpHash).build()
-
-      const found = await repository.existsDevice(userSession)
-
-      expect(found).toBe(false)
-    })
-
-    it('should return false if user_agent does not match', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
-
-      const anotherUserAgent = UserAgentMother.random()
-      await sessionsRepository.save({ ...baseRawUserSession, user_agent: expectedUserAgent.toString() })
-      const userSession = userSessionTestBuilder.withUserAgent(anotherUserAgent).build()
-
-      const found = await repository.existsDevice(userSession)
-
-      expect(found).toBe(false)
-    })
-
-    it('should return false when session exists but belongs to another user', async () => {
-      const userRepository = runner.manager.getRepository(UserEntity)
-      const anotherRawUser = makeRawUser({
-        id: anotherUserId.toString(),
-      })
-      await userRepository.save(anotherRawUser)
-
-      const anotherUserSession = { ...baseRawUserSession, user_id: anotherUserId.toString() }
-
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
-
-      await sessionsRepository.save(anotherUserSession)
-
-      const userSession = userSessionTestBuilder.build()
-
-      const found = await repository.existsDevice(userSession)
-
-      expect(found).toBe(false)
-    })
-
-    it('should return true when there are many sessions and one of them matches', async () => {
-      const repository = new PostgreSqlUserSessionRepository(mockedResolver)
-
-      const sessionsRepository = runner.manager.getRepository(UserSessionEntity)
-
-      await sessionsRepository.save(baseRawUserSession)
-      await sessionsRepository.save({
-        ...baseRawUserSession,
-        id: UserSessionIdMother.valid().toString(),
-        user_agent: UserAgentMother.random().toString(),
-        token_hash: UserSessionHashMother.random().toString(),
+      const rawSession = makeRawSession({
+        id: existingSessionId.toString(),
+        user_id: userId.toString(),
+        revoked_at: null,
+        ip_hash: null,
+        expires_at: expiresAt,
+        created_at: now,
+        updated_at: now,
+        device_city: null,
+        device_country_code: null,
+        token_hash: userSessionHash.toString(),
       })
 
-      const userSession = userSessionTestBuilder.build()
+      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
+      await userSessionRepository.save(rawSession)
 
-      const found = await repository.existsDevice(userSession)
+      const newSession = userSessionTestBuilder
+        .withId(UserSessionIdMother.valid())
+        .withTokenHash(UserSessionHashMother.random())
+        .build()
 
-      expect(found).toBe(true)
+      const updatedSession = userSessionTestBuilder
+        .withId(existingSessionId)
+        .withTokenHash(userSessionHash)
+        .withCreatedAt(now)
+        .withUpdatedAt(now)
+        .withRevokedAt(revokedAt)
+        .build()
+
+      const repository = new PostgreSqlUserSessionRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const sessionsNumberBefore = await countSessions()
+      const sessionsBefore = await getSessions()
+
+      await repository.save([newSession, updatedSession], context)
+
+      const sessionsAfter = await getSessions()
+      const sessionsNumberAfter = await countSessions()
+
+      expect(sessionsNumberBefore).toBe(1)
+      expect(sessionsBefore[0]).toEqual(rawSession)
+      expect(sessionsNumberAfter).toBe(2)
+      expect(sessionsAfter.length).toBe(2)
+
+      const savedSession = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === newSession.id.toString())
+      const existingSession = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === updatedSession.id.toString())
+
+      expect(savedSession).toBeTruthy()
+      expect(existingSession).toBeTruthy()
+      checkSession(newSession, savedSession!)
+      checkSession(updatedSession, existingSession!)
     })
   })
 })
