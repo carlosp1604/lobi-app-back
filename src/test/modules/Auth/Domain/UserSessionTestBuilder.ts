@@ -13,7 +13,7 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 export class UserSessionTestBuilder {
   private _id = UserSessionIdMother.valid()
   private _userId = UserIdMother.valid()
-  private _tokenHash = UserSessionIpHashMother.valid()
+  private _tokenHash = UserSessionIpHashMother.random()
   private _ipHash: UserSessionIpHash | null = null
   private _userAgent: UserAgent = UserAgentMother.valid()
   private _deviceLocation: DeviceLocation | null = null

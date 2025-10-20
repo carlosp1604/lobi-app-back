@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/node'
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'
 import { FastifyReply, FastifyRequest } from 'fastify'
+import { INTERNAL_SERVER_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 
 function safeRedactBody(body: unknown): unknown {
   if (!body) {
@@ -23,9 +24,6 @@ function safeRedactBody(body: unknown): unknown {
 }
 
 function toSafeResponse(exception: unknown): object | string {
-  // TODO: Extract this code to an APIExceptionCodes file
-  const INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR'
-
   if (exception instanceof HttpException) {
     return exception.getResponse()
   }
@@ -38,7 +36,7 @@ function toSafeResponse(exception: unknown): object | string {
   }
 
   return {
-    message: 'Internal server error',
+    message: 'Something went wrong while processing your request',
     code: INTERNAL_SERVER_ERROR,
   }
 }
@@ -104,6 +102,7 @@ export class SentryExceptionFilter implements ExceptionFilter {
       statusCode: status,
       response: safeResponse,
       timestamp: new Date().toISOString(),
+      requestId: String(request.id),
       path: request.url,
     })
   }

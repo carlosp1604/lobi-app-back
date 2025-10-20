@@ -13,7 +13,6 @@ import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/Use
 import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
-import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -30,8 +29,9 @@ import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
+import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 
 interface NormalizedIpWithHash {
   normalizedIp: string
@@ -46,9 +46,9 @@ export class LoginUser {
     private readonly domainEventRepository: DomainEventRepositoryInterface,
     private readonly passwordHasher: PasswordHasherServiceInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
+    private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
     private readonly hasherService: HasherServiceInterface,
     private readonly deviceLocationResolver: DeviceLocationResolverServiceInterface,
-    private readonly maxSessionsPolicy: MaxSessionsPolicy,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -118,17 +118,23 @@ export class LoginUser {
 
       const isNewDevice = !activeSessions.find((activeSession) => activeSession.isSameDeviceAs(session))
 
-      const sessionsToRevoke = this.maxSessionsPolicy.sessionsToRevoke(activeSessions)
+      const serviceResult = this.userSessionManagerService.applyPolicyAndRevokeForLogin(activeSessions, now)
 
-      await this.credentialRepository.saveLoginSuccess(credentials, context)
+      if (!serviceResult.success) {
+        if (serviceResult.error.id === UserSessionPolicyManagerApplicationError.revocationFailedId) {
+          return fail(LoginUserApplicationError.revocationFailed(serviceResult.error.message))
+        }
 
-      const revokeAndPersistSessionsResult = await this.revokeAndPersistSessions(sessionsToRevoke, session, now, context)
-
-      if (!revokeAndPersistSessionsResult.success) {
-        return revokeAndPersistSessionsResult
+        return fail(LoginUserApplicationError.internalError(`Unknown internal error: ${serviceResult.error.message}`))
       }
 
+      const sessionsToRevoke = serviceResult.value
+
       const domainEvent = this.buildSuccessfulLoginDomainEvent(session, isNewDevice, now)
+
+      await this.sessionRepository.save([...sessionsToRevoke, session], context)
+
+      await this.credentialRepository.saveLoginSuccess(credentials, context)
 
       await this.domainEventRepository.save(domainEvent, context)
 
@@ -242,47 +248,6 @@ export class LoginUser {
     }
 
     return null
-  }
-
-  private async revokeAndPersistSessions(
-    sessionsToRevoke: Array<UserSession>,
-    newSession: UserSession,
-    now: Date,
-    context: TxContext,
-  ): Promise<Result<void, LoginUserApplicationError>> {
-    for (const session of sessionsToRevoke) {
-      try {
-        session.revoke(now)
-      } catch (exception: unknown) {
-        if (exception instanceof UserSessionDomainException) {
-          this.loggerService.error('Cannot revoke session', exception.stack, {
-            sessionId: session.id.toString(),
-            userId: session.userId.toString(),
-            revokedAt: session.revokedAt,
-            expiresAt: session.expiresAt,
-          })
-
-          return fail(LoginUserApplicationError.cannotRevokeSession(exception.message))
-        }
-
-        const stack = exception instanceof Error ? exception.stack : String(exception)
-
-        this.loggerService.error('Unexpected error while revoking session', stack, {
-          sessionId: session.id.toString(),
-          userId: session.userId.toString(),
-          revokedAt: session.revokedAt,
-          expiresAt: session.expiresAt,
-          error: exception,
-        })
-
-        throw Error(`Unexpected error while revoking session ${session.id.toString()}`)
-      }
-    }
-
-    const sessionsToPersist = [...sessionsToRevoke, newSession]
-    await this.sessionRepository.save(sessionsToPersist, context)
-
-    return success(undefined)
   }
 
   private buildFailedAttemptDomainEvent(

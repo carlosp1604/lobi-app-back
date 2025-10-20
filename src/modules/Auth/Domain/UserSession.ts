@@ -62,10 +62,11 @@ export class UserSession {
     }
 
     if (this.expiresAt.getTime() <= now.getTime()) {
-      throw UserSessionDomainException.sessionNotActive(this.id.toString())
+      throw UserSessionDomainException.sessionAlreadyExpired(this.id.toString())
     }
 
     this.revokedAt = now
+    this.updatedAt = now
   }
 
   public isSameDeviceAs(session: UserSession): boolean {
@@ -80,5 +81,13 @@ export class UserSession {
     }
 
     return false
+  }
+
+  public isRevoked(): boolean {
+    return this.revokedAt !== null
+  }
+
+  public isExpired(now: Date): boolean {
+    return this.expiresAt.getTime() <= now.getTime()
   }
 }

@@ -10,9 +10,11 @@ export interface UserRepositoryInterface {
    */
   findByEmailWithLock(email: string, context?: TxContext): Promise<User | null>
 
-  findByIdWithSessions(id: string, context?: TxContext): Promise<User | null>
-
-  findByIdWithLockWithSessions(id: string, context: TxContext): Promise<User | null>
-
-  save(user: User, context: TxContext): Promise<void>
+  /**
+   * Finds a user by ID (and acquires a pessimistic lock on the row)
+   * @param id User ID
+   * @param context The transactional context
+   * @returns The locked User entity if found, otherwise null
+   */
+  findByIdWithLock(id: string, context: TxContext): Promise<User | null>
 }

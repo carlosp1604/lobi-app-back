@@ -82,7 +82,7 @@ describe('UserSession', () => {
     it('should throw UserSessionDomainException if the session is already expired', () => {
       const session = userSessionTestBuilder.withExpiresAt(alreadyExpiredAt).withRevokedAt(null).build()
 
-      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionNotActive(session.id.toString()))
+      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyExpired(session.id.toString()))
     })
   })
 
@@ -143,6 +143,47 @@ describe('UserSession', () => {
       const session2 = createSession(userAgent1, ip1)
 
       expect(session1.isSameDeviceAs(session2)).toBe(false)
+    })
+  })
+
+  describe('isRevoked', () => {
+    const now = new Date('2025-10-20T22:00:00Z')
+
+    it('should return true when revokedAt is not null', () => {
+      const revokedDate = new Date(now.getTime() - 1000)
+      const session = new UserSessionTestBuilder().withRevokedAt(revokedDate).build()
+
+      expect(session.isRevoked()).toBe(true)
+    })
+
+    it('should return false when revokedAt is null', () => {
+      const session = new UserSessionTestBuilder().withRevokedAt(null).build()
+
+      expect(session.isRevoked()).toBe(false)
+    })
+  })
+
+  describe('isExpired', () => {
+    const now = new Date('2025-10-20T22:00:00Z')
+
+    it('should return true when expiresAt is in the past', () => {
+      const pastDate = new Date(now.getTime() - 1000)
+      const session = new UserSessionTestBuilder().withExpiresAt(pastDate).build()
+
+      expect(session.isExpired(now)).toBe(true)
+    })
+
+    it('should return true when expiresAt is exactly now', () => {
+      const session = new UserSessionTestBuilder().withExpiresAt(now).build()
+
+      expect(session.isExpired(now)).toBe(true)
+    })
+
+    it('should return false when expiresAt is in the future', () => {
+      const futureDate = new Date(now.getTime() + 1000)
+      const session = new UserSessionTestBuilder().withExpiresAt(futureDate).build()
+
+      expect(session.isExpired(now)).toBe(false)
     })
   })
 })

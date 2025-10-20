@@ -1,5 +1,6 @@
 import { BadRequestException, ValidationPipe } from '@nestjs/common'
 import { ValidationError } from 'class-validator'
+import { VALIDATION_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 
 type ParsedError = {
   message: string
@@ -41,5 +42,5 @@ export const validationPipe = new ValidationPipe({
     target: false,
     value: false,
   },
-  exceptionFactory: (errors: ValidationError[]) => new BadRequestException({ code: 'VALIDATION_ERROR', errors: formatErrors(errors) }),
+  exceptionFactory: (errors: ValidationError[]) => new BadRequestException({ code: VALIDATION_ERROR, errors: formatErrors(errors) }),
 })

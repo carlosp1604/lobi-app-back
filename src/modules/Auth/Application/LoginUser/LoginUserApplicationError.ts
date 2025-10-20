@@ -7,6 +7,8 @@ export class LoginUserApplicationError extends Error {
   public static userDoesNotHaveCredentialsId = 'user_login_user_does_not_have_credentials'
   public static invalidUserEmailId = 'user_login_invalid_user_email'
   public static cannotRevokeSessionsId = 'user_login_cannot_revoke_session'
+  public static revocationFailedId = 'user_login_revocation_failed'
+  public static internalErrorId = 'user_login_internal_error'
 
   private constructor(message: string, id: string) {
     super(message)
@@ -35,5 +37,13 @@ export class LoginUserApplicationError extends Error {
 
   public static cannotRevokeSession(message: string) {
     return new LoginUserApplicationError(message, this.cannotRevokeSessionsId)
+  }
+
+  public static revocationFailed(errorMessage: string) {
+    return new LoginUserApplicationError(errorMessage, this.revocationFailedId)
+  }
+
+  public static internalError(errorMessage: string) {
+    return new LoginUserApplicationError(errorMessage, this.internalErrorId)
   }
 }

@@ -30,19 +30,13 @@ export class PostgresqlUserRepository implements UserRepositoryInterface {
     return UserModelTranslator.toDomain(userEntity)
   }
 
-  public async findByIdWithSessions(id: string, context?: TxContext): Promise<User | null> {
-    const entityManager = this.entityManagerResolver.resolve(context)
-
-    const userEntity = await entityManager.createQueryBuilder(UserEntity, 'user').where('user.id = :id', { id }).getOne()
-
-    if (!userEntity) {
-      return null
-    }
-
-    return UserModelTranslator.toDomain(userEntity)
-  }
-
-  public async findByIdWithLockWithSessions(id: string, context: TxContext): Promise<User | null> {
+  /**
+   * Finds a user by ID (and acquires a pessimistic lock on the row)
+   * @param id User ID
+   * @param context The transactional context
+   * @returns The locked User entity if found, otherwise null
+   */
+  public async findByIdWithLock(id: string, context: TxContext): Promise<User | null> {
     const entityManager = this.entityManagerResolver.resolve(context)
 
     const userEntity = await entityManager
@@ -56,15 +50,5 @@ export class PostgresqlUserRepository implements UserRepositoryInterface {
     }
 
     return UserModelTranslator.toDomain(userEntity)
-  }
-
-  public async save(user: User, context: TxContext): Promise<void> {
-    const entityManager = this.entityManagerResolver.resolve(context)
-
-    const userRepository = entityManager.getRepository(UserEntity)
-
-    const userRawModel = UserModelTranslator.toDatabase(user)
-
-    await userRepository.save(userRawModel)
   }
 }

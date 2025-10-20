@@ -12,9 +12,11 @@ import {
   LOGIN_USER,
   MAX_SESSIONS_POLICY,
   PASSWORD_HASHER,
+  REFRESH_SESSION,
   TOKEN_GENERATOR,
   USER_CREDENTIAL_REPOSITORY,
   USER_REPOSITORY,
+  USER_SESSION_POLICY_MANAGER_SERVICE,
   USER_SESSION_REPOSITORY,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
@@ -50,6 +52,8 @@ import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
+import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
+import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/RefreshSession'
 
 @Module({
   imports: [ConfigModule, TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity])],
@@ -130,6 +134,13 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
       inject: [ID_GENERATOR, TOKEN_GENERATOR, HASHER_SERVICE, ConfigService],
     },
     {
+      provide: USER_SESSION_POLICY_MANAGER_SERVICE,
+      useFactory: (maxSessionsPolicy: MaxSessionsPolicy, loggerService: LoggerServiceInterface) => {
+        return new UserSessionPolicyManagerApplicationService(maxSessionsPolicy, loggerService)
+      },
+      inject: [MAX_SESSIONS_POLICY, LOGGER_SERVICE],
+    },
+    {
       provide: LOGIN_USER,
       useFactory: (
         usersRepository: UserRepositoryInterface,
@@ -138,9 +149,9 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
         domainEventRepository: DomainEventRepositoryInterface,
         passwordHasher: PasswordHasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
+        userSessionManagerService: UserSessionPolicyManagerApplicationService,
         hasherService: HasherServiceInterface,
         deviceLocationResolver: DeviceLocationResolverServiceInterface,
-        maxSessionsPolicy: MaxSessionsPolicy,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerService: LoggerServiceInterface,
@@ -154,9 +165,9 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
           domainEventRepository,
           passwordHasher,
           generateTokensService,
+          userSessionManagerService,
           hasherService,
           deviceLocationResolver,
-          maxSessionsPolicy,
           clockService,
           unitOfWork,
           loggerService,
@@ -170,9 +181,9 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
         DOMAIN_EVENT_REPOSITORY,
         PASSWORD_HASHER,
         GENERATE_TOKENS_SERVICE,
+        USER_SESSION_POLICY_MANAGER_SERVICE,
         HASHER_SERVICE,
         DEVICE_LOCATION_RESOLVER,
-        MAX_SESSIONS_POLICY,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_SERVICE,
@@ -180,7 +191,38 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
         IP_VALIDATOR,
       ],
     },
+    {
+      provide: REFRESH_SESSION,
+      useFactory: (
+        unitOfWork: UnitOfWork,
+        usersRepository: UserRepositoryInterface,
+        sessionsRepository: UserSessionRepositoryInterface,
+        generateTokensService: GenerateTokensApplicationService,
+        userSessionManagerService: UserSessionPolicyManagerApplicationService,
+        hasherService: HasherServiceInterface,
+        clockService: NodeClockService,
+      ) => {
+        return new RefreshSession(
+          unitOfWork,
+          usersRepository,
+          sessionsRepository,
+          generateTokensService,
+          userSessionManagerService,
+          hasherService,
+          clockService,
+        )
+      },
+      inject: [
+        UNIT_OF_WORK,
+        USER_REPOSITORY,
+        USER_SESSION_REPOSITORY,
+        GENERATE_TOKENS_SERVICE,
+        USER_SESSION_POLICY_MANAGER_SERVICE,
+        HASHER_SERVICE,
+        CLOCK_SERVICE,
+      ],
+    },
   ],
-  exports: [LOGIN_USER, TypeOrmModule],
+  exports: [LOGIN_USER, REFRESH_SESSION, TypeOrmModule],
 })
 export class AuthModule {}

@@ -65,6 +65,8 @@ export const EnvSchema = z
     SALT_ROUNDS: z.coerce.number().int().positive().default(12),
     HASH_SECRET: z.string().trim().min(32, { message: 'HASH_SECRET must have at least 32 characters' }),
     USER_MAX_SESSIONS: z.coerce.number().int().positive().default(6),
+    ACCESS_COOKIE_NAME: z.string().trim().nonempty().default('x-access-token'),
+    REFRESH_COOKIE_NAME: z.string().trim().nonempty().default('x-refresh-token'),
 
     COOKIE_SECRET: z.string().trim().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
   })
