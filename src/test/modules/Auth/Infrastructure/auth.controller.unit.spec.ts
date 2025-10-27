@@ -1,60 +1,82 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
-import { Test, TestingModule } from '@nestjs/testing'
-import { HttpStatus } from '@nestjs/common'
+import { InternalServerErrorException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common'
 import { FastifyRequest, FastifyReply } from 'fastify'
-import { LOGIN_USER } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
-import { AUTH_LOGIN_INVALID_EMAIL, AUTH_LOGIN_UNAUTHORIZED } from '~/src/modules/Auth/Infrastructure/ApiCodes'
-import { INTERNAL_SERVER_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
+import { AUTH_LOGIN_INVALID_EMAIL } from '~/src/modules/Auth/Infrastructure/ApiCodes'
 import { mock, mockReset } from 'jest-mock-extended'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
-import { ConfigModule, ConfigService } from '@nestjs/config'
+import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
+import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/RefreshSession'
+import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigServiceMock'
+import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
+import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 
 describe('AuthController', () => {
-  let controller: AuthController
   let mockedRequest: FastifyRequest = {} as unknown as FastifyRequest
 
   const mockedResponse = mock<FastifyReply>()
-  const mockedUseCase = mock<LoginUser>()
   const mockedConfigService = mock<ConfigService<Env, true>>()
+  const mockedLoginUseCase = mock<LoginUser>()
+  const mockedRefreshSessionUseCase = mock<RefreshSession>()
 
   const base = new Date('2025-10-13T14:00:00.014Z')
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mockReset(mockedResponse)
-    mockReset(mockedUseCase)
-    jest.clearAllMocks()
-
-    const module: TestingModule = await Test.createTestingModule({
-      controllers: [ConfigModule, AuthController],
-      providers: [
-        {
-          provide: LOGIN_USER,
-          useValue: mockedUseCase,
-        },
-        {
-          provide: ConfigService,
-          useValue: mockedConfigService,
-        },
-      ],
-    }).compile()
-
-    controller = module.get<AuthController>(AuthController)
-
-    mockedRequest = {
-      headers: {
-        'x-forwarded-for': '123.123.123.123',
-        'user-agent': 'LobiApp/1.0 (CarlosP at the controls)',
-      },
-      ip: '127.0.0.1',
-      id: 'test-trace-id',
-    } as unknown as FastifyRequest
+    mockReset(mockedConfigService)
+    mockReset(mockedLoginUseCase)
+    mockReset(mockedRefreshSessionUseCase)
   })
+
+  const buildController = () => {
+    return new AuthController(mockedLoginUseCase, mockedRefreshSessionUseCase, mockedConfigService)
+  }
+
+  const loginRefreshAssertCommonCalls = (accessCookieValue: string, refreshCookieValue: string) => {
+    expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
+    expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledWith('ACCESS_COOKIE_NAME', { infer: true })
+    expect(mockedResponse.setCookie).toHaveBeenCalledTimes(2)
+    expect(mockedResponse.setCookie).toHaveBeenCalledWith('x-refresh-token', refreshCookieValue, {
+      path: '/',
+      sameSite: 'strict',
+      secure: false,
+      httpOnly: true,
+      expires: new Date(base.getTime() + 10000),
+    })
+    expect(mockedResponse.setCookie).toHaveBeenCalledWith('x-access-token', accessCookieValue, {
+      path: '/',
+      sameSite: 'strict',
+      secure: false,
+      httpOnly: true,
+      expires: new Date(base.getTime() + 1000),
+    })
+  }
 
   describe('login', () => {
     const mockBody = { email: 'test@example.com', password: 'password123' }
+
+    beforeEach(() => {
+      mockedRequest = {
+        headers: {
+          'x-forwarded-for': '123.123.123.123',
+          'user-agent': 'LobiApp/1.0 (CarlosP at the controls)',
+        },
+        ip: '127.0.0.1',
+        id: 'test-trace-id',
+      } as unknown as FastifyRequest
+
+      mockedConfigService.get.mockImplementation(
+        createConfigServiceMockImplementation({
+          REFRESH_COOKIE_NAME: 'x-refresh-token',
+          ACCESS_COOKIE_NAME: 'x-access-token',
+          isProduction: false,
+        }),
+      )
+    })
 
     describe('happy path', () => {
       const expectedResponse = {
@@ -67,17 +89,18 @@ describe('AuthController', () => {
       }
 
       beforeEach(() => {
-        mockedUseCase.execute.mockResolvedValue({
+        mockedLoginUseCase.execute.mockResolvedValue({
           success: true,
           value: expectedResponse,
         })
-        mockedConfigService.get.mockReturnValueOnce(false)
       })
 
       it('should call to the use-case correctly when headers includes ip and user-agent', async () => {
+        const controller = buildController()
+
         await controller.login(mockBody, mockedRequest, mockedResponse)
 
-        expect(mockedUseCase.execute).toHaveBeenCalledWith({
+        expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
           password: mockBody.password,
           ip: '123.123.123.123',
@@ -86,6 +109,8 @@ describe('AuthController', () => {
       })
 
       it('should call to the use-case correctly when headers dont include ip but request does', async () => {
+        const controller = buildController()
+
         mockedRequest = {
           headers: {
             'user-agent': 'LobiApp/1.0 (CarlosP at the controls)',
@@ -96,7 +121,7 @@ describe('AuthController', () => {
 
         await controller.login(mockBody, mockedRequest, mockedResponse)
 
-        expect(mockedUseCase.execute).toHaveBeenCalledWith({
+        expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
           password: mockBody.password,
           ip: '127.0.0.1',
@@ -105,6 +130,8 @@ describe('AuthController', () => {
       })
 
       it('should call to the use-case correctly when ip and user-agent are not included in the request', async () => {
+        const controller = buildController()
+
         mockedRequest = {
           headers: {},
           id: 'test-trace-id',
@@ -112,7 +139,7 @@ describe('AuthController', () => {
 
         await controller.login(mockBody, mockedRequest, mockedResponse)
 
-        expect(mockedUseCase.execute).toHaveBeenCalledWith({
+        expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
           password: mockBody.password,
           ip: '',
@@ -121,124 +148,336 @@ describe('AuthController', () => {
       })
 
       it('should set cookies and return correct data', async () => {
+        const controller = buildController()
+
         const result = await controller.login(mockBody, mockedRequest, mockedResponse)
 
-        expect(mockedConfigService.get).toHaveBeenCalledTimes(1)
-        expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
-        expect(mockedUseCase.execute).toHaveBeenCalledWith({
+        loginRefreshAssertCommonCalls('expected-access-token', 'expected-refresh-token')
+        expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
           password: mockBody.password,
           ip: '123.123.123.123',
           userAgent: 'LobiApp/1.0 (CarlosP at the controls)',
-        })
-        expect(mockedResponse.setCookie).toHaveBeenCalledTimes(2)
-        expect(mockedResponse.setCookie).toHaveBeenCalledWith('x-refresh-token', 'expected-refresh-token', {
-          path: '/',
-          sameSite: 'strict',
-          secure: false,
-          httpOnly: true,
-          expires: new Date(base.getTime() + 10000),
-        })
-        expect(mockedResponse.setCookie).toHaveBeenCalledWith('x-access-token', 'expected-access-token', {
-          path: '/',
-          sameSite: 'strict',
-          secure: false,
-          httpOnly: true,
-          expires: new Date(base.getTime() + 1000),
         })
         expect(result).toEqual(expectedResponse)
       })
     })
 
     describe('when there are errors', () => {
-      it('should return 422 if use-case returns invalidEmail error', async () => {
-        mockedUseCase.execute.mockResolvedValueOnce({
+      it('should throw UnprocessableEntityException if use-case returns invalidEmail error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
           error: LoginUserApplicationError.invalidUserEmail('test@example.com'),
         })
 
-        const result = await controller.login(mockBody, mockedRequest, mockedResponse)
-
-        expect(mockedResponse.status).toHaveBeenCalledWith(422)
-        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
-        expect(result).toEqual({
-          code: AUTH_LOGIN_INVALID_EMAIL,
-          message: LoginUserApplicationError.invalidUserEmail('test@example.com').message,
-          status: 422,
-          traceId: 'test-trace-id',
-        })
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new UnprocessableEntityException({
+            code: AUTH_LOGIN_INVALID_EMAIL,
+            message: LoginUserApplicationError.invalidUserEmail('test@example.com').message,
+          }),
+        )
       })
 
-      it('should return 401 if use-case return invalidCredentials error', async () => {
-        mockedUseCase.execute.mockResolvedValueOnce({
+      it('should throw UnauthorizedException if use-case returns invalidCredentials error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
           error: LoginUserApplicationError.invalidCredentials('test-user-id'),
         })
 
-        const result = await controller.login(mockBody, mockedRequest, mockedResponse)
-
-        expect(mockedResponse.status).toHaveBeenCalledWith(401)
-        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
-        expect(result).toEqual({
-          code: AUTH_LOGIN_UNAUTHORIZED,
-          message: 'Unauthorized access',
-          status: 401,
-          traceId: 'test-trace-id',
-        })
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
       })
 
-      it('should return 401 if use-case returns userNotFound error', async () => {
-        mockedUseCase.execute.mockResolvedValueOnce({
+      it('should throw UnauthorizedException if use-case returns userNotFound error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
           error: LoginUserApplicationError.userNotFound('test@example.com'),
         })
 
-        const result = await controller.login(mockBody, mockedRequest, mockedResponse)
-
-        expect(mockedResponse.status).toHaveBeenCalledWith(401)
-        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
-        expect(result).toEqual({
-          code: AUTH_LOGIN_UNAUTHORIZED,
-          message: 'Unauthorized access',
-          status: 401,
-          traceId: 'test-trace-id',
-        })
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
       })
 
-      it('should return 401 if use-case returns userDoesNotHaveCredentials error', async () => {
-        mockedUseCase.execute.mockResolvedValueOnce({
+      it('should throw UnauthorizedException if use-case returns userDoesNotHaveCredentials error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
           error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
         })
 
-        const result = await controller.login(mockBody, mockedRequest, mockedResponse)
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+      })
 
-        expect(mockedResponse.status).toHaveBeenCalledWith(401)
-        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
-        expect(result).toEqual({
-          code: AUTH_LOGIN_UNAUTHORIZED,
-          message: 'Unauthorized access',
-          status: 401,
-          traceId: 'test-trace-id',
+      it('should throw UnauthorizedException if use-case returns userDoesNotHaveCredentials error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
+          success: false,
+          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
+        })
+
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+      })
+
+      it('should throw UnauthorizedException if use-case returns userDoesNotHaveCredentials error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
+          success: false,
+          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
+        })
+
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+      })
+
+      it('should throw InternalServerErrorException if use-case returns internalError', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
+          success: false,
+          error: LoginUserApplicationError.internalError('An unexpected error'),
+        })
+
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new InternalServerErrorException(LoginUserApplicationError.internalError('An unexpected error')),
+        )
+      })
+
+      it('should throw InternalServerErrorException if use-case returns revocationFailed', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
+          success: false,
+          error: LoginUserApplicationError.revocationFailed('Cannot revoke a session'),
+        })
+
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new InternalServerErrorException(LoginUserApplicationError.revocationFailed('Cannot revoke a session')),
+        )
+      })
+
+      it('should throw InternalServerErrorException if use-case returns an unknown error', async () => {
+        const controller = buildController()
+
+        const unexpectedError: LoginUserApplicationError = {
+          id: 'UNKNOWN-ERROR',
+          message: 'Unknown error',
+          name: LoginUserApplicationError.name,
+        }
+        mockedLoginUseCase.execute.mockResolvedValue({
+          success: false,
+          error: unexpectedError,
+        })
+
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(
+          new InternalServerErrorException(unexpectedError),
+        )
+      })
+
+      it('should throw error if use-case fails', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockImplementation(() => {
+          throw new Error('Unexpected error')
+        })
+
+        await expect(controller.login(mockBody, mockedRequest, mockedResponse)).rejects.toThrow(Error('Unexpected error'))
+      })
+    })
+  })
+
+  describe('refresh', () => {
+    beforeEach(() => {
+      mockedRequest = {
+        cookies: { 'x-refresh-token': 'expected-refresh-token' },
+      } as unknown as FastifyRequest
+
+      mockedConfigService.get.mockImplementation(
+        createConfigServiceMockImplementation({
+          REFRESH_COOKIE_NAME: 'x-refresh-token',
+          ACCESS_COOKIE_NAME: 'x-access-token',
+          isProduction: false,
+        }),
+      )
+    })
+
+    describe('happy path', () => {
+      const expectedResponse = {
+        accessToken: 'expected-access-token',
+        refreshToken: 'expected-new-refresh-token',
+        accessTokenExpiresAt: new Date(base.getTime() + 1000),
+        refreshTokenExpiresAt: new Date(base.getTime() + 10000),
+        sessionId: 'expected-session-id',
+      }
+
+      beforeEach(() => {
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: true,
+          value: expectedResponse,
         })
       })
 
-      it('should return 500 if use-case throws', async () => {
-        mockedUseCase.execute.mockResolvedValue({
+      it('should call use-case, set cookies and return the correct data', async () => {
+        const controller = buildController()
+
+        const result = await controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')
+
+        loginRefreshAssertCommonCalls('expected-access-token', 'expected-new-refresh-token')
+        expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({ refreshToken: 'expected-refresh-token' })
+        expect(result).toEqual(expectedResponse)
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw UnauthorizedException when use-case returns userNotFound error', async () => {
+        const controller = buildController()
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: { id: 'UNKNOWN_ERROR_ID', message: 'unknown error', name: 'UnknownError' },
+          error: RefreshSessionApplicationError.userNotFound('test-user-id'),
         })
 
-        const result = await controller.login(mockBody, mockedRequest, mockedResponse)
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+      })
 
-        expect(mockedResponse.status).toHaveBeenCalledWith(HttpStatus.INTERNAL_SERVER_ERROR)
-        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
-        expect(result).toEqual({
-          code: INTERNAL_SERVER_ERROR,
-          message: 'Something went wrong while processing your request',
-          status: 500,
-          traceId: 'test-trace-id',
+      it('should throw UnauthorizedException when use-case returns sessionNotFound error', async () => {
+        const controller = buildController()
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: RefreshSessionApplicationError.sessionNotFound(),
         })
+
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+      })
+
+      it('should throw UnauthorizedException when use-case returns sessionAlreadyExpired error', async () => {
+        const controller = buildController()
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: RefreshSessionApplicationError.sessionAlreadyExpired('test-session-id'),
+        })
+
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+      })
+
+      it('should throw UnauthorizedException when use-case returns sessionAlreadyRevoked error', async () => {
+        const controller = buildController()
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: RefreshSessionApplicationError.sessionAlreadyRevoked('test-session-id'),
+        })
+
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+      })
+
+      it('should throw InternalServerErrorException when use-case returns sessionInconsistency error', async () => {
+        const controller = buildController()
+
+        const useCaseError = RefreshSessionApplicationError.sessionInconsistency('Unexpected inconsistency error')
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseError,
+        })
+
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          new InternalServerErrorException(useCaseError),
+        )
+      })
+
+      it('should throw InternalServerErrorException when use-case returns revocationFailed error', async () => {
+        const controller = buildController()
+
+        const useCaseError = RefreshSessionApplicationError.revocationFailed('Unexpected revocation error')
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseError,
+        })
+
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          new InternalServerErrorException(useCaseError),
+        )
+      })
+
+      it('should throw InternalServerErrorException when use-case returns internalError error', async () => {
+        const controller = buildController()
+
+        const useCaseError = RefreshSessionApplicationError.internalError('Unexpected internal error')
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseError,
+        })
+
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          new InternalServerErrorException(useCaseError),
+        )
+      })
+
+      it('should throw error when use-case fails', async () => {
+        const controller = buildController()
+
+        mockedRefreshSessionUseCase.execute.mockImplementation(() => {
+          throw Error('Unexpected error')
+        })
+
+        await expect(controller.refresh(mockedRequest, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+          Error('Unexpected error'),
+        )
       })
     })
   })

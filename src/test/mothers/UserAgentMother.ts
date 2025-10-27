@@ -7,6 +7,10 @@ export class UserAgentMother {
     return UserAgent.fromString(validUA)
   }
 
+  static forTesting(): UserAgent {
+    return UserAgent.fromString('LobiApp/1.0 (CarlosP at the controls)')
+  }
+
   static random(): UserAgent {
     const length = 10 + Math.floor(Math.random() * 50)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/.-_ '

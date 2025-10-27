@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import jwt, { SignOptions } from 'jsonwebtoken'
+import { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 
 export class JWTokenGeneratorApplicationService implements TokenGeneratorApplicationServiceInterface {
@@ -31,7 +32,7 @@ export class JWTokenGeneratorApplicationService implements TokenGeneratorApplica
       audience: this.audience,
     }
 
-    const payload = {
+    const payload: JwtPayload = {
       sub: userId,
       sid: sessionId,
       iat: nowSeconds,

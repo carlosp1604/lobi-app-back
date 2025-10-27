@@ -56,6 +56,8 @@ jobs:
       REFRESH_TTL_MS: 604800000
       SALT_ROUNDS: 2
       USER_MAX_SESSIONS: 6
+      ACCESS_COOKIE_NAME: "x-access-token"
+      REFRESH_COOKIE_NAME: "x-refresh-token"
 
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}

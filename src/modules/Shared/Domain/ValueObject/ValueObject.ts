@@ -9,7 +9,7 @@ export abstract class ValueObject<T> {
     return this._value
   }
 
-  public equals(vo?: ValueObject<T>): boolean {
+  public equals(vo?: ValueObject<T> | null): boolean {
     if (vo === null || vo === undefined) {
       return false
     }

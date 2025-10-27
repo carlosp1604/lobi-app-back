@@ -11,15 +11,11 @@ import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.enti
 import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
+import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
+import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 
 describe('PostgreSqlUserCredentialRepository', () => {
-  const userId = UserIdMother.valid()
-  const userEmail = UserEmailMother.valid()
   const now = new Date('2025-09-26T14:11:25Z')
-
-  const rawUserCredential = makeRawUserCredential({
-    user_id: userId.toString(),
-  })
 
   let runner: QueryRunner
 
@@ -28,6 +24,13 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('saveLoginSuccess', () => {
+    const userId = UserIdMother.valid()
+    const userEmail = UserEmailMother.valid()
+
+    const rawUserCredential = makeRawUserCredential({
+      user_id: userId.toString(),
+    })
+
     const updatedAt = new Date(now.getTime() + 500)
 
     const createUserCredential = (userCredentialUserId: UserId) => {
@@ -46,8 +49,6 @@ describe('PostgreSqlUserCredentialRepository', () => {
       const rawUser = makeRawUser({
         id: userId.toString(),
         email: userEmail.toString(),
-        created_at: now,
-        updated_at: now,
       })
       await userRepository.save(rawUser)
     })
@@ -106,6 +107,68 @@ describe('PostgreSqlUserCredentialRepository', () => {
       expect(originalRow?.locked_until?.getTime()).toBe(rawUserCredential.locked_until?.getTime())
       expect(originalRow?.last_login_at).toBe(rawUserCredential.last_login_at)
       expect(originalRow?.updated_at.getTime()).toBe(rawUserCredential.updated_at.getTime())
+    })
+  })
+
+  describe('findByUserId', () => {
+    const userId = UserIdMother.valid()
+    const userEmail = UserEmailMother.valid()
+    const passwordHash = PasswordHashMother.valid()
+
+    beforeEach(async () => {
+      const userRepository = runner.manager.getRepository(UserEntity)
+
+      const rawUser = makeRawUser({
+        id: userId.toString(),
+        email: userEmail.toString(),
+        created_at: now,
+        updated_at: now,
+      })
+      await userRepository.save(rawUser)
+    })
+
+    const rawUserCredential = makeRawUserCredential({
+      user_id: userId.toString(),
+      updated_at: now,
+      created_at: now,
+      failed_attempts: 2,
+      last_login_at: null,
+      locked_until: null,
+      password_hash: passwordHash.toString(),
+    })
+
+    const checkUserCredentialFound = (result: UserCredential | null) => {
+      expect(result).toBeTruthy()
+      expect(result?.userId.equals(userId)).toBe(true)
+      expect(result?.passwordHash.equals(passwordHash)).toBe(true)
+      expect(result?.updatedAt.getTime()).toBe(now.getTime())
+      expect(result?.createdAt.getTime()).toBe(now.getTime())
+      expect(result?.failedAttempts).toBe(2)
+      expect(result?.lastLoginAt).toBe(null)
+      expect(result?.lockedUntil).toBe(null)
+    }
+
+    it('should find user and translate to domain correctly', async () => {
+      const userCredentialRepository = runner.manager.getRepository(UserCredentialEntity)
+      await userCredentialRepository.save(rawUserCredential)
+
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.findByUserId(userId.toString(), context)
+
+      checkUserCredentialFound(result)
+    })
+
+    it('should return null if user does not exist', async () => {
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.findByUserId(userId.toString(), context)
+
+      expect(result).toBeNull()
     })
   })
 })

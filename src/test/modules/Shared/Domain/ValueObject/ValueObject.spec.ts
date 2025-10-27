@@ -20,7 +20,7 @@ class AnotherDummyVO extends ValueObject<string> {
   }
 }
 
-describe('ValueObject base', () => {
+describe('ValueObject', () => {
   describe('equals', () => {
     it('returns true when valueObjects are equals', () => {
       const a = DummyVO.fromString('abc')
@@ -36,18 +36,23 @@ describe('ValueObject base', () => {
       expect(a.equals(b)).toBe(false)
     })
 
-    it('returns false when valueObjects values are equal but its types are different', () => {
+    it('returns false when valueObjects values are equal but their types are different', () => {
       const a = DummyVO.fromString('abc')
       const b = AnotherDummyVO.fromString('abc')
 
       expect(a.equals(b)).toBe(false)
     })
 
-    it('returns false when compared with null or undefined', () => {
+    it('returns false when compared with null', () => {
       const a = DummyVO.fromString('abc')
 
-      expect(a.equals(null as any)).toBe(false)
-      expect(a.equals(undefined as any)).toBe(false)
+      expect(a.equals(null)).toBe(false)
+    })
+
+    it('returns false when compared with undefined', () => {
+      const a = DummyVO.fromString('abc')
+
+      expect(a.equals(undefined)).toBe(false)
     })
   })
 

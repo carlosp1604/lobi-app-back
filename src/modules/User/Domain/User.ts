@@ -5,8 +5,6 @@ import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
-import { Relationship } from '~/src/modules/Shared/Domain/Relationship/Relationship'
-import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 
 export class User {
   public readonly id: UserId
@@ -21,8 +19,6 @@ export class User {
   public readonly updatedAt: Date
   public readonly deletedAt: Date | null
 
-  public readonly _credential: Relationship<UserCredential>
-
   constructor(
     id: UserId,
     email: UserEmail,
@@ -35,7 +31,6 @@ export class User {
     createdAt: Date,
     updatedAt: Date,
     deletedAt: Date | null,
-    credential: Relationship<UserCredential> = Relationship.notLoaded(),
   ) {
     this.id = id
     this.email = email
@@ -48,7 +43,6 @@ export class User {
     this.updatedAt = updatedAt
     this.deletedAt = deletedAt
     this.emailVerifiedAt = emailVerifiedAt
-    this._credential = credential
   }
 
   public static create(
@@ -61,12 +55,7 @@ export class User {
     now: Date,
   ): User {
     const status = UserStatus.active()
-    const emailVerifiedAt = now
 
-    return new User(userId, email, username, name, status, role, userUploadId, emailVerifiedAt, now, now, null)
-  }
-
-  public get credential(): UserCredential | null {
-    return this._credential.getOrNull()
+    return new User(userId, email, username, name, status, role, userUploadId, now, now, now, null)
   }
 }
