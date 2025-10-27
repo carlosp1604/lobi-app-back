@@ -5,7 +5,7 @@ import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Ap
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { ConfigService } from '@nestjs/config'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -25,7 +25,7 @@ describe('GenerateTokensApplicationService', () => {
   const userId = UserIdMother.valid()
   const userAgent = UserAgentMother.valid()
   const ipHash = UserSessionIpHashMother.valid()
-  const expectedTokenHash = UserSessionHashMother.random()
+  const expectedTokenHash = UserSessionTokenHashMother.random()
   const deviceLocation = DeviceLocationMother.valid()
 
   const now = new Date('2025-10-17T15:26:21Z')

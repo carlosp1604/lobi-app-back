@@ -1,6 +1,6 @@
 import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
+import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
@@ -9,7 +9,7 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 export class UserSession {
   public readonly id: UserSessionId
   public readonly userId: UserId
-  public tokenHash: UserSessionHash
+  public tokenHash: UserSessionTokenHash
   public expiresAt: Date
   public revokedAt: Date | null
   public ipHash: UserSessionIpHash | null
@@ -22,7 +22,7 @@ export class UserSession {
   public constructor(
     id: UserSessionId,
     userId: UserId,
-    tokenHash: UserSessionHash,
+    tokenHash: UserSessionTokenHash,
     expiresAt: Date,
     revokedAt: Date | null,
     ipHash: UserSessionIpHash | null,
@@ -46,7 +46,7 @@ export class UserSession {
   static create(
     id: UserSessionId,
     userId: UserId,
-    tokenHash: UserSessionHash,
+    tokenHash: UserSessionTokenHash,
     userAgent: UserAgent,
     expiresAt: Date,
     now: Date,

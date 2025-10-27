@@ -5,7 +5,7 @@ import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
-import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
+import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
@@ -32,7 +32,7 @@ export class UserSessionTestBuilder {
     return this
   }
 
-  withTokenHash(hash: UserSessionHash) {
+  withTokenHash(hash: UserSessionTokenHash) {
     this._tokenHash = hash
     return this
   }

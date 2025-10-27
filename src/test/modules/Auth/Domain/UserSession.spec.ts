@@ -2,7 +2,7 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
@@ -17,7 +17,7 @@ describe('UserSession', () => {
 
     const id = UserSessionIdMother.valid()
     const userId = UserIdMother.valid()
-    const tokenHash = UserSessionHashMother.valid()
+    const tokenHash = UserSessionTokenHashMother.valid()
     const userAgent = UserAgentMother.valid()
 
     it('should initialize the UserSession instance correctly', () => {
@@ -57,7 +57,7 @@ describe('UserSession', () => {
       userSessionTestBuilder = new UserSessionTestBuilder()
         .withId(UserSessionIdMother.valid())
         .withUserId(UserIdMother.valid())
-        .withTokenHash(UserSessionHashMother.valid())
+        .withTokenHash(UserSessionTokenHashMother.valid())
         .withUserAgent(UserAgentMother.valid())
         .withIpHash(null)
         .withDeviceLocation(null)

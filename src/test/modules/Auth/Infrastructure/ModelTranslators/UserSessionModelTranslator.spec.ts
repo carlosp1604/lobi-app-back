@@ -1,7 +1,7 @@
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
@@ -74,7 +74,7 @@ describe('UserSessionModelTranslator', () => {
       sessionBuilder = new UserSessionTestBuilder()
         .withId(UserSessionIdMother.valid())
         .withUserId(UserIdMother.valid())
-        .withTokenHash(UserSessionHashMother.valid())
+        .withTokenHash(UserSessionTokenHashMother.valid())
         .withExpiresAt(now)
         .withRevokedAt(null)
         .withIpHash(UserSessionIpHashMother.valid())

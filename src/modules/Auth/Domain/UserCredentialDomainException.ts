@@ -8,6 +8,6 @@ export class UserCredentialDomainException extends DomainException {
   }
 
   public static invalidPasswordHash() {
-    return new UserCredentialDomainException('Invalid password hash format', this.invalidPasswordHashId)
+    return new UserCredentialDomainException('Invalid UserCredential password hash format', this.invalidPasswordHashId)
   }
 }
