@@ -1,13 +1,13 @@
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
-import { VerificationTokenType } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenType'
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 
 export class VerificationToken {
   public readonly id: VerificationTokenId
   public readonly email: UserEmail
   public readonly tokenHash: VerificationTokenTokenHash
-  public readonly purpose: VerificationTokenType
+  public readonly purpose: VerificationTokenPurpose
   public readonly expiresAt: Date
   private readonly _usedAt: Date | null
   public readonly createdAt: Date
@@ -16,7 +16,7 @@ export class VerificationToken {
     id: VerificationTokenId,
     email: UserEmail,
     tokenHash: VerificationTokenTokenHash,
-    purpose: VerificationTokenType,
+    purpose: VerificationTokenPurpose,
     expiresAt: Date,
     usedAt: Date | null,
     createdAt: Date,

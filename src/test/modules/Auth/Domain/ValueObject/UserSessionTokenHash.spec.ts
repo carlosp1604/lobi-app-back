@@ -1,9 +1,10 @@
 import fc from 'fast-check'
+import { HASH_REGEX } from '~/src/modules/Shared/Domain/ValueObject/HashValueObject'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 
-const validValues = fc.uint8Array({ minLength: 32, maxLength: 32 }).map((bytes) => Buffer.from(bytes).toString('base64'))
+const validValues = fc.stringMatching(HASH_REGEX)
 
 const invalidCases = ['', 'abc', 'a'.repeat(45), '**not-base64**', 'a'.repeat(44)]
 

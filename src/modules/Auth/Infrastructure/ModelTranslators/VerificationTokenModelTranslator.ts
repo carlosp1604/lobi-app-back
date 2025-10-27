@@ -1,7 +1,7 @@
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
-import { VerificationTokenType } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenType'
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 
@@ -11,7 +11,7 @@ export class VerificationTokenModelTranslator {
       VerificationTokenId.fromString(rawModel.id),
       UserEmail.fromString(rawModel.email),
       VerificationTokenTokenHash.fromString(rawModel.token_hash),
-      VerificationTokenType.fromString(rawModel.purpose),
+      VerificationTokenPurpose.fromString(rawModel.purpose),
       rawModel.expires_at,
       rawModel.used_at,
       rawModel.created_at,

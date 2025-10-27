@@ -1,7 +1,7 @@
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
-import { VerificationTokenType } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenType'
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
@@ -19,7 +19,7 @@ describe('VerificationTokenModelTranslator', () => {
 
   const baseRaw = makeRawVerificationToken({
     email: UserEmailMother.random().toString(),
-    purpose: VerificationTokenType.createAccount().toString(),
+    purpose: VerificationTokenPurpose.createAccount().toString(),
     created_at: now,
     expires_at: futureExpiresAt,
     used_at: null,
@@ -30,7 +30,7 @@ describe('VerificationTokenModelTranslator', () => {
       expect(result.id).toBeInstanceOf(VerificationTokenId)
       expect(result.email).toBeInstanceOf(UserEmail)
       expect(result.tokenHash).toBeInstanceOf(VerificationTokenTokenHash)
-      expect(result.purpose).toBeInstanceOf(VerificationTokenType)
+      expect(result.purpose).toBeInstanceOf(VerificationTokenPurpose)
 
       expect(result.id.toString()).toBe(raw.id)
       expect(result.email.toString()).toBe(raw.email)
@@ -84,7 +84,7 @@ describe('VerificationTokenModelTranslator', () => {
         .withId(VerificationTokenIdMother.valid())
         .withEmail(UserEmailMother.random())
         .withTokenHash(VerificationTokenTokenHashMother.random())
-        .withPurpose(VerificationTokenType.createAccount())
+        .withPurpose(VerificationTokenPurpose.createAccount())
         .withExpiresAt(futureExpiresAt)
         .withUsedAt(null)
         .withCreatedAt(now)

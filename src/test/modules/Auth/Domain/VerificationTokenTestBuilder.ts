@@ -5,13 +5,13 @@ import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
-import { VerificationTokenType } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenType'
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
 export class VerificationTokenTestBuilder {
   private _id: VerificationTokenId = VerificationTokenIdMother.valid()
   private _email: UserEmail = UserEmailMother.random()
   private _tokenHash: VerificationTokenTokenHash = VerificationTokenTokenHashMother.random()
-  private _purpose: VerificationTokenType = VerificationTokenType.createAccount()
+  private _purpose: VerificationTokenPurpose = VerificationTokenPurpose.createAccount()
   private _expiresAt: Date = new Date()
   private _usedAt: Date | null = null
   private _createdAt: Date = new Date()
@@ -31,7 +31,7 @@ export class VerificationTokenTestBuilder {
     return this
   }
 
-  public withPurpose(purpose: VerificationTokenType): this {
+  public withPurpose(purpose: VerificationTokenPurpose): this {
     this._purpose = purpose
     return this
   }
