@@ -8,6 +8,9 @@ import { VerificationTokenTokenHashMother } from '~/src/test/mothers/Verificatio
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
+import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 
 describe('VerificationTokenModelTranslator', () => {
   const isoDate = '2025-10-27T15:37:00.000Z'
@@ -24,36 +27,36 @@ describe('VerificationTokenModelTranslator', () => {
 
   describe('toDomain', () => {
     const checkResult = (result: VerificationToken, raw: VerificationTokenRawModel) => {
+      expect(result.id).toBeInstanceOf(VerificationTokenId)
+      expect(result.email).toBeInstanceOf(UserEmail)
+      expect(result.tokenHash).toBeInstanceOf(VerificationTokenTokenHash)
+      expect(result.purpose).toBeInstanceOf(VerificationTokenType)
+
       expect(result.id.toString()).toBe(raw.id)
       expect(result.email.toString()).toBe(raw.email)
       expect(result.tokenHash.toString()).toBe(raw.token_hash)
       expect(result.purpose.toString()).toBe(raw.purpose)
       expect(result.expiresAt.getTime()).toBe(raw.expires_at.getTime())
-
-      if (result.usedAt === null) {
-        expect(result.usedAt).toBeNull()
-        expect(raw.used_at).toBeNull()
-      } else {
-        expect(result.usedAt?.getTime()).toBe(raw.used_at?.getTime())
-      }
-
+      expect(result.usedAt).toEqual(raw.used_at)
       expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
     }
 
-    it('should return the correct data when nullable fields are not NULL', () => {
+    it('should return the correct domain object when nullable fields are not NULL', () => {
       const raw = { ...baseRaw, used_at: now }
 
       const result = VerificationTokenModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
+      expect(result.usedAt?.getTime()).toBe(now.getTime())
     })
 
-    it('should return the correct data when nullable fields are null', () => {
+    it('should return the correct domain object when nullable fields are NULL', () => {
       const raw = { ...baseRaw }
 
       const result = VerificationTokenModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
+      expect(result.usedAt).toBeNull()
     })
 
     it('does not mutate the input raw model', () => {
@@ -93,41 +96,36 @@ describe('VerificationTokenModelTranslator', () => {
       expect(result.token_hash).toBe(domain.tokenHash.toString())
       expect(result.purpose).toBe(domain.purpose.toString())
       expect(result.expires_at.getTime()).toBe(domain.expiresAt.getTime())
-
-      if (result.used_at === null) {
-        expect(result.used_at).toBeNull()
-        expect(domain.usedAt).toBeNull()
-      } else {
-        expect(result.used_at?.getTime()).toBe(domain.usedAt?.getTime())
-      }
-
+      expect(result.used_at).toEqual(domain.usedAt)
       expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
     }
 
-    it('should return the correct data when nullable fields are not NULL', () => {
+    it('should return the correct raw model when nullable fields are not NULL', () => {
       const verificationToken = tokenBuilder.withUsedAt(now).build()
 
       const result = VerificationTokenModelTranslator.toDatabase(verificationToken)
 
       checkResult(result, verificationToken)
+      expect(result.used_at?.getTime()).toBe(now.getTime())
     })
 
-    it('should return the correct data when nullable fields are null', () => {
+    it('should return the correct raw model when nullable fields are NULL', () => {
       const verificationToken = tokenBuilder.withUsedAt(null).build()
 
       const result = VerificationTokenModelTranslator.toDatabase(verificationToken)
 
       checkResult(result, verificationToken)
+      expect(result.used_at).toBeNull()
     })
 
     it('does not mutate the input domain object', () => {
       const verificationToken = tokenBuilder.build()
 
       const snapshot = {
-        id: verificationToken.id.toString(),
-        email: verificationToken.email.toString(),
-        tokenHash: verificationToken.tokenHash.toString(),
-        purpose: verificationToken.purpose.toString(),
+        id: verificationToken.id,
+        email: verificationToken.email,
+        tokenHash: verificationToken.tokenHash,
+        purpose: verificationToken.purpose,
         expiresAt: verificationToken.expiresAt,
         usedAt: verificationToken.usedAt,
         createdAt: verificationToken.createdAt,
@@ -135,10 +133,10 @@ describe('VerificationTokenModelTranslator', () => {
 
       VerificationTokenModelTranslator.toDatabase(verificationToken)
 
-      expect(verificationToken.id.toString()).toBe(snapshot.id)
-      expect(verificationToken.email.toString()).toBe(snapshot.email)
-      expect(verificationToken.tokenHash.toString()).toBe(snapshot.tokenHash)
-      expect(verificationToken.purpose.toString()).toBe(snapshot.purpose)
+      expect(verificationToken.id.equals(snapshot.id)).toBe(true)
+      expect(verificationToken.email.equals(snapshot.email)).toBe(true)
+      expect(verificationToken.tokenHash.equals(snapshot.tokenHash)).toBe(true)
+      expect(verificationToken.purpose.equals(snapshot.purpose)).toBe(true)
       expect(verificationToken.expiresAt.getTime()).toEqual(snapshot.expiresAt.getTime())
       expect(verificationToken.usedAt).toBeNull()
       expect(snapshot.usedAt).toBeNull()
