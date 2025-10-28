@@ -1,6 +1,6 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 
-const HASH_REGEX = /^[A-Za-z0-9+/]{43}=$/
+export const HASH_REGEX = /^[A-Za-z0-9+/]{43}=$/
 
 export abstract class HashValueObject extends ValueObject<string> {
   protected isValidHash(value: string): boolean {

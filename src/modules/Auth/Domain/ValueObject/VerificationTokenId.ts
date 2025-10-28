@@ -1,0 +1,18 @@
+import { UuidValueObject } from '~/src/modules/Shared/Domain/ValueObject/UuidValueObject'
+import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+
+export class VerificationTokenId extends UuidValueObject {
+  private constructor(value: string) {
+    const normalized = value.trim()
+
+    super(normalized)
+
+    if (!this.isValidId(normalized)) {
+      throw VerificationTokenDomainException.invalidVerificationTokenId(value)
+    }
+  }
+
+  static fromString(value: string): VerificationTokenId {
+    return new VerificationTokenId(value)
+  }
+}

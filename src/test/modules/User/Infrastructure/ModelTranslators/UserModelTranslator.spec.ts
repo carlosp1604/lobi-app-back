@@ -8,6 +8,14 @@ import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
+import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { User } from '~/src/modules/User/Domain/User'
+import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
+import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
+import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 describe('UserModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
@@ -18,48 +26,99 @@ describe('UserModelTranslator', () => {
     created_at: now,
     updated_at: now,
     user_upload_id: UserUploadIdMother.valid().toString(),
+    deleted_at: null,
   })
 
   describe('toDomain', () => {
-    it('returns the correct data', () => {
-      const result = UserModelTranslator.toDomain(baseRaw)
+    const checkResult = (result: User, raw: UserRawModelWithRelations) => {
+      expect(result.id).toBeInstanceOf(UserId)
+      expect(result.email).toBeInstanceOf(UserEmail)
+      expect(result.username).toBeInstanceOf(UserUsername)
+      expect(result.name).toBeInstanceOf(UserName)
+      expect(result.status).toBeInstanceOf(UserStatus)
+      expect(result.role).toBeInstanceOf(UserRole)
 
-      expect(result.id.toString()).toBe(baseRaw.id)
-      expect(result.email.toString()).toBe(baseRaw.email)
-      expect(result.username.toString()).toBe(baseRaw.username)
-      expect(result.name.toString()).toBe(baseRaw.name)
-      expect(result.status.equals(UserStatus.active())).toBe(true)
-      expect(result.role.equals(UserRole.sportsman())).toBe(true)
-      expect(result.userUploadId?.toString()).toBe(baseRaw.user_upload_id)
-      expect(result.emailVerifiedAt.toISOString()).toBe(isoDate)
-      expect(result.createdAt.toISOString()).toBe(isoDate)
-      expect(result.updatedAt.toISOString()).toBe(isoDate)
-      expect(result.deletedAt).toBeNull()
-    })
+      expect(result.id.toString()).toBe(raw.id)
+      expect(result.email.toString()).toBe(raw.email)
+      expect(result.username.toString()).toBe(raw.username)
+      expect(result.name.toString()).toBe(raw.name)
+      expect(result.status.toString()).toBe(raw.status)
+      expect(result.role.toString()).toBe(raw.role)
 
-    it('returns the correct data when user_upload_id or deleted_at are NULL', () => {
-      const raw = { ...baseRaw, user_upload_id: null, deleted_at: now }
+      if (raw.user_upload_id === null) {
+        expect(result.userUploadId).toBeNull()
+      } else {
+        expect(result.userUploadId).toBeInstanceOf(UserUploadId)
+        expect(result.userUploadId?.toString()).toBe(raw.user_upload_id)
+      }
+
+      expect(result.emailVerifiedAt.getTime()).toBe(raw.email_verified_at.getTime())
+      expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
+      expect(result.updatedAt.getTime()).toBe(raw.updated_at.getTime())
+      expect(result.deletedAt).toEqual(raw.deleted_at)
+    }
+
+    it('should return domain object when nullable fields are not NULL', () => {
+      const raw = { ...baseRaw, deleted_at: now }
 
       const result = UserModelTranslator.toDomain(raw)
 
+      checkResult(result, raw)
+      expect(result.deletedAt?.getTime()).toBe(now.getTime())
+      expect(result.userUploadId).not.toBeNull()
+    })
+
+    it('should return the correct domain object when nullable fields are NULL', () => {
+      const raw = { ...baseRaw, user_upload_id: null, deleted_at: null }
+
+      const result = UserModelTranslator.toDomain(raw)
+
+      checkResult(result, raw)
+      expect(result.deletedAt).toBeNull()
       expect(result.userUploadId).toBeNull()
-      expect(result.deletedAt?.toISOString()).toBe(isoDate)
+    })
+
+    it('should propagate errors from ValueObject', () => {
+      const rawInvalidEmail = { ...baseRaw, email: 'not-an-email' }
+
+      expect(() => UserModelTranslator.toDomain(rawInvalidEmail)).toThrow(UserDomainException.invalidUserEmail('not-an-email'))
+    })
+
+    it('does not mutate the input raw model', () => {
+      const raw = structuredClone(baseRaw)
+
+      UserModelTranslator.toDomain(raw)
+
+      expect(raw).toEqual(baseRaw)
     })
   })
 
-  it('does not mutate input', () => {
-    const raw = structuredClone(baseRaw)
-
-    UserModelTranslator.toDomain(raw)
-
-    expect(raw).toEqual(baseRaw)
-  })
-
   describe('toDatabase', () => {
-    let userTestBuilder = new UserTestBuilder()
+    let userBuilder: UserTestBuilder
+
+    const checkResult = (result: UserRawModelWithRelations, domain: User) => {
+      expect(result.id).toBe(domain.id.toString())
+      expect(result.email).toBe(domain.email.toString())
+      expect(result.username).toBe(domain.username.toString())
+      expect(result.name).toBe(domain.name.toString())
+      expect(result.status).toBe(domain.status.toString())
+      expect(result.role).toBe(domain.role.toString())
+
+      if (domain.userUploadId === null) {
+        expect(result.user_upload_id).toBeNull()
+        expect(domain.userUploadId).toBeNull()
+      } else {
+        expect(result.user_upload_id).toBe(domain.userUploadId.toString())
+      }
+
+      expect(result.email_verified_at?.getTime()).toBe(domain.emailVerifiedAt?.getTime())
+      expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
+      expect(result.updated_at.getTime()).toBe(domain.updatedAt.getTime())
+      expect(result.deleted_at).toEqual(domain.deletedAt)
+    }
 
     beforeEach(() => {
-      userTestBuilder = new UserTestBuilder()
+      userBuilder = new UserTestBuilder()
         .withId(UserIdMother.valid())
         .withEmail(UserEmailMother.valid())
         .withUsername(UserUsernameMother.valid())
@@ -70,48 +129,40 @@ describe('UserModelTranslator', () => {
         .withCreatedAt(now)
         .withUpdatedAt(now)
         .withEmailVerifiedAt(now)
-        .withDeletedAt(now)
+        .withDeletedAt(null)
     })
 
-    it('returns the correct data', () => {
-      const user = userTestBuilder.build()
-      const row = UserModelTranslator.toDatabase(user)
+    it('should return the correct raw model when nullable fields is not NULL', () => {
+      const user = userBuilder.withDeletedAt(now).build()
 
-      expect(row).toEqual({
-        id: user.id.toString(),
-        email: user.email.toString(),
-        username: user.username.toString(),
-        name: user.name.toString(),
-        status: String(UserStatus.active()),
-        role: String(UserRole.sportsman()),
-        user_upload_id: user.userUploadId?.toString(),
-        email_verified_at: now,
-        created_at: now,
-        updated_at: now,
-        deleted_at: now,
-      })
+      const result = UserModelTranslator.toDatabase(user)
+
+      checkResult(result, user)
+      expect(result.deleted_at?.getTime()).toBe(now.getTime())
+      expect(result.user_upload_id).not.toBeNull()
     })
 
-    it('returns the correct data when user_upload_id or deleted_at are NULL', () => {
-      const user = userTestBuilder.withDeletedAt(null).withUploadId(null).build()
+    it('should return the correct raw model when nullable fields are NULL', () => {
+      const user = userBuilder.withUploadId(null).withDeletedAt(null).build()
 
-      const row = UserModelTranslator.toDatabase(user)
+      const result = UserModelTranslator.toDatabase(user)
 
-      expect(row.user_upload_id).toBeNull()
-      expect(row.deleted_at).toBeNull()
+      checkResult(result, user)
+      expect(result.deleted_at).toBeNull()
+      expect(result.user_upload_id).toBeNull()
     })
 
-    it('does not mutate input', () => {
-      const user = userTestBuilder.build()
+    it('does not mutate the input domain object', () => {
+      const user = userBuilder.withDeletedAt(now).build()
 
       const snapshot = {
-        id: user.id.toString(),
-        email: user.email.toString(),
-        name: user.name.toString(),
-        status: user.status.toString(),
-        role: user.role.toString(),
-        username: user.username.toString(),
-        userUploadId: user.userUploadId?.toString(),
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        name: user.name,
+        status: user.status,
+        role: user.role,
+        userUploadId: user.userUploadId,
         emailVerifiedAt: user.emailVerifiedAt,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -120,17 +171,17 @@ describe('UserModelTranslator', () => {
 
       UserModelTranslator.toDatabase(user)
 
-      expect(user.id.toString()).toBe(snapshot.id)
-      expect(user.email.toString()).toBe(snapshot.email)
-      expect(user.name.toString()).toBe(snapshot.name)
-      expect(user.status.toString()).toBe(snapshot.status)
-      expect(user.role.toString()).toBe(snapshot.role)
-      expect(user.username.toString()).toBe(snapshot.username)
-      expect(user.userUploadId?.toString()).toBe(snapshot.userUploadId)
-      expect(user.emailVerifiedAt).toBe(snapshot.emailVerifiedAt)
-      expect(user.createdAt).toBe(snapshot.createdAt)
-      expect(user.updatedAt).toBe(snapshot.updatedAt)
-      expect(user.deletedAt).toBe(snapshot.deletedAt)
+      expect(user.id.equals(snapshot.id)).toBe(true)
+      expect(user.email.equals(snapshot.email)).toBe(true)
+      expect(user.username.equals(snapshot.username)).toBe(true)
+      expect(user.name.equals(snapshot.name)).toBe(true)
+      expect(user.status.equals(snapshot.status)).toBe(true)
+      expect(user.role.equals(snapshot.role)).toBe(true)
+      expect(user.userUploadId?.equals(snapshot.userUploadId)).toBe(true)
+      expect(user.emailVerifiedAt?.getTime()).toBe(snapshot.emailVerifiedAt?.getTime())
+      expect(user.createdAt.getTime()).toBe(snapshot.createdAt.getTime())
+      expect(user.updatedAt.getTime()).toBe(snapshot.updatedAt.getTime())
+      expect(user.deletedAt?.getTime()).toBe(snapshot.deletedAt?.getTime())
     })
   })
 })

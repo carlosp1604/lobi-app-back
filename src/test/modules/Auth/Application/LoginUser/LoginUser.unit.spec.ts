@@ -24,7 +24,7 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
@@ -69,7 +69,7 @@ describe('LoginUser', () => {
   const validUserId = UserIdMother.valid()
   const validPasswordHash = PasswordHashMother.valid()
   const validIpHash = UserSessionIpHashMother.valid()
-  const validHashToken = UserSessionHashMother.valid()
+  const validHashToken = UserSessionTokenHashMother.valid()
 
   const expectedSessionId = UserSessionIdMother.valid()
   const expectedDomainEventId = DomainEventIdMother.valid()

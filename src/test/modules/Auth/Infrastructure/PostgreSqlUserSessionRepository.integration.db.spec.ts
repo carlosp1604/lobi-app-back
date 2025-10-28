@@ -8,7 +8,7 @@ import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestM
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionHashMother } from '~/src/test/mothers/UserSessionHashMother'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { UserSessionEntity, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
@@ -197,11 +197,11 @@ describe('PostgreSqlUserSessionRepository', () => {
     it('should insert new  user sessions correctly', async () => {
       const userSession1 = userSessionTestBuilder
         .withId(UserSessionIdMother.valid())
-        .withTokenHash(UserSessionHashMother.random())
+        .withTokenHash(UserSessionTokenHashMother.random())
         .build()
       const userSession2 = userSessionTestBuilder
         .withId(UserSessionIdMother.valid())
-        .withTokenHash(UserSessionHashMother.random())
+        .withTokenHash(UserSessionTokenHashMother.random())
         .build()
 
       const repository = new PostgreSqlUserSessionRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
@@ -231,7 +231,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     })
 
     it('should save new session and update the existing one correctly', async () => {
-      const userSessionHash = UserSessionHashMother.valid()
+      const userSessionHash = UserSessionTokenHashMother.valid()
       const existingSessionId = UserSessionIdMother.valid()
       const revokedAt = new Date(now.getTime() - 3600)
 
@@ -253,7 +253,7 @@ describe('PostgreSqlUserSessionRepository', () => {
 
       const newSession = userSessionTestBuilder
         .withId(UserSessionIdMother.valid())
-        .withTokenHash(UserSessionHashMother.random())
+        .withTokenHash(UserSessionTokenHashMother.random())
         .build()
 
       const updatedSession = userSessionTestBuilder

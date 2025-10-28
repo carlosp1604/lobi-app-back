@@ -3,7 +3,7 @@ import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Ap
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
-import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
+import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
@@ -31,7 +31,7 @@ export class GenerateTokensApplicationService {
     const sessionExpiresAt = new Date(now.getTime() + this.configService.get('REFRESH_TTL_MS', { infer: true }))
     const clearSessionToken = await this.tokenGenerator.generateSessionToken()
     const newSessionHashedToken = await this.hasherService.hash(clearSessionToken)
-    const sessionHash = UserSessionHash.fromString(newSessionHashedToken)
+    const sessionHash = UserSessionTokenHash.fromString(newSessionHashedToken)
 
     const session = UserSession.create(sessionId, userId, sessionHash, userAgent, sessionExpiresAt, now, ipHash, deviceLocation)
 

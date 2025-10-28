@@ -11,23 +11,23 @@ export class DomainEventDomainException extends DomainException {
   }
 
   public static invalidDomainEventId(userId: string) {
-    return new DomainEventDomainException(`${userId} is not a valid Domain Event ID`, this.invalidDomainEventIdId)
+    return new DomainEventDomainException(`${userId} is not a valid DomainEvent ID`, this.invalidDomainEventIdId)
   }
 
   public static invalidDomainEventAggregateId(aggregateId: string) {
     return new DomainEventDomainException(
-      `${aggregateId} is not a valid Domain Event aggregate ID`,
+      `${aggregateId} is not a valid DomainEvent aggregate ID`,
       this.invalidDomainEventAggregateIdId,
     )
   }
 
   public static invalidDomainEventName(eventName: string) {
-    return new DomainEventDomainException(`${eventName} is not a valid Domain Event name`, this.invalidDomainEventNameId)
+    return new DomainEventDomainException(`${eventName} is not a valid DomainEvent name`, this.invalidDomainEventNameId)
   }
 
   public static invalidDomainEventAggregateType(eventType: string) {
     return new DomainEventDomainException(
-      `${eventType} is not a valid Domain Event aggregate type`,
+      `${eventType} is not a valid DomainEvent aggregate type`,
       this.invalidDomainEventAggregateTypeId,
     )
   }

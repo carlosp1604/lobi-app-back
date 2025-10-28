@@ -1,5 +1,5 @@
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
-import { UserSessionHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionHash'
+import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { randomBytes } from 'crypto'
 
 export class UserSessionIpHashMother {
@@ -7,8 +7,8 @@ export class UserSessionIpHashMother {
     return UserSessionIpHash.fromString('X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=')
   }
 
-  static random(): UserSessionHash {
+  static random(): UserSessionTokenHash {
     const hash = randomBytes(32).toString('base64')
-    return UserSessionHash.fromString(hash)
+    return UserSessionIpHash.fromString(hash)
   }
 }
