@@ -14,7 +14,7 @@ describe('VerificationTokenPurpose', () => {
       expect(() => VerificationTokenPurpose.fromString(purpose)).not.toThrow()
     })
 
-    it.each(invalidCases)('should throw error when VerificationToken is not valid: %s', (purpose) => {
+    it.each(invalidCases)('should throw error when VerificationToken purpose is not valid: %s', (purpose) => {
       expect(() => VerificationTokenPurpose.fromString(purpose)).toThrow(
         VerificationTokenDomainException.invalidVerificationTokenPurpose(purpose),
       )
@@ -38,7 +38,7 @@ describe('VerificationTokenPurpose', () => {
   })
 
   describe('resetPassword', () => {
-    it('factory should return deactivated', () => {
+    it('factory should return resetPassword', () => {
       const verificationTokenPurposeValueObject = VerificationTokenPurpose.resetPassword()
 
       expect(verificationTokenPurposeValueObject.value).toEqual(ValidVerificationTokenPurposes.RESET_PASSWORD)

@@ -9,7 +9,7 @@ const validValues = fc.stringMatching(HASH_REGEX)
 const invalidCases = ['', 'abc', 'a'.repeat(45), '**not-base64**', 'a'.repeat(44)]
 
 describe('UserSessionTokenHash', () => {
-  it('should not throw error when user session hash (base64) is valid', () => {
+  it('should not throw error when UserSession token hash (base64) is valid', () => {
     fc.assert(
       fc.property(validValues, (hash) => {
         expect(() => UserSessionTokenHash.fromString(hash)).not.toThrow()
@@ -17,7 +17,7 @@ describe('UserSessionTokenHash', () => {
     )
   })
 
-  it.each(invalidCases)('should throw error when user session hash is not valid: "%s"', (hash) => {
+  it.each(invalidCases)('should throw error when UserSession token hash is not valid: "%s"', (hash) => {
     expect(() => UserSessionTokenHash.fromString(hash)).toThrow(UserSessionDomainException.invalidUserSessionTokenHash())
   })
 

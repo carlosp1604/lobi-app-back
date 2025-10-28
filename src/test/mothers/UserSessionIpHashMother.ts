@@ -9,6 +9,6 @@ export class UserSessionIpHashMother {
 
   static random(): UserSessionTokenHash {
     const hash = randomBytes(32).toString('base64')
-    return UserSessionTokenHash.fromString(hash)
+    return UserSessionIpHash.fromString(hash)
   }
 }
