@@ -56,7 +56,7 @@ export class CreateVerificationTokensTable1761578346651 implements MigrationInte
     await queryRunner.query(`
       CREATE UNIQUE INDEX index_verification_token_active_tokens
       ON verification_tokens (email, purpose)
-      WHERE used_at IS NULL AND expires_at > NOW()
+      WHERE used_at IS NULL
     `)
   }
 
