@@ -403,7 +403,7 @@ describe('LoginUser', () => {
         expect(mockedLogger.error).toHaveBeenCalledTimes(1)
         expect(mockedLogger.error).toHaveBeenCalledWith(
           'Device location resolver failed',
-          expect.any(String),
+          undefined,
           expect.objectContaining({
             userEmail: validEmail.toString(),
             ip: 'normalized-ip',

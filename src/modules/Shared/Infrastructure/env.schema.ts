@@ -67,8 +67,20 @@ export const EnvSchema = z
     USER_MAX_SESSIONS: z.coerce.number().int().positive().default(6),
     ACCESS_COOKIE_NAME: z.string().trim().nonempty().default('x-access-token'),
     REFRESH_COOKIE_NAME: z.string().trim().nonempty().default('x-refresh-token'),
+    VERIFICATION_TOKEN_TTL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(15 * 60 * 1000),
+    VERIFICATION_TOKEN_LENGTH: z.coerce.number().int().positive().default(6),
 
     COOKIE_SECRET: z.string().trim().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
+
+    EMAIL_FROM_ADDRESS: z.email().nonoptional(),
+    EMAIL_API_TOKEN: z.string().trim().nonempty().nonoptional(),
+    EMAIL_API_BASE_URL: z.string().trim().nonempty().nonoptional(),
+    EMAIL_APP_NAME: z.string().trim().nonempty().nonoptional(),
+    EMAIL_COMPANY_NAME: z.string().trim().nonempty().nonoptional(),
   })
   .transform((env) => ({
     ...env,

@@ -3,6 +3,7 @@ import { DomainEventDomainException } from '~/src/modules/Shared/Domain/DomainEv
 
 export enum ValidDomainEventAggregateTypes {
   USER = 'user',
+  VERIFICATION_TOKEN = 'verificationToken',
 }
 
 export class DomainEventAggregateType extends ValueObject<ValidDomainEventAggregateTypes> {
@@ -20,6 +21,10 @@ export class DomainEventAggregateType extends ValueObject<ValidDomainEventAggreg
 
   static user(): DomainEventAggregateType {
     return new DomainEventAggregateType(ValidDomainEventAggregateTypes.USER)
+  }
+
+  static verificationToken(): DomainEventAggregateType {
+    return new DomainEventAggregateType(ValidDomainEventAggregateTypes.VERIFICATION_TOKEN)
   }
 
   private isValidDomainEventAggregateType(value: string): boolean {

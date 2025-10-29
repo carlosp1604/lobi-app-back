@@ -176,12 +176,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
           `Unexpected error while revoking session ${activeSession2.id.toString()}`,
         )
 
-        assertLoggerErrorCall(
-          'Unexpected error while revoking session',
-          activeSession2,
-          unexpectedException,
-          String(unexpectedException),
-        )
+        assertLoggerErrorCall('Unexpected error while revoking session', activeSession2, unexpectedException, undefined)
       })
     })
   })
@@ -333,7 +328,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
           Error(`Unexpected error while revoking session ${currentSession.id.toString()}`),
         )
 
-        assertLoggerErrorCall('Unexpected error while revoking session', currentSession, unexpectedError, String(unexpectedError))
+        assertLoggerErrorCall('Unexpected error while revoking session', currentSession, unexpectedError, undefined)
       })
 
       it('should return error if session to revoke cannot be revoked', () => {
@@ -389,7 +384,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
           Error(`Unexpected error while revoking session ${activeSession2.id.toString()}`),
         )
 
-        assertLoggerErrorCall('Unexpected error while revoking session', activeSession2, unexpectedError, String(unexpectedError))
+        assertLoggerErrorCall('Unexpected error while revoking session', activeSession2, unexpectedError, undefined)
       })
     })
   })

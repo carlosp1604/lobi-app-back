@@ -236,7 +236,7 @@ export class LoginUser {
 
         return DeviceLocation.fromProps({ city: resolvedDeviceLocation.city, countryCode: resolvedDeviceLocation.countryCode })
       } catch (exception: unknown) {
-        const stack = exception instanceof Error ? exception.stack : String(exception)
+        const stack = exception instanceof Error ? exception.stack : undefined
 
         this.loggerService.error('Device location resolver failed', stack, {
           userEmail: userEmail.toString(),
