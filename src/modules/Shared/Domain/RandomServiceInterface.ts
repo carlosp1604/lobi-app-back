@@ -1,3 +1,3 @@
 export interface RandomServiceInterface {
-  getRandomNumericCode(length: number): number
+  getRandomNumericCode(length: number): string
 }

@@ -90,7 +90,7 @@ export class GenerateVerificationToken {
       }
 
       const clearRandomCode = this.randomService.getRandomNumericCode(this.verificationTokenLength)
-      const hashedCode = await this.hasherService.hash(String(clearRandomCode))
+      const hashedCode = await this.hasherService.hash(clearRandomCode)
       const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
       const verificationTokenExpiresAt = new Date(now.getTime() + this.verificationTokenTtlMs)
       const verificationTokenId = this.idGeneratorService.generateId()
@@ -125,7 +125,7 @@ export class GenerateVerificationToken {
       await this.verificationTokenRepository.save(newVerificationToken, context)
 
       // TODO: This use-case should not send the email. Remove this step when domain-event handler worker is ready
-      await this.sendEmail(email, verificationTokenPurpose, String(clearRandomCode), now)
+      await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, now)
 
       return success(undefined)
     })
