@@ -1,22 +1,14 @@
-import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
-import { ConfigService } from '@nestjs/config'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 import { ServerClient, Errors, TemplatedMessage } from 'postmark'
 import { TemplateAlias, TemplateContextMap } from '~/src/modules/Shared/Domain/EmailTemplates'
 
 export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
-  private readonly postmarkClient: ServerClient
-  private readonly senderAddress: string
-
   constructor(
-    private readonly configService: ConfigService<Env, true>,
+    private readonly postmarkClient: ServerClient,
+    private readonly senderAddress: string,
     private readonly loggerService: LoggerServiceInterface,
-  ) {
-    const postmarkApiToken = this.configService.get('EMAIL_API_TOKEN', { infer: true })
-    this.senderAddress = this.configService.get('EMAIL_FROM_ADDRESS', { infer: true })
-    this.postmarkClient = new ServerClient(postmarkApiToken)
-  }
+  ) {}
 
   /**
    * Sends an email using a pre-defined template
