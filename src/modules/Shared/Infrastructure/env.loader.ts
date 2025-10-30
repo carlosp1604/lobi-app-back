@@ -11,7 +11,7 @@ function loadEnvFile(): void {
 
   if (nodeEnv !== 'production') {
     const envFilePath = resolve(__dirname, `../../../../.env.${nodeEnv}`)
-    config({ path: envFilePath })
+    config({ path: envFilePath, override: true })
   }
 }
 
