@@ -1,18 +1,9 @@
 type ValidateMapKeys<KeyUnion extends string | number | symbol, YourMap extends { [K in KeyUnion]: any }> =
   YourMap extends Record<KeyUnion, any> ? YourMap : never
 
-export type TemplateAlias = 'verify-email-template'
+export type TemplateAlias = 'verify-email-template-create-account' | 'verify-email-template-reset-password'
 
-export interface CommonEmailContext {
-  product_name: string
-  company_name: string
-  current_year: number
-  lang_es: boolean
-}
-
-export interface VerificationEmailContext extends CommonEmailContext {
-  is_signup: boolean
-  is_password_reset: boolean
+export interface VerificationEmailContext {
   token: string
   expiration_minutes: number
 }
@@ -20,6 +11,7 @@ export interface VerificationEmailContext extends CommonEmailContext {
 export type TemplateContextMap = ValidateMapKeys<
   TemplateAlias,
   {
-    'verify-email-template': VerificationEmailContext
+    'verify-email-template-create-account': VerificationEmailContext
+    'verify-email-template-reset-password': VerificationEmailContext
   }
 >

@@ -25,7 +25,6 @@ import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEvent, EventPayload } from '~/src/modules/Shared/Domain/DomainEvent'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 
 describe('GenerateVerificationToken', () => {
@@ -45,8 +44,6 @@ describe('GenerateVerificationToken', () => {
   const verificationTokenTtlMs = 900000
   const verificationTokenLength = 6
   const expiresAt = new Date(now.getTime() + verificationTokenTtlMs)
-  const productName = 'Lobi App'
-  const companyName = 'Lobi App'
   const generatedCode = '123456'
   const verificationTokenTokenHash = VerificationTokenTokenHashMother.random()
   const verificationTokenId = VerificationTokenIdMother.valid()
@@ -70,6 +67,11 @@ describe('GenerateVerificationToken', () => {
     lang: 'es',
   }
 
+  const expectedEmailContext = {
+    token: generatedCode,
+    expiration_minutes: verificationTokenTtlMs / (60 * 1000),
+  }
+
   const buildUseCase = () => {
     return new GenerateVerificationToken(
       mockedVerificationTokenRepository,
@@ -82,19 +84,6 @@ describe('GenerateVerificationToken', () => {
       mockedConfigService,
       mockedIdGeneratorService,
     )
-  }
-
-  const buildExpectedEmailContext = (isSignUp: boolean, isPasswordReset: boolean) => {
-    return {
-      is_signup: isSignUp,
-      is_password_reset: isPasswordReset,
-      token: generatedCode,
-      product_name: productName,
-      company_name: companyName,
-      current_year: now.getFullYear(),
-      expiration_minutes: verificationTokenTtlMs / (60 * 1000),
-      lang_es: true,
-    }
   }
 
   const createDomainEventTestBuilder = () => {
@@ -138,8 +127,6 @@ describe('GenerateVerificationToken', () => {
       createConfigServiceMockImplementation({
         VERIFICATION_TOKEN_TTL_MS: verificationTokenTtlMs,
         VERIFICATION_TOKEN_LENGTH: verificationTokenLength,
-        EMAIL_APP_NAME: productName,
-        EMAIL_COMPANY_NAME: companyName,
       }),
     )
     mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(null)
@@ -157,7 +144,6 @@ describe('GenerateVerificationToken', () => {
       purpose: VerificationTokenPurpose,
       expectedDomainEvent: DomainEvent,
       expectedVerificationToken: VerificationToken,
-      expectedEmailContext: VerificationEmailContext,
     ) => {
       expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).toHaveBeenCalledTimes(1)
       expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledTimes(1)
@@ -180,8 +166,12 @@ describe('GenerateVerificationToken', () => {
 
       expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledWith(
         email.toString(),
-        'verify-email-template',
+        purpose.equals(VerificationTokenPurpose.createAccount())
+          ? 'verify-email-template-create-account'
+          : 'verify-email-template-reset-password',
         expect.objectContaining(expectedEmailContext),
+        'es',
+        now,
       )
     }
 
@@ -190,11 +180,10 @@ describe('GenerateVerificationToken', () => {
 
       const expectedDomainEvent = createDomainEventTestBuilder().build()
       const expectedVerificationToken = createVerificationTokenTestBuilder().build()
-      const expectedEmailContext = buildExpectedEmailContext(true, false)
 
       await useCase.execute(requestBase)
 
-      assertCommonCalls(purposeCreateAccount, expectedDomainEvent, expectedVerificationToken, expectedEmailContext)
+      assertCommonCalls(purposeCreateAccount, expectedDomainEvent, expectedVerificationToken)
       expect(mockedVerificationTokenRepository.delete).not.toHaveBeenCalled()
     })
 
@@ -203,7 +192,6 @@ describe('GenerateVerificationToken', () => {
         .withPayload({ ...expectedDomainEventPayload, purpose: purposeResetPassword.toString(), resendCode: true })
         .build()
       const expectedVerificationToken = createVerificationTokenTestBuilder().withPurpose(purposeResetPassword).build()
-      const expectedEmailContext = buildExpectedEmailContext(false, true)
 
       const existingToken = createVerificationTokenTestBuilder()
         .withId(VerificationTokenIdMother.valid())
@@ -218,7 +206,7 @@ describe('GenerateVerificationToken', () => {
 
       await useCase.execute(requestWithResend)
 
-      assertCommonCalls(purposeResetPassword, expectedDomainEvent, expectedVerificationToken, expectedEmailContext)
+      assertCommonCalls(purposeResetPassword, expectedDomainEvent, expectedVerificationToken)
       expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
     })
@@ -228,7 +216,6 @@ describe('GenerateVerificationToken', () => {
 
       const expectedDomainEvent = createDomainEventTestBuilder().build()
       const expectedVerificationToken = createVerificationTokenTestBuilder().build()
-      const expectedEmailContext = buildExpectedEmailContext(true, false)
 
       const existingToken = createVerificationTokenTestBuilder()
         .withId(VerificationTokenIdMother.valid())
@@ -245,7 +232,7 @@ describe('GenerateVerificationToken', () => {
         value: undefined,
       })
 
-      assertCommonCalls(purposeCreateAccount, expectedDomainEvent, expectedVerificationToken, expectedEmailContext)
+      assertCommonCalls(purposeCreateAccount, expectedDomainEvent, expectedVerificationToken)
       expect(mockedVerificationTokenRepository.delete).not.toHaveBeenCalled()
     })
 

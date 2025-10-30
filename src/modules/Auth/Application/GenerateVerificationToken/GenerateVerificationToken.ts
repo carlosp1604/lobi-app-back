@@ -21,13 +21,11 @@ import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObjec
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
-import { VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
+import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
   private readonly verificationTokenLength: number
-  private readonly productName: string
-  private readonly companyName: string
 
   constructor(
     private readonly verificationTokenRepository: VerificationTokenRepositoryInterface,
@@ -42,8 +40,6 @@ export class GenerateVerificationToken {
   ) {
     this.verificationTokenTtlMs = this.configService.get('VERIFICATION_TOKEN_TTL_MS', { infer: true })
     this.verificationTokenLength = this.configService.get('VERIFICATION_TOKEN_LENGTH', { infer: true })
-    this.productName = this.configService.get('EMAIL_APP_NAME', { infer: true })
-    this.companyName = this.configService.get('EMAIL_COMPANY_NAME', { infer: true })
   }
 
   public async execute(
@@ -125,7 +121,7 @@ export class GenerateVerificationToken {
       await this.verificationTokenRepository.save(newVerificationToken, context)
 
       // TODO: This use-case should not send the email. Remove this step when domain-event handler worker is ready
-      await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, now)
+      await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, request.language, now)
 
       return success(undefined)
     })
@@ -149,21 +145,25 @@ export class GenerateVerificationToken {
     }
   }
 
-  private async sendEmail(email: UserEmail, purpose: VerificationTokenPurpose, clearRandomCode: string, now: Date): Promise<void> {
-    const currentYear = now.getFullYear()
+  private async sendEmail(
+    email: UserEmail,
+    purpose: VerificationTokenPurpose,
+    clearRandomCode: string,
+    language: string,
+    now: Date,
+  ): Promise<void> {
+    const templateAlias: TemplateAlias = purpose.equals(VerificationTokenPurpose.createAccount())
+      ? 'verify-email-template-create-account'
+      : 'verify-email-template-reset-password'
+
+    // TODO: Extract this operation to a shared function
+    const expirationMinutes = this.verificationTokenTtlMs / (60 * 1000) // ms to min
 
     const context: VerificationEmailContext = {
-      is_signup: purpose.equals(VerificationTokenPurpose.createAccount()),
-      is_password_reset: purpose.equals(VerificationTokenPurpose.resetPassword()),
       token: clearRandomCode,
-      product_name: this.productName,
-      company_name: this.companyName,
-      current_year: currentYear,
-      // TODO: Extract this operation to a shared function
-      expiration_minutes: this.verificationTokenTtlMs / (60 * 1000),
-      lang_es: true,
+      expiration_minutes: expirationMinutes,
     }
 
-    await this.emailSenderService.sendWithTemplate(email.toString(), 'verify-email-template', context)
+    await this.emailSenderService.sendWithTemplate(email.toString(), templateAlias, context, language, now)
   }
 }

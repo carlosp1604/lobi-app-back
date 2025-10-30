@@ -9,18 +9,22 @@ describe('PostmarkEmailSenderService', () => {
   const mockedLoggerService = mock<LoggerServiceInterface>()
   const mockedPostmarkServerClient = mock<ServerClient>()
   const senderAddress = 'sender@example.com'
+  const companyName = 'test-company-name'
+  const productName = 'test-app-name'
+  const language = 'es'
+  const now = new Date('2025-09-30T10:38:00Z')
 
   const toAddress = 'to@example.com'
-  const templateAlias: TemplateAlias = 'verify-email-template'
+  const templateAlias: TemplateAlias = 'verify-email-template-create-account'
   const emailContext = {
     token: '123456',
-    is_signup: false,
-    is_password_reset: true,
     expiration_minutes: 15,
-    product_name: 'test-app-name',
+  }
+
+  const extraContext = {
     company_name: 'test-company-name',
+    product_name: 'test-app-name',
     current_year: 2025,
-    lang_es: true,
   }
 
   const successResponse = {
@@ -32,7 +36,7 @@ describe('PostmarkEmailSenderService', () => {
   }
 
   const buildService = () => {
-    return new PostmarkEmailSenderService(mockedPostmarkServerClient, senderAddress, mockedLoggerService)
+    return new PostmarkEmailSenderService(mockedPostmarkServerClient, senderAddress, companyName, productName, mockedLoggerService)
   }
 
   beforeEach(() => {
@@ -45,9 +49,9 @@ describe('PostmarkEmailSenderService', () => {
 
     mockedPostmarkServerClient.sendEmailWithTemplate.mockResolvedValue(successResponse)
 
-    await service.sendWithTemplate(toAddress, templateAlias, emailContext)
+    await service.sendWithTemplate(toAddress, templateAlias, emailContext, language, now)
 
-    const expectedMessage = new TemplatedMessage(senderAddress, templateAlias, emailContext, toAddress)
+    const expectedMessage = new TemplatedMessage(senderAddress, templateAlias, { ...emailContext, ...extraContext }, toAddress)
 
     expect(mockedLoggerService.log).toHaveBeenCalledTimes(2)
     expect(mockedLoggerService.error).not.toHaveBeenCalled()
@@ -66,7 +70,7 @@ describe('PostmarkEmailSenderService', () => {
     const postmarkError = new Errors.PostmarkError('Test Postmark Error', 406, 422)
     mockedPostmarkServerClient.sendEmailWithTemplate.mockRejectedValue(postmarkError)
 
-    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext)).rejects.toThrow(postmarkError)
+    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext, language, now)).rejects.toThrow(postmarkError)
 
     expect(mockedLoggerService.log).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
@@ -90,7 +94,7 @@ describe('PostmarkEmailSenderService', () => {
     const genericError = new Error('Unexpected error')
     mockedPostmarkServerClient.sendEmailWithTemplate.mockRejectedValue(genericError)
 
-    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext)).rejects.toThrow(genericError)
+    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext, language, now)).rejects.toThrow(genericError)
 
     expect(mockedLoggerService.log).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
@@ -113,7 +117,7 @@ describe('PostmarkEmailSenderService', () => {
     const unknownError = 'Unexpected error'
     mockedPostmarkServerClient.sendEmailWithTemplate.mockRejectedValue(unknownError)
 
-    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext)).rejects.toEqual(unknownError)
+    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext, language, now)).rejects.toEqual(unknownError)
 
     expect(mockedLoggerService.log).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)

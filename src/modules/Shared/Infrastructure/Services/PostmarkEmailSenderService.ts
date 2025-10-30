@@ -7,6 +7,8 @@ export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
   constructor(
     private readonly postmarkClient: ServerClient,
     private readonly senderAddress: string,
+    private readonly companyName: string,
+    private readonly productName: string,
     private readonly loggerService: LoggerServiceInterface,
   ) {}
 
@@ -15,18 +17,31 @@ export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
    * @param to The recipient's email address
    * @param templateAlias The alias/ID of the template to use
    * @param context An object containing variables to be injected into the template
+   * @param language
+   * @param now
+   *
    * @returns A promise that resolves when the email is sent (or queued), or rejects on critical failure
    */
   async sendWithTemplate<TAlias extends TemplateAlias>(
     to: string,
     templateAlias: TAlias,
     context: TemplateContextMap[TAlias],
+    // TODO: Process input language and add new flags when more languages are supported
+    language: string,
+    now: Date,
   ): Promise<void> {
+    const currentYear = now.getFullYear()
+
     const message: TemplatedMessage = {
       From: this.senderAddress,
       To: to,
       TemplateAlias: templateAlias,
-      TemplateModel: context,
+      TemplateModel: {
+        ...context,
+        product_name: this.productName,
+        company_name: this.companyName,
+        current_year: currentYear,
+      },
     }
 
     try {
