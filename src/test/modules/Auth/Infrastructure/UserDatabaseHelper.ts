@@ -19,4 +19,10 @@ export class UserDatabaseHelper {
 
     await userRepository.update({ id }, dataToUpdate)
   }
+
+  public async remove(user: UserRawModelWithRelations): Promise<void> {
+    const userRepository = this.entityManager.getRepository(UserEntity)
+
+    await userRepository.remove(user)
+  }
 }
