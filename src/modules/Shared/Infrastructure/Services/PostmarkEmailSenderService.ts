@@ -12,7 +12,6 @@ export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
 
   /**
    * Sends an email using a pre-defined template
-   *
    * @param to The recipient's email address
    * @param templateAlias The alias/ID of the template to use
    * @param context An object containing variables to be injected into the template

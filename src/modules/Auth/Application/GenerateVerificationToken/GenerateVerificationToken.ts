@@ -84,7 +84,7 @@ export class GenerateVerificationToken {
             )
           }
         } else {
-          await this.verificationTokenRepository.delete(verificationToken, context)
+          await this.verificationTokenRepository.delete(verificationToken.id.toString(), context)
           resendCode = true
         }
       }

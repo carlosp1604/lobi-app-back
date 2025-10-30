@@ -220,7 +220,7 @@ describe('GenerateVerificationToken', () => {
 
       assertCommonCalls(purposeResetPassword, expectedDomainEvent, expectedVerificationToken, expectedEmailContext)
       expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
-      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken, fakeContext)
+      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
     })
 
     it('should call services correctly when active token exists but it is not usable and sendNewToken is false', async () => {
