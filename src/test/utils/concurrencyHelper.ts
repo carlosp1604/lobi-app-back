@@ -1,6 +1,6 @@
 import { DataSource, QueryRunner } from 'typeorm'
 
-export type Tx1Logic<T1> = (runner: QueryRunner, tx1HasAcquiredLockResolver: () => void) => Promise<T1>
+export type Tx1Logic<T1> = (runner: QueryRunner, signalAndWait: () => Promise<void>) => Promise<T1>
 
 export type Tx2Logic<T2> = (runner: QueryRunner, gate: Promise<void>) => Promise<T2>
 
@@ -20,9 +20,12 @@ export async function runPessimisticLockTest<T1, T2>(options: PessimisticLockTes
   const runner1 = dataSource.createQueryRunner()
   const runner2 = dataSource.createQueryRunner()
 
-  let tx1HasAcquiredLockResolver: () => void
+  let signalAndWait: () => Promise<void>
   const gate = new Promise<void>((resolve) => {
-    tx1HasAcquiredLockResolver = resolve
+    signalAndWait = () => {
+      resolve()
+      return new Promise((res) => setTimeout(res, 500))
+    }
   })
 
   let testError: unknown
@@ -33,7 +36,7 @@ export async function runPessimisticLockTest<T1, T2>(options: PessimisticLockTes
     await Promise.all([runner1.startTransaction(), runner2.startTransaction()])
 
     const transaction1 = async () => {
-      return tx1Logic(runner1, tx1HasAcquiredLockResolver)
+      return tx1Logic(runner1, signalAndWait)
     }
 
     const transaction2 = async () => {

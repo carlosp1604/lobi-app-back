@@ -249,7 +249,7 @@ describe('GenerateVerificationToken', () => {
   })
 
   describe('when there are errors', () => {
-    it('should return error if email is not valid', async () => {
+    it('should return error when email is not valid', async () => {
       const invalidEmailRequest = { ...requestBase, email: 'invalid-email' }
 
       const useCase = buildUseCase()
@@ -263,7 +263,7 @@ describe('GenerateVerificationToken', () => {
       expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).not.toHaveBeenCalled()
     })
 
-    it('should return error if VerificationToken purpose is not valid', async () => {
+    it('should return error when VerificationToken purpose is not valid', async () => {
       const invalidPurposeRequest = { ...requestBase, purpose: 'invalid-purpose' }
 
       const useCase = buildUseCase()
@@ -277,7 +277,7 @@ describe('GenerateVerificationToken', () => {
       expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).not.toHaveBeenCalled()
     })
 
-    it('should return error if token exists, is usable, and sendNewToken is false', async () => {
+    it('should return error when token exists, is usable, and sendNewToken is false', async () => {
       const existingToken = createVerificationTokenTestBuilder().build()
       mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
 
@@ -297,7 +297,7 @@ describe('GenerateVerificationToken', () => {
       expect(mockedEmailSenderService.sendWithTemplate).not.toHaveBeenCalled()
     })
 
-    it('should throw error if emailSenderService fails', async () => {
+    it('should throw error when emailSenderService fails', async () => {
       const emailError = new Error('Unexpected emailSenderService error')
       mockedEmailSenderService.sendWithTemplate.mockRejectedValueOnce(emailError)
 
@@ -309,7 +309,7 @@ describe('GenerateVerificationToken', () => {
       expect(mockedVerificationTokenRepository.save).toHaveBeenCalledTimes(1)
     })
 
-    it('should throw error if domainEventRepository fails', async () => {
+    it('should throw error when domainEventRepository fails', async () => {
       const dbError = new Error('Unexpected domainEventRepository error')
       mockedDomainEventRepository.save.mockRejectedValueOnce(dbError)
 
@@ -321,7 +321,7 @@ describe('GenerateVerificationToken', () => {
       expect(mockedEmailSenderService.sendWithTemplate).not.toHaveBeenCalled()
     })
 
-    it('should throw error if verificationTokenRepository fails', async () => {
+    it('should throw error when verificationTokenRepository fails', async () => {
       const dbError = new Error('Unexpected verificationTokenRepository error')
       mockedVerificationTokenRepository.save.mockRejectedValueOnce(dbError)
 
