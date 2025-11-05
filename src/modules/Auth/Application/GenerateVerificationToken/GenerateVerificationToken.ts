@@ -110,7 +110,6 @@ export class GenerateVerificationToken {
         {
           email: email.toString(),
           purpose: verificationTokenPurpose.toString(),
-          code: clearRandomCode,
           resendCode,
           lang: request.language,
         },

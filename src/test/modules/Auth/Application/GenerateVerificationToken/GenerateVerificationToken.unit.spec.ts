@@ -62,7 +62,6 @@ describe('GenerateVerificationToken', () => {
   const expectedDomainEventPayload: EventPayload = {
     email: email.toString(),
     purpose: purposeCreateAccount.toString(),
-    code: generatedCode,
     resendCode: false,
     lang: 'es',
   }
