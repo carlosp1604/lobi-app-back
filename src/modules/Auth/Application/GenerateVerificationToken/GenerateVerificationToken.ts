@@ -71,16 +71,17 @@ export class GenerateVerificationToken {
       let resendCode = false
 
       if (verificationToken) {
-        if (!request.sendNewToken) {
-          const isVerificationTokenUsable = verificationToken.canBeUsedForPurpose(now, email, verificationTokenPurpose)
+        const isVerificationTokenUsable = verificationToken.canBeUsedForPurpose(now, email, verificationTokenPurpose)
 
-          if (isVerificationTokenUsable) {
-            return fail(
-              GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.toString(), verificationTokenPurpose.toString()),
-            )
-          }
-        } else {
-          await this.verificationTokenRepository.delete(verificationToken.id.toString(), context)
+        if (isVerificationTokenUsable && !request.sendNewToken) {
+          return fail(
+            GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.toString(), verificationTokenPurpose.toString()),
+          )
+        }
+
+        await this.verificationTokenRepository.delete(verificationToken.id.toString(), context)
+
+        if (request.sendNewToken) {
           resendCode = true
         }
       }

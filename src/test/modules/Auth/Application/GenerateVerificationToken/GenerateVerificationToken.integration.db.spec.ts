@@ -1,0 +1,280 @@
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
+import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { QueryRunner } from 'typeorm'
+import { withTransaction } from '~/src/test/utils/withTransaction'
+import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
+import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
+import { mock, mockReset } from 'jest-mock-extended'
+import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
+import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
+import { ServerClient } from 'postmark'
+import { PostmarkEmailSenderService } from '~/src/modules/Shared/Infrastructure/Services/PostmarkEmailSenderService'
+import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
+import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
+import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
+import { NodeRandomService } from '~/src/modules/Shared/Infrastructure/Services/NodeRandomService'
+import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigServiceMock'
+import { ConfigService } from '@nestjs/config'
+import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
+import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationRequestDto'
+import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
+import { VerificationTokenDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenDatabaseHelper'
+import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
+import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
+import { DomainEventDatabaseHelper } from '~/src/test/modules/Shared/Infrastructure/DomainEventDatabaseHelper'
+import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
+import { makeRawDomainEvent } from '~/src/test/modules/Shared/Infrastructure/DomainEventRawTestMaker'
+import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
+import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
+
+describe('GenerateVerificationToken', () => {
+  const now = new Date('2025-10-31T10:50:00Z')
+  const futureExpiresAt = new Date(now.getTime() + 3600)
+  const pastDate = new Date(now.getTime() - 3600)
+  const expectedExpiresAt = new Date(now.getTime() + env.VERIFICATION_TOKEN_TTL_MS)
+  // TODO: Change email's domain when we get Postmark approval
+  const email = UserEmail.fromString('recipient@cponton.com')
+  const verificationTokenPurpose = VerificationTokenPurpose.createAccount()
+
+  const mockedResolver = mock<TypeOrmManagerResolver>()
+  const mockedConfigService = mock<ConfigService>()
+  let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
+  let domainEventDatabaseHelper: DomainEventDatabaseHelper
+
+  let request: GenerateVerificationTokenApplicationRequestDto
+  let currentVerificationToken: VerificationTokenRawModel
+  let currentDomainEvent: DomainEventRawModel
+
+  let runner: QueryRunner
+
+  withTransaction((queryRunner) => {
+    runner = queryRunner
+  })
+
+  beforeEach(() => {
+    mockReset(mockedResolver)
+    mockedResolver.resolve.mockReturnValue(runner.manager)
+
+    mockedConfigService.get.mockImplementation(
+      createConfigServiceMockImplementation({
+        VERIFICATION_TOKEN_TTL_MS: env.VERIFICATION_TOKEN_TTL_MS,
+        VERIFICATION_TOKEN_LENGTH: env.VERIFICATION_TOKEN_LENGTH,
+      }),
+    )
+
+    verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(runner.manager)
+    domainEventDatabaseHelper = new DomainEventDatabaseHelper(runner.manager)
+
+    request = {
+      email: email.toString(),
+      purpose: verificationTokenPurpose.toString(),
+      sendNewToken: false,
+      language: 'es',
+    }
+
+    currentVerificationToken = makeRawVerificationToken({
+      id: VerificationTokenIdMother.valid().toString(),
+      purpose: verificationTokenPurpose.toString(),
+      token_hash: VerificationTokenTokenHashMother.random().toString(),
+      email: email.toString(),
+      expires_at: futureExpiresAt,
+      used_at: null,
+      created_at: pastDate,
+    })
+
+    currentDomainEvent = makeRawDomainEvent({
+      id: DomainEventIdMother.valid().toString(),
+      metadata: {},
+      aggregate_id: currentVerificationToken.id,
+      aggregate_type: DomainEventAggregateType.verificationToken().toString(),
+      name: DomainEventName.emailVerificationRequest().toString(),
+      payload: {
+        email: email.toString(),
+        purpose: verificationTokenPurpose.toString(),
+        resendCode: false,
+        lang: request.language,
+      },
+      occurred_at: pastDate,
+    })
+  })
+
+  const buildUseCase = () => {
+    return new GenerateVerificationToken(
+      new PostgreSqlVerificationTokenRepository(mockedResolver),
+      new PostgreSqlDomainEventRepository(mockedResolver),
+      new PostmarkEmailSenderService(
+        new ServerClient(env.EMAIL_API_TOKEN),
+        env.EMAIL_FROM_ADDRESS,
+        env.EMAIL_COMPANY_NAME,
+        env.EMAIL_APP_NAME,
+        new LoggerServiceMock(),
+      ),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      new TypeOrmUnitOfWork(global.dataSource),
+      new NodeHasherService(env.HASH_SECRET),
+      new ClockServiceMock(now),
+      new NodeRandomService(),
+      mockedConfigService,
+      new NodeIdGeneratorService(),
+    )
+  }
+
+  const findVerificationTokenInArray = (verificationTokens: Array<VerificationTokenRawModel>, email: string, purpose: string) => {
+    return verificationTokens.find(
+      (verificationToken) => verificationToken.purpose === purpose.toString() && verificationToken.email === email.toString(),
+    )
+  }
+
+  const findDomainEventByAggregateIdInArray = (domainEvents: Array<DomainEventRawModel>, aggregateId: string) => {
+    return domainEvents.find((domainEvent) => domainEvent.aggregate_id === aggregateId)
+  }
+
+  describe('happy path', () => {
+    const assertSavedDomainEventAndVerificationTokenToBeDefined = (
+      verificationTokens: Array<VerificationTokenRawModel>,
+      domainEvents: Array<DomainEventRawModel>,
+    ) => {
+      const savedVerificationToken = findVerificationTokenInArray(
+        verificationTokens,
+        email.toString(),
+        verificationTokenPurpose.toString(),
+      )
+      expect(savedVerificationToken).toBeDefined()
+
+      const savedDomainEvent = findDomainEventByAggregateIdInArray(domainEvents, savedVerificationToken!.id)
+      expect(savedDomainEvent).toBeDefined()
+
+      return { savedVerificationToken: savedVerificationToken!, savedDomainEvent: savedDomainEvent! }
+    }
+
+    const assertSavedDomainEventAndVerificationToken = (
+      domainEvent: DomainEventRawModel,
+      verificationToken: VerificationTokenRawModel,
+      resendCode: boolean,
+    ) => {
+      expect(domainEvent.aggregate_id).toEqual(verificationToken.id)
+      expect(domainEvent.name).toEqual(DomainEventName.emailVerificationRequest().toString())
+      expect(domainEvent.aggregate_type).toEqual(DomainEventAggregateType.verificationToken().toString())
+      expect(domainEvent.payload).toEqual({
+        email: email.toString(),
+        purpose: verificationTokenPurpose.toString(),
+        resendCode,
+        lang: request.language,
+      })
+
+      expect(verificationToken.email).toBe(email.toString())
+      expect(verificationToken.purpose).toBe(verificationTokenPurpose.toString())
+      expect(verificationToken.expires_at.getTime()).toBe(expectedExpiresAt.getTime())
+      expect(verificationToken.used_at).toBeNull()
+    }
+
+    it('should create a new verification token when an active token does not exist', async () => {
+      const useCase = buildUseCase()
+
+      const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
+        email.toString(),
+        verificationTokenPurpose.toString(),
+      )
+      const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateType(
+        DomainEventAggregateType.verificationToken().toString(),
+      )
+
+      const result = await useCase.execute(request)
+
+      const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
+        email.toString(),
+        verificationTokenPurpose.toString(),
+      )
+      const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateType(
+        DomainEventAggregateType.verificationToken().toString(),
+      )
+
+      expect(result).toEqual({
+        success: true,
+        value: undefined,
+      })
+
+      expect(domainEventsBefore.length).toBe(0)
+      expect(domainEventsBefore).toEqual([])
+      expect(verificationTokensBefore.length).toBe(0)
+      expect(verificationTokensBefore).toEqual([])
+
+      expect(verificationTokensAfter.length).toBe(1)
+      expect(domainEventsAfter.length).toBe(1)
+
+      const { savedVerificationToken, savedDomainEvent } = assertSavedDomainEventAndVerificationTokenToBeDefined(
+        verificationTokensAfter,
+        domainEventsAfter,
+      )
+
+      assertSavedDomainEventAndVerificationToken(savedDomainEvent, savedVerificationToken, false)
+    })
+
+    describe('when an active token exists', () => {
+      beforeEach(async () => {
+        await verificationTokenDatabaseHelper.save(currentVerificationToken)
+        await domainEventDatabaseHelper.save(currentDomainEvent)
+      })
+
+      const testCase = async (currentVerificationToken: VerificationTokenRawModel) => {
+        const useCase = buildUseCase()
+
+        const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
+          email.toString(),
+          verificationTokenPurpose.toString(),
+        )
+        const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateType(
+          DomainEventAggregateType.verificationToken().toString(),
+        )
+
+        const sendNewTokenRequest = { ...request, sendNewToken: true }
+
+        const result = await useCase.execute(sendNewTokenRequest)
+
+        const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
+          email.toString(),
+          verificationTokenPurpose.toString(),
+        )
+        const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateType(
+          DomainEventAggregateType.verificationToken().toString(),
+        )
+
+        expect(result).toEqual({
+          success: true,
+          value: undefined,
+        })
+
+        expect(domainEventsBefore.length).toBe(1)
+        expect(domainEventsBefore).toEqual([currentDomainEvent])
+        expect(verificationTokensBefore.length).toBe(1)
+        expect(verificationTokensBefore).toEqual([currentVerificationToken])
+
+        expect(verificationTokensAfter.length).toBe(1)
+        expect(domainEventsAfter.length).toBe(2)
+
+        const { savedVerificationToken, savedDomainEvent } = assertSavedDomainEventAndVerificationTokenToBeDefined(
+          verificationTokensAfter,
+          domainEventsAfter,
+        )
+
+        assertSavedDomainEventAndVerificationToken(savedDomainEvent, savedVerificationToken, true)
+      }
+
+      it('should create a new verification token when active token is usable and sendNewToken is true', async () => {
+        await testCase(currentVerificationToken)
+      })
+
+      it('should create a new verification token when active token is not usable and sendNewToken is false', async () => {
+        await verificationTokenDatabaseHelper.update(currentVerificationToken.id, { used_at: pastDate })
+
+        const inactiveToken = { ...currentVerificationToken, used_at: pastDate }
+
+        await testCase(inactiveToken)
+      })
+    })
+  })
+})

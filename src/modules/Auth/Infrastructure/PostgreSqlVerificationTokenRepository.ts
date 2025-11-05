@@ -5,7 +5,7 @@ import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entit
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 
-export class PostgresSqlVerificationTokenRepository implements VerificationTokenRepositoryInterface {
+export class PostgreSqlVerificationTokenRepository implements VerificationTokenRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
 
   /**

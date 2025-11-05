@@ -233,7 +233,8 @@ describe('GenerateVerificationToken', () => {
       })
 
       assertCommonCalls(purposeCreateAccount, expectedDomainEvent, expectedVerificationToken)
-      expect(mockedVerificationTokenRepository.delete).not.toHaveBeenCalled()
+      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
+      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
     })
 
     it('should return the correct response', async () => {

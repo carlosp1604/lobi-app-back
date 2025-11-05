@@ -12,10 +12,10 @@ import {
   VerificationTokenRawModel,
 } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
-import { PostgresSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
+import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
-describe('PostgresSqlVerificationTokenRepository', () => {
+describe('PostgreSqlVerificationTokenRepository', () => {
   const fakeContext: TxContext = { __opaque_tx_context: true }
   const testTokenId = VerificationTokenIdMother.valid()
 
@@ -72,7 +72,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
           .spyOn(VerificationTokenModelTranslator, 'toDomain')
           .mockReturnValue(expectedVerificationToken)
 
-        const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
         await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
 
         assertCommonCalls()
@@ -85,7 +85,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
 
         const verificationTokenModelTranslator = jest.spyOn(VerificationTokenModelTranslator, 'toDomain')
 
-        const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
         await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
 
         assertCommonCalls()
@@ -95,7 +95,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
       it('should return the correct data when user is found', async () => {
         jest.spyOn(VerificationTokenModelTranslator, 'toDomain').mockReturnValue(expectedVerificationToken)
 
-        const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
         const result = await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
 
         expect(result).toBe(expectedVerificationToken)
@@ -104,7 +104,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
       it('should return NULL when user is not found', async () => {
         mockedQueryBuilder.getOne.mockResolvedValue(null)
 
-        const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
         const result = await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
 
         expect(result).toBeNull()
@@ -117,7 +117,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
           throw new Error('Something went wrong while resolving entityManager')
         })
 
-        const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
         await expect(repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)).rejects.toThrow(
           Error('Something went wrong while resolving entityManager'),
@@ -129,7 +129,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
           throw new Error('Something went wrong while retrieving data from database')
         })
 
-        const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
         await expect(repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)).rejects.toThrow(
           Error('Something went wrong while retrieving data from database'),
@@ -141,7 +141,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
           throw new Error('Something went wrong while translating entity to domain')
         })
 
-        const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
         await expect(repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)).rejects.toThrow(
           Error('Something went wrong while translating entity to domain'),
@@ -162,7 +162,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
     it('should call services correctly', async () => {
       const verificationTokenModelTranslator = jest.spyOn(VerificationTokenModelTranslator, 'toDatabase').mockReturnValue(rawToken)
 
-      const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
       await repository.save(verificationTokenToSave, fakeContext)
 
       expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
@@ -181,7 +181,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
         throw new Error('Something went wrong while resolving entityManager')
       })
 
-      const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
       await expect(repository.save(verificationTokenToSave, fakeContext)).rejects.toThrow(
         Error('Something went wrong while resolving entityManager'),
@@ -193,7 +193,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
         throw new Error('Something went wrong while saving data to database')
       })
 
-      const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
       await expect(repository.save(verificationTokenToSave, fakeContext)).rejects.toThrow(
         Error('Something went wrong while saving data to database'),
@@ -205,7 +205,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
         throw new Error('Something went wrong while translating entity to database')
       })
 
-      const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
       await expect(repository.save(verificationTokenToSave, fakeContext)).rejects.toThrow(
         Error('Something went wrong while translating entity to database'),
@@ -222,7 +222,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
     })
 
     it('should call delete with the correct ID', async () => {
-      const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
       await repository.delete(verificationTokenId, fakeContext)
 
       expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
@@ -239,7 +239,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
         throw new Error('Something went wrong while resolving entityManager')
       })
 
-      const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
       await expect(repository.delete(verificationTokenId, fakeContext)).rejects.toThrow(
         Error('Something went wrong while resolving entityManager'),
@@ -251,7 +251,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
         throw new Error('Something went wrong while deleting data from database')
       })
 
-      const repository = new PostgresSqlVerificationTokenRepository(mockedResolver)
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
       await expect(repository.delete(verificationTokenId, fakeContext)).rejects.toThrow(
         Error('Something went wrong while deleting data from database'),

@@ -12,12 +12,12 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { PostgresSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
+import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
 import { runPessimisticLockTest } from '~/src/test/utils/concurrencyHelper'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 
-describe('PostgresSqlVerificationTokenRepository', () => {
+describe('PostgreSqlVerificationTokenRepository', () => {
   const verificationTokenId = VerificationTokenIdMother.valid()
   const verificationTokenPurpose = VerificationTokenPurpose.createAccount()
   const verificationTokenTokenHash = VerificationTokenTokenHashMother.valid()
@@ -31,7 +31,7 @@ describe('PostgresSqlVerificationTokenRepository', () => {
 
   const buildRepositoryAndContext = (entityManager: EntityManager) => {
     const context = new TypeOrmTxContext(entityManager)
-    const repository = new PostgresSqlVerificationTokenRepository({ resolve: () => entityManager } as TypeOrmManagerResolver)
+    const repository = new PostgreSqlVerificationTokenRepository({ resolve: () => entityManager } as TypeOrmManagerResolver)
 
     return { repository, context }
   }
