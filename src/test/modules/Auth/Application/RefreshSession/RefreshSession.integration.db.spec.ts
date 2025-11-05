@@ -30,6 +30,7 @@ import { RefreshSessionApplicationResponseDto } from '~/src/modules/Auth/Applica
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -48,12 +49,12 @@ describe('RefreshSession', () => {
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
 
   const mockedConfigService = mock<ConfigService>()
-  const hasherService = new NodeHasherService('test-hash-secret')
-  const jwtGenerator = new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience')
+  const hasherService = new NodeHasherService(env.HASH_SECRET)
+  const jwtGenerator = new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE)
 
-  const MOCK_ACCESS_TTL_MS = 900000
-  const MOCK_REFRESH_TTL_MS = 604800000
-  const maxSessions = 3
+  const ACCESS_TTL_MS = env.ACCESS_TTL_MS
+  const REFRESH_TTL_MS = env.REFRESH_TTL_MS
+  const maxSessions = env.USER_MAX_SESSIONS
 
   let runner: QueryRunner
 
@@ -70,9 +71,7 @@ describe('RefreshSession', () => {
     mockReset(mockedResolver)
     mockReset(mockedConfigService)
 
-    mockedConfigService.get.mockImplementation(
-      createConfigServiceMockImplementation({ REFRESH_TTL_MS: MOCK_REFRESH_TTL_MS, ACCESS_TTL_MS: MOCK_ACCESS_TTL_MS }),
-    )
+    mockedConfigService.get.mockImplementation(createConfigServiceMockImplementation({ REFRESH_TTL_MS, ACCESS_TTL_MS }))
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
@@ -114,7 +113,7 @@ describe('RefreshSession', () => {
       new PostgreSqlUserSessionRepository(mockedResolver),
       new GenerateTokensApplicationService(
         new NodeIdGeneratorService(),
-        new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience'),
+        new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
         hasherService,
         mockedConfigService,
       ),
@@ -151,8 +150,8 @@ describe('RefreshSession', () => {
           accessToken: expect.any(String),
           refreshToken: expect.any(String),
           sessionId: expect.any(String),
-          accessTokenExpiresAt: new Date(now.getTime() + MOCK_ACCESS_TTL_MS),
-          refreshTokenExpiresAt: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
+          accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TTL_MS),
+          refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_TTL_MS),
         }),
       })
     }
@@ -185,7 +184,7 @@ describe('RefreshSession', () => {
       expect(savedSession!.device_country_code).toBeNull()
       expect(savedSession!.device_city).toBeNull()
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
-      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + MOCK_REFRESH_TTL_MS)
+      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + REFRESH_TTL_MS)
     }
 
     it('should revoke current session and create a new user session correctly (no revoke sessions)', async () => {

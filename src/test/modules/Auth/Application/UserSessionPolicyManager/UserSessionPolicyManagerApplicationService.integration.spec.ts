@@ -5,10 +5,11 @@ import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessi
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 describe('UserSessionPolicyManagerApplicationService', () => {
   const now = new Date('2025-10-21T14:00:00Z')
-  const maxSessions = 3
+  const maxSessions = env.USER_MAX_SESSIONS
 
   const userId = UserIdMother.valid()
 

@@ -43,6 +43,7 @@ import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigSe
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -64,8 +65,8 @@ describe('LoginUser', () => {
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
   let domainEventDatabaseHelper: DomainEventDatabaseHelper
 
-  const MOCK_ACCESS_TTL_MS = 900000
-  const MOCK_REFRESH_TTL_MS = 604800000
+  const ACCESS_TTL_MS = env.ACCESS_TTL_MS
+  const REFRESH_TTL_MS = env.REFRESH_TTL_MS
 
   let runner: QueryRunner
 
@@ -79,9 +80,7 @@ describe('LoginUser', () => {
     mockReset(mockedResolver)
     mockReset(mockedConfigService)
 
-    mockedConfigService.get.mockImplementation(
-      createConfigServiceMockImplementation({ REFRESH_TTL_MS: MOCK_REFRESH_TTL_MS, ACCESS_TTL_MS: MOCK_ACCESS_TTL_MS }),
-    )
+    mockedConfigService.get.mockImplementation(createConfigServiceMockImplementation({ REFRESH_TTL_MS, ACCESS_TTL_MS }))
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
@@ -109,11 +108,11 @@ describe('LoginUser', () => {
   })
 
   const mockedConfigService = mock<ConfigService>()
-  const passwordHasher = new BCryptPasswordHasherService(1)
-  const hasherService = new NodeHasherService('test-hash-secret')
+  const passwordHasher = new BCryptPasswordHasherService(env.SALT_ROUNDS)
+  const hasherService = new NodeHasherService(env.HASH_SECRET)
   const idGenerator = new NodeIdGeneratorService()
   const loggerService = new LoggerServiceMock()
-  const maxSessions = 3
+  const maxSessions = env.USER_MAX_SESSIONS
 
   const request: LoginUserApplicationRequestDto = {
     email: userEmail.toString(),
@@ -131,7 +130,7 @@ describe('LoginUser', () => {
       passwordHasher,
       new GenerateTokensApplicationService(
         idGenerator,
-        new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience'),
+        new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
         hasherService,
         mockedConfigService,
       ),
@@ -183,8 +182,8 @@ describe('LoginUser', () => {
           accessToken: expect.any(String),
           refreshToken: expect.any(String),
           sessionId: expect.any(String),
-          accessTokenExpiresAt: new Date(now.getTime() + MOCK_ACCESS_TTL_MS),
-          refreshTokenExpiresAt: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
+          accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TTL_MS),
+          refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_TTL_MS),
           isNewDevice: newDevice,
         }),
       })
@@ -218,7 +217,7 @@ describe('LoginUser', () => {
       expect(savedSession!.device_country_code).toBeNull()
       expect(savedSession!.device_city).toBeNull()
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
-      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + MOCK_REFRESH_TTL_MS)
+      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + REFRESH_TTL_MS)
 
       expect(domainEvents.length).toBe(1)
       expect(domainEvents[0].name).toBe(DomainEventName.successfulLogin().toString())

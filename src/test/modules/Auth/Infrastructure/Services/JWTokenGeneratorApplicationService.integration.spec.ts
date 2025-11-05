@@ -1,18 +1,28 @@
 import jwt from 'jsonwebtoken'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 
 describe('JWTokenGeneratorApplicationService', () => {
-  const secret = 'super-secret'
-  const issuer = 'my-app'
-  const audience = 'my-users'
+  const secret = env.ACCESS_SECRET
+  const issuer = env.ACCESS_ISSUER
+  const audience = env.ACCESS_AUDIENCE
   const jwtTokenGeneratorService = new JWTokenGeneratorApplicationService(secret, issuer, audience)
+
+  const now = new Date('2025-09-26T08:52:27Z')
+
+  beforeEach(() => {
+    jest.useRealTimers()
+  })
 
   describe('generateAccessToken', () => {
     const userId = 'user-id'
     const sessionId = 'session-id'
 
-    jest.useFakeTimers().setSystemTime(new Date('2025-09-26T08:52:27Z'))
-    const now = new Date()
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(now)
+    })
+
+    jest.useFakeTimers().setSystemTime(now)
     const expiresAt = new Date(Date.now() + 120 * 60 * 1000)
 
     it('should return a valid JWT', async () => {

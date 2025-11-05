@@ -51,18 +51,25 @@ jobs:
       DATABASE_USER: lobi_user
       DATABASE_NAME: lobi_test
       ACCESS_TTL_MS: 900000
-      ACCESS_ISSUER: http://loalhost:3000
+      ACCESS_ISSUER: http://localhost:3000
       ACCESS_AUDIENCE: lobi-web
       REFRESH_TTL_MS: 604800000
       SALT_ROUNDS: 2
       USER_MAX_SESSIONS: 6
       ACCESS_COOKIE_NAME: "x-access-token"
       REFRESH_COOKIE_NAME: "x-refresh-token"
+      VERIFICATION_TOKEN_TTL_MS: 900000
+      VERIFICATION_TOKEN_LENGTH: 6
+      EMAIL_APP_NAME: "LobiApp-Test"
+      EMAIL_COMPANY_NAME: "LobiApp-Test"
 
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
       ACCESS_SECRET: ${{ secrets.ACCESS_SECRET }}
       HASH_SECRET: ${{ secrets.HASH_SECRET }}
+      EMAIL_FROM_ADDRESS: ${{ secrets.EMAIL_FROM_ADDRESS }}
+      EMAIL_API_TOKEN: ${{ secrets.EMAIL_API_TOKEN }}
+      EMAIL_API_BASE_URL: ${{ secrets.EMAIL_API_BASE_URL }}
 
       CORS_ORIGINS: "http://localhost:3000"
       BODY_LIMIT_BYTES: 1048576

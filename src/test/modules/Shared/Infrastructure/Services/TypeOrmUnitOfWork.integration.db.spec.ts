@@ -8,7 +8,7 @@ import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 
-describe('TypeOrmUnitOfWork (integration)', () => {
+describe('TypeOrmUnitOfWork', () => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const dataSource: DataSource = global.dataSource
   let uow: TypeOrmUnitOfWork
