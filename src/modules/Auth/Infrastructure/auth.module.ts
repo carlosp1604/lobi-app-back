@@ -6,18 +6,22 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import {
   DEVICE_LOCATION_RESOLVER,
   DOMAIN_EVENT_REPOSITORY,
+  EMAIL_SENDER_SERVICE,
   GENERATE_TOKENS_SERVICE,
+  GENERATE_VERIFICATION_TOKEN,
   HASHER_SERVICE,
   IP_VALIDATOR,
   LOGIN_USER,
   MAX_SESSIONS_POLICY,
   PASSWORD_HASHER,
+  RANDOM_SERVICE,
   REFRESH_SESSION,
   TOKEN_GENERATOR,
   USER_CREDENTIAL_REPOSITORY,
   USER_REPOSITORY,
   USER_SESSION_POLICY_MANAGER_SERVICE,
   USER_SESSION_REPOSITORY,
+  VERIFICATION_TOKEN_REPOSITORY,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -54,6 +58,15 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/RefreshSession'
+import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
+import { NodeRandomService } from '~/src/modules/Shared/Infrastructure/Services/NodeRandomService'
+import { PostmarkEmailSenderService } from '~/src/modules/Shared/Infrastructure/Services/PostmarkEmailSenderService'
+import { ServerClient } from 'postmark'
+import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
+import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
+import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
+import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServiceInterface'
+import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
 
 @Module({
   imports: [ConfigModule, TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity])],
@@ -84,6 +97,13 @@ import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/Re
       provide: DOMAIN_EVENT_REPOSITORY,
       useFactory: (managerResolver: TypeOrmManagerResolver) => {
         return new PostgreSqlDomainEventRepository(managerResolver)
+      },
+      inject: [TYPEORM_MANAGER_RESOLVER],
+    },
+    {
+      provide: VERIFICATION_TOKEN_REPOSITORY,
+      useFactory: (managerResolver: TypeOrmManagerResolver) => {
+        return new PostgreSqlVerificationTokenRepository(managerResolver)
       },
       inject: [TYPEORM_MANAGER_RESOLVER],
     },
@@ -139,6 +159,23 @@ import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/Re
         return new UserSessionPolicyManagerApplicationService(maxSessionsPolicy, loggerService)
       },
       inject: [MAX_SESSIONS_POLICY, LOGGER_SERVICE],
+    },
+    {
+      provide: RANDOM_SERVICE,
+      useClass: NodeRandomService,
+    },
+    {
+      provide: EMAIL_SENDER_SERVICE,
+      useFactory: (configService: ConfigService<Env, true>, loggerService: LoggerServiceInterface) => {
+        return new PostmarkEmailSenderService(
+          new ServerClient(configService.get('EMAIL_API_TOKEN', { infer: true })),
+          configService.get('EMAIL_FROM_ADDRESS', { infer: true }),
+          configService.get('EMAIL_COMPANY_NAME', { infer: true }),
+          configService.get('EMAIL_APP_NAME', { infer: true }),
+          loggerService,
+        )
+      },
+      inject: [ConfigService, LOGGER_SERVICE],
     },
     {
       provide: LOGIN_USER,
@@ -222,7 +259,44 @@ import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/Re
         CLOCK_SERVICE,
       ],
     },
+    {
+      provide: GENERATE_VERIFICATION_TOKEN,
+      useFactory: (
+        verificationTokenRepository: VerificationTokenRepositoryInterface,
+        domainEventRepository: DomainEventRepositoryInterface,
+        emailSenderService: EmailSenderServiceInterface,
+        unitOfWork: UnitOfWork,
+        hasherService: HasherServiceInterface,
+        clockService: ClockServiceInterface,
+        randomService: RandomServiceInterface,
+        configService: ConfigService<Env, true>,
+        idGeneratorService: IdGeneratorServiceInterface,
+      ) => {
+        return new GenerateVerificationToken(
+          verificationTokenRepository,
+          domainEventRepository,
+          emailSenderService,
+          unitOfWork,
+          hasherService,
+          clockService,
+          randomService,
+          configService,
+          idGeneratorService,
+        )
+      },
+      inject: [
+        VERIFICATION_TOKEN_REPOSITORY,
+        DOMAIN_EVENT_REPOSITORY,
+        EMAIL_SENDER_SERVICE,
+        UNIT_OF_WORK,
+        HASHER_SERVICE,
+        CLOCK_SERVICE,
+        RANDOM_SERVICE,
+        ConfigService,
+        ID_GENERATOR,
+      ],
+    },
   ],
-  exports: [LOGIN_USER, REFRESH_SESSION, TypeOrmModule],
+  exports: [LOGIN_USER, REFRESH_SESSION, GENERATE_VERIFICATION_TOKEN, TypeOrmModule],
 })
 export class AuthModule {}

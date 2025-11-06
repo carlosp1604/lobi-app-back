@@ -6,11 +6,13 @@ import { config } from 'dotenv'
 function loadEnvFile(): void {
   const nodeEnv = process.env.NODE_ENV || 'development'
 
-  const basePath = resolve(__dirname, '../../../../.env')
+  const projectRoot = process.cwd()
+
+  const basePath = resolve(projectRoot, '.env')
   config({ path: basePath })
 
   if (nodeEnv !== 'production') {
-    const envFilePath = resolve(__dirname, `../../../../.env.${nodeEnv}`)
+    const envFilePath = resolve(projectRoot, `.env.${nodeEnv}`)
     config({ path: envFilePath, override: true })
   }
 }

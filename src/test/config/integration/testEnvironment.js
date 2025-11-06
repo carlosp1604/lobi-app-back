@@ -43,7 +43,7 @@ class TestEnvironment extends NodeEnvironment {
           migrationsRun: false,
           logging: false,
           entities: [UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity, VerificationTokenEntity],
-          migrations: [path.join(process.cwd(), 'dist/db/migrations/*.js')],
+          migrations: [path.join(process.cwd(), 'dist/src/db/migrations/*.js')],
         }),
       ],
     }).compile()

@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node'
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common'
 import { FastifyReply, FastifyRequest } from 'fastify'
 import { INTERNAL_SERVER_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
+import { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 
 function safeRedactBody(body: unknown): unknown {
   if (!body) {
@@ -25,13 +26,9 @@ function safeRedactBody(body: unknown): unknown {
 
 function toSafeResponse(exception: unknown): object | string {
   if (exception instanceof HttpException) {
-    return exception.getResponse()
-  }
-
-  if (exception instanceof Error) {
-    return {
-      code: 'id' in exception ? exception.id : INTERNAL_SERVER_ERROR,
-      message: exception.message,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+    if (exception.getStatus() !== HttpStatus.INTERNAL_SERVER_ERROR) {
+      return exception.getResponse()
     }
   }
 
@@ -71,8 +68,18 @@ export class SentryExceptionFilter implements ExceptionFilter {
         scope.setTag('route', route)
         scope.setTag('url', urlWithoutQuery)
 
-        // TODO: Add user information from auth middleware
-        // Sentry.setUser({})
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const user: JwtPayload | undefined = request['user']
+
+        if (user) {
+          Sentry.setUser({
+            id: user.sub,
+            sessionId: user.sid,
+          })
+          Sentry.setTag('session_id', user.sid)
+        } else {
+          Sentry.setUser(null)
+        }
 
         scope.setContext('request', {
           method: request.method,
