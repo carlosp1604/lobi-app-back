@@ -263,6 +263,7 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
       provide: GENERATE_VERIFICATION_TOKEN,
       useFactory: (
         verificationTokenRepository: VerificationTokenRepositoryInterface,
+        userRepository: UserRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
         emailSenderService: EmailSenderServiceInterface,
         unitOfWork: UnitOfWork,
@@ -270,10 +271,12 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
         clockService: ClockServiceInterface,
         randomService: RandomServiceInterface,
         configService: ConfigService<Env, true>,
+        loggerService: LoggerServiceInterface,
         idGeneratorService: IdGeneratorServiceInterface,
       ) => {
         return new GenerateVerificationToken(
           verificationTokenRepository,
+          userRepository,
           domainEventRepository,
           emailSenderService,
           unitOfWork,
@@ -281,11 +284,13 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
           clockService,
           randomService,
           configService,
+          loggerService,
           idGeneratorService,
         )
       },
       inject: [
         VERIFICATION_TOKEN_REPOSITORY,
+        USER_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
         EMAIL_SENDER_SERVICE,
         UNIT_OF_WORK,
@@ -293,6 +298,7 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
         CLOCK_SERVICE,
         RANDOM_SERVICE,
         ConfigService,
+        LOGGER_SERVICE,
         ID_GENERATOR,
       ],
     },

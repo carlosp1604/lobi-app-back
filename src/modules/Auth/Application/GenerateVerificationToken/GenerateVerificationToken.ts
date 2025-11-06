@@ -22,6 +22,9 @@ import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSe
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
+import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
+import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
+import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
@@ -29,6 +32,7 @@ export class GenerateVerificationToken {
 
   constructor(
     private readonly verificationTokenRepository: VerificationTokenRepositoryInterface,
+    private readonly userRepository: UserRepositoryInterface,
     private readonly domainEventRepository: DomainEventRepositoryInterface,
     private readonly emailSenderService: EmailSenderServiceInterface,
     private readonly unitOfWork: UnitOfWork,
@@ -36,6 +40,7 @@ export class GenerateVerificationToken {
     private readonly clockService: ClockServiceInterface,
     private readonly randomService: RandomServiceInterface,
     private readonly configService: ConfigService<Env, true>,
+    private readonly loggerService: LoggerServiceInterface,
     private readonly idGeneratorService: IdGeneratorServiceInterface,
   ) {
     this.verificationTokenTtlMs = this.configService.get('VERIFICATION_TOKEN_TTL_MS', { infer: true })
@@ -61,6 +66,29 @@ export class GenerateVerificationToken {
     const email = emailValidationResult.value
     const verificationTokenPurpose = purposeValidationResult.value
 
+    const user = await this.userRepository.findByEmail(email.toString())
+
+    if (verificationTokenPurpose.equals(VerificationTokenPurpose.createAccount())) {
+      if (user) {
+        this.loggerService.warn('Create account requested for an already taken email', {
+          email: email.toString(),
+        })
+
+        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.toString()))
+      }
+    }
+
+    if (verificationTokenPurpose.equals(VerificationTokenPurpose.resetPassword())) {
+      if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
+        this.loggerService.warn('Password reset requested for non-existent or inactive email', {
+          email: email.toString(),
+          reason: user ? 'Inactive' : 'NotFound',
+        })
+
+        return success(undefined)
+      }
+    }
+
     return this.unitOfWork.runInTransaction(async (context) => {
       const verificationToken = await this.verificationTokenRepository.findByEmailAndPurposeWithLock(
         email.toString(),
@@ -74,6 +102,13 @@ export class GenerateVerificationToken {
         const isVerificationTokenUsable = verificationToken.canBeUsedForPurpose(now, email, verificationTokenPurpose)
 
         if (isVerificationTokenUsable && !request.sendNewToken) {
+          this.loggerService.warn('Email has already an active token for purpose', {
+            email: email.toString(),
+            purpose: verificationTokenPurpose.toString(),
+            tokenId: verificationToken.id,
+            tokenExpiresAt: verificationToken.expiresAt.toISOString(),
+          })
+
           return fail(
             GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.toString(), verificationTokenPurpose.toString()),
           )

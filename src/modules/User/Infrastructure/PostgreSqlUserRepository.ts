@@ -31,6 +31,26 @@ export class PostgresqlUserRepository implements UserRepositoryInterface {
   }
 
   /**
+   * Finds a user by email
+   * @param email User email
+   * @param context The transactional context
+   * @returns The User entity if found, otherwise null
+   */
+  public async findByEmail(email: string, context?: TxContext): Promise<User | null> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userRepository = entityManager.getRepository(UserEntity)
+
+    const userEntity = await userRepository.findOneBy({ email })
+
+    if (!userEntity) {
+      return null
+    }
+
+    return UserModelTranslator.toDomain(userEntity)
+  }
+
+  /**
    * Finds a user by ID (and acquires a pessimistic lock on the row)
    * @param id User ID
    * @param context The transactional context

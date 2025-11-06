@@ -527,7 +527,7 @@ describe('AuthController', () => {
         it('should call to use-case correctly', async () => {
           const controller = buildController()
 
-          await controller.verifyEmailCreateAccount(mockBody)
+          await controller.verifyEmailResetPassword(mockBody)
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({

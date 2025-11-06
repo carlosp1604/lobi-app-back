@@ -5,6 +5,7 @@ export class GenerateVerificationTokenApplicationError extends Error {
   public static invalidEmailId = 'generate_verification_token_invalid_email'
   public static invalidVerificationTokenPurposeId = 'generate_verification_token_invalid_verification_token_purpose'
   public static activeTokenAlreadyIssuedId = 'generate_verification_token_active_token_already_issued'
+  public static emailAlreadyTakenId = 'generate_verification_token_email_already_taken'
 
   private constructor(message: string, id: string) {
     super(message)
@@ -28,5 +29,9 @@ export class GenerateVerificationTokenApplicationError extends Error {
       `An active VerificationToken for ${purpose} was already issued for email ${email}`,
       this.activeTokenAlreadyIssuedId,
     )
+  }
+
+  public static emailAlreadyTaken(email: string) {
+    return new GenerateVerificationTokenApplicationError(`Email ${email} is already taken`, this.emailAlreadyTakenId)
   }
 }

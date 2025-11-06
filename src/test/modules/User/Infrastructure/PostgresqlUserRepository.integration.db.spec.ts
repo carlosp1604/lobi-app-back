@@ -94,6 +94,41 @@ describe('PostgresqlUserRepository', () => {
     })
   })
 
+  describe('findByEmail', () => {
+    let runner: QueryRunner
+    let userDatabaseHelper: UserDatabaseHelper
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    beforeEach(() => {
+      userDatabaseHelper = buildUserDatabaseHelper(runner.manager)
+    })
+
+    it('should find user and translate to domain correctly', async () => {
+      await userDatabaseHelper.save(baseRawUser)
+
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.findByEmail(userEmail.toString(), context)
+
+      checkUserFound(result)
+    })
+
+    it('should return null if user does not exist', async () => {
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.findByEmail(userEmail.toString(), context)
+
+      expect(result).toBeNull()
+    })
+  })
+
   describe('findByIdWithLock', () => {
     let runner: QueryRunner
     let userDatabaseHelper: UserDatabaseHelper
