@@ -30,6 +30,15 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
+import { VerificationTokenDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenDatabaseHelper'
+import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
+import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
+import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
+import {
+  AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
+  AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+} from '~/src/modules/Auth/Infrastructure/ApiCodes'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -354,6 +363,151 @@ describe('AuthController', () => {
 
           await testCase(`${refreshCookieName}=${inputToken}`)
         })
+      })
+    })
+  })
+
+  describe('verify email', () => {
+    const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
+
+    // TODO: Change email's domain when we get Postmark approval
+    const userEmail = 'recipient@cponton.com'
+    let userDatabaseHelper: UserDatabaseHelper
+    let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
+
+    let rawUser: UserRawModelWithRelations
+    let rawCurrentVerificationToken: VerificationTokenRawModel
+
+    const validBody = { email: userEmail.toString(), sendNewToken: false, language: 'es' }
+
+    beforeEach(() => {
+      userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
+      verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(dataSource.manager)
+
+      rawUser = makeRawUser({
+        email: userEmail.toString(),
+        status: UserStatus.active().toString(),
+        deleted_at: null,
+      })
+
+      rawCurrentVerificationToken = makeRawVerificationToken({
+        email: userEmail.toString(),
+        purpose: VerificationTokenPurpose.createAccount().toString(),
+        expires_at: futureExpiresAt,
+        used_at: null,
+        token_hash: VerificationTokenTokenHashMother.random().toString(),
+      })
+    })
+
+    describe('happy path', () => {
+      it('should generate verification token correctly for signup', async () => {
+        return request(app.getHttpServer()).post('/auth/verify-email/signup').send(validBody).expect(204)
+      })
+
+      it('should generate verification token correctly for reset', async () => {
+        await userDatabaseHelper.save(rawUser)
+        return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
+      })
+    })
+
+    describe('when there are errors', () => {
+      describe('when body is not valid', () => {
+        const testCase = async (path: string) => {
+          return request(app.getHttpServer())
+            .post(path)
+            .send({ page: 5, perPage: 12 })
+            .expect(400)
+            .expect((response) => {
+              expect(response.body).toEqual({
+                path: path,
+                response: {
+                  code: VALIDATION_ERROR,
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                  errors: expect.any(Object),
+                },
+                statusCode: 400,
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                requestId: expect.any(String),
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                timestamp: expect.any(String),
+              })
+
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+              const errorMessages = Object.keys(response.body.response.errors).join(' ')
+
+              expect(errorMessages).toContain('email')
+              expect(errorMessages).toContain('sendNewToken')
+              expect(errorMessages).toContain('language')
+              expect(errorMessages).toContain('page')
+              expect(errorMessages).toContain('perPage')
+            })
+        }
+
+        it('should throw 400 when body is not valid for signup', async () => {
+          await testCase('/auth/verify-email/signup')
+        })
+
+        it('should throw 400 when body is not valid for reset', async () => {
+          await testCase('/auth/verify-email/reset')
+        })
+      })
+
+      describe('when token is already issued', () => {
+        const testCase = async (path: string, purpose: string) => {
+          return request(app.getHttpServer())
+            .post(path)
+            .send(validBody)
+            .expect(409)
+            .expect((response) => {
+              expect(response.body).toEqual({
+                path: path,
+                response: {
+                  code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+                  message: `An active VerificationToken for ${purpose} was already issued for email ${userEmail.toString()}`,
+                },
+                statusCode: 409,
+                requestId: expect.any(String),
+                timestamp: expect.any(String),
+              } as Record<string, unknown>)
+            })
+        }
+
+        it('should throw ConflictException for signup', async () => {
+          await verificationTokenDatabaseHelper.save(rawCurrentVerificationToken)
+
+          await testCase('/auth/verify-email/signup', VerificationTokenPurpose.createAccount().toString())
+        })
+
+        it('should throw ConflictException for reset', async () => {
+          await userDatabaseHelper.save(rawUser)
+          await verificationTokenDatabaseHelper.save({
+            ...rawCurrentVerificationToken,
+            purpose: VerificationTokenPurpose.resetPassword().toString(),
+          })
+
+          await testCase('/auth/verify-email/reset', VerificationTokenPurpose.resetPassword().toString())
+        })
+      })
+
+      it('should throw ConflictException when email is already taken', async () => {
+        await userDatabaseHelper.save(rawUser)
+
+        return request(app.getHttpServer())
+          .post('/auth/verify-email/signup')
+          .send(validBody)
+          .expect(409)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/verify-email/signup',
+              response: {
+                code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
+                message: `Email ${userEmail.toString()} is already taken`,
+              },
+              statusCode: 409,
+              requestId: expect.any(String),
+              timestamp: expect.any(String),
+            } as Record<string, unknown>)
+          })
       })
     })
   })
