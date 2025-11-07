@@ -6,6 +6,7 @@ import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginU
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import {
   AUTH_LOGIN_INVALID_EMAIL,
+  AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
   AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
@@ -193,6 +194,13 @@ export class AuthController {
     if (error.id === GenerateVerificationTokenApplicationError.activeTokenAlreadyIssuedId) {
       throw new ConflictException({
         code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+        message: error.message,
+      })
+    }
+
+    if (error.id === GenerateVerificationTokenApplicationError.emailAlreadyTakenId) {
+      throw new ConflictException({
+        code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
         message: error.message,
       })
     }

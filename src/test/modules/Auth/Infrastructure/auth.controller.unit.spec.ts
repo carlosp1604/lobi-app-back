@@ -5,6 +5,7 @@ import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controlle
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import {
   AUTH_LOGIN_INVALID_EMAIL,
+  AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
@@ -599,6 +600,22 @@ describe('AuthController', () => {
           )
         })
 
+        it('should throw ConflictException if use-case returns emailAlreadyTaken error', async () => {
+          const controller = buildController()
+
+          mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
+            success: false,
+            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email),
+          })
+
+          await expect(controller.verifyEmailCreateAccount(mockBody)).rejects.toThrow(
+            new ConflictException({
+              code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
+              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email).message,
+            }),
+          )
+        })
+
         it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
           const controller = buildController()
 
@@ -678,6 +695,22 @@ describe('AuthController', () => {
                 mockBody.email,
                 VerificationTokenPurpose.resetPassword().toString(),
               ).message,
+            }),
+          )
+        })
+
+        it('should throw ConflictException if use-case returns emailAlreadyTaken error', async () => {
+          const controller = buildController()
+
+          mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
+            success: false,
+            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email),
+          })
+
+          await expect(controller.verifyEmailResetPassword(mockBody)).rejects.toThrow(
+            new ConflictException({
+              code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
+              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email).message,
             }),
           )
         })
