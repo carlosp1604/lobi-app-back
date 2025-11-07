@@ -10,7 +10,7 @@ import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServic
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject/EmailAddressValueObject'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
@@ -25,6 +25,7 @@ import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Do
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
+import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
@@ -162,9 +163,9 @@ export class GenerateVerificationToken {
     })
   }
 
-  private validateEmail(email: string): Result<UserEmail, GenerateVerificationTokenApplicationError> {
+  private validateEmail(email: string): Result<VerificationTokenEmail, GenerateVerificationTokenApplicationError> {
     try {
-      return success(UserEmail.fromString(email))
+      return success(VerificationTokenEmail.fromString(email))
     } catch {
       return fail(GenerateVerificationTokenApplicationError.invalidEmail(email))
     }
@@ -181,7 +182,7 @@ export class GenerateVerificationToken {
   }
 
   private async sendEmail(
-    email: UserEmail,
+    email: EmailAddressValueObject,
     purpose: VerificationTokenPurpose,
     clearRandomCode: string,
     language: string,

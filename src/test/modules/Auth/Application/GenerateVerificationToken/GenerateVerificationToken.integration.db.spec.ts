@@ -25,7 +25,6 @@ import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenI
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { DomainEventDatabaseHelper } from '~/src/test/modules/Shared/Infrastructure/DomainEventDatabaseHelper'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 import { makeRawDomainEvent } from '~/src/test/modules/Shared/Infrastructure/DomainEventRawTestMaker'
 import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
@@ -36,6 +35,7 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
+import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
@@ -43,7 +43,7 @@ describe('GenerateVerificationToken', () => {
   const pastDate = new Date(now.getTime() - 3600)
   const expectedExpiresAt = new Date(now.getTime() + env.VERIFICATION_TOKEN_TTL_MS)
   // TODO: Change email's domain when we get Postmark approval
-  const email = UserEmail.fromString('recipient@cponton.com')
+  const email = VerificationTokenEmail.fromString('recipient@cponton.com')
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
 

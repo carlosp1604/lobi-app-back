@@ -1,10 +1,10 @@
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 export class User {
   public readonly id: UserId

@@ -1,12 +1,12 @@
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 
 export class VerificationToken {
   public readonly id: VerificationTokenId
-  public readonly email: UserEmail
+  public readonly email: VerificationTokenEmail
   public readonly tokenHash: VerificationTokenTokenHash
   public readonly purpose: VerificationTokenPurpose
   public readonly expiresAt: Date
@@ -15,7 +15,7 @@ export class VerificationToken {
 
   constructor(
     id: VerificationTokenId,
-    email: UserEmail,
+    email: VerificationTokenEmail,
     tokenHash: VerificationTokenTokenHash,
     purpose: VerificationTokenPurpose,
     expiresAt: Date,
@@ -33,7 +33,7 @@ export class VerificationToken {
 
   public static create(
     id: VerificationTokenId,
-    email: UserEmail,
+    email: VerificationTokenEmail,
     tokenHash: VerificationTokenTokenHash,
     purpose: VerificationTokenPurpose,
     expiresAt: Date,
@@ -54,11 +54,11 @@ export class VerificationToken {
     return this.expiresAt.getTime() <= now.getTime()
   }
 
-  public canBeUsedForPurpose(now: Date, email: UserEmail, purpose: VerificationTokenPurpose): boolean {
+  public canBeUsedForPurpose(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose): boolean {
     return !this.isUsed() && !this.isExpired(now) && this.email.equals(email) && this.purpose.equals(purpose)
   }
 
-  public markAsUsedForPurpose(now: Date, email: UserEmail, purpose: VerificationTokenPurpose) {
+  public markAsUsedForPurpose(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose) {
     if (this.isUsed()) {
       throw VerificationTokenDomainException.alreadyUsed(this.id.toString())
     }

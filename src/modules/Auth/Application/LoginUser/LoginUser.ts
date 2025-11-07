@@ -1,4 +1,4 @@
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject/EmailAddressValueObject'
 import { User } from '~/src/modules/User/Domain/User'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
@@ -32,6 +32,7 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 interface NormalizedIpWithHash {
   normalizedIp: string
@@ -157,7 +158,10 @@ export class LoginUser {
     }
   }
 
-  private async getAndValidateUser(userEmail: UserEmail, context: TxContext): Promise<Result<User, LoginUserApplicationError>> {
+  private async getAndValidateUser(
+    userEmail: EmailAddressValueObject,
+    context: TxContext,
+  ): Promise<Result<User, LoginUserApplicationError>> {
     const user = await this.userRepository.findByEmailWithLock(userEmail.toString(), context)
 
     if (!user) {
@@ -181,7 +185,7 @@ export class LoginUser {
     return success(userCredential)
   }
 
-  private validateUserAgent(userAgent: string, userEmail: UserEmail): UserAgent {
+  private validateUserAgent(userAgent: string, userEmail: EmailAddressValueObject): UserAgent {
     try {
       return UserAgent.fromString(userAgent)
     } catch {
@@ -223,7 +227,7 @@ export class LoginUser {
 
   private async resolveDeviceLocation(
     normalizedIp: string | null,
-    userEmail: UserEmail,
+    userEmail: EmailAddressValueObject,
     userAgent: UserAgent,
   ): Promise<DeviceLocation | null> {
     if (normalizedIp) {

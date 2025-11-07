@@ -1,7 +1,6 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
 import { mock, mockReset } from 'jest-mock-extended'
 import { ConfigService } from '@nestjs/config'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationRequestDto'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
@@ -30,11 +29,12 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-29T15:35:00Z')
   const fakeContext: TxContext = { __opaque_tx_context: true }
-  const email = UserEmailMother.random()
+  const email = VerificationTokenEmailMother.random()
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
 

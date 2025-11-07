@@ -1,10 +1,10 @@
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 describe('VerificationToken', () => {
   let builder: VerificationTokenTestBuilder = new VerificationTokenTestBuilder()
@@ -20,7 +20,7 @@ describe('VerificationToken', () => {
   describe('create', () => {
     it('should create a new token with usedAt as null and correct createdAt', () => {
       const id = VerificationTokenIdMother.valid()
-      const email = UserEmailMother.random()
+      const email = VerificationTokenEmailMother.random()
       const tokenHash = VerificationTokenTokenHashMother.random()
       const purpose = VerificationTokenPurpose.createAccount()
 
@@ -71,7 +71,7 @@ describe('VerificationToken', () => {
   })
 
   describe('canBeUsedForPurpose', () => {
-    const validEmail = UserEmailMother.random()
+    const validEmail = VerificationTokenEmailMother.random()
     const validPurpose = VerificationTokenPurpose.createAccount()
 
     const validToken = builder.withEmail(validEmail).withPurpose(validPurpose).withExpiresAt(futureExpiresAt).withUsedAt(null).build()
@@ -104,7 +104,7 @@ describe('VerificationToken', () => {
     })
 
     it('should return false when the email does not match', () => {
-      const otherEmail = UserEmailMother.random()
+      const otherEmail = VerificationTokenEmailMother.random()
 
       const result = validToken.canBeUsedForPurpose(now, otherEmail, validPurpose)
 
@@ -121,7 +121,7 @@ describe('VerificationToken', () => {
   })
 
   describe('markAsUsedForPurpose', () => {
-    const validEmail = UserEmailMother.random()
+    const validEmail = VerificationTokenEmailMother.random()
     const validPurpose = VerificationTokenPurpose.createAccount()
 
     let validToken: VerificationToken
@@ -165,7 +165,7 @@ describe('VerificationToken', () => {
     })
 
     it('should throw error when email does not match', () => {
-      const otherEmail = UserEmailMother.random()
+      const otherEmail = VerificationTokenEmailMother.random()
 
       expect(() => validToken.markAsUsedForPurpose(now, otherEmail, validPurpose)).toThrow(
         VerificationTokenDomainException.cannotBeUsedByUser(validToken.id.toString(), otherEmail.toString()),

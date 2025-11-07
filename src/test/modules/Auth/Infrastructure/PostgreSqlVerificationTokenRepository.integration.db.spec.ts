@@ -11,17 +11,17 @@ import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenI
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
 import { runPessimisticLockTest } from '~/src/test/utils/concurrencyHelper'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
   const verificationTokenId = VerificationTokenIdMother.valid()
   const verificationTokenPurpose = VerificationTokenPurpose.createAccount()
   const verificationTokenTokenHash = VerificationTokenTokenHashMother.valid()
-  const email = UserEmailMother.valid()
+  const email = VerificationTokenEmailMother.valid()
   const now = new Date('2025-10-30T19:59:00Z')
   const futureExpiresAt = new Date(now.getTime() + 15 * 60 * 1000)
 

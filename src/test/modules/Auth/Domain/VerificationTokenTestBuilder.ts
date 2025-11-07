@@ -1,15 +1,15 @@
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
+import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 export class VerificationTokenTestBuilder {
   private _id: VerificationTokenId = VerificationTokenIdMother.valid()
-  private _email: UserEmail = UserEmailMother.random()
+  private _email: VerificationTokenEmail = VerificationTokenEmailMother.random()
   private _tokenHash: VerificationTokenTokenHash = VerificationTokenTokenHashMother.random()
   private _purpose: VerificationTokenPurpose = VerificationTokenPurpose.createAccount()
   private _expiresAt: Date = new Date()
@@ -21,7 +21,7 @@ export class VerificationTokenTestBuilder {
     return this
   }
 
-  public withEmail(email: UserEmail): this {
+  public withEmail(email: VerificationTokenEmail): this {
     this._email = email
     return this
   }

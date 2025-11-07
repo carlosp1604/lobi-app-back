@@ -1,7 +1,6 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
 import { mock, mockReset } from 'jest-mock-extended'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
@@ -14,6 +13,7 @@ import {
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
 import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
   const fakeContext: TxContext = { __opaque_tx_context: true }
@@ -39,7 +39,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
     const rawToken = makeRawVerificationToken({ id: testTokenId.toString() })
     const verificationTokenPurpose = VerificationTokenPurpose.createAccount().toString()
-    const email = UserEmailMother.random().toString()
+    const email = VerificationTokenEmailMother.random().toString()
 
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)

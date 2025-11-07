@@ -1,5 +1,4 @@
 import { User } from '~/src/modules/User/Domain/User'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
@@ -10,6 +9,7 @@ import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 export class UserTestBuilder {
   private _id = UserIdMother.valid()

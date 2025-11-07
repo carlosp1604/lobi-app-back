@@ -1,12 +1,12 @@
 import { User } from '~/src/modules/User/Domain/User'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
 import { UserRawModel, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 export class UserModelTranslator {
   public static toDomain(rawModel: UserRawModelWithRelations): User {
