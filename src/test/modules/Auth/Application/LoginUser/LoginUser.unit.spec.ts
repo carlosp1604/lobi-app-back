@@ -42,6 +42,7 @@ import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 describe('LoginUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -116,7 +117,7 @@ describe('LoginUser', () => {
   const mockValidIp = () => {
     mockedIpValidator.isValid.mockReturnValue(true)
     mockedIpValidator.isPublic.mockReturnValue(true)
-    mockedIpValidator.normalize.mockReturnValue('normalized-ip').mockReturnValueOnce('normalized-ip')
+    mockedIpValidator.normalize.mockReturnValueOnce('normalized-ip').mockReturnValueOnce('normalized-ip')
   }
 
   const buildUseCase = () => {
@@ -156,6 +157,7 @@ describe('LoginUser', () => {
     mockReset(activeSession3)
     mockReset(activeSession2)
     mockReset(activeSession1)
+    jest.restoreAllMocks()
 
     mockedClock.now.mockReturnValue(now)
     mockedIdGenerator.generateId.mockReturnValue(expectedDomainEventId.toString())
@@ -298,13 +300,13 @@ describe('LoginUser', () => {
     })
 
     describe('when IP or UA are not valid or deviceLocationResolver fails', () => {
-      it('calls services and entities correctly when ip is not valid', async () => {
+      it('calls services and entities correctly when IP is not valid', async () => {
         const expectedSession = userSessionTestBuilder.withIpHash(null).build()
         mockedGenerateTokensService.generate.mockResolvedValue({ ...expectedGenerateTokensResponse, session: expectedSession })
 
         const inputWithInvalidIp = {
           ...request,
-          ip: 'invalid-ip',
+          ip: 'invalid-ip-with-an-excessive-length-to-validate-proper-slice',
         }
 
         mockedIpValidator.isValid.mockReturnValueOnce(false)
@@ -317,18 +319,19 @@ describe('LoginUser', () => {
         expect(mockedIpValidator.normalize).not.toHaveBeenCalled()
         expect(mockedHasher.hash).not.toHaveBeenCalled()
 
-        expect(mockedIpValidator.isValid).toHaveBeenCalledWith('invalid-ip')
+        expect(mockedIpValidator.isValid).toHaveBeenCalledWith('invalid-ip-with-an-excessive-length-to-validate-proper-slice')
         expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'IP invalid',
+          'Invalid or private IP address',
           expect.objectContaining({
-            userId: validUserId.toString(),
-            userAgent: expectedUA.toString(),
-            userIp: inputWithInvalidIp.ip,
+            email: validEmail.toString(),
+            userAgent: request.userAgent.toString(),
+            ipSample: inputWithInvalidIp.ip.slice(0, 39),
+            ipLength: inputWithInvalidIp.ip.length,
           }),
         )
       })
 
-      it('calls services and entities correctly when ip is valid but it is not public', async () => {
+      it('calls services and entities correctly when IP is valid but it is not public', async () => {
         const expectedSession = userSessionTestBuilder.withIpHash(null).build()
         mockedGenerateTokensService.generate.mockResolvedValue({ ...expectedGenerateTokensResponse, session: expectedSession })
 
@@ -351,11 +354,12 @@ describe('LoginUser', () => {
         expect(mockedIpValidator.isValid).toHaveBeenCalledWith('private-ip')
         expect(mockedIpValidator.isPublic).toHaveBeenCalledWith('private-ip')
         expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'IP invalid',
+          'Invalid or private IP address',
           expect.objectContaining({
-            userId: validUserId.toString(),
-            userAgent: expectedUA.toString(),
-            userIp: inputWithPrivateIP.ip,
+            email: validEmail.toString(),
+            userAgent: request.userAgent.toString(),
+            ipSample: inputWithPrivateIP.ip,
+            ipLength: inputWithPrivateIP.ip.length,
           }),
         )
       })
@@ -376,12 +380,12 @@ describe('LoginUser', () => {
 
         expect(mockedLogger.error).toHaveBeenCalledTimes(1)
         expect(mockedLogger.error).toHaveBeenCalledWith(
-          'Device location resolver failed',
+          'Failed to resolve device location. Session will be created without location data',
           expect.any(String),
           expect.objectContaining({
-            userEmail: validEmail.toString(),
-            ip: 'normalized-ip',
-            userAgent: expectedUA.toString(),
+            email: validEmail.toString(),
+            ip: request.ip,
+            userAgent: request.userAgent,
             error: Error('Service Error'),
           }),
         )
@@ -402,12 +406,12 @@ describe('LoginUser', () => {
 
         expect(mockedLogger.error).toHaveBeenCalledTimes(1)
         expect(mockedLogger.error).toHaveBeenCalledWith(
-          'Device location resolver failed',
+          'Failed to resolve device location. Session will be created without location data',
           undefined,
           expect.objectContaining({
-            userEmail: validEmail.toString(),
-            ip: 'normalized-ip',
-            userAgent: expectedUA.toString(),
+            email: validEmail.toString(),
+            ip: request.ip,
+            userAgent: request.userAgent,
             error: 'Service Error',
           }),
         )
@@ -428,9 +432,10 @@ describe('LoginUser', () => {
         await useCase.execute(inputWithInvalidUA)
 
         expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'UA invalid, using fallback',
+          'Unparseable UserAgent, falling back to UNKNOWN',
           expect.objectContaining({
-            userEmail: validEmail.toString(),
+            email: validEmail.toString(),
+            ip: request.ip,
             uaSample: 'a'.repeat(512),
             uaLength: 513,
           }),
@@ -449,22 +454,33 @@ describe('LoginUser', () => {
         error: LoginUserApplicationError.invalidUserEmail('not-an-email'),
       })
 
-      expect(mockedUserRepository.findByEmailWithLock).not.toHaveBeenCalled()
-      expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
-    describe('when user does not exist or does not have credentials', () => {
-      const checkFlowHasStoppedCorrectly = () => {
-        expect(mockedIpValidator.isValid).not.toHaveBeenCalled()
-        expect(mockedIpValidator.isPublic).not.toHaveBeenCalled()
-        expect(mockedIpValidator.normalize).not.toHaveBeenCalled()
-        expect(mockedHasher.hash).not.toHaveBeenCalled()
-        expect(mockedLogger.warn).not.toHaveBeenCalled()
-      }
+    it('should throw error if user email validation fails with an unexpected error', async () => {
+      const useCase = buildUseCase()
 
-      it('should return error when user does not exist', async () => {
-        mockedUserRepository.findByEmailWithLock.mockResolvedValue(null)
+      jest.spyOn(UserEmail, 'fromString').mockImplementationOnce(() => {
+        throw Error('Unexpected Error')
+      })
 
+      await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected Error'))
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw error if user agent validation fails with an unexpected error', async () => {
+      const useCase = buildUseCase()
+
+      jest.spyOn(UserAgent, 'fromString').mockImplementationOnce(() => {
+        throw Error('Unexpected Error')
+      })
+
+      await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected Error'))
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+    })
+
+    describe('when user does not exist, is deleted or is not active', () => {
+      const runTestCaseAndAssertResult = async () => {
         const useCase = buildUseCase()
 
         const result = await useCase.execute(request)
@@ -473,48 +489,98 @@ describe('LoginUser', () => {
           success: false,
           error: LoginUserApplicationError.userNotFound('test@example.com'),
         })
+      }
 
-        checkFlowHasStoppedCorrectly()
+      it('should return error when user does not exist', async () => {
+        mockedUserRepository.findByEmailWithLock.mockResolvedValue(null)
+
+        await runTestCaseAndAssertResult()
+
+        expect(mockedLogger.warn).toHaveBeenCalledWith(
+          'Login attempt failed: User not found or inactive',
+          expect.objectContaining({
+            email: validEmail.toString(),
+            userAgent: request.userAgent.toString(),
+            ip: request.ip,
+            reason: 'NotFound',
+          }),
+        )
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
       })
 
-      it('should return error if user is removed or deactivated', async () => {
+      it('should return error when user is not active', async () => {
         const deletedUser = new UserTestBuilder()
           .withId(validUserId)
           .withEmail(validEmail)
           .withStatus(UserStatus.deactivated())
+          .withDeletedAt(null)
+          .build()
+
+        mockedUserRepository.findByEmailWithLock.mockResolvedValueOnce(deletedUser)
+
+        await runTestCaseAndAssertResult()
+
+        expect(mockedLogger.warn).toHaveBeenCalledWith(
+          'Login attempt failed: User not found or inactive',
+          expect.objectContaining({
+            email: validEmail.toString(),
+            userAgent: request.userAgent.toString(),
+            ip: request.ip,
+            reason: 'Inactive',
+          }),
+        )
+        expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
+      })
+
+      it('should return error when user is deleted', async () => {
+        const deletedUser = new UserTestBuilder()
+          .withId(validUserId)
+          .withEmail(validEmail)
+          .withStatus(UserStatus.active())
           .withDeletedAt(now)
           .build()
 
         mockedUserRepository.findByEmailWithLock.mockResolvedValueOnce(deletedUser)
 
-        const useCase = buildUseCase()
+        await runTestCaseAndAssertResult()
 
-        const result = await useCase.execute(request)
-
-        expect(result).toMatchObject({
-          success: false,
-          error: LoginUserApplicationError.userNotFound('test@example.com'),
-        })
-
-        checkFlowHasStoppedCorrectly()
+        expect(mockedLogger.warn).toHaveBeenCalledWith(
+          'Login attempt failed: User not found or inactive',
+          expect.objectContaining({
+            email: validEmail.toString(),
+            userAgent: request.userAgent.toString(),
+            ip: request.ip,
+            reason: 'Inactive',
+          }),
+        )
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
       })
+    })
 
-      it('should return error if user does not have a credential', async () => {
-        mockedCredentialsRepository.findByUserId.mockResolvedValueOnce(null)
+    it('should return error when user does not have credentials', async () => {
+      mockedCredentialsRepository.findByUserId.mockResolvedValue(null)
 
-        const useCase = buildUseCase()
+      const useCase = buildUseCase()
 
-        const result = await useCase.execute(request)
+      const result = await useCase.execute(request)
 
-        expect(result).toMatchObject({
-          success: false,
-          error: LoginUserApplicationError.userDoesNotHaveCredentials(user.id.toString()),
-        })
-
-        checkFlowHasStoppedCorrectly()
+      expect(result).toEqual({
+        success: false,
+        error: LoginUserApplicationError.userDoesNotHaveCredentials(validUserId.toString()),
       })
+
+      expect(mockedLogger.error).toHaveBeenCalledWith(
+        'Login failed: User exists but has no credentials',
+        undefined,
+        expect.objectContaining({
+          userId: validUserId.toString(),
+          email: validEmail.toString(),
+          userAgent: request.userAgent.toString(),
+          ip: request.ip,
+        }),
+      )
+
+      expect(mockedDeviceLocationResolver.resolve).not.toHaveBeenCalled()
     })
 
     describe('when passwords do not match', () => {

@@ -30,11 +30,13 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-29T15:35:00Z')
   const fakeContext: TxContext = { __opaque_tx_context: true }
   const email = VerificationTokenEmailMother.random()
+  const userEmail = UserEmail.fromString(email.toString())
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
 
@@ -77,7 +79,7 @@ describe('GenerateVerificationToken', () => {
     expiration_minutes: verificationTokenTtlMs / (60 * 1000),
   }
 
-  const user = new UserTestBuilder().withEmail(email).withDeletedAt(null).withStatus(UserStatus.active()).build()
+  const user = new UserTestBuilder().withEmail(userEmail).withDeletedAt(null).withStatus(UserStatus.active()).build()
 
   const buildUseCase = () => {
     return new GenerateVerificationToken(
@@ -351,7 +353,7 @@ describe('GenerateVerificationToken', () => {
       })
 
       it('should return success when user is deleted', async () => {
-        const deletedUser = new UserTestBuilder().withEmail(email).withDeletedAt(now).withStatus(UserStatus.active()).build()
+        const deletedUser = new UserTestBuilder().withEmail(userEmail).withDeletedAt(now).withStatus(UserStatus.active()).build()
         mockedUserRepository.findByEmail.mockResolvedValue(deletedUser)
 
         await testCase()
@@ -364,7 +366,7 @@ describe('GenerateVerificationToken', () => {
       })
 
       it('should return success when user is not active', async () => {
-        const deletedUser = new UserTestBuilder().withEmail(email).withDeletedAt(null).withStatus(UserStatus.deactivated()).build()
+        const deletedUser = new UserTestBuilder().withEmail(userEmail).withDeletedAt(null).withStatus(UserStatus.deactivated()).build()
         mockedUserRepository.findByEmail.mockResolvedValue(deletedUser)
 
         await testCase()

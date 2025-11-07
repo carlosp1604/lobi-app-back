@@ -33,6 +33,8 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 interface NormalizedIpWithHash {
   normalizedIp: string
@@ -69,10 +71,22 @@ export class LoginUser {
     }
 
     const userEmail = validateUserEmailResult.value
-    const userAgent = this.validateUserAgent(request.userAgent, userEmail)
+    const userAgent = this.validateUserAgent(request.userAgent, request.ip, userEmail)
+
+    const validateAndHashIpResult = await this.validateAndHashIp(request.ip, request.userAgent, userEmail)
+
+    let sessionIpHash: UserSessionIpHash | null = null
+    let normalizedIp: string | null = null
+
+    if (validateAndHashIpResult) {
+      sessionIpHash = validateAndHashIpResult.hashedIp
+      normalizedIp = validateAndHashIpResult.normalizedIp
+    }
+
+    const deviceLocation = await this.resolveDeviceLocation(normalizedIp, userEmail, request.ip, request.userAgent)
 
     return this.unitOfWork.runInTransaction(async (context) => {
-      const getAndValidateUserResult = await this.getAndValidateUser(userEmail, context)
+      const getAndValidateUserResult = await this.getAndValidateUser(userEmail, request.userAgent, request.ip, context)
 
       if (!getAndValidateUserResult.success) {
         return getAndValidateUserResult
@@ -80,25 +94,13 @@ export class LoginUser {
 
       const user: User = getAndValidateUserResult.value
 
-      const getUserCredential = await this.getUserCredential(user.id, context)
+      const getUserCredential = await this.getUserCredential(user, request.ip, request.userAgent, context)
 
       if (!getUserCredential.success) {
         return getUserCredential
       }
 
       const credentials = getUserCredential.value
-
-      const validateAndHashIpResult = await this.validateAndHashIp(request.ip, userAgent, user)
-
-      let sessionIpHash: UserSessionIpHash | null = null
-      let normalizedIp: string | null = null
-
-      if (validateAndHashIpResult) {
-        sessionIpHash = validateAndHashIpResult.hashedIp
-        normalizedIp = validateAndHashIpResult.normalizedIp
-      }
-
-      const deviceLocation = await this.resolveDeviceLocation(normalizedIp, userEmail, userAgent)
 
       const passwordMatches = await this.passwordHasher.compare(request.password, credentials.passwordHash.toString())
 
@@ -153,44 +155,70 @@ export class LoginUser {
   private validateUserEmail(email: string): Result<UserEmail, LoginUserApplicationError> {
     try {
       return success(UserEmail.fromString(email))
-    } catch {
+    } catch (exception: unknown) {
+      if (!(exception instanceof UserDomainException)) {
+        throw exception
+      }
+
       return fail(LoginUserApplicationError.invalidUserEmail(email))
     }
   }
 
   private async getAndValidateUser(
     userEmail: EmailAddressValueObject,
+    userAgent: string,
+    ip: string,
     context: TxContext,
   ): Promise<Result<User, LoginUserApplicationError>> {
     const user = await this.userRepository.findByEmailWithLock(userEmail.toString(), context)
 
-    if (!user) {
-      return fail(LoginUserApplicationError.userNotFound(userEmail.toString()))
-    }
+    if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
+      this.loggerService.warn('Login attempt failed: User not found or inactive', {
+        email: userEmail.toString(),
+        userAgent: userAgent.slice(0, 512),
+        ip: ip.slice(0, 39),
+        reason: user ? 'Inactive' : 'NotFound',
+      })
 
-    if (user.deletedAt || !user.status.equals(UserStatus.active())) {
       return fail(LoginUserApplicationError.userNotFound(userEmail.toString()))
     }
 
     return success(user)
   }
 
-  private async getUserCredential(userId: UserId, context: TxContext): Promise<Result<UserCredential, LoginUserApplicationError>> {
-    const userCredential = await this.credentialRepository.findByUserId(userId.toString(), context)
+  private async getUserCredential(
+    user: User,
+    ip: string,
+    userAgent: string,
+    context: TxContext,
+  ): Promise<Result<UserCredential, LoginUserApplicationError>> {
+    const userCredential = await this.credentialRepository.findByUserId(user.id.toString(), context)
 
     if (!userCredential) {
-      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(userId.toString()))
+      this.loggerService.error('Login failed: User exists but has no credentials', undefined, {
+        userId: user.id.toString(),
+        email: user.email.toString(),
+        userAgent: userAgent.slice(0, 512),
+        ip: ip.slice(0, 39),
+      })
+
+      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(user.id.toString()))
     }
 
     return success(userCredential)
   }
 
-  private validateUserAgent(userAgent: string, userEmail: EmailAddressValueObject): UserAgent {
+  private validateUserAgent(userAgent: string, ip: string, userEmail: EmailAddressValueObject): UserAgent {
     try {
       return UserAgent.fromString(userAgent)
-    } catch {
-      this.loggerService.warn('UA invalid, using fallback', {
-        userEmail: userEmail.toString(),
+    } catch (exception: unknown) {
+      if (!(exception instanceof UserSessionDomainException)) {
+        throw exception
+      }
+
+      this.loggerService.warn('Unparseable UserAgent, falling back to UNKNOWN', {
+        email: userEmail.toString(),
+        ip: ip.slice(0, 39),
         uaSample: userAgent.slice(0, 512),
         uaLength: userAgent.length,
       })
@@ -199,7 +227,7 @@ export class LoginUser {
     }
   }
 
-  private async validateAndHashIp(ip: string, userAgent: UserAgent, user: User): Promise<NormalizedIpWithHash | null> {
+  private async validateAndHashIp(ip: string, userAgent: string, userEmail: UserEmail): Promise<NormalizedIpWithHash | null> {
     let sessionIpHash: UserSessionIpHash | null = null
     let normalizedIp: string = ip
 
@@ -216,10 +244,11 @@ export class LoginUser {
       }
     }
 
-    this.loggerService.warn('IP invalid', {
-      userId: user.id.toString(),
-      userAgent: userAgent.toString(),
-      userIp: ip.slice(0, 39),
+    this.loggerService.warn('Invalid or private IP address', {
+      email: userEmail.toString(),
+      userAgent: userAgent.slice(0, 512),
+      ipSample: ip.slice(0, 39),
+      ipLength: ip.length,
     })
 
     return null
@@ -227,8 +256,9 @@ export class LoginUser {
 
   private async resolveDeviceLocation(
     normalizedIp: string | null,
-    userEmail: EmailAddressValueObject,
-    userAgent: UserAgent,
+    userEmail: UserEmail,
+    ip: string,
+    userAgent: string,
   ): Promise<DeviceLocation | null> {
     if (normalizedIp) {
       try {
@@ -242,10 +272,10 @@ export class LoginUser {
       } catch (exception: unknown) {
         const stack = exception instanceof Error ? exception.stack : undefined
 
-        this.loggerService.error('Device location resolver failed', stack, {
-          userEmail: userEmail.toString(),
-          ip: normalizedIp,
-          userAgent: userAgent.toString(),
+        this.loggerService.error('Failed to resolve device location. Session will be created without location data', stack, {
+          email: userEmail.toString(),
+          ip: ip.slice(0, 39),
+          userAgent: userAgent.slice(0, 512),
           error: exception,
         })
       }
