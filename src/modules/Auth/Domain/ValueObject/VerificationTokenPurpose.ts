@@ -7,6 +7,8 @@ export enum ValidVerificationTokenPurposes {
 }
 
 export class VerificationTokenPurpose extends ValueObject<ValidVerificationTokenPurposes> {
+  private __verificationTokenPurposeBrand: void
+
   private constructor(value: ValidVerificationTokenPurposes) {
     super(value)
 

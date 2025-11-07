@@ -7,6 +7,8 @@ export enum ValidDomainEventAggregateTypes {
 }
 
 export class DomainEventAggregateType extends ValueObject<ValidDomainEventAggregateTypes> {
+  private __domainEventAggregateTypeBrand: void
+
   private constructor(value: ValidDomainEventAggregateTypes) {
     super(value)
 

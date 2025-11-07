@@ -2,6 +2,8 @@ import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessio
 import { HashValueObject } from '~/src/modules/Shared/Domain/ValueObject/HashValueObject'
 
 export class UserSessionIpHash extends HashValueObject {
+  private __userSessionIpHashBrand: void
+
   private constructor(value: string) {
     super(value)
 

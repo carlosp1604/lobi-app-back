@@ -8,6 +8,8 @@ export enum ValidDomainEventNames {
 }
 
 export class DomainEventName extends ValueObject<ValidDomainEventNames> {
+  private __domainEventNameBrand: void
+
   private constructor(value: ValidDomainEventNames) {
     super(value)
 

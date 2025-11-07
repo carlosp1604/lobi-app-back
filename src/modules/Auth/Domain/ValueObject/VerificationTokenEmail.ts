@@ -2,6 +2,8 @@ import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 export class VerificationTokenEmail extends EmailAddressValueObject {
+  private __verificationTokenEmailBrand: void
+
   private constructor(value: string) {
     const normalized = value.trim()
 

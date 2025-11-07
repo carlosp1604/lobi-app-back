@@ -2,6 +2,8 @@ import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 export class UserEmail extends EmailAddressValueObject {
+  private __userEmailBrand: void
+
   private constructor(value: string) {
     const normalized = value.trim()
 

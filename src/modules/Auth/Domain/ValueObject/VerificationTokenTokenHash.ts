@@ -2,6 +2,8 @@ import { HashValueObject } from '~/src/modules/Shared/Domain/ValueObject/HashVal
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 export class VerificationTokenTokenHash extends HashValueObject {
+  private __verificationTokenTokenHashBrand: void
+
   private constructor(value: string) {
     super(value)
 

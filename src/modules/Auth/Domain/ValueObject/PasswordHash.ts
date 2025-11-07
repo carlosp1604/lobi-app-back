@@ -4,6 +4,8 @@ import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCre
 const BCRYPT_REGEX = /^\$2[aby]\$(0[4-9]|[12]\d|3[01])\$[./A-Za-z0-9]{53}$/
 
 export class PasswordHash extends ValueObject<string> {
+  private __passwordHashBrand: void
+
   private constructor(value: string) {
     super(value)
 

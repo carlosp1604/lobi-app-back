@@ -2,6 +2,8 @@ import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessio
 import { UuidValueObject } from '~/src/modules/Shared/Domain/ValueObject/UuidValueObject'
 
 export class UserSessionId extends UuidValueObject {
+  private __userSessionIdBrand: void
+
   private constructor(value: string) {
     const normalized = value.trim()
 

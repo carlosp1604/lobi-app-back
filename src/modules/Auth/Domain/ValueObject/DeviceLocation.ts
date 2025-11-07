@@ -9,6 +9,8 @@ export interface DeviceLocationProps {
 const COUNTRY_CODE_REGEX = /^[A-Z]{2}$/
 
 export class DeviceLocation extends ValueObject<DeviceLocationProps> {
+  private __deviceLocationBrand: void
+
   private constructor(props: DeviceLocationProps) {
     super(props)
   }

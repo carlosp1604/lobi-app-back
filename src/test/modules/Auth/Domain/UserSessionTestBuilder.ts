@@ -3,17 +3,17 @@ import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 
 export class UserSessionTestBuilder {
   private _id = UserSessionIdMother.valid()
   private _userId = UserIdMother.valid()
-  private _tokenHash = UserSessionIpHashMother.random()
+  private _tokenHash = UserSessionTokenHashMother.random()
   private _ipHash: UserSessionIpHash | null = null
   private _userAgent: UserAgent = UserAgentMother.valid()
   private _deviceLocation: DeviceLocation | null = null
