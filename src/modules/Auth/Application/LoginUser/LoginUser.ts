@@ -11,8 +11,6 @@ import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceI
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
-import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
-import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -24,7 +22,6 @@ import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainE
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
@@ -33,13 +30,8 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
-import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
-
-interface NormalizedIpWithHash {
-  normalizedIp: string
-  hashedIp: UserSessionIpHash
-}
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 
 export class LoginUser {
   constructor(
@@ -50,13 +42,11 @@ export class LoginUser {
     private readonly passwordHasher: PasswordHasherServiceInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
-    private readonly hasherService: HasherServiceInterface,
-    private readonly deviceLocationResolver: DeviceLocationResolverServiceInterface,
+    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
     private readonly idGeneratorService: IdGeneratorServiceInterface,
-    private readonly ipValidator: IpValidatorServiceInterface,
   ) {}
 
   public async execute(
@@ -71,22 +61,21 @@ export class LoginUser {
     }
 
     const userEmail = validateUserEmailResult.value
-    const userAgent = this.validateUserAgent(request.userAgent, request.ip, userEmail)
 
-    const validateAndHashIpResult = await this.validateAndHashIp(request.ip, request.userAgent, userEmail)
+    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(
+      request.ip,
+      request.userAgent,
+      userEmail,
+    )
 
     let sessionIpHash: UserSessionIpHash | null = null
-    let normalizedIp: string | null = null
 
-    if (validateAndHashIpResult) {
-      sessionIpHash = validateAndHashIpResult.hashedIp
-      normalizedIp = validateAndHashIpResult.normalizedIp
+    if (ipHash) {
+      sessionIpHash = UserSessionIpHash.fromString(ipHash)
     }
 
-    const deviceLocation = await this.resolveDeviceLocation(normalizedIp, userEmail, request.ip, request.userAgent)
-
     return this.unitOfWork.runInTransaction(async (context) => {
-      const getAndValidateUserResult = await this.getAndValidateUser(userEmail, request.userAgent, request.ip, context)
+      const getAndValidateUserResult = await this.getAndValidateUser(userEmail, context)
 
       if (!getAndValidateUserResult.success) {
         return getAndValidateUserResult
@@ -94,7 +83,7 @@ export class LoginUser {
 
       const user: User = getAndValidateUserResult.value
 
-      const getUserCredential = await this.getUserCredential(user, request.ip, request.userAgent, context)
+      const getUserCredential = await this.getUserCredential(user, context)
 
       if (!getUserCredential.success) {
         return getUserCredential
@@ -166,8 +155,6 @@ export class LoginUser {
 
   private async getAndValidateUser(
     userEmail: EmailAddressValueObject,
-    userAgent: string,
-    ip: string,
     context: TxContext,
   ): Promise<Result<User, LoginUserApplicationError>> {
     const user = await this.userRepository.findByEmailWithLock(userEmail.toString(), context)
@@ -175,8 +162,6 @@ export class LoginUser {
     if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
       this.loggerService.warn('Login attempt failed: User not found or inactive', {
         email: userEmail.toString(),
-        userAgent: userAgent.slice(0, 512),
-        ip: ip.slice(0, 39),
         reason: user ? 'Inactive' : 'NotFound',
       })
 
@@ -186,102 +171,19 @@ export class LoginUser {
     return success(user)
   }
 
-  private async getUserCredential(
-    user: User,
-    ip: string,
-    userAgent: string,
-    context: TxContext,
-  ): Promise<Result<UserCredential, LoginUserApplicationError>> {
+  private async getUserCredential(user: User, context: TxContext): Promise<Result<UserCredential, LoginUserApplicationError>> {
     const userCredential = await this.credentialRepository.findByUserId(user.id.toString(), context)
 
     if (!userCredential) {
       this.loggerService.error('Login failed: User exists but has no credentials', undefined, {
         userId: user.id.toString(),
         email: user.email.toString(),
-        userAgent: userAgent.slice(0, 512),
-        ip: ip.slice(0, 39),
       })
 
       return fail(LoginUserApplicationError.userDoesNotHaveCredentials(user.id.toString()))
     }
 
     return success(userCredential)
-  }
-
-  private validateUserAgent(userAgent: string, ip: string, userEmail: EmailAddressValueObject): UserAgent {
-    try {
-      return UserAgent.fromString(userAgent)
-    } catch (exception: unknown) {
-      if (!(exception instanceof UserSessionDomainException)) {
-        throw exception
-      }
-
-      this.loggerService.warn('Unparseable UserAgent, falling back to UNKNOWN', {
-        email: userEmail.toString(),
-        ip: ip.slice(0, 39),
-        uaSample: userAgent.slice(0, 512),
-        uaLength: userAgent.length,
-      })
-
-      return UserAgent.unknown()
-    }
-  }
-
-  private async validateAndHashIp(ip: string, userAgent: string, userEmail: UserEmail): Promise<NormalizedIpWithHash | null> {
-    let sessionIpHash: UserSessionIpHash | null = null
-    let normalizedIp: string = ip
-
-    if (this.ipValidator.isValid(ip) && this.ipValidator.isPublic(ip)) {
-      normalizedIp = this.ipValidator.normalize(ip)
-
-      const ipHash = await this.hasherService.hash(normalizedIp)
-
-      sessionIpHash = UserSessionIpHash.fromString(ipHash)
-
-      return {
-        normalizedIp,
-        hashedIp: sessionIpHash,
-      }
-    }
-
-    this.loggerService.warn('Invalid or private IP address', {
-      email: userEmail.toString(),
-      userAgent: userAgent.slice(0, 512),
-      ipSample: ip.slice(0, 39),
-      ipLength: ip.length,
-    })
-
-    return null
-  }
-
-  private async resolveDeviceLocation(
-    normalizedIp: string | null,
-    userEmail: UserEmail,
-    ip: string,
-    userAgent: string,
-  ): Promise<DeviceLocation | null> {
-    if (normalizedIp) {
-      try {
-        const resolvedDeviceLocation = await this.deviceLocationResolver.resolve(normalizedIp)
-
-        if (!resolvedDeviceLocation) {
-          return null
-        }
-
-        return DeviceLocation.fromProps({ city: resolvedDeviceLocation.city, countryCode: resolvedDeviceLocation.countryCode })
-      } catch (exception: unknown) {
-        const stack = exception instanceof Error ? exception.stack : undefined
-
-        this.loggerService.error('Failed to resolve device location. Session will be created without location data', stack, {
-          email: userEmail.toString(),
-          ip: ip.slice(0, 39),
-          userAgent: userAgent.slice(0, 512),
-          error: exception,
-        })
-      }
-    }
-
-    return null
   }
 
   private buildFailedAttemptDomainEvent(

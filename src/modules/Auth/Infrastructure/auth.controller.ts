@@ -39,6 +39,8 @@ import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerifyEmailDto } from '~/src/modules/Auth/Infrastructure/Dtos/verify-email.dto'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
+import { UserAgent } from '~/src/modules/Shared/Infrastructure/Decorators/user-agent.decorator'
+import { UserIp } from '~/src/modules/Shared/Infrastructure/Decorators/user-ip.decorator'
 
 @Controller('auth')
 export class AuthController {
@@ -51,26 +53,16 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: LoginUserBodyDto, @Req() request: FastifyRequest, @Res({ passthrough: true }) response: FastifyReply) {
-    let ip = ''
-    let userAgent = ''
-
-    if (request.headers['x-forwarded-for']) {
-      ip = String(request.headers['x-forwarded-for']).split(',')[0]?.trim()
-    } else {
-      if (request.ip) {
-        ip = request.ip
-      }
-    }
-
-    if (request.headers['user-agent']) {
-      userAgent = String(request.headers['user-agent'])
-    }
-
+  async login(
+    @Body() body: LoginUserBodyDto,
+    @UserIp() userIp: string,
+    @UserAgent() userAgent: string | undefined,
+    @Res({ passthrough: true }) response: FastifyReply,
+  ) {
     const requestDto: LoginUserApplicationRequestDto = {
       email: body.email,
       password: body.password,
-      ip,
+      ip: userIp,
       userAgent,
     }
 

@@ -16,6 +16,7 @@ import {
   PASSWORD_HASHER,
   RANDOM_SERVICE,
   REFRESH_SESSION,
+  REQUEST_ORIGIN_SERVICE,
   TOKEN_GENERATOR,
   USER_CREDENTIAL_REPOSITORY,
   USER_REPOSITORY,
@@ -67,6 +68,7 @@ import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSe
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServiceInterface'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 
 @Module({
   imports: [ConfigModule, TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity])],
@@ -178,38 +180,46 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
       inject: [ConfigService, LOGGER_SERVICE],
     },
     {
+      provide: REQUEST_ORIGIN_SERVICE,
+      useFactory: (
+        ipValidator: IpValidatorServiceInterface,
+        hasherService: HasherServiceInterface,
+        deviceLocationResolver: DeviceLocationResolverServiceInterface,
+        loggerService: LoggerServiceInterface,
+      ) => {
+        return new RequestOriginApplicationService(ipValidator, hasherService, deviceLocationResolver, loggerService)
+      },
+      inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_SERVICE],
+    },
+    {
       provide: LOGIN_USER,
       useFactory: (
-        usersRepository: UserRepositoryInterface,
-        credentialsRepository: UserCredentialRepositoryInterface,
-        sessionsRepository: UserSessionRepositoryInterface,
+        userRepository: UserRepositoryInterface,
+        credentialRepository: UserCredentialRepositoryInterface,
+        sessionRepository: UserSessionRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
         passwordHasher: PasswordHasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
-        hasherService: HasherServiceInterface,
-        deviceLocationResolver: DeviceLocationResolverServiceInterface,
+        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerService: LoggerServiceInterface,
         idGeneratorService: IdGeneratorServiceInterface,
-        ipValidator: IpValidatorServiceInterface,
       ) =>
         new LoginUser(
-          usersRepository,
-          credentialsRepository,
-          sessionsRepository,
+          userRepository,
+          credentialRepository,
+          sessionRepository,
           domainEventRepository,
           passwordHasher,
           generateTokensService,
           userSessionManagerService,
-          hasherService,
-          deviceLocationResolver,
+          requestOriginApplicationService,
           clockService,
           unitOfWork,
           loggerService,
           idGeneratorService,
-          ipValidator,
         ),
       inject: [
         USER_REPOSITORY,
@@ -219,21 +229,19 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
         PASSWORD_HASHER,
         GENERATE_TOKENS_SERVICE,
         USER_SESSION_POLICY_MANAGER_SERVICE,
-        HASHER_SERVICE,
-        DEVICE_LOCATION_RESOLVER,
+        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_SERVICE,
         ID_GENERATOR,
-        IP_VALIDATOR,
       ],
     },
     {
       provide: REFRESH_SESSION,
       useFactory: (
         unitOfWork: UnitOfWork,
-        usersRepository: UserRepositoryInterface,
-        sessionsRepository: UserSessionRepositoryInterface,
+        userRepository: UserRepositoryInterface,
+        sessionRepository: UserSessionRepositoryInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
         hasherService: HasherServiceInterface,
@@ -241,8 +249,8 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
       ) => {
         return new RefreshSession(
           unitOfWork,
-          usersRepository,
-          sessionsRepository,
+          userRepository,
+          sessionRepository,
           generateTokensService,
           userSessionManagerService,
           hasherService,

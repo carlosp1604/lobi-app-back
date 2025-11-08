@@ -44,6 +44,7 @@ import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserD
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -135,14 +136,17 @@ describe('LoginUser', () => {
         mockedConfigService,
       ),
       new UserSessionPolicyManagerApplicationService(new MaxSessionsPolicy(maxSessions), loggerService),
-      hasherService,
-      new NoopDeviceLocationResolverService(),
+      new RequestOriginApplicationService(
+        new IpAddressIpValidatorService(),
+        hasherService,
+        new NoopDeviceLocationResolverService(),
+        loggerService,
+      ),
       new ClockServiceMock(now),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
       loggerService,
       idGenerator,
-      new IpAddressIpValidatorService(),
     )
   }
 
