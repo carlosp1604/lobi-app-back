@@ -62,11 +62,9 @@ export class LoginUser {
 
     const userEmail = validateUserEmailResult.value
 
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(
-      request.ip,
-      request.userAgent,
-      userEmail,
-    )
+    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
+      userEmail: userEmail.toString(),
+    })
 
     let sessionIpHash: UserSessionIpHash | null = null
 

@@ -13,6 +13,7 @@ import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMot
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
 describe('RequestOriginApplicationService', () => {
   const mockedIpValidator = mock<IpValidatorServiceInterface>()
@@ -27,8 +28,9 @@ describe('RequestOriginApplicationService', () => {
   }
   const validIpHash = UserSessionIpHashMother.valid()
   const validUA = UserAgentMother.valid()
-  const validEmail = UserEmailMother.valid()
+  const validEmail = UserEmailMother.valid().toString()
   const validIp = 'valid-ip'
+  const purposeCreateAccount = VerificationTokenPurpose.createAccount().toString()
 
   beforeEach(() => {
     mockReset(mockedIpValidator)
@@ -67,7 +69,7 @@ describe('RequestOriginApplicationService', () => {
     it('should call services correctly', async () => {
       const service = buildService()
 
-      await service.process(validIp, validUA.toString(), validEmail)
+      await service.process(validIp, validUA.toString())
 
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
@@ -78,7 +80,7 @@ describe('RequestOriginApplicationService', () => {
     it('should return the correct data', async () => {
       const service = buildService()
 
-      const result = await service.process(validIp, validUA.toString(), validEmail)
+      const result = await service.process(validIp, validUA.toString())
 
       expect(result.ipHash).toBe(validIpHash.toString())
       expect(result.userAgent.equals(validUA)).toBe(true)
@@ -95,7 +97,7 @@ describe('RequestOriginApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.process(invalidIp, validUA.toString(), validEmail)
+      const result = await service.process(invalidIp, validUA.toString(), { email: validEmail })
 
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isValid).toHaveBeenCalledTimes(1)
@@ -127,7 +129,7 @@ describe('RequestOriginApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.process(privateIp, validUA.toString(), validEmail)
+      const result = await service.process(privateIp, validUA.toString())
 
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isValid).toHaveBeenCalledTimes(1)
@@ -140,7 +142,6 @@ describe('RequestOriginApplicationService', () => {
 
       expect(mockedIpValidator.isValid).toHaveBeenCalledWith(privateIp)
       expect(mockedLogger.warn).toHaveBeenCalledWith('Invalid or private IP address', {
-        email: validEmail.toString(),
         ipSample: privateIp.slice(0, 39),
         ipLength: privateIp.length,
       })
@@ -155,7 +156,7 @@ describe('RequestOriginApplicationService', () => {
       const testCase = async () => {
         const service = buildService()
 
-        const result = await service.process(validIp, validUA.toString(), validEmail)
+        const result = await service.process(validIp, validUA.toString(), { email: validEmail })
 
         checkCommonAsserts()
 
@@ -178,7 +179,8 @@ describe('RequestOriginApplicationService', () => {
           'Failed to resolve device location. Session will be created without location data',
           expect.any(String),
           {
-            email: validEmail.toString(),
+            email: validEmail,
+            normalizedIp: 'normalized-ip',
             error: Error('Service Error'),
           },
         )
@@ -198,7 +200,8 @@ describe('RequestOriginApplicationService', () => {
           'Failed to resolve device location. Session will be created without location data',
           undefined,
           {
-            email: validEmail.toString(),
+            email: validEmail,
+            normalizedIp: 'normalized-ip',
             error: 'Service Error',
           },
         )
@@ -209,7 +212,10 @@ describe('RequestOriginApplicationService', () => {
       const testCase = async (userAgent: string | undefined) => {
         const service = buildService()
 
-        const result = await service.process(validIp, userAgent, validEmail)
+        const result = await service.process(validIp, userAgent, {
+          email: validEmail,
+          purpose: purposeCreateAccount,
+        })
 
         checkCommonAsserts()
 
@@ -222,6 +228,7 @@ describe('RequestOriginApplicationService', () => {
         expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
         expect(mockedLogger.warn).toHaveBeenCalledWith('Unparseable UserAgent, falling back to UNKNOWN', {
           email: validEmail.toString(),
+          purpose: purposeCreateAccount,
           uaSample: userAgent ? userAgent.slice(0, 512) : undefined,
           uaLength: userAgent ? userAgent.length : 0,
         })
@@ -246,7 +253,7 @@ describe('RequestOriginApplicationService', () => {
         throw Error('Unexpected Error')
       })
 
-      await expect(service.process(validIp, validUA.toString(), validEmail)).rejects.toThrow(Error('Unexpected Error'))
+      await expect(service.process(validIp, validUA.toString())).rejects.toThrow(Error('Unexpected Error'))
     })
   })
 })

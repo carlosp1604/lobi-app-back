@@ -1,6 +1,4 @@
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject/EmailAddressValueObject'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
@@ -12,6 +10,8 @@ interface NormalizedIpWithHash {
   normalizedIp: string
   hashedIp: string
 }
+
+type RequestOriginContext = Record<string, unknown>
 
 export interface RequestOriginData {
   userAgent: UserAgent
@@ -28,37 +28,27 @@ export class RequestOriginApplicationService {
     private readonly loggerService: LoggerServiceInterface,
   ) {}
 
-  public async process(ip: string, userAgent: string | undefined, userEmail: UserEmail): Promise<RequestOriginData> {
-    const validatedUserAgent = this.validateUserAgent(userAgent, userEmail)
+  public async process(ip: string, userAgent: string | undefined, context: RequestOriginContext = {}): Promise<RequestOriginData> {
+    const validatedUserAgent = this.validateUserAgent(userAgent, context)
 
-    const validateAndHashIpResult = await this.validateAndHashIp(ip, userEmail)
+    const validateAndHashIpResult = await this.validateAndHashIp(ip, context)
 
-    let ipHash: string | null = null
-    let normalizedIp: string | null = null
-
-    if (validateAndHashIpResult) {
-      ipHash = validateAndHashIpResult.hashedIp
-      normalizedIp = validateAndHashIpResult.normalizedIp
+    if (!validateAndHashIpResult) {
+      return { userAgent: validatedUserAgent, ipHash: null, normalizedIp: null, deviceLocation: null }
     }
 
-    let deviceLocation: DeviceLocation | null = null
+    const ipHash = validateAndHashIpResult.hashedIp
+    const normalizedIp = validateAndHashIpResult.normalizedIp
 
-    if (normalizedIp) {
-      deviceLocation = await this.resolveDeviceLocation(normalizedIp, userEmail)
-    }
+    const deviceLocation = await this.resolveDeviceLocation(normalizedIp, context)
 
-    return {
-      userAgent: validatedUserAgent,
-      ipHash,
-      normalizedIp,
-      deviceLocation,
-    }
+    return { userAgent: validatedUserAgent, ipHash, normalizedIp, deviceLocation }
   }
 
-  private validateUserAgent(userAgent: string | undefined, userEmail: EmailAddressValueObject): UserAgent {
+  private validateUserAgent(userAgent: string | undefined, context: RequestOriginContext): UserAgent {
     const logAndReturnFallback = () => {
       this.loggerService.warn('Unparseable UserAgent, falling back to UNKNOWN', {
-        email: userEmail.toString(),
+        ...context,
         uaSample: userAgent ? userAgent.slice(0, 512) : undefined,
         uaLength: userAgent ? userAgent.length : 0,
       })
@@ -81,7 +71,7 @@ export class RequestOriginApplicationService {
     }
   }
 
-  private async validateAndHashIp(ip: string, userEmail: UserEmail): Promise<NormalizedIpWithHash | null> {
+  private async validateAndHashIp(ip: string, context: RequestOriginContext): Promise<NormalizedIpWithHash | null> {
     let normalizedIp: string = ip
 
     if (this.ipValidator.isValid(ip) && this.ipValidator.isPublic(ip)) {
@@ -96,7 +86,7 @@ export class RequestOriginApplicationService {
     }
 
     this.loggerService.warn('Invalid or private IP address', {
-      email: userEmail.toString(),
+      ...context,
       ipSample: ip.slice(0, 39),
       ipLength: ip.length,
     })
@@ -104,7 +94,7 @@ export class RequestOriginApplicationService {
     return null
   }
 
-  private async resolveDeviceLocation(normalizedIp: string, userEmail: UserEmail): Promise<DeviceLocation | null> {
+  private async resolveDeviceLocation(normalizedIp: string, context: RequestOriginContext): Promise<DeviceLocation | null> {
     try {
       const resolvedDeviceLocation = await this.deviceLocationResolver.resolve(normalizedIp)
 
@@ -120,7 +110,8 @@ export class RequestOriginApplicationService {
       const stack = exception instanceof Error ? exception.stack : undefined
 
       this.loggerService.error('Failed to resolve device location. Session will be created without location data', stack, {
-        email: userEmail.toString(),
+        ...context,
+        normalizedIp: normalizedIp,
         error: exception,
       })
 
