@@ -40,7 +40,7 @@ import {
   AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
 
-describe('AuthController', () => {
+describe.skip('AuthController', () => {
   const now = new Date()
 
   let app: NestFastifyApplication

@@ -32,6 +32,7 @@ import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/App
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { PasswordValidator } from '~/src/modules/Shared/Domain/Validator/PasswordValidator'
 
 export class LoginUser {
   constructor(
@@ -62,8 +63,14 @@ export class LoginUser {
 
     const userEmail = validateUserEmailResult.value
 
+    const isPasswordValid = new PasswordValidator().isValid(request.password)
+
+    if (!isPasswordValid) {
+      return fail(LoginUserApplicationError.invalidPasswordFormat())
+    }
+
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      userEmail: userEmail.toString(),
+      email: userEmail.toString(),
     })
 
     let sessionIpHash: UserSessionIpHash | null = null

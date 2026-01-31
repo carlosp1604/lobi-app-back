@@ -25,12 +25,14 @@ import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Applicat
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { Result } from '~/src/modules/Shared/Domain/Result'
-
 import { RefreshSessionApplicationResponseDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationResponseDto'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
+import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -44,6 +46,7 @@ describe('RefreshSession', () => {
   const pastExpiresAt = new Date(now.getTime() - 3600)
 
   const userId = UserIdMother.valid()
+  const expectedUserAgent = UserAgentMother.random()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
@@ -66,6 +69,7 @@ describe('RefreshSession', () => {
 
   let request: RefreshSessionApplicationRequestDto
   let currentSession: UserSessionRawWithRelationships
+  let hashedIp: string
 
   beforeEach(async () => {
     mockReset(mockedResolver)
@@ -101,8 +105,12 @@ describe('RefreshSession', () => {
     await userSessionDatabaseHelper.save(currentSession)
 
     request = {
-      refreshToken,
+      token: refreshToken,
+      userId: userId.toString(),
+      ip: '8.8.8.8',
+      userAgent: expectedUserAgent.toString(),
     }
+    hashedIp = await hasherService.hash(request.ip)
   })
 
   const buildUseCase = () => {
@@ -118,6 +126,12 @@ describe('RefreshSession', () => {
         mockedConfigService,
       ),
       new UserSessionPolicyManagerApplicationService(new MaxSessionsPolicy(maxSessions), new LoggerServiceMock()),
+      new RequestOriginApplicationService(
+        new IpAddressIpValidatorService(),
+        hasherService,
+        new NoopDeviceLocationResolverService(),
+        new LoggerServiceMock(),
+      ),
       hasherService,
       new ClockServiceMock(now),
     )
@@ -177,9 +191,9 @@ describe('RefreshSession', () => {
       const savedSession = UserSessionDatabaseHelper.findSessionByIdInArray(activeSessions, sessionId)
       expect(savedSession).toBeDefined()
       expect(savedSession!.user_id).toBe(userId.toString())
-      expect(savedSession!.user_agent).toBe(currentSession.user_agent)
+      expect(savedSession!.user_agent).toBe(expectedUserAgent.toString())
 
-      expect(savedSession!.ip_hash).toBe(currentSession.ip_hash)
+      expect(savedSession!.ip_hash).toBe(hashedIp)
 
       expect(savedSession!.device_country_code).toBeNull()
       expect(savedSession!.device_city).toBeNull()
@@ -243,7 +257,8 @@ describe('RefreshSession', () => {
 
       const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
 
-      const result = await useCase.execute({ refreshToken: 'another-refresh-token' })
+      const anotherRefreshToken = await jwtGenerator.generateSessionToken()
+      const result = await useCase.execute({ ...request, token: anotherRefreshToken })
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
 

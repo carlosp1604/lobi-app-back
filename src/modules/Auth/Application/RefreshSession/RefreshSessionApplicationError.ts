@@ -2,8 +2,11 @@ export class RefreshSessionApplicationError extends Error {
   public readonly id: string
   public readonly name: string
 
-  public static userNotFoundId = 'refresh_session_user_not_found'
+  public static invalidUserIdId = 'refresh_session_invalid_user_id'
+  public static invalidTokenId = 'refresh_session_invalid_token'
   public static sessionNotFoundId = 'refresh_session_session_not_found'
+  public static userMismatchId = 'refresh_session_user_mismatch'
+  public static userNotFoundId = 'refresh_session_user_not_found'
   public static sessionAlreadyRevokedId = 'refresh_session_session_already_revoked'
   public static sessionAlreadyExpiredId = 'refresh_session_session_already_expired'
   public static sessionInconsistencyId = 'refresh_session_session_inconsistency'
@@ -16,8 +19,20 @@ export class RefreshSessionApplicationError extends Error {
     this.name = RefreshSessionApplicationError.name
   }
 
+  public static invalidUserId(userId: string) {
+    return new RefreshSessionApplicationError(`Invalid user ID ${userId}`, this.invalidUserIdId)
+  }
+
+  public static invalidTokenFormat() {
+    return new RefreshSessionApplicationError('Invalid token format', this.invalidTokenId)
+  }
+
   public static sessionNotFound() {
     return new RefreshSessionApplicationError('UserSession was not found', this.sessionNotFoundId)
+  }
+
+  public static userMismatch() {
+    return new RefreshSessionApplicationError('The provided userId does not match the owner of the refresh token', this.userMismatchId)
   }
 
   public static userNotFound(userId: string) {

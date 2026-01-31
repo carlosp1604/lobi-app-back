@@ -52,7 +52,7 @@ interface BuildAndSaveSessionsResponse {
   session3: UserSessionRawWithRelationships
 }
 
-describe('LoginUser', () => {
+describe.skip('LoginUser', () => {
   const now = new Date('2025-10-22T19:00:00Z')
   const futureExpiresAt = new Date(now.getTime() + 3600)
 

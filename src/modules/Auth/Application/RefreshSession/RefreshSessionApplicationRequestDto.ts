@@ -1,3 +1,6 @@
 export interface RefreshSessionApplicationRequestDto {
-  refreshToken: string
+  token: string
+  userId: string
+  ip: string
+  userAgent: string | undefined
 }

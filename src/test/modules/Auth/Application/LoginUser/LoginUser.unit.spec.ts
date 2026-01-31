@@ -40,6 +40,7 @@ import {
   RequestOriginApplicationService,
   RequestOriginData,
 } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { PasswordMother } from '~/src/test/mothers/PasswordMother'
 
 describe('LoginUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -162,9 +163,9 @@ describe('LoginUser', () => {
     activeSession3.isSameDeviceAs.mockReturnValue(false)
 
     request = {
-      email: 'test@example.com',
-      password: 'secret',
-      ip: '203.0.113.10',
+      email: validEmail.toString(),
+      password: PasswordMother.valid(),
+      ip: '8.8.8.8',
       userAgent: validUA.toString(),
     }
 
@@ -193,10 +194,10 @@ describe('LoginUser', () => {
       expect(mockedCredentialsRepository.saveLoginSuccess).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
 
-      expect(mockedRequestOriginService.process).toHaveBeenCalledWith(request.ip, request.userAgent, validEmail)
-      expect(mockedUserRepository.findByEmailWithLock).toHaveBeenCalledWith('test@example.com', fakeContext)
+      expect(mockedRequestOriginService.process).toHaveBeenCalledWith(request.ip, request.userAgent, { email: validEmail.toString() })
+      expect(mockedUserRepository.findByEmailWithLock).toHaveBeenCalledWith(validEmail.toString(), fakeContext)
       expect(mockedCredentialsRepository.findByUserId).toHaveBeenCalledWith(validUserId.toString(), fakeContext)
-      expect(mockedPasswordHasher.compare).toHaveBeenCalledWith('secret', validPasswordHash.toString())
+      expect(mockedPasswordHasher.compare).toHaveBeenCalledWith(request.password, validPasswordHash.toString())
 
       expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(
         validUserId,
@@ -242,7 +243,7 @@ describe('LoginUser', () => {
       expect(mockedCredential.resetAfterSuccessfulLogin).toHaveBeenCalledWith(now)
     }
 
-    describe('when input is valid and services do not fail', () => {
+    describe('when IP, UserAgent and DeviceLocation are available', () => {
       it('should call services and entities correctly when at least 1 session must to be revoked and is newDevice', async () => {
         mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin.mockReturnValue({ success: true, value: [activeSession1] })
 
@@ -261,7 +262,7 @@ describe('LoginUser', () => {
         checkCommonCalls(expectedSession, false, validDeviceLocation)
       })
 
-      it('should return the correct response', async () => {
+      it('should return the correct result', async () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(request)
 
@@ -280,8 +281,8 @@ describe('LoginUser', () => {
       })
     })
 
-    describe('when IP, UserAgent is invalid or DeviceLocation cannot be resolved', () => {
-      it('should call services and entities correctly when IP is not valid', async () => {
+    describe('when IP is NULL, UserAgent is unknown or DeviceLocation is NULL', () => {
+      it('should call services and entities correctly when IP is NULL', async () => {
         const expectedSession = userSessionTestBuilder.withIpHash(null).build()
 
         mockedRequestOriginService.process.mockResolvedValue({
@@ -298,7 +299,7 @@ describe('LoginUser', () => {
         checkCommonCalls(expectedSession, true, null)
       })
 
-      it('should call services and entities correctly when deviceLocation cannot be resolved', async () => {
+      it('should call services and entities correctly when deviceLocation is NULL', async () => {
         const expectedSession = userSessionTestBuilder.withDeviceLocation(null).build()
 
         mockedRequestOriginService.process.mockResolvedValue({
@@ -313,7 +314,7 @@ describe('LoginUser', () => {
         checkCommonCalls(expectedSession, true, null)
       })
 
-      it('calls services and entities when user-agent is not valid', async () => {
+      it('calls services and entities when user-agent is unknown', async () => {
         const expectedSession = userSessionTestBuilder.withUserAgent(UserAgent.unknown()).build()
 
         mockedRequestOriginService.process.mockResolvedValue({
@@ -326,6 +327,24 @@ describe('LoginUser', () => {
         await useCase.execute(request)
 
         checkCommonCalls(expectedSession, true, validDeviceLocation)
+      })
+
+      it('should return the correct result', async () => {
+        const useCase = buildUseCase()
+        const result = await useCase.execute(request)
+
+        expect(result.success).toBe(true)
+        expect(result).toStrictEqual({
+          success: true,
+          value: {
+            refreshToken: 'refresh-clear-token',
+            accessToken: 'access-jwt-token',
+            accessTokenExpiresAt: expectedAccessExpiresAt,
+            sessionId: expectedSessionId.toString(),
+            refreshTokenExpiresAt: expectedRefreshExpiresAt,
+            isNewDevice: true,
+          },
+        })
       })
     })
   })
@@ -343,7 +362,19 @@ describe('LoginUser', () => {
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
-    it('should throw error if user email validation fails with an unexpected error', async () => {
+    it('should return error when password format is not valid', async () => {
+      const useCase = buildUseCase()
+      const result = await useCase.execute({ ...request, password: PasswordMother.invalid() })
+
+      expect(result).toMatchObject({
+        success: false,
+        error: LoginUserApplicationError.invalidPasswordFormat(),
+      })
+
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+    })
+
+    it('should throw error when email validation fails with an unexpected error', async () => {
       const useCase = buildUseCase()
 
       jest.spyOn(UserEmail, 'fromString').mockImplementationOnce(() => {
@@ -362,7 +393,7 @@ describe('LoginUser', () => {
 
         expect(result).toEqual({
           success: false,
-          error: LoginUserApplicationError.userNotFound('test@example.com'),
+          error: LoginUserApplicationError.userNotFound(validEmail.toString()),
         })
       }
 
@@ -534,7 +565,7 @@ describe('LoginUser', () => {
         })
       })
 
-      it('should return error if userSessionPolicyManager returns an unknown error', async () => {
+      it('should return error if UserSessionPolicyManagerApplicationService returns an unknown error', async () => {
         const unknownServiceError: UserSessionPolicyManagerApplicationError = {
           message: 'Unexpected error',
           id: 'unexpected-error',
@@ -555,7 +586,17 @@ describe('LoginUser', () => {
         })
       })
 
-      it('should return error if userSessionPolicyManager fails', async () => {
+      it('should throw error when RequestOriginApplicationService fails', async () => {
+        mockedRequestOriginService.process.mockImplementation(() => {
+          throw Error('Unexpected error')
+        })
+
+        const useCase = buildUseCase()
+        await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected error'))
+        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+      })
+
+      it('should return error if UserSessionPolicyManagerApplicationService fails', async () => {
         mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin.mockImplementation(() => {
           throw Error('Unexpected error')
         })
@@ -566,7 +607,7 @@ describe('LoginUser', () => {
       })
     })
 
-    it('should throw error if userRepository fails', async () => {
+    it('should throw error when UserRepository fails', async () => {
       mockedUserRepository.findByEmailWithLock.mockImplementationOnce(() => {
         throw Error('Unexpected Error')
       })
@@ -576,7 +617,17 @@ describe('LoginUser', () => {
       await expect(() => useCase.execute(request)).rejects.toThrow(Error('Unexpected Error'))
     })
 
-    it('should throw error if userSessionRepository fails', async () => {
+    it('should throw error when PasswordHasher fails', async () => {
+      mockedPasswordHasher.compare.mockImplementationOnce(() => {
+        throw Error('Unexpected Error')
+      })
+
+      const useCase = buildUseCase()
+
+      await expect(() => useCase.execute(request)).rejects.toThrow(Error('Unexpected Error'))
+    })
+
+    it('should throw error when UserSessionRepository fails', async () => {
       mockedSessionsRepository.findUserActiveSessions.mockImplementationOnce(() => {
         throw Error('Unexpected Error')
       })
@@ -586,7 +637,7 @@ describe('LoginUser', () => {
       await expect(() => useCase.execute(request)).rejects.toThrow(Error('Unexpected Error'))
     })
 
-    it('should throw error if domainEventRepository fails', async () => {
+    it('should throw error when DomainEventRepository fails', async () => {
       mockedDomainEventRepository.save.mockImplementationOnce(() => {
         throw Error('Unexpected Error')
       })
