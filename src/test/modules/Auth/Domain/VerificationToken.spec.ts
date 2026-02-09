@@ -10,7 +10,8 @@ describe('VerificationToken', () => {
   let builder: VerificationTokenTestBuilder = new VerificationTokenTestBuilder()
   const now = new Date('2025-10-29T19:44:00Z')
 
-  const futureExpiresAt = new Date(now.getTime() + 10000)
+  const expiresTtlMs = 10000
+  const futureExpiresAt = new Date(now.getTime() + expiresTtlMs)
   const pastExpiresAt = new Date(now.getTime() - 10000)
 
   beforeEach(() => {
@@ -24,13 +25,13 @@ describe('VerificationToken', () => {
       const tokenHash = VerificationTokenTokenHashMother.random()
       const purpose = VerificationTokenPurpose.createAccount()
 
-      const token = VerificationToken.create(id, email, tokenHash, purpose, futureExpiresAt, now)
+      const token = VerificationToken.create(id, email, tokenHash, purpose, expiresTtlMs, now)
 
       expect(token.id).toBe(id)
       expect(token.email).toBe(email)
       expect(token.tokenHash).toBe(tokenHash)
       expect(token.purpose).toBe(purpose)
-      expect(token.expiresAt).toBe(futureExpiresAt)
+      expect(token.expiresAt.getTime()).toBe(futureExpiresAt.getTime())
       expect(token.usedAt).toBeNull()
       expect(token.createdAt).toBe(now)
     })

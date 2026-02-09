@@ -24,7 +24,6 @@ import {
   RequestOriginData,
 } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationRequestDto'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 
 describe('RefreshToken', () => {
   const mockedUnitOfWork = mock<UnitOfWork>()
@@ -122,7 +121,6 @@ describe('RefreshToken', () => {
 
     request = {
       token: 'a'.repeat(48),
-      userId: userId.toString(),
       ip: '203.0.113.10',
       userAgent: validUserAgent.toString(),
     }
@@ -139,7 +137,7 @@ describe('RefreshToken', () => {
     expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh).toHaveBeenCalledTimes(1)
     expect(mockedSessionRepository.save).toHaveBeenCalledTimes(1)
 
-    expect(mockedRequestOriginService.process).toHaveBeenCalledWith(request.ip, request.userAgent, { userId: userId.toString() })
+    expect(mockedRequestOriginService.process).toHaveBeenCalledWith(request.ip, request.userAgent)
     expect(mockedHasherService.hash).toHaveBeenCalledWith(request.token)
     expect(mockedSessionRepository.findByHash).toHaveBeenCalledWith(hashedToken, fakeContext)
     expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledWith(currentSession.userId.toString(), fakeContext)
@@ -236,34 +234,6 @@ describe('RefreshToken', () => {
       })
     })
 
-    it('should return error when userId is not valid', async () => {
-      const useCase = buildUseCase()
-
-      const invalidUserId = 'a'.repeat(256)
-
-      const requestWithInvalidUserId = { ...request, userId: invalidUserId }
-
-      const result = await useCase.execute(requestWithInvalidUserId)
-
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.invalidUserId(invalidUserId.slice(0, 128)),
-      })
-
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
-    })
-
-    it('should return error when userId validation fails with an unexpected error', async () => {
-      const useCase = buildUseCase()
-
-      jest.spyOn(UserId, 'fromString').mockImplementationOnce(() => {
-        throw Error('Unexpected Error')
-      })
-
-      await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected Error'))
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
-    })
-
     it('should return error when the session to refresh does not exist', async () => {
       mockedSessionRepository.findByHash.mockResolvedValue(null)
 
@@ -302,22 +272,6 @@ describe('RefreshToken', () => {
       expect(result).toEqual({
         success: false,
         error: RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id.toString()),
-      })
-      expect(mockedUserRepository.findByIdWithLock).not.toHaveBeenCalled()
-    })
-
-    it('should return error when the session to refresh is already expired', async () => {
-      const useCase = buildUseCase()
-
-      const anotherUserId = UserIdMother.valid()
-
-      const requestWithMismatchUserId = { ...request, userId: anotherUserId.toString() }
-
-      const result = await useCase.execute(requestWithMismatchUserId)
-
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.userMismatch(),
       })
       expect(mockedUserRepository.findByIdWithLock).not.toHaveBeenCalled()
     })

@@ -17,7 +17,6 @@ import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/App
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 export class RefreshSession {
   constructor(
@@ -42,17 +41,7 @@ export class RefreshSession {
 
     const validatedToken = validateTokenResult.value
 
-    const validateUserIdResult = this.validateUserId(request.userId)
-
-    if (!validateUserIdResult.success) {
-      return validateUserIdResult
-    }
-
-    const userId = validateUserIdResult.value
-
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      userId: userId.toString(),
-    })
+    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent)
 
     let sessionIpHash: UserSessionIpHash | null = null
 
@@ -70,10 +59,6 @@ export class RefreshSession {
       }
 
       const currentSession = findAndValidateSessionResult.value
-
-      if (!currentSession.userId.equals(userId)) {
-        return fail(RefreshSessionApplicationError.userMismatch())
-      }
 
       const findAndValidateUserResult = await this.findAndValidateUser(currentSession, context)
 
@@ -112,19 +97,6 @@ export class RefreshSession {
     }
 
     return success(token)
-  }
-
-  private validateUserId(userId: string): Result<UserId, RefreshSessionApplicationError> {
-    try {
-      return success(UserId.fromString(userId))
-    } catch (exception: unknown) {
-      if (!(exception instanceof UserDomainException)) {
-        throw exception
-      }
-
-      const safeUserIdSample = userId.slice(0, 128)
-      return fail(RefreshSessionApplicationError.invalidUserId(safeUserIdSample))
-    }
   }
 
   private async findAndValidateSession(

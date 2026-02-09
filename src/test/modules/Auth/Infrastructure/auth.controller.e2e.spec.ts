@@ -23,7 +23,12 @@ import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentr
 import { UNAUTHORIZED_ACCESS, VALIDATION_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
-import { HASHER_SERVICE, TOKEN_GENERATOR } from '~/src/modules/Auth/Infrastructure/auth.tokens'
+import {
+  EMAIL_SENDER_SERVICE,
+  HASHER_SERVICE,
+  REQUEST_ORIGIN_SERVICE,
+  TOKEN_GENERATOR,
+} from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
@@ -36,16 +41,39 @@ import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import {
+  AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
+  AUTH_REFRESH_INVALID_TOKEN_FORMAT,
   AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
+import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
+import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
+import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
+import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 
-describe.skip('AuthController', () => {
+describe('AuthController', () => {
   const now = new Date()
 
   let app: NestFastifyApplication
   let dataSource: DataSource
   let configService: ConfigService<Env, true>
+
+  /* Third-party dependant service */
+  const mockedEmailSenderService = {
+    sendWithTemplate: jest.fn().mockResolvedValue(undefined),
+  }
+
+  /* Third-party dependant service */
+  const mockedRequestOriginService = {
+    process: jest.fn().mockResolvedValue({
+      ipHash: UserSessionIpHashMother.random().toString(),
+      normalizedIp: '127.0.0.1',
+      deviceLocation: DeviceLocationMother.valid(),
+      userAgent: UserAgentMother.valid(),
+    }),
+  }
 
   beforeAll(async () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -67,6 +95,10 @@ describe.skip('AuthController', () => {
     })
       .overrideProvider(DataSource)
       .useValue(dataSource)
+      .overrideProvider(REQUEST_ORIGIN_SERVICE)
+      .useValue(mockedRequestOriginService)
+      .overrideProvider(EMAIL_SENDER_SERVICE)
+      .useValue(mockedEmailSenderService)
       .compile()
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(new FastifyAdapter())
@@ -82,6 +114,8 @@ describe.skip('AuthController', () => {
   })
 
   afterEach(async () => {
+    jest.clearAllMocks()
+
     const entities = dataSource.entityMetadatas
     const tableNames = entities.map((entity) => `"${entity.tableName}"`).join(', ')
 
@@ -112,12 +146,13 @@ describe.skip('AuthController', () => {
 
     let rawUser: UserRawModelWithRelations
     let rawCredential: UserCredentialRawWitRelationships
+    const validPassword = UserPasswordMother.valid()
 
     beforeEach(async () => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
       userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(dataSource.manager)
 
-      const userPassword = await passwordHasher.hash('expected-password')
+      const userPassword = await passwordHasher.hash(validPassword)
 
       rawCredential = makeRawUserCredential({
         user_id: userId.toString(),
@@ -135,13 +170,13 @@ describe.skip('AuthController', () => {
     })
 
     describe('happy path', () => {
-      it('should authenticate user correctly', async () => {
+      it('should return 200 when user is authenticated correctly', async () => {
         await userDatabaseHelper.save(rawUser)
         await userCredentialDatabaseHelper.save(rawCredential)
 
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail.toString(), password: 'expected-password' })
+          .send({ email: userEmail.toString(), password: validPassword })
           .expect(200)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -160,7 +195,7 @@ describe.skip('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      it('should return 400 error if body is not valid', async () => {
+      it('should throw 400 error if body is not valid', async () => {
         return request(app.getHttpServer())
           .post('/auth/login')
           .send({ page: 5, perPage: 12 })
@@ -190,6 +225,25 @@ describe.skip('AuthController', () => {
           })
       })
 
+      it('should throw UnprocessableEntityException when password format is not valid', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/login')
+          .send({ email: userEmail.toString(), password: 'invalid-password' })
+          .expect(422)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/login',
+              response: {
+                code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
+                message: LoginUserApplicationError.invalidPasswordFormat().message,
+              },
+              statusCode: 422,
+              requestId: expect.any(String),
+              timestamp: expect.any(String),
+            } as Record<string, unknown>)
+          })
+      })
+
       describe('when endpoint throws UnauthorizedException', () => {
         const testCase = async (password: string) => {
           return request(app.getHttpServer())
@@ -210,34 +264,34 @@ describe.skip('AuthController', () => {
             })
         }
 
-        it('should return 401 if user is not found', async () => {
-          await testCase('expected-password')
+        it('should throw UnauthorizedException when user is not found', async () => {
+          await testCase(validPassword)
         })
 
-        it('should return 401 if user is deleted', async () => {
+        it('should throw UnauthorizedException when user is deleted', async () => {
           await userDatabaseHelper.save({ ...rawUser, deleted_at: now })
 
-          await testCase('expected-password')
+          await testCase(validPassword)
         })
 
-        it('should return 401 if user is not active', async () => {
+        it('should throw UnauthorizedException when user is not active', async () => {
           await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().toString() })
           await userCredentialDatabaseHelper.save(rawCredential)
 
-          await testCase('expected-password')
+          await testCase(validPassword)
         })
 
-        it('should return 401 if user does not have credentials', async () => {
+        it('should throw UnauthorizedException when user does not have credentials', async () => {
           await userDatabaseHelper.save(rawUser)
 
-          await testCase('expected-password')
+          await testCase(validPassword)
         })
 
-        it('should return 401 if user password does not match', async () => {
+        it('should throw UnauthorizedException when user password does not match', async () => {
           await userDatabaseHelper.save(rawUser)
           await userCredentialDatabaseHelper.save(rawCredential)
 
-          await testCase('another-password')
+          await testCase(UserPasswordMother.random())
         })
       })
     })
@@ -255,6 +309,7 @@ describe.skip('AuthController', () => {
     let rawUser: UserRawModelWithRelations
     let rawCurrentSession: UserSessionRawWithRelationships
     let inputToken: string
+    let differentInputToken: string
 
     beforeEach(async () => {
       refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
@@ -265,6 +320,7 @@ describe.skip('AuthController', () => {
       const tokenGeneratorService = await app.resolve<TokenGeneratorApplicationServiceInterface>(TOKEN_GENERATOR)
       const hasherService = await app.resolve<HasherServiceInterface>(HASHER_SERVICE)
       inputToken = await tokenGeneratorService.generateSessionToken()
+      differentInputToken = await tokenGeneratorService.generateSessionToken()
 
       const hashedToken = await hasherService.hash(inputToken)
 
@@ -282,7 +338,7 @@ describe.skip('AuthController', () => {
     })
 
     describe('happy path', () => {
-      it('should refresh session correctly', async () => {
+      it('should return 200 when session is successfully refreshed', async () => {
         await userDatabaseHelper.save(rawUser)
         await userSessionDatabaseHelper.save(rawCurrentSession)
 
@@ -326,43 +382,62 @@ describe.skip('AuthController', () => {
             })
         }
 
-        it('should return UnauthorizedException when request does not include refresh token', async () => {
+        it('should throw UnauthorizedException when request does not include refresh token', async () => {
           await testCase('')
         })
 
-        it('should return UnauthorizedException when session is not found', async () => {
+        it('should throw UnauthorizedException when session is not found', async () => {
           await userDatabaseHelper.save(rawUser)
 
-          await testCase(`${refreshCookieName}=another-refresh-token`)
+          await testCase(`${refreshCookieName}=${differentInputToken}`)
         })
 
-        it('should return UnauthorizedException when user is not active', async () => {
+        it('should throw UnauthorizedException when user is not active', async () => {
           await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().toString() })
           await userSessionDatabaseHelper.save(rawCurrentSession)
 
           await testCase(`${refreshCookieName}=${inputToken}`)
         })
 
-        it('should return UnauthorizedException when user associated is deleted', async () => {
+        it('should throw UnauthorizedException when user associated is deleted', async () => {
           await userDatabaseHelper.save({ ...rawUser, deleted_at: now })
           await userSessionDatabaseHelper.save(rawCurrentSession)
 
           await testCase(`${refreshCookieName}=${inputToken}`)
         })
 
-        it('should return UnauthorizedException when session is already expired', async () => {
+        it('should throw UnauthorizedException when session is already expired', async () => {
           await userDatabaseHelper.save(rawUser)
           await userSessionDatabaseHelper.save({ ...rawCurrentSession, expires_at: pastExpiresAt, revoked_at: null })
 
           await testCase(`${refreshCookieName}=${inputToken}`)
         })
 
-        it('should return UnauthorizedException when session is already revoked', async () => {
+        it('should throw UnauthorizedException when session is already revoked', async () => {
           await userDatabaseHelper.save(rawUser)
           await userSessionDatabaseHelper.save({ ...rawCurrentSession, expires_at: futureExpiresAt, revoked_at: now })
 
           await testCase(`${refreshCookieName}=${inputToken}`)
         })
+      })
+
+      it('should throw UnprocessableEntityException when token format is not valid', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/refresh')
+          .set('Cookie', `${refreshCookieName}=invalid-token-format`)
+          .expect(422)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/refresh',
+              response: {
+                code: AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+                message: RefreshSessionApplicationError.invalidTokenFormat().message,
+              },
+              statusCode: 422,
+              requestId: expect.any(String),
+              timestamp: expect.any(String),
+            } as Record<string, unknown>)
+          })
       })
     })
   })
@@ -370,8 +445,7 @@ describe.skip('AuthController', () => {
   describe('verify email', () => {
     const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
 
-    // TODO: Change email's domain when we get Postmark approval
-    const userEmail = 'recipient@cponton.com'
+    const userEmail = 'test@email.com'
     let userDatabaseHelper: UserDatabaseHelper
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
 
@@ -400,12 +474,16 @@ describe.skip('AuthController', () => {
     })
 
     describe('happy path', () => {
-      it('should generate verification token correctly for signup', async () => {
+      it('should return 204 for signup when user does not exist', async () => {
         return request(app.getHttpServer()).post('/auth/verify-email/signup').send(validBody).expect(204)
       })
 
-      it('should generate verification token correctly for reset', async () => {
+      it('should return 204 for reset password when user exists', async () => {
         await userDatabaseHelper.save(rawUser)
+        return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
+      })
+
+      it('should return 204 if user does not exist for reset password', async () => {
         return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
       })
     })

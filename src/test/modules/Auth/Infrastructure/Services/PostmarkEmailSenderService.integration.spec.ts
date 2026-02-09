@@ -4,7 +4,7 @@ import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { TemplateAlias } from '~/src/modules/Shared/Domain/EmailTemplates'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 
-describe('PostmarkEmailSenderService', () => {
+describe.skip('PostmarkEmailSenderService', () => {
   // TODO: Change email's domain when we get Postmark approval
   const toAddress = 'recipient@cponton.com'
   const blackListedEmail = 'blacklisted@cponton.com' //'test@blacklisted.postmarkapp.com'

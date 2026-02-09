@@ -8,8 +8,6 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
 import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
-import { ServerClient } from 'postmark'
-import { PostmarkEmailSenderService } from '~/src/modules/Shared/Infrastructure/Services/PostmarkEmailSenderService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
@@ -36,19 +34,29 @@ import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Ent
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
   const futureExpiresAt = new Date(now.getTime() + 3600)
   const pastDate = new Date(now.getTime() - 3600)
   const expectedExpiresAt = new Date(now.getTime() + env.VERIFICATION_TOKEN_TTL_MS)
-  // TODO: Change email's domain when we get Postmark approval
-  const email = VerificationTokenEmail.fromString('recipient@cponton.com')
+  const expectedExpirationMinutes = env.VERIFICATION_TOKEN_TTL_MS / (60 * 1000)
+
+  const email = VerificationTokenEmail.fromString('test@email.com')
+  const expectedUserAgent = UserAgentMother.random()
+  const expectedDeviceLocation = DeviceLocationMother.valid()
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
   const mockedConfigService = mock<ConfigService>()
+  const mockedEmailSenderService = mock<EmailSenderServiceInterface>()
+  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
+
   let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
   let domainEventDatabaseHelper: DomainEventDatabaseHelper
 
@@ -64,7 +72,18 @@ describe('GenerateVerificationToken', () => {
 
   beforeEach(() => {
     mockReset(mockedResolver)
+    mockReset(mockedEmailSenderService)
+    mockReset(mockedRequestOriginService)
+
     mockedResolver.resolve.mockReturnValue(runner.manager)
+    mockedEmailSenderService.sendWithTemplate.mockResolvedValue(undefined)
+
+    mockedRequestOriginService.process.mockResolvedValue({
+      ipHash: 'mocked-ip-hash',
+      normalizedIp: '127.0.0.0',
+      deviceLocation: expectedDeviceLocation,
+      userAgent: expectedUserAgent,
+    })
 
     mockedConfigService.get.mockImplementation(
       createConfigServiceMockImplementation({
@@ -81,6 +100,8 @@ describe('GenerateVerificationToken', () => {
       purpose: purposeCreateAccount.toString(),
       sendNewToken: false,
       language: 'es',
+      ip: '127.0.0.0',
+      userAgent: expectedUserAgent.toString(),
     }
 
     currentVerificationToken = makeRawVerificationToken({
@@ -109,25 +130,23 @@ describe('GenerateVerificationToken', () => {
     })
   })
 
+  const loggerService = new LoggerServiceMock()
+  const hasherService = new NodeHasherService(env.HASH_SECRET)
+
   const buildUseCase = () => {
     return new GenerateVerificationToken(
       new PostgreSqlVerificationTokenRepository(mockedResolver),
       new PostgresqlUserRepository(mockedResolver),
       new PostgreSqlDomainEventRepository(mockedResolver),
-      new PostmarkEmailSenderService(
-        new ServerClient(env.EMAIL_API_TOKEN),
-        env.EMAIL_FROM_ADDRESS,
-        env.EMAIL_COMPANY_NAME,
-        env.EMAIL_APP_NAME,
-        new LoggerServiceMock(),
-      ),
+      mockedEmailSenderService,
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
-      new NodeHasherService(env.HASH_SECRET),
+      hasherService,
+      mockedRequestOriginService,
       new ClockServiceMock(now),
       new NodeRandomService(),
       mockedConfigService,
-      new LoggerServiceMock(),
+      loggerService,
       new NodeIdGeneratorService(),
     )
   }
@@ -188,11 +207,21 @@ describe('GenerateVerificationToken', () => {
       expect(domainEvent.aggregate_id).toEqual(verificationToken.id)
       expect(domainEvent.name).toEqual(DomainEventName.emailVerificationRequest().toString())
       expect(domainEvent.aggregate_type).toEqual(DomainEventAggregateType.verificationToken().toString())
+
       expect(domainEvent.payload).toEqual({
         email: email.toString(),
         purpose: purposeCreateAccount.toString(),
         resendCode,
         lang: request.language,
+        deviceLocation: {
+          city: expectedDeviceLocation.city,
+          countryCode: expectedDeviceLocation.countryCode,
+        },
+      })
+
+      expect(domainEvent.metadata).toEqual({
+        ipHash: 'mocked-ip-hash',
+        ua: expectedUserAgent.toString(),
       })
 
       expect(verificationToken.email).toBe(email.toString())
@@ -221,6 +250,21 @@ describe('GenerateVerificationToken', () => {
       const { savedVerificationToken, savedDomainEvent } = assertSavedDomainEventAndVerificationTokenToBeDefined(
         verificationTokensAfter,
         domainEventsAfter,
+      )
+
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledTimes(1)
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledWith(
+        email.toString(),
+        'verify-email-template-create-account',
+        {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          token: expect.any(String),
+          expiration_minutes: expectedExpirationMinutes,
+        },
+        request.language,
+        now,
       )
 
       assertSavedDomainEventAndVerificationToken(savedDomainEvent, savedVerificationToken, false)
@@ -271,6 +315,21 @@ describe('GenerateVerificationToken', () => {
         const { savedVerificationToken, savedDomainEvent } = assertSavedDomainEventAndVerificationTokenToBeDefined(
           verificationTokensAfter,
           domainEventsAfter,
+        )
+
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledTimes(1)
+        // eslint-disable-next-line @typescript-eslint/unbound-method
+        expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledWith(
+          email.toString(),
+          'verify-email-template-create-account',
+          {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            token: expect.any(String),
+            expiration_minutes: expectedExpirationMinutes,
+          },
+          request.language,
+          now,
         )
 
         assertSavedDomainEventAndVerificationToken(savedDomainEvent, savedVerificationToken, true)

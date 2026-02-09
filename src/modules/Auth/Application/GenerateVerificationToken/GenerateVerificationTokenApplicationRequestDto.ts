@@ -1,6 +1,8 @@
 export interface GenerateVerificationTokenApplicationRequestDto {
-  email: string
-  purpose: string
-  sendNewToken: boolean
-  language: string
+  readonly email: string
+  readonly purpose: string
+  readonly sendNewToken: boolean
+  readonly language: string
+  readonly ip: string
+  readonly userAgent: string | undefined
 }

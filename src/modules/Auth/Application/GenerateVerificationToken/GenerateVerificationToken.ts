@@ -26,6 +26,7 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
@@ -38,6 +39,7 @@ export class GenerateVerificationToken {
     private readonly emailSenderService: EmailSenderServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly hasherService: HasherServiceInterface,
+    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly randomService: RandomServiceInterface,
     private readonly configService: ConfigService<Env, true>,
@@ -79,11 +81,17 @@ export class GenerateVerificationToken {
       }
     }
 
+    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
+      email: email.toString(),
+    })
+
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.resetPassword())) {
       if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
         this.loggerService.warn('Password reset requested for non-existent or inactive email', {
           email: email.toString(),
           reason: user ? 'Inactive' : 'NotFound',
+          ip: request.ip.slice(0, 39),
+          userAgent: userAgent.toString(),
         })
 
         return success(undefined)
@@ -125,7 +133,6 @@ export class GenerateVerificationToken {
       const clearRandomCode = this.randomService.getRandomNumericCode(this.verificationTokenLength)
       const hashedCode = await this.hasherService.hash(clearRandomCode)
       const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
-      const verificationTokenExpiresAt = new Date(now.getTime() + this.verificationTokenTtlMs)
       const verificationTokenId = this.idGeneratorService.generateId()
       const domainEventId = this.idGeneratorService.generateId()
 
@@ -134,7 +141,7 @@ export class GenerateVerificationToken {
         email,
         tokenHash,
         verificationTokenPurpose,
-        verificationTokenExpiresAt,
+        this.verificationTokenTtlMs,
         now,
       )
 
@@ -148,8 +155,17 @@ export class GenerateVerificationToken {
           purpose: verificationTokenPurpose.toString(),
           resendCode,
           lang: request.language,
+          deviceLocation: deviceLocation
+            ? {
+                city: deviceLocation.city,
+                countryCode: deviceLocation.countryCode,
+              }
+            : null,
         },
-        {},
+        {
+          ipHash: ipHash ? ipHash.toString() : null,
+          ua: userAgent.toString(),
+        },
         now,
       )
 
@@ -157,6 +173,7 @@ export class GenerateVerificationToken {
       await this.verificationTokenRepository.save(newVerificationToken, context)
 
       // TODO: This use-case should not send the email. Remove this step when domain-event handler worker is ready
+      // TODO: Validate input language when multi-language emails are supported
       await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, request.language, now)
 
       return success(undefined)
@@ -192,7 +209,6 @@ export class GenerateVerificationToken {
       ? 'verify-email-template-create-account'
       : 'verify-email-template-reset-password'
 
-    // TODO: Extract this operation to a shared function
     const expirationMinutes = this.verificationTokenTtlMs / (60 * 1000) // ms to min
 
     const context: VerificationEmailContext = {

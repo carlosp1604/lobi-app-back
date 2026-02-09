@@ -1,4 +1,4 @@
-import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { FastifyReply } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import { GENERATE_VERIFICATION_TOKEN, LOGIN_USER, REFRESH_SESSION } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-user-body.dto'
@@ -6,6 +6,8 @@ import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginU
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import {
   AUTH_LOGIN_INVALID_EMAIL,
+  AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
+  AUTH_REFRESH_INVALID_TOKEN_FORMAT,
   AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
@@ -17,7 +19,6 @@ import {
   Post,
   Inject,
   Res,
-  Req,
   HttpStatus,
   HttpCode,
   InternalServerErrorException,
@@ -76,6 +77,13 @@ export class AuthController {
         })
       }
 
+      if (result.error.id === LoginUserApplicationError.invalidPasswordFormatId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
+          message: result.error.message,
+        })
+      }
+
       if (
         result.error.id === LoginUserApplicationError.invalidCredentialsId ||
         result.error.id === LoginUserApplicationError.userDoesNotHaveCredentialsId ||
@@ -101,12 +109,15 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   @HttpCode(HttpStatus.OK)
   async refresh(
-    @Req() _request: FastifyRequest,
+    @UserIp() userIp: string,
+    @UserAgent() userAgent: string | undefined,
     @Res({ passthrough: true }) response: FastifyReply,
     @RefreshTokenDecorator() refreshTokenFromCookie: string,
   ) {
     const requestDto: RefreshSessionApplicationRequestDto = {
-      refreshToken: refreshTokenFromCookie,
+      ip: userIp,
+      userAgent,
+      token: refreshTokenFromCookie,
     }
 
     const result = await this.refreshSession.execute(requestDto)
@@ -124,6 +135,13 @@ export class AuthController {
         })
       }
 
+      if (result.error.id === RefreshSessionApplicationError.invalidTokenFormatId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+          message: result.error.message,
+        })
+      }
+
       throw new InternalServerErrorException(result.error)
     }
 
@@ -136,12 +154,14 @@ export class AuthController {
 
   @Post('verify-email/signup')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async verifyEmailCreateAccount(@Body() body: VerifyEmailDto) {
+  async verifyEmailCreateAccount(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.createAccount().toString(),
       email: body.email,
       language: body.language,
       sendNewToken: body.sendNewToken,
+      ip: userIp,
+      userAgent,
     }
 
     const result = await this.generateVerificationToken.execute(requestDto)
@@ -153,12 +173,14 @@ export class AuthController {
 
   @Post('verify-email/reset')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async verifyEmailResetPassword(@Body() body: VerifyEmailDto) {
+  async verifyEmailResetPassword(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.resetPassword().toString(),
       email: body.email,
       language: body.language,
       sendNewToken: body.sendNewToken,
+      ip: userIp,
+      userAgent,
     }
 
     const result = await this.generateVerificationToken.execute(requestDto)

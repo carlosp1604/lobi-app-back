@@ -106,7 +106,6 @@ describe('RefreshSession', () => {
 
     request = {
       token: refreshToken,
-      userId: userId.toString(),
       ip: '8.8.8.8',
       userAgent: expectedUserAgent.toString(),
     }

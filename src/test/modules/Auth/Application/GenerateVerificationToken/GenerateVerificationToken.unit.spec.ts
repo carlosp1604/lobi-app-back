@@ -18,11 +18,9 @@ import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
-import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { DomainEvent, EventPayload } from '~/src/modules/Shared/Domain/DomainEvent'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
@@ -31,6 +29,14 @@ import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import {
+  RequestOriginApplicationService,
+  RequestOriginData,
+} from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
+import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-29T15:35:00Z')
@@ -39,13 +45,6 @@ describe('GenerateVerificationToken', () => {
   const userEmail = UserEmail.fromString(email.toString())
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
-
-  const requestBase: GenerateVerificationTokenApplicationRequestDto = {
-    email: email.toString(),
-    purpose: purposeCreateAccount.toString(),
-    sendNewToken: false,
-    language: 'es',
-  }
 
   const verificationTokenTtlMs = 900000
   const verificationTokenLength = 6
@@ -66,12 +65,26 @@ describe('GenerateVerificationToken', () => {
   const mockedConfigService = mock<ConfigService>()
   const mockedLogger = mock<LoggerServiceInterface>()
   const mockedIdGeneratorService = mock<IdGeneratorServiceInterface>()
+  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
 
-  const expectedDomainEventPayload: EventPayload = {
+  const validIpHash = UserSessionIpHashMother.valid()
+  const validUA = UserAgentMother.valid()
+  const validDeviceLocation = DeviceLocationMother.valid()
+
+  const expectedRequestOriginData: RequestOriginData = {
+    userAgent: validUA,
+    ipHash: validIpHash.toString(),
+    normalizedIp: 'normalized-ip',
+    deviceLocation: validDeviceLocation,
+  }
+
+  const requestBase: GenerateVerificationTokenApplicationRequestDto = {
     email: email.toString(),
     purpose: purposeCreateAccount.toString(),
-    resendCode: false,
-    lang: 'es',
+    sendNewToken: false,
+    language: 'es',
+    ip: '8.8.8.8',
+    userAgent: validUA.toString(),
   }
 
   const expectedEmailContext = {
@@ -89,23 +102,13 @@ describe('GenerateVerificationToken', () => {
       mockedEmailSenderService,
       mockedUnitOfWork,
       mockedHasherService,
+      mockedRequestOriginService,
       mockedClockService,
       mockedRandomService,
       mockedConfigService,
       mockedLogger,
       mockedIdGeneratorService,
     )
-  }
-
-  const createDomainEventTestBuilder = () => {
-    return new DomainEventTestBuilder()
-      .withId(domainEventId)
-      .withName(DomainEventName.emailVerificationRequest())
-      .withAggregateType(DomainEventAggregateType.verificationToken())
-      .withAggregateId(DomainEventAggregateId.fromString(verificationTokenId.toString()))
-      .withPayload(expectedDomainEventPayload)
-      .withMetadata({})
-      .withOccurredAt(now)
   }
 
   const createVerificationTokenTestBuilder = () => {
@@ -131,6 +134,7 @@ describe('GenerateVerificationToken', () => {
     mockReset(mockedConfigService)
     mockReset(mockedLogger)
     mockReset(mockedIdGeneratorService)
+    mockReset(mockedRequestOriginService)
 
     mockedClockService.now.mockReturnValue(now)
     mockedUnitOfWork.runInTransaction.mockImplementation(async (work) => {
@@ -146,6 +150,7 @@ describe('GenerateVerificationToken', () => {
     mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(null)
     mockedRandomService.getRandomNumericCode.mockReturnValue(generatedCode)
     mockedHasherService.hash.mockResolvedValue(verificationTokenTokenHash.toString())
+    mockedRequestOriginService.process.mockResolvedValue(expectedRequestOriginData)
     mockedIdGeneratorService.generateId
       .mockReturnValueOnce(verificationTokenId.toString())
       .mockReturnValueOnce(domainEventId.toString())
@@ -156,8 +161,10 @@ describe('GenerateVerificationToken', () => {
   describe('happy path', () => {
     const assertCommonCalls = (
       purpose: VerificationTokenPurpose,
-      expectedDomainEvent: DomainEvent,
       expectedVerificationToken: VerificationToken,
+      resendCode: boolean,
+      lang: string,
+      originData: RequestOriginData,
     ) => {
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).toHaveBeenCalledTimes(1)
@@ -177,9 +184,34 @@ describe('GenerateVerificationToken', () => {
       )
       expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledWith(verificationTokenLength)
       expect(mockedHasherService.hash).toHaveBeenCalledWith(String(generatedCode))
-      expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(expectedDomainEvent, fakeContext)
       expect(mockedVerificationTokenRepository.save).toHaveBeenCalledWith(expectedVerificationToken, fakeContext)
-      expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledTimes(1)
+
+      expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          aggregateId: DomainEventAggregateId.fromString(verificationTokenId.toString()),
+          aggregateType: DomainEventAggregateType.verificationToken(),
+          id: domainEventId,
+          name: DomainEventName.emailVerificationRequest(),
+          occurredAt: now,
+          payload: {
+            email: email.toString(),
+            purpose: purpose.toString(),
+            resendCode,
+            lang,
+            deviceLocation: originData.deviceLocation
+              ? {
+                  countryCode: originData.deviceLocation.countryCode,
+                  city: originData.deviceLocation.city,
+                }
+              : null,
+          },
+          metadata: {
+            ipHash: originData.ipHash ? originData.ipHash.toString() : null,
+            ua: originData.userAgent.toString(),
+          },
+        }),
+        fakeContext,
+      )
 
       expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledWith(
         email.toString(),
@@ -192,25 +224,29 @@ describe('GenerateVerificationToken', () => {
       )
     }
 
-    it('should call services correctly when active token does not exist', async () => {
+    const testNonExistentTokenCase = async (purpose: VerificationTokenPurpose, originData: RequestOriginData) => {
       const useCase = buildUseCase()
 
-      const expectedDomainEvent = createDomainEventTestBuilder().build()
-      const expectedVerificationToken = createVerificationTokenTestBuilder().build()
+      const expectedVerificationToken = createVerificationTokenTestBuilder().withPurpose(purpose).build()
 
-      await useCase.execute(requestBase)
+      const request = { ...requestBase, purpose: purpose.toString(), sendNewToken: false }
 
-      assertCommonCalls(purposeCreateAccount, expectedDomainEvent, expectedVerificationToken)
+      const result = await useCase.execute(request)
+
+      assertCommonCalls(purpose, expectedVerificationToken, false, request.language, originData)
       expect(mockedVerificationTokenRepository.delete).not.toHaveBeenCalled()
-    })
 
-    it('should call services correctly when active token exists and sendNewToken is true', async () => {
-      const expectedDomainEvent = createDomainEventTestBuilder()
-        .withPayload({ ...expectedDomainEventPayload, purpose: purposeResetPassword.toString(), resendCode: true })
-        .build()
-      const expectedVerificationToken = createVerificationTokenTestBuilder().withPurpose(purposeResetPassword).build()
+      expect(result).toEqual({
+        success: true,
+        value: undefined,
+      })
+    }
+
+    const testActiveTokenAndSendNewTokenIsTrueCase = async (purpose: VerificationTokenPurpose, originData: RequestOriginData) => {
+      const expectedVerificationToken = createVerificationTokenTestBuilder().withPurpose(purpose).build()
 
       const existingToken = createVerificationTokenTestBuilder()
+        .withPurpose(purpose)
         .withId(VerificationTokenIdMother.valid())
         .withTokenHash(VerificationTokenTokenHashMother.random())
         .build()
@@ -218,51 +254,103 @@ describe('GenerateVerificationToken', () => {
       mockedUserRepository.findByEmail.mockResolvedValue(user)
       mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
 
-      const requestWithResend = { ...requestBase, purpose: purposeResetPassword.toString(), sendNewToken: true }
+      const requestWithResend = { ...requestBase, purpose: purpose.toString(), sendNewToken: true }
 
       const useCase = buildUseCase()
 
-      await useCase.execute(requestWithResend)
+      const result = await useCase.execute(requestWithResend)
 
-      assertCommonCalls(purposeResetPassword, expectedDomainEvent, expectedVerificationToken)
+      assertCommonCalls(purpose, expectedVerificationToken, true, requestWithResend.language, originData)
       expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
-    })
 
-    it('should call services correctly when active token exists but it is not usable and sendNewToken is false', async () => {
+      expect(result).toEqual({
+        success: true,
+        value: undefined,
+      })
+    }
+
+    const testActiveUnusableTokenAndSendNewTokenIsTrueCase = async (
+      purpose: VerificationTokenPurpose,
+      originData: RequestOriginData,
+    ) => {
       const useCase = buildUseCase()
 
-      const expectedDomainEvent = createDomainEventTestBuilder().build()
-      const expectedVerificationToken = createVerificationTokenTestBuilder().build()
+      const expectedVerificationToken = createVerificationTokenTestBuilder().withPurpose(purpose).build()
 
       const existingToken = createVerificationTokenTestBuilder()
         .withId(VerificationTokenIdMother.valid())
+        .withPurpose(purpose)
         .withTokenHash(VerificationTokenTokenHashMother.random())
         .withUsedAt(now)
         .build()
 
       mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
 
-      const result = await useCase.execute(requestBase)
+      const request = { ...requestBase, purpose: purpose.toString(), sendNewToken: false }
+
+      const result = await useCase.execute(request)
+
+      assertCommonCalls(purpose, expectedVerificationToken, false, request.language, originData)
+      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
+      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
 
       expect(result).toEqual({
         success: true,
         value: undefined,
       })
+    }
 
-      assertCommonCalls(purposeCreateAccount, expectedDomainEvent, expectedVerificationToken)
-      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
-      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
+    describe('when IP, UserAgent and DeviceLocation are available', () => {
+      it('should call services correctly when active token does not exist', async () => {
+        await testNonExistentTokenCase(purposeCreateAccount, expectedRequestOriginData)
+      })
+
+      it('should call services correctly when active token exists and sendNewToken is true', async () => {
+        await testActiveTokenAndSendNewTokenIsTrueCase(purposeResetPassword, expectedRequestOriginData)
+      })
+
+      it('should call services correctly when active token exists but it is not usable and sendNewToken is false', async () => {
+        await testActiveUnusableTokenAndSendNewTokenIsTrueCase(purposeCreateAccount, expectedRequestOriginData)
+      })
     })
 
-    it('should return the correct response', async () => {
-      const useCase = buildUseCase()
+    describe('when IP is NULL, UserAgent is unknown or DeviceLocation is NULL', () => {
+      it('should call services correctly when active token does not exist', async () => {
+        const nullishIpOriginData = {
+          ...expectedRequestOriginData,
+          ipHash: null,
+          normalizedIp: null,
+          deviceLocation: null,
+        }
 
-      const result = await useCase.execute(requestBase)
+        mockedRequestOriginService.process.mockResolvedValue(nullishIpOriginData)
 
-      expect(result).toEqual({
-        success: true,
-        value: undefined,
+        await testNonExistentTokenCase(purposeCreateAccount, nullishIpOriginData)
+      })
+
+      it('should call services correctly when active token exists and sendNewToken is true', async () => {
+        const nullishDeviceLocationOriginData = {
+          ...expectedRequestOriginData,
+          ipHash: null,
+          normalizedIp: null,
+          deviceLocation: null,
+        }
+
+        mockedRequestOriginService.process.mockResolvedValue(nullishDeviceLocationOriginData)
+
+        await testActiveTokenAndSendNewTokenIsTrueCase(purposeResetPassword, nullishDeviceLocationOriginData)
+      })
+
+      it('should call services correctly when active token exists but it is not usable and sendNewToken is false', async () => {
+        const unknownUserAgentOriginData = {
+          ...expectedRequestOriginData,
+          userAgent: UserAgent.unknown(),
+        }
+
+        mockedRequestOriginService.process.mockResolvedValue(unknownUserAgentOriginData)
+
+        await testActiveUnusableTokenAndSendNewTokenIsTrueCase(purposeCreateAccount, unknownUserAgentOriginData)
       })
     })
   })
@@ -313,6 +401,7 @@ describe('GenerateVerificationToken', () => {
       })
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+      expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).not.toHaveBeenCalled()
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedLogger.warn).toHaveBeenCalledWith('Create account requested for an already taken email', {
         email: email.toString(),
@@ -325,30 +414,39 @@ describe('GenerateVerificationToken', () => {
         mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
       })
 
-      const testCase = async () => {
+      const testCase = async (ipOverride?: string) => {
         const useCase = buildUseCase()
 
-        const resetPasswordRequest = { ...requestBase, purpose: purposeResetPassword.toString() }
+        const resetPasswordRequest = {
+          ...requestBase,
+          ip: ipOverride ?? requestBase.ip,
+          purpose: purposeResetPassword.toString(),
+        }
 
         const result = await useCase.execute(resetPasswordRequest)
+
+        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).not.toHaveBeenCalled()
 
         expect(result).toEqual({
           success: true,
           value: undefined,
         })
-
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
       }
 
       it('should return success when user does not exist', async () => {
+        const longIpAttack = '2001:0db8:85a3:0000:0000:8a2e:0370:7334'.padEnd(50, '_Attack')
+
         mockedUserRepository.findByEmail.mockResolvedValue(null)
 
-        await testCase()
+        await testCase(longIpAttack)
 
         expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
         expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
           email: email.toString(),
           reason: 'NotFound',
+          ip: longIpAttack.slice(0, 39),
+          userAgent: validUA.toString(),
         })
       })
 
@@ -362,6 +460,8 @@ describe('GenerateVerificationToken', () => {
         expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
           email: email.toString(),
           reason: 'Inactive',
+          ip: requestBase.ip.slice(0, 39),
+          userAgent: validUA.toString(),
         })
       })
 
@@ -375,6 +475,8 @@ describe('GenerateVerificationToken', () => {
         expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
           email: email.toString(),
           reason: 'Inactive',
+          ip: requestBase.ip.slice(0, 39),
+          userAgent: validUA.toString(),
         })
       })
     })

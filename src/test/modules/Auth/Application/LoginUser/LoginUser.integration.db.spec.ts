@@ -45,6 +45,7 @@ import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastruc
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -52,7 +53,7 @@ interface BuildAndSaveSessionsResponse {
   session3: UserSessionRawWithRelationships
 }
 
-describe.skip('LoginUser', () => {
+describe('LoginUser', () => {
   const now = new Date('2025-10-22T19:00:00Z')
   const futureExpiresAt = new Date(now.getTime() + 3600)
 
@@ -60,6 +61,7 @@ describe.skip('LoginUser', () => {
   const userEmail = UserEmailMother.random()
   const expectedUserAgent = UserAgentMother.random()
   const domainType = DomainEventAggregateType.user().toString()
+  const validPassword = UserPasswordMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
@@ -97,7 +99,7 @@ describe.skip('LoginUser', () => {
     })
     await userDatabaseHelper.save(rawUser)
 
-    const userPassword = await passwordHasher.hash('expected-password')
+    const userPassword = await passwordHasher.hash(validPassword)
 
     const rawUserCredential = makeRawUserCredential({
       user_id: userId.toString(),
@@ -117,7 +119,7 @@ describe.skip('LoginUser', () => {
 
   const request: LoginUserApplicationRequestDto = {
     email: userEmail.toString(),
-    password: 'expected-password',
+    password: validPassword,
     ip: '127.0.0.0',
     userAgent: expectedUserAgent.toString(),
   }
@@ -306,7 +308,7 @@ describe.skip('LoginUser', () => {
       const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId.toString(), domainType)
       const userCredentialBefore = await userCredentialDatabaseHelper.findUserCredential(userId.toString())
 
-      const result = await useCase.execute({ ...request, password: 'another-password' })
+      const result = await useCase.execute({ ...request, password: UserPasswordMother.random() })
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
       const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId.toString(), domainType)

@@ -36,9 +36,11 @@ export class VerificationToken {
     email: VerificationTokenEmail,
     tokenHash: VerificationTokenTokenHash,
     purpose: VerificationTokenPurpose,
-    expiresAt: Date,
+    expiresTtlMs: number,
     now: Date,
   ): VerificationToken {
+    const expiresAt = new Date(now.getTime() + expiresTtlMs)
+
     return new VerificationToken(id, email, tokenHash, purpose, expiresAt, null, now)
   }
 
