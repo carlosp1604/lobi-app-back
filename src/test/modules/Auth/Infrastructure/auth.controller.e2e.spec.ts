@@ -51,8 +51,8 @@ import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginU
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { expectIsoDate } from '~/src/test/utils/matchers'
+import { HashMother } from '~/src/test/mothers/HashMother'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -69,7 +69,7 @@ describe('AuthController', () => {
   /* Third-party dependant service */
   const mockedRequestOriginService = {
     process: jest.fn().mockResolvedValue({
-      ipHash: UserSessionIpHashMother.random().toString(),
+      ipHash: HashMother.valid(),
       normalizedIp: '127.0.0.1',
       deviceLocation: DeviceLocationMother.valid(),
       userAgent: UserAgentMother.valid(),

@@ -1,9 +1,9 @@
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { randomBytes } from 'crypto'
+import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 
 export class UserSessionIpHashMother {
   static valid(): UserSessionIpHash {
-    return UserSessionIpHash.fromString('X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=')
+    return UserSessionIpHash.fromString('pXFhxrG0UilgU4eHWVUXdDAZhkInCSgjZeZDA3QWMBM=')
   }
 
   static random(): UserSessionIpHash {
