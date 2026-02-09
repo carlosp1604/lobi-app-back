@@ -13,12 +13,18 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 
 export class GenerateTokensApplicationService {
+  private readonly refreshTokenTtlMs: number
+  private readonly accessTokenTtlMs: number
+
   constructor(
     private readonly idGeneratorService: IdGeneratorServiceInterface,
     private readonly tokenGenerator: TokenGeneratorApplicationServiceInterface,
     private readonly hasherService: HasherServiceInterface,
     private readonly configService: ConfigService<Env, true>,
-  ) {}
+  ) {
+    this.refreshTokenTtlMs = this.configService.get('REFRESH_TTL_MS', { infer: true })
+    this.accessTokenTtlMs = this.configService.get('ACCESS_TTL_MS', { infer: true })
+  }
 
   public async generate(
     userId: UserId,
@@ -28,14 +34,13 @@ export class GenerateTokensApplicationService {
     deviceLocation: DeviceLocation | null,
   ): Promise<GenerateTokensApplicationResponseDto> {
     const sessionId = UserSessionId.fromString(this.idGeneratorService.generateId())
-    const sessionExpiresAt = new Date(now.getTime() + this.configService.get('REFRESH_TTL_MS', { infer: true }))
     const clearSessionToken = await this.tokenGenerator.generateSessionToken()
     const newSessionHashedToken = await this.hasherService.hash(clearSessionToken)
     const sessionHash = UserSessionTokenHash.fromString(newSessionHashedToken)
 
-    const session = UserSession.create(sessionId, userId, sessionHash, userAgent, sessionExpiresAt, now, ipHash, deviceLocation)
+    const session = UserSession.create(sessionId, userId, sessionHash, userAgent, this.refreshTokenTtlMs, now, ipHash, deviceLocation)
 
-    const accessExpiresAt = new Date(now.getTime() + this.configService.get('ACCESS_TTL_MS', { infer: true }))
+    const accessExpiresAt = new Date(now.getTime() + this.accessTokenTtlMs)
     const accessToken = await this.tokenGenerator.generateAccessToken(userId.toString(), sessionId.toString(), accessExpiresAt, now)
 
     return {
@@ -43,7 +48,7 @@ export class GenerateTokensApplicationService {
       accessToken,
       refreshToken: clearSessionToken,
       accessTokenExpiresAt: accessExpiresAt,
-      refreshTokenExpiresAt: sessionExpiresAt,
+      refreshTokenExpiresAt: session.expiresAt,
     }
   }
 }

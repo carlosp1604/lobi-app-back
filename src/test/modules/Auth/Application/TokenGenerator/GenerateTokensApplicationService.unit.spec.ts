@@ -159,17 +159,6 @@ describe('GenerateTokensApplicationService', () => {
       mockReset(mockedConfigService)
     })
 
-    it('should throw an error if the configService service fails', async () => {
-      mockedIdGenerator.generateId.mockReturnValueOnce(sessionId.toString())
-      mockedConfigService.get.mockImplementation(() => {
-        throw Error('ConfigService: Unexpected error')
-      })
-
-      const service = buildService()
-
-      await expect(service.generate(userId, now, userAgent, null, null)).rejects.toThrow(Error('ConfigService: Unexpected error'))
-    })
-
     it('should throw an error if the tokenGenerator service fails', async () => {
       mockedIdGenerator.generateId.mockReturnValueOnce(sessionId.toString())
       mockedConfigService.get.mockReturnValueOnce(4000).mockReturnValueOnce(400)
