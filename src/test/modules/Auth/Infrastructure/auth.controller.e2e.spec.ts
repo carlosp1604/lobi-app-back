@@ -52,6 +52,7 @@ import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/R
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { expectIsoDate } from '~/src/test/utils/matchers'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -183,8 +184,8 @@ describe('AuthController', () => {
               accessToken: expect.any(String),
               refreshToken: expect.any(String),
               sessionId: expect.any(String),
-              accessTokenExpiresAt: expect.any(String),
-              refreshTokenExpiresAt: expect.any(String),
+              accessTokenExpiresAt: expectIsoDate,
+              refreshTokenExpiresAt: expectIsoDate,
               isNewDevice: expect.any(Boolean),
             } as Record<string, unknown>)
 
@@ -351,8 +352,8 @@ describe('AuthController', () => {
               accessToken: expect.any(String),
               refreshToken: expect.any(String),
               sessionId: expect.any(String),
-              accessTokenExpiresAt: expect.any(String),
-              refreshTokenExpiresAt: expect.any(String),
+              accessTokenExpiresAt: expectIsoDate,
+              refreshTokenExpiresAt: expectIsoDate,
             } as Record<string, unknown>)
 
             const cookies = response.headers['set-cookie']
