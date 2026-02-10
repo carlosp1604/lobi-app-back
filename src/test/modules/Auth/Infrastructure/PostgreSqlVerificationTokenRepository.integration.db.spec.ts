@@ -146,7 +146,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     })
   })
 
-  describe('findByEmailAndPurposeWithLock', () => {
+  describe('findByEmailWithLock', () => {
     let runner: QueryRunner
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
 
@@ -163,11 +163,12 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
       const { repository, context } = buildRepositoryAndContext(runner.manager)
 
-      const result = await repository.findByEmailAndPurposeWithLock(email.toString(), verificationTokenPurpose.toString(), context)
+      const result = await repository.findByEmailWithLock(email.toString(), context)
 
       expect(result).not.toBeNull()
       expect(result?.id.equals(verificationTokenId)).toBe(true)
       expect(result?.email.equals(email)).toBe(true)
+      expect(result?.purpose.equals(verificationTokenPurpose)).toBe(true)
       expect(result?.tokenHash.equals(verificationTokenTokenHash)).toBe(true)
       expect(result?.expiresAt.getTime()).toBe(baseRawVerificationToken.expires_at.getTime())
       expect(result?.createdAt.getTime()).toBe(baseRawVerificationToken.created_at.getTime())
@@ -177,7 +178,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     it('should return null if verificationToken does not exist', async () => {
       const { repository, context } = buildRepositoryAndContext(runner.manager)
 
-      const result = await repository.findByEmailAndPurposeWithLock(email.toString(), verificationTokenPurpose.toString(), context)
+      const result = await repository.findByEmailWithLock(email.toString(), context)
 
       expect(result).toBeNull()
     })
@@ -195,7 +196,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       verificationTokenDatabaseHelper = buildVerificationTokenDatabaseHelper(dataSource.manager)
     })
 
-    describe('findByEmailAndPurposeWithLock', () => {
+    describe('findByEmailWithLock', () => {
       const setUpData = async () => {
         await verificationTokenDatabaseHelper.save(baseRawVerificationToken)
       }
@@ -208,7 +209,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         const tx1Logic = async (runner: QueryRunner, signalAndWait: () => Promise<void>): Promise<void> => {
           const { repository, context } = buildRepositoryAndContext(runner.manager)
 
-          await repository.findByEmailAndPurposeWithLock(email.toString(), verificationTokenPurpose.toString(), context)
+          await repository.findByEmailWithLock(email.toString(), context)
 
           await signalAndWait()
 
@@ -228,11 +229,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
           await gate
 
-          const updatedVerificationToken = await repository.findByEmailAndPurposeWithLock(
-            email.toString(),
-            verificationTokenPurpose.toString(),
-            context,
-          )
+          const updatedVerificationToken = await repository.findByEmailWithLock(email.toString(), context)
 
           await runner.commitTransaction()
           return updatedVerificationToken

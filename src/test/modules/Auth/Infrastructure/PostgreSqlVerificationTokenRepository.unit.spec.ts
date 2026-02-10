@@ -12,7 +12,6 @@ import {
 } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
 import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
-import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
@@ -35,16 +34,14 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     mockedResolver.resolve.mockReturnValue(mockedEntityManager)
   })
 
-  describe('findByEmailAndPurposeWithLock', () => {
+  describe('findByEmailWithLock', () => {
     const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
     const rawToken = makeRawVerificationToken({ id: testTokenId.toString() })
-    const verificationTokenPurpose = VerificationTokenPurpose.createAccount().toString()
     const email = VerificationTokenEmailMother.random().toString()
 
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.where.mockReturnValue(mockedQueryBuilder)
-      mockedQueryBuilder.andWhere.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.setLock.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.getOne.mockResolvedValue(rawToken)
     })
@@ -54,16 +51,12 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
         expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledTimes(1)
         expect(mockedQueryBuilder.where).toHaveBeenCalledTimes(1)
-        expect(mockedQueryBuilder.andWhere).toHaveBeenCalledTimes(1)
         expect(mockedQueryBuilder.setLock).toHaveBeenCalledTimes(1)
         expect(mockedQueryBuilder.getOne).toHaveBeenCalledTimes(1)
 
         expect(mockedResolver.resolve).toHaveBeenCalledWith(fakeContext)
         expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledWith(VerificationTokenEntity, 'verification_token')
         expect(mockedQueryBuilder.where).toHaveBeenCalledWith('verification_token.email = :email', { email })
-        expect(mockedQueryBuilder.andWhere).toHaveBeenCalledWith('verification_token.purpose = :purpose', {
-          purpose: verificationTokenPurpose,
-        })
         expect(mockedQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write')
       }
 
@@ -73,7 +66,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
           .mockReturnValue(expectedVerificationToken)
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
+        await repository.findByEmailWithLock(email, fakeContext)
 
         assertCommonCalls()
         expect(verificationTokenModelTranslator).toHaveBeenCalledTimes(1)
@@ -86,7 +79,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         const verificationTokenModelTranslator = jest.spyOn(VerificationTokenModelTranslator, 'toDomain')
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
+        await repository.findByEmailWithLock(email, fakeContext)
 
         assertCommonCalls()
         expect(verificationTokenModelTranslator).not.toHaveBeenCalled()
@@ -96,7 +89,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         jest.spyOn(VerificationTokenModelTranslator, 'toDomain').mockReturnValue(expectedVerificationToken)
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        const result = await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
+        const result = await repository.findByEmailWithLock(email, fakeContext)
 
         expect(result).toBe(expectedVerificationToken)
       })
@@ -105,7 +98,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         mockedQueryBuilder.getOne.mockResolvedValue(null)
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        const result = await repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)
+        const result = await repository.findByEmailWithLock(email, fakeContext)
 
         expect(result).toBeNull()
       })
@@ -119,7 +112,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
-        await expect(repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)).rejects.toThrow(
+        await expect(repository.findByEmailWithLock(email, fakeContext)).rejects.toThrow(
           Error('Something went wrong while resolving entityManager'),
         )
       })
@@ -131,7 +124,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
-        await expect(repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)).rejects.toThrow(
+        await expect(repository.findByEmailWithLock(email, fakeContext)).rejects.toThrow(
           Error('Something went wrong while retrieving data from database'),
         )
       })
@@ -143,7 +136,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
 
-        await expect(repository.findByEmailAndPurposeWithLock(email, verificationTokenPurpose, fakeContext)).rejects.toThrow(
+        await expect(repository.findByEmailWithLock(email, fakeContext)).rejects.toThrow(
           Error('Something went wrong while translating entity to domain'),
         )
       })

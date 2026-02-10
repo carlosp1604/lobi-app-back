@@ -99,11 +99,7 @@ export class GenerateVerificationToken {
     }
 
     return this.unitOfWork.runInTransaction(async (context) => {
-      const verificationToken = await this.verificationTokenRepository.findByEmailAndPurposeWithLock(
-        email.toString(),
-        verificationTokenPurpose.toString(),
-        context,
-      )
+      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.toString(), context)
 
       let resendCode = false
 

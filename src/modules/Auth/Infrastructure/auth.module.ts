@@ -69,9 +69,13 @@ import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceI
 import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServiceInterface'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 
 @Module({
-  imports: [ConfigModule, TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity])],
+  imports: [
+    ConfigModule,
+    TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity, VerificationTokenEntity]),
+  ],
   controllers: [AuthController],
   providers: [
     {

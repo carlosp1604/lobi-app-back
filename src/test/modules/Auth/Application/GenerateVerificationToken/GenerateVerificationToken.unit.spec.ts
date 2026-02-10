@@ -147,7 +147,7 @@ describe('GenerateVerificationToken', () => {
       }),
     )
     mockedUserRepository.findByEmail.mockResolvedValue(null)
-    mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(null)
+    mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(null)
     mockedRandomService.getRandomNumericCode.mockReturnValue(generatedCode)
     mockedHasherService.hash.mockResolvedValue(verificationTokenTokenHash.toString())
     mockedRequestOriginService.process.mockResolvedValue(expectedRequestOriginData)
@@ -167,7 +167,7 @@ describe('GenerateVerificationToken', () => {
       originData: RequestOriginData,
     ) => {
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledTimes(1)
-      expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).toHaveBeenCalledTimes(1)
+      expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)
       expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledTimes(1)
       expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
       expect(mockedIdGeneratorService.generateId).toHaveBeenCalledTimes(2)
@@ -177,11 +177,7 @@ describe('GenerateVerificationToken', () => {
       expect(mockedLogger.warn).not.toHaveBeenCalled()
 
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledWith(email.toString())
-      expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).toHaveBeenCalledWith(
-        email.toString(),
-        purpose.toString(),
-        fakeContext,
-      )
+      expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledWith(email.toString(), fakeContext)
       expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledWith(verificationTokenLength)
       expect(mockedHasherService.hash).toHaveBeenCalledWith(String(generatedCode))
       expect(mockedVerificationTokenRepository.save).toHaveBeenCalledWith(expectedVerificationToken, fakeContext)
@@ -252,7 +248,7 @@ describe('GenerateVerificationToken', () => {
         .build()
 
       mockedUserRepository.findByEmail.mockResolvedValue(user)
-      mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
+      mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
 
       const requestWithResend = { ...requestBase, purpose: purpose.toString(), sendNewToken: true }
 
@@ -270,22 +266,40 @@ describe('GenerateVerificationToken', () => {
       })
     }
 
-    const testActiveUnusableTokenAndSendNewTokenIsTrueCase = async (
+    type TokenScenario = {
+      isUsed?: boolean
+      isExpired?: boolean
+      isDifferentPurpose?: boolean
+    }
+
+    const testActiveUnusableTokenAndSendNewTokenIsFalseCase = async (
       purpose: VerificationTokenPurpose,
       originData: RequestOriginData,
+      scenario: TokenScenario,
     ) => {
       const useCase = buildUseCase()
+
+      const pastDate = new Date(now.getTime() - 3600 * 1000)
+      const futureDate = new Date(now.getTime() + 3600 * 1000)
+
+      let existingTokenPurpose = purpose
+      if (scenario.isDifferentPurpose) {
+        existingTokenPurpose = purpose.equals(VerificationTokenPurpose.createAccount())
+          ? VerificationTokenPurpose.resetPassword()
+          : VerificationTokenPurpose.createAccount()
+      }
 
       const expectedVerificationToken = createVerificationTokenTestBuilder().withPurpose(purpose).build()
 
       const existingToken = createVerificationTokenTestBuilder()
         .withId(VerificationTokenIdMother.valid())
-        .withPurpose(purpose)
+        .withPurpose(existingTokenPurpose)
         .withTokenHash(VerificationTokenTokenHashMother.random())
-        .withUsedAt(now)
+        .withExpiresAt(scenario.isExpired ? pastDate : futureDate)
+        .withUsedAt(scenario.isUsed ? now : null)
         .build()
 
-      mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
+      mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
 
       const request = { ...requestBase, purpose: purpose.toString(), sendNewToken: false }
 
@@ -310,8 +324,28 @@ describe('GenerateVerificationToken', () => {
         await testActiveTokenAndSendNewTokenIsTrueCase(purposeResetPassword, expectedRequestOriginData)
       })
 
-      it('should call services correctly when active token exists but it is not usable and sendNewToken is false', async () => {
-        await testActiveUnusableTokenAndSendNewTokenIsTrueCase(purposeCreateAccount, expectedRequestOriginData)
+      it('should call services correctly when active token exists but it is already used and sendNewToken is false', async () => {
+        await testActiveUnusableTokenAndSendNewTokenIsFalseCase(purposeCreateAccount, expectedRequestOriginData, {
+          isUsed: true,
+          isExpired: false,
+          isDifferentPurpose: false,
+        })
+      })
+
+      it('should call services correctly when active token exists but it is for a different purpose and sendNewToken is false', async () => {
+        await testActiveUnusableTokenAndSendNewTokenIsFalseCase(purposeCreateAccount, expectedRequestOriginData, {
+          isUsed: false,
+          isExpired: false,
+          isDifferentPurpose: true,
+        })
+      })
+
+      it('should call services correctly when active token exists but it is already expired and sendNewToken is false', async () => {
+        await testActiveUnusableTokenAndSendNewTokenIsFalseCase(purposeCreateAccount, expectedRequestOriginData, {
+          isUsed: false,
+          isExpired: true,
+          isDifferentPurpose: false,
+        })
       })
     })
 
@@ -342,7 +376,7 @@ describe('GenerateVerificationToken', () => {
         await testActiveTokenAndSendNewTokenIsTrueCase(purposeResetPassword, nullishDeviceLocationOriginData)
       })
 
-      it('should call services correctly when active token exists but it is not usable and sendNewToken is false', async () => {
+      it('should call services correctly when active token exists but it is already used and sendNewToken is false', async () => {
         const unknownUserAgentOriginData = {
           ...expectedRequestOriginData,
           userAgent: UserAgent.unknown(),
@@ -350,7 +384,41 @@ describe('GenerateVerificationToken', () => {
 
         mockedRequestOriginService.process.mockResolvedValue(unknownUserAgentOriginData)
 
-        await testActiveUnusableTokenAndSendNewTokenIsTrueCase(purposeCreateAccount, unknownUserAgentOriginData)
+        await testActiveUnusableTokenAndSendNewTokenIsFalseCase(purposeCreateAccount, unknownUserAgentOriginData, {
+          isUsed: true,
+          isExpired: false,
+          isDifferentPurpose: false,
+        })
+      })
+
+      it('should call services correctly when active token exists but it is for a different purpose and sendNewToken is false', async () => {
+        const unknownUserAgentOriginData = {
+          ...expectedRequestOriginData,
+          userAgent: UserAgent.unknown(),
+        }
+
+        mockedRequestOriginService.process.mockResolvedValue(unknownUserAgentOriginData)
+
+        await testActiveUnusableTokenAndSendNewTokenIsFalseCase(purposeCreateAccount, unknownUserAgentOriginData, {
+          isUsed: false,
+          isExpired: false,
+          isDifferentPurpose: true,
+        })
+      })
+
+      it('should call services correctly when active token exists but it is already expired and sendNewToken is false', async () => {
+        const unknownUserAgentOriginData = {
+          ...expectedRequestOriginData,
+          userAgent: UserAgent.unknown(),
+        }
+
+        mockedRequestOriginService.process.mockResolvedValue(unknownUserAgentOriginData)
+
+        await testActiveUnusableTokenAndSendNewTokenIsFalseCase(purposeCreateAccount, unknownUserAgentOriginData, {
+          isUsed: false,
+          isExpired: true,
+          isDifferentPurpose: false,
+        })
       })
     })
   })
@@ -388,7 +456,7 @@ describe('GenerateVerificationToken', () => {
 
     it('should return error when purpose is createAccount and email is already taken', async () => {
       const existingToken = createVerificationTokenTestBuilder().build()
-      mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
+      mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
       mockedUserRepository.findByEmail.mockResolvedValue(user)
 
       const useCase = buildUseCase()
@@ -401,7 +469,7 @@ describe('GenerateVerificationToken', () => {
       })
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
-      expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).not.toHaveBeenCalled()
+      expect(mockedVerificationTokenRepository.findByEmailWithLock).not.toHaveBeenCalled()
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedLogger.warn).toHaveBeenCalledWith('Create account requested for an already taken email', {
         email: email.toString(),
@@ -411,7 +479,7 @@ describe('GenerateVerificationToken', () => {
     describe('when purpose is resetPassword and user does not exist, is deleted or is not active', () => {
       beforeEach(() => {
         const existingToken = createVerificationTokenTestBuilder().build()
-        mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
       })
 
       const testCase = async (ipOverride?: string) => {
@@ -426,7 +494,7 @@ describe('GenerateVerificationToken', () => {
         const result = await useCase.execute(resetPasswordRequest)
 
         expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
-        expect(mockedVerificationTokenRepository.findByEmailAndPurposeWithLock).not.toHaveBeenCalled()
+        expect(mockedVerificationTokenRepository.findByEmailWithLock).not.toHaveBeenCalled()
 
         expect(result).toEqual({
           success: true,
@@ -483,7 +551,7 @@ describe('GenerateVerificationToken', () => {
 
     it('should return error when token exists, is usable, and sendNewToken is false', async () => {
       const existingToken = createVerificationTokenTestBuilder().build()
-      mockedVerificationTokenRepository.findByEmailAndPurposeWithLock.mockResolvedValue(existingToken)
+      mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
 
       const useCase = buildUseCase()
 

@@ -9,19 +9,17 @@ export class PostgreSqlVerificationTokenRepository implements VerificationTokenR
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
 
   /**
-   * Finds a specific VerificationToken by email and purpose (and acquires a pessimistic lock on the row)
+   * Finds a specific VerificationToken by email(and acquires a pessimistic lock on the row)
    * @param email User email
-   * @param purpose VerificationToken purpose
    * @param context The transactional context
    * @returns The locked VerificationToken entity if found, otherwise null
    */
-  public async findByEmailAndPurposeWithLock(email: string, purpose: string, context: TxContext): Promise<VerificationToken | null> {
+  public async findByEmailWithLock(email: string, context: TxContext): Promise<VerificationToken | null> {
     const entityManager = this.entityManagerResolver.resolve(context)
 
     const verificationTokenEntity = await entityManager
       .createQueryBuilder(VerificationTokenEntity, 'verification_token')
       .where('verification_token.email = :email', { email })
-      .andWhere('verification_token.purpose = :purpose', { purpose })
       .setLock('pessimistic_write')
       .getOne()
 
