@@ -306,8 +306,13 @@ describe('GenerateVerificationToken', () => {
       const result = await useCase.execute(request)
 
       assertCommonCalls(purpose, expectedVerificationToken, false, request.language, originData)
-      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
-      expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
+
+      if (!scenario.isUsed) {
+        expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledTimes(1)
+        expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith(existingToken.id.toString(), fakeContext)
+      } else {
+        expect(mockedVerificationTokenRepository.delete).not.toHaveBeenCalled()
+      }
 
       expect(result).toEqual({
         success: true,

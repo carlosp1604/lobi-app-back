@@ -1,5 +1,4 @@
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
@@ -38,6 +37,8 @@ import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSe
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
+import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
+import { HashMother } from '~/src/test/mothers/HashMother'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
@@ -51,6 +52,7 @@ describe('GenerateVerificationToken', () => {
   const expectedDeviceLocation = DeviceLocationMother.valid()
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
+  const expectedIpHash = HashMother.valid().toString()
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
   const mockedConfigService = mock<ConfigService>()
@@ -79,7 +81,7 @@ describe('GenerateVerificationToken', () => {
     mockedEmailSenderService.sendWithTemplate.mockResolvedValue(undefined)
 
     mockedRequestOriginService.process.mockResolvedValue({
-      ipHash: 'mocked-ip-hash',
+      ipHash: expectedIpHash,
       normalizedIp: '127.0.0.0',
       deviceLocation: expectedDeviceLocation,
       userAgent: expectedUserAgent,
@@ -131,7 +133,7 @@ describe('GenerateVerificationToken', () => {
   })
 
   const loggerService = new LoggerServiceMock()
-  const hasherService = new NodeHasherService(env.HASH_SECRET)
+  const hasherService = new BCryptHasherService(env.SALT_ROUNDS)
 
   const buildUseCase = () => {
     return new GenerateVerificationToken(
@@ -151,33 +153,17 @@ describe('GenerateVerificationToken', () => {
     )
   }
 
-  const findVerificationTokenInArray = (verificationTokens: Array<VerificationTokenRawModel>, email: string, purpose: string) => {
-    return verificationTokens.find(
-      (verificationToken) => verificationToken.purpose === purpose.toString() && verificationToken.email === email.toString(),
-    )
-  }
-
-  const findDomainEventByAggregateIdInArray = (domainEvents: Array<DomainEventRawModel>, aggregateId: string) => {
-    return domainEvents.find((domainEvent) => domainEvent.aggregate_id === aggregateId)
-  }
-
   const runTestAndGetResults = async (request: GenerateVerificationTokenApplicationRequestDto) => {
     const useCase = buildUseCase()
 
-    const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
-      email.toString(),
-      purposeCreateAccount.toString(),
-    )
+    const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmail(email.toString())
     const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateType(
       DomainEventAggregateType.verificationToken().toString(),
     )
 
     const result = await useCase.execute(request)
 
-    const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
-      email.toString(),
-      purposeCreateAccount.toString(),
-    )
+    const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmail(email.toString())
     const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateType(
       DomainEventAggregateType.verificationToken().toString(),
     )
@@ -186,32 +172,51 @@ describe('GenerateVerificationToken', () => {
   }
 
   describe('happy path', () => {
-    const assertSavedDomainEventAndVerificationTokenToBeDefined = (
-      verificationTokens: Array<VerificationTokenRawModel>,
-      domainEvents: Array<DomainEventRawModel>,
+    const testCase = async (
+      existingToken: VerificationTokenRawModel | null,
+      sendNewToken: boolean,
+      initialDomainEventsNumber: number,
+      initialTokensNumber: number,
+      expectedTotalTokens: number,
     ) => {
-      const savedVerificationToken = findVerificationTokenInArray(verificationTokens, email.toString(), purposeCreateAccount.toString())
+      if (existingToken) {
+        await verificationTokenDatabaseHelper.save(existingToken)
+        await domainEventDatabaseHelper.save(currentDomainEvent)
+      }
+
+      const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
+        await runTestAndGetResults({ ...request, sendNewToken })
+
+      expect(result).toEqual({
+        success: true,
+        value: undefined,
+      })
+
+      expect(domainEventsBefore.length).toBe(initialDomainEventsNumber)
+      expect(verificationTokensBefore.length).toBe(initialTokensNumber)
+
+      expect(verificationTokensAfter.length).toBe(expectedTotalTokens)
+      expect(domainEventsAfter.length).toBe(domainEventsBefore.length + 1)
+
+      const savedVerificationToken = existingToken
+        ? verificationTokensAfter.find((t) => t.id !== existingToken.id)
+        : verificationTokensAfter[0]
       expect(savedVerificationToken).toBeDefined()
+      expect(savedVerificationToken!.email).toBe(email.toString())
+      expect(savedVerificationToken!.purpose).toBe(purposeCreateAccount.toString())
+      expect(savedVerificationToken!.expires_at.getTime()).toBe(expectedExpiresAt.getTime())
+      expect(savedVerificationToken!.used_at).toBeNull()
 
-      const savedDomainEvent = findDomainEventByAggregateIdInArray(domainEvents, savedVerificationToken!.id)
+      const savedDomainEvent = domainEventsAfter.find((domainEvent) => domainEvent.aggregate_id === savedVerificationToken!.id)
       expect(savedDomainEvent).toBeDefined()
+      expect(savedDomainEvent!.aggregate_id).toEqual(savedVerificationToken!.id)
+      expect(savedDomainEvent!.name).toEqual(DomainEventName.emailVerificationRequest().toString())
+      expect(savedDomainEvent!.aggregate_type).toEqual(DomainEventAggregateType.verificationToken().toString())
 
-      return { savedVerificationToken: savedVerificationToken!, savedDomainEvent: savedDomainEvent! }
-    }
-
-    const assertSavedDomainEventAndVerificationToken = (
-      domainEvent: DomainEventRawModel,
-      verificationToken: VerificationTokenRawModel,
-      resendCode: boolean,
-    ) => {
-      expect(domainEvent.aggregate_id).toEqual(verificationToken.id)
-      expect(domainEvent.name).toEqual(DomainEventName.emailVerificationRequest().toString())
-      expect(domainEvent.aggregate_type).toEqual(DomainEventAggregateType.verificationToken().toString())
-
-      expect(domainEvent.payload).toEqual({
+      expect(savedDomainEvent!.payload).toEqual({
         email: email.toString(),
         purpose: purposeCreateAccount.toString(),
-        resendCode,
+        resendCode: existingToken ? sendNewToken : false,
         lang: request.language,
         deviceLocation: {
           city: expectedDeviceLocation.city,
@@ -219,38 +224,10 @@ describe('GenerateVerificationToken', () => {
         },
       })
 
-      expect(domainEvent.metadata).toEqual({
-        ipHash: 'mocked-ip-hash',
+      expect(savedDomainEvent!.metadata).toEqual({
+        ipHash: expectedIpHash,
         ua: expectedUserAgent.toString(),
       })
-
-      expect(verificationToken.email).toBe(email.toString())
-      expect(verificationToken.purpose).toBe(purposeCreateAccount.toString())
-      expect(verificationToken.expires_at.getTime()).toBe(expectedExpiresAt.getTime())
-      expect(verificationToken.used_at).toBeNull()
-    }
-
-    it('should create a new verification token when an active token does not exist', async () => {
-      const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
-        await runTestAndGetResults(request)
-
-      expect(result).toEqual({
-        success: true,
-        value: undefined,
-      })
-
-      expect(domainEventsBefore.length).toBe(0)
-      expect(domainEventsBefore).toEqual([])
-      expect(verificationTokensBefore.length).toBe(0)
-      expect(verificationTokensBefore).toEqual([])
-
-      expect(verificationTokensAfter.length).toBe(1)
-      expect(domainEventsAfter.length).toBe(1)
-
-      const { savedVerificationToken, savedDomainEvent } = assertSavedDomainEventAndVerificationTokenToBeDefined(
-        verificationTokensAfter,
-        domainEventsAfter,
-      )
 
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledTimes(1)
@@ -267,84 +244,39 @@ describe('GenerateVerificationToken', () => {
         now,
       )
 
-      assertSavedDomainEventAndVerificationToken(savedDomainEvent, savedVerificationToken, false)
+      if (expectedTotalTokens > initialTokensNumber && existingToken) {
+        const oldTokenStillExists = verificationTokensAfter.some((t) => t.id === existingToken.id)
+        expect(oldTokenStillExists).toBe(true)
+      }
+    }
+
+    it('should create a new verification token when an active token does not exist', async () => {
+      await testCase(null, true, 0, 0, 1)
     })
 
     describe('when an active token exists', () => {
-      beforeEach(async () => {
-        await verificationTokenDatabaseHelper.save(currentVerificationToken)
-        await domainEventDatabaseHelper.save(currentDomainEvent)
-      })
-
-      const testCase = async (currentVerificationToken: VerificationTokenRawModel) => {
-        const useCase = buildUseCase()
-
-        const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
-          email.toString(),
-          purposeCreateAccount.toString(),
-        )
-        const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateType(
-          DomainEventAggregateType.verificationToken().toString(),
-        )
-
-        const sendNewTokenRequest = { ...request, sendNewToken: true }
-
-        const result = await useCase.execute(sendNewTokenRequest)
-
-        const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmailAndPurpose(
-          email.toString(),
-          purposeCreateAccount.toString(),
-        )
-        const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateType(
-          DomainEventAggregateType.verificationToken().toString(),
-        )
-
-        expect(result).toEqual({
-          success: true,
-          value: undefined,
-        })
-
-        expect(domainEventsBefore.length).toBe(1)
-        expect(domainEventsBefore).toEqual([currentDomainEvent])
-        expect(verificationTokensBefore.length).toBe(1)
-        expect(verificationTokensBefore).toEqual([currentVerificationToken])
-
-        expect(verificationTokensAfter.length).toBe(1)
-        expect(domainEventsAfter.length).toBe(2)
-
-        const { savedVerificationToken, savedDomainEvent } = assertSavedDomainEventAndVerificationTokenToBeDefined(
-          verificationTokensAfter,
-          domainEventsAfter,
-        )
-
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledTimes(1)
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledWith(
-          email.toString(),
-          'verify-email-template-create-account',
-          {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-            token: expect.any(String),
-            expiration_minutes: expectedExpirationMinutes,
-          },
-          request.language,
-          now,
-        )
-
-        assertSavedDomainEventAndVerificationToken(savedDomainEvent, savedVerificationToken, true)
-      }
-
       it('should create a new verification token when active token is usable and sendNewToken is true', async () => {
-        await testCase(currentVerificationToken)
+        await testCase(currentVerificationToken, true, 1, 1, 1)
       })
 
-      it('should create a new verification token when active token is not usable and sendNewToken is false', async () => {
-        await verificationTokenDatabaseHelper.update(currentVerificationToken.id, { used_at: pastDate })
+      it('should create a new verification token when active token is NOT usable (expired) and sendNewToken is false', async () => {
+        const expiredToken = {
+          ...currentVerificationToken,
+          expires_at: pastDate,
+          used_at: null,
+        }
 
-        const inactiveToken = { ...currentVerificationToken, used_at: pastDate }
+        await testCase(expiredToken, false, 1, 1, 1)
+      })
 
-        await testCase(inactiveToken)
+      it('should create a new verification token AND PRESERVE HISTORY when active token is already used', async () => {
+        const usedToken = {
+          ...currentVerificationToken,
+          used_at: pastDate,
+          expires_at: futureExpiresAt,
+        }
+
+        await testCase(usedToken, false, 1, 1, 2)
       })
     })
   })

@@ -2,13 +2,9 @@ import fc from 'fast-check'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
+import { SECURE_HASH_PATTERN } from '~/src/modules/Shared/Domain/ValueObject/CredentialHashValueObject'
 
-const bcryptAlphabet = './ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'.split('')
-const bcryptTailArb = fc.array(fc.constantFrom(...bcryptAlphabet), { minLength: 53, maxLength: 53 }).map((chars) => chars.join(''))
-
-const bcryptArb = fc
-  .tuple(fc.constantFrom('2a', '2b', '2y'), fc.integer({ min: 4, max: 31 }), bcryptTailArb)
-  .map(([version, cost, tail]) => `$${version}$${String(cost).padStart(2, '0')}$${tail}`)
+const validValues = fc.stringMatching(SECURE_HASH_PATTERN)
 
 const invalidCases: string[] = [
   '',
@@ -24,7 +20,7 @@ const invalidCases: string[] = [
 describe('PasswordHash', () => {
   it('should not throw error when passwordHash is valid', () => {
     fc.assert(
-      fc.property(bcryptArb, (hash) => {
+      fc.property(validValues, (hash) => {
         expect(() => PasswordHash.fromString(hash)).not.toThrow()
       }),
     )

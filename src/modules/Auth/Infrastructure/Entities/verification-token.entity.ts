@@ -21,14 +21,11 @@ export const VerificationTokenEntity = new EntitySchema<VerificationTokenRawMode
     },
     email: {
       type: 'citext',
-      unique: true,
       nullable: false,
     },
     token_hash: {
-      type: String,
-      length: 44,
+      type: 'text',
       nullable: false,
-      unique: true,
     },
     purpose: {
       type: String,

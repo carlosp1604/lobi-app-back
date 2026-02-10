@@ -1,7 +1,7 @@
-import { BCryptPasswordHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptPasswordHasherService'
+import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 
-describe('BCryptPasswordHasherService', () => {
-  const svc = new BCryptPasswordHasherService(4)
+describe('BCryptHasherService', () => {
+  const svc = new BCryptHasherService(4)
 
   describe('hash', () => {
     it('should return the correct data', async () => {

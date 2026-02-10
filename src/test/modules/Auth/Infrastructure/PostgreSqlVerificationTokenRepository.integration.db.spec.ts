@@ -175,6 +175,36 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       expect(result?.usedAt).toEqual(baseRawVerificationToken.used_at)
     })
 
+    it('should return the most recent verificationToken when multiple tokens exist for the same email', async () => {
+      const { repository, context } = buildRepositoryAndContext(runner.manager)
+
+      const oldDate = new Date(now.getTime() - 10000)
+
+      const oldTokenId = VerificationTokenIdMother.valid()
+      await verificationTokenDatabaseHelper.save({
+        ...baseRawVerificationToken,
+        token_hash: VerificationTokenTokenHashMother.random().toString(),
+        id: oldTokenId.toString(),
+        created_at: oldDate,
+        used_at: oldDate,
+      })
+
+      const recentTokenId = verificationTokenId
+      await verificationTokenDatabaseHelper.save({
+        ...baseRawVerificationToken,
+        id: verificationTokenId.toString(),
+        created_at: now,
+        used_at: null,
+      })
+
+      const result = await repository.findByEmailWithLock(email.toString(), context)
+
+      expect(result).not.toBeNull()
+      expect(result?.id.equals(recentTokenId)).toBe(true)
+
+      expect(result?.createdAt.getTime()).not.toBe(oldDate.getTime())
+    })
+
     it('should return null if verificationToken does not exist', async () => {
       const { repository, context } = buildRepositoryAndContext(runner.manager)
 

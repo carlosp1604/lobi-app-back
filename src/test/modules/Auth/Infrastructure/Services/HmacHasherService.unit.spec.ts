@@ -1,11 +1,11 @@
 import crypto from 'node:crypto'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 
-describe('NodeHasherService', () => {
-  let svc: NodeHasherService
+describe('HmacHasherService', () => {
+  let svc: HmacHasherService
 
   beforeEach(() => {
-    svc = new NodeHasherService('secret')
+    svc = new HmacHasherService('secret')
   })
 
   afterEach(() => {

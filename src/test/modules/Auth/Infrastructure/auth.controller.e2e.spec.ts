@@ -4,7 +4,7 @@ import { AuthModule } from '~/src/modules/Auth/Infrastructure/auth.module'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { BCryptPasswordHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptPasswordHasherService'
+import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserCredentialRawWitRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
@@ -140,7 +140,7 @@ describe('AuthController', () => {
   describe('login', () => {
     const userId = UserIdMother.valid()
     const userEmail = UserEmailMother.random()
-    const passwordHasher = new BCryptPasswordHasherService(1)
+    const passwordHasher = new BCryptHasherService(1)
 
     let userDatabaseHelper: UserDatabaseHelper
     let userCredentialDatabaseHelper: UserCredentialDatabaseHelper

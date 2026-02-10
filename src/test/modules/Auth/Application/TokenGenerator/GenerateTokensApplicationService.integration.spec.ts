@@ -5,7 +5,7 @@ import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMot
 import { ConfigService } from '@nestjs/config'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import jwt from 'jsonwebtoken'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
@@ -41,7 +41,7 @@ describe('GenerateTokensApplicationService', () => {
     return new GenerateTokensApplicationService(
       new NodeIdGeneratorService(),
       new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
-      new NodeHasherService(env.HASH_SECRET),
+      new HmacHasherService(env.HASH_SECRET),
       mockedConfigService,
     )
   }

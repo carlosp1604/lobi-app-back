@@ -15,7 +15,7 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
@@ -52,7 +52,7 @@ describe('RefreshSession', () => {
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
 
   const mockedConfigService = mock<ConfigService>()
-  const hasherService = new NodeHasherService(env.HASH_SECRET)
+  const hasherService = new HmacHasherService(env.HASH_SECRET)
   const jwtGenerator = new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE)
 
   const ACCESS_TTL_MS = env.ACCESS_TTL_MS

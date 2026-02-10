@@ -20,6 +20,7 @@ export class PostgreSqlVerificationTokenRepository implements VerificationTokenR
     const verificationTokenEntity = await entityManager
       .createQueryBuilder(VerificationTokenEntity, 'verification_token')
       .where('verification_token.email = :email', { email })
+      .orderBy('verification_token.created_at', 'DESC')
       .setLock('pessimistic_write')
       .getOne()
 

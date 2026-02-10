@@ -27,9 +27,9 @@ import {
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
-import { BCryptPasswordHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptPasswordHasherService'
+import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
@@ -116,7 +116,7 @@ import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entit
     {
       provide: PASSWORD_HASHER,
       useFactory: (configService: ConfigService<Env, true>) => {
-        return new BCryptPasswordHasherService(configService.get('SALT_ROUNDS', { infer: true }))
+        return new BCryptHasherService(configService.get('SALT_ROUNDS', { infer: true }))
       },
       inject: [ConfigService],
     },
@@ -134,7 +134,7 @@ import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entit
     {
       provide: HASHER_SERVICE,
       useFactory: (configService: ConfigService<Env, true>) => {
-        return new NodeHasherService(configService.get('HASH_SECRET', { infer: true }))
+        return new HmacHasherService(configService.get('HASH_SECRET', { infer: true }))
       },
       inject: [ConfigService],
     },
@@ -311,7 +311,7 @@ import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entit
         DOMAIN_EVENT_REPOSITORY,
         EMAIL_SENDER_SERVICE,
         UNIT_OF_WORK,
-        HASHER_SERVICE,
+        PASSWORD_HASHER,
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         RANDOM_SERVICE,

@@ -23,10 +23,10 @@ export class VerificationTokenDatabaseHelper {
     return verificationTokenRepository.findOneBy({ id })
   }
 
-  public async findByEmailAndPurpose(email: string, purpose: string): Promise<Array<VerificationTokenRawModel>> {
+  public async findByEmail(email: string): Promise<Array<VerificationTokenRawModel>> {
     const verificationTokenRepository = this.entityManager.getRepository(VerificationTokenEntity)
 
-    return verificationTokenRepository.findBy({ email, purpose })
+    return verificationTokenRepository.findBy({ email })
   }
 
   public async update(id: string, dataToUpdate: Partial<VerificationTokenRawModel>) {

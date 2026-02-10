@@ -7,8 +7,8 @@ import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/Post
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
-import { BCryptPasswordHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptPasswordHasherService'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
@@ -111,8 +111,8 @@ describe('LoginUser', () => {
   })
 
   const mockedConfigService = mock<ConfigService>()
-  const passwordHasher = new BCryptPasswordHasherService(env.SALT_ROUNDS)
-  const hasherService = new NodeHasherService(env.HASH_SECRET)
+  const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
+  const hasherService = new HmacHasherService(env.HASH_SECRET)
   const idGenerator = new NodeIdGeneratorService()
   const loggerService = new LoggerServiceMock()
   const maxSessions = env.USER_MAX_SESSIONS

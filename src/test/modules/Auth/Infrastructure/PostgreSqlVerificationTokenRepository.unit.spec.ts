@@ -42,6 +42,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.where.mockReturnValue(mockedQueryBuilder)
+      mockedQueryBuilder.orderBy.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.setLock.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.getOne.mockResolvedValue(rawToken)
     })
@@ -51,12 +52,14 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
         expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledTimes(1)
         expect(mockedQueryBuilder.where).toHaveBeenCalledTimes(1)
+        expect(mockedQueryBuilder.orderBy).toHaveBeenCalledTimes(1)
         expect(mockedQueryBuilder.setLock).toHaveBeenCalledTimes(1)
         expect(mockedQueryBuilder.getOne).toHaveBeenCalledTimes(1)
 
         expect(mockedResolver.resolve).toHaveBeenCalledWith(fakeContext)
         expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledWith(VerificationTokenEntity, 'verification_token')
         expect(mockedQueryBuilder.where).toHaveBeenCalledWith('verification_token.email = :email', { email })
+        expect(mockedQueryBuilder.orderBy).toHaveBeenCalledWith('verification_token.created_at', 'DESC')
         expect(mockedQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write')
       }
 

@@ -119,7 +119,9 @@ export class GenerateVerificationToken {
           )
         }
 
-        await this.verificationTokenRepository.delete(verificationToken.id.toString(), context)
+        if (!verificationToken.isUsed()) {
+          await this.verificationTokenRepository.delete(verificationToken.id.toString(), context)
+        }
 
         if (request.sendNewToken) {
           resendCode = true

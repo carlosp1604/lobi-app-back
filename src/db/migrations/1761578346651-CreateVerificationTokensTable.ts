@@ -16,14 +16,11 @@ export class CreateVerificationTokensTable1761578346651 implements MigrationInte
             name: 'email',
             type: 'citext',
             isNullable: false,
-            isUnique: true,
           },
           {
             name: 'token_hash',
-            type: 'varchar',
-            length: '44',
+            type: 'text',
             isNullable: false,
-            isUnique: true,
           },
           {
             name: 'purpose',
@@ -52,16 +49,21 @@ export class CreateVerificationTokensTable1761578346651 implements MigrationInte
       true,
     )
 
-    // Optimize queries
     await queryRunner.query(`
-      CREATE UNIQUE INDEX index_verification_token_active_tokens
-      ON verification_tokens (email, purpose)
-      WHERE used_at IS NULL
+      CREATE UNIQUE INDEX index_unique_active_token_per_user
+        ON verification_tokens (email)
+        WHERE used_at IS NULL
+    `)
+
+    await queryRunner.query(`
+      CREATE INDEX index_verification_tokens_email
+        ON verification_tokens (email)
     `)
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP INDEX IF EXISTS index_verification_token_active_tokens')
+    await queryRunner.query('DROP INDEX IF EXISTS index_unique_active_token_per_user')
+    await queryRunner.query('DROP INDEX IF EXISTS index_verification_tokens_email')
     await queryRunner.dropTable('verification_tokens', true)
   }
 }
