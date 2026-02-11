@@ -33,7 +33,7 @@ jobs:
 
       - name: Load .env.ci to System Env
         run: |
-            cat .env.ci >> $GITHUB_ENV
+          grep -v '^#' .env.ci | grep -v '^$' >> $GITHUB_ENV
         shell: bash
 
       - name: Setup Environment
@@ -67,7 +67,7 @@ jobs:
 
       - name: Load .env.ci to System Env
         run: |
-          cat .env.ci >> $GITHUB_ENV
+          grep -v '^#' .env.ci | grep -v '^$' >> $GITHUB_ENV
         shell: bash
 
       - name: Setup Environment
