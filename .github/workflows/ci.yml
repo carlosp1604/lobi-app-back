@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master, develop]
 
+env:
+  EMAIL_API_TOKEN: ${{ secrets.EMAIL_API_TOKEN }}
+
 jobs:
   lint:
     name: Lint & Format Check
@@ -24,22 +27,6 @@ jobs:
     name: Unit & Integration tests
     runs-on: ubuntu-latest
     needs: [lint]
-    env:
-      NODE_ENV: test
-      DOTENV_CONFIG_QUIET: true
-      USER_MAX_SESSIONS: 6
-      ACCESS_TTL_MS: 900000
-      ACCESS_ISSUER: http://localhost:3000
-      ACCESS_AUDIENCE: lobi-web
-      REFRESH_TTL_MS: 604800000
-      ACCESS_SECRET: ${{ secrets.ACCESS_SECRET }}
-      HASH_SECRET: ${{ secrets.HASH_SECRET }}
-      EMAIL_API_TOKEN: ${{ secrets.EMAIL_API_TOKEN }}
-      EMAIL_API_BASE_URL: ${{ secrets.EMAIL_API_BASE_URL }}
-      EMAIL_FROM_ADDRESS: ${{ secrets.EMAIL_FROM_ADDRESS }}
-      EMAIL_APP_NAME: "LobiApp-Test"
-      EMAIL_COMPANY_NAME: "LobiApp-Test"
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,54 +41,13 @@ jobs:
     name: Integration DB & E2E Tests
     runs-on: ubuntu-latest
     needs: [lint, unit-and-integration-tests]
-    env:
-      NODE_ENV: test
-      DOTENV_CONFIG_QUIET: true
-
-      CONTAINER_DB: ""
-      CONTAINER_USER: ""
-      CONTAINER_PASSWORD: ""
-
-      DATABASE_HOST: localhost
-      DATABASE_PORT: 5432
-      DATABASE_USER: lobi_user
-      DATABASE_NAME: lobi_test
-      ACCESS_TTL_MS: 900000
-      ACCESS_ISSUER: http://localhost:3000
-      ACCESS_AUDIENCE: lobi-web
-      REFRESH_TTL_MS: 604800000
-      SALT_ROUNDS: 2
-      USER_MAX_SESSIONS: 6
-      ACCESS_COOKIE_NAME: "x-access-token"
-      REFRESH_COOKIE_NAME: "x-refresh-token"
-      VERIFICATION_TOKEN_TTL_MS: 900000
-      VERIFICATION_TOKEN_LENGTH: 6
-      EMAIL_APP_NAME: "LobiApp-Test"
-      EMAIL_COMPANY_NAME: "LobiApp-Test"
-
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
-      ACCESS_SECRET: ${{ secrets.ACCESS_SECRET }}
-      HASH_SECRET: ${{ secrets.HASH_SECRET }}
-      EMAIL_FROM_ADDRESS: ${{ secrets.EMAIL_FROM_ADDRESS }}
-      EMAIL_API_TOKEN: ${{ secrets.EMAIL_API_TOKEN }}
-      EMAIL_API_BASE_URL: ${{ secrets.EMAIL_API_BASE_URL }}
-
-      CORS_ORIGINS: "http://localhost:3000"
-      BODY_LIMIT_BYTES: 1048576
-      TRUST_PROXY: true
-      RATE_MAX: 200
-      RATE_WINDOW_MS: 60000
-      API_DOCS_TITLE: "Lobi App Back-end"
-      API_DOCS_DESCRIPTION: "Lobi App Back-end documentation. TFG - API"
-      API_DOCS_VERSION: "1.0"
     services:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: lobi_user
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          POSTGRES_DB: lobi_test
+          POSTGRES_USER: ${{ env.DATABASE_USER }}
+          POSTGRES_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          POSTGRES_DB: ${{ env.DATABASE_NAME }}
         ports:
           - 5432:5432
         options: >-
@@ -113,6 +59,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: cp .env.ci .env
 
       - name: Setup Environment
         uses: ./.github/workflows/setup
