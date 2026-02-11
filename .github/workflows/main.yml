@@ -34,7 +34,7 @@ jobs:
       - name: Load .env.ci to System Env
         run: |
             cat .env.ci >> $GITHUB_ENV
-          shell: bash
+        shell: bash
 
       - name: Setup Environment
         uses: ./.github/actions/setup
@@ -68,7 +68,7 @@ jobs:
       - name: Load .env.ci to System Env
         run: |
           cat .env.ci >> $GITHUB_ENV
-          shell: bash
+        shell: bash
 
       - name: Setup Environment
         uses: ./.github/actions/setup
