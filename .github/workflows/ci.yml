@@ -35,7 +35,7 @@ jobs:
         uses: ./.github/workflows/setup
 
       - name: Run unit and integration tests
-        run: NODE_ENV=ci yarn test-unit && yarn test-integration
+        run: yarn test-unit && yarn test-integration
 
   integration-db-and-e2e-tests:
     name: Integration DB & E2E Tests
@@ -67,7 +67,7 @@ jobs:
         run: yarn build
 
       - name: Run integration-db tests
-        run: NODE_ENV=ci yarn test-integration-db
+        run: yarn test-integration-db
 
       - name: Run E2E tests
-        run: NODE_ENV=ci yarn test-e2e
+        run: yarn test-e2e
