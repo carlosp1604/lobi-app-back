@@ -72,7 +72,6 @@ export const EnvSchema = z
       .int()
       .positive()
       .default(15 * 60 * 1000),
-    VERIFICATION_TOKEN_LENGTH: z.coerce.number().int().positive().default(6),
 
     COOKIE_SECRET: z.string().trim().min(64, { message: 'COOKIE_SECRET must has at least 64 characters' }),
 

@@ -37,6 +37,7 @@ import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-29T15:35:00Z')
@@ -47,7 +48,6 @@ describe('GenerateVerificationToken', () => {
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
 
   const verificationTokenTtlMs = 900000
-  const verificationTokenLength = 6
   const expiresAt = new Date(now.getTime() + verificationTokenTtlMs)
   const generatedCode = '123456'
   const verificationTokenTokenHash = VerificationTokenTokenHashMother.random()
@@ -143,7 +143,6 @@ describe('GenerateVerificationToken', () => {
     mockedConfigService.get.mockImplementation(
       createConfigServiceMockImplementation({
         VERIFICATION_TOKEN_TTL_MS: verificationTokenTtlMs,
-        VERIFICATION_TOKEN_LENGTH: verificationTokenLength,
       }),
     )
     mockedUserRepository.findByEmail.mockResolvedValue(null)
@@ -178,7 +177,7 @@ describe('GenerateVerificationToken', () => {
 
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledWith(email.toString())
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledWith(email.toString(), fakeContext)
-      expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledWith(verificationTokenLength)
+      expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledWith(VerificationTokenValue.LENGTH)
       expect(mockedHasherService.hash).toHaveBeenCalledWith(String(generatedCode))
       expect(mockedVerificationTokenRepository.save).toHaveBeenCalledWith(expectedVerificationToken, fakeContext)
 
