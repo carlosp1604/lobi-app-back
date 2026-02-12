@@ -2,6 +2,8 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
 export class UserAgent extends ValueObject<string> {
+  private __userAgentBrand: void
+
   private constructor(value: string) {
     const normalized = value.trim()
 

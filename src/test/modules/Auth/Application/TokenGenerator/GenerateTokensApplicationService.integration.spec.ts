@@ -5,11 +5,13 @@ import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMot
 import { ConfigService } from '@nestjs/config'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import jwt from 'jsonwebtoken'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { mock, mockReset } from 'jest-mock-extended'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigServiceMock'
 
 describe('GenerateTokensApplicationService', () => {
   const now = new Date('2025-10-17T15:26:21Z')
@@ -19,30 +21,27 @@ describe('GenerateTokensApplicationService', () => {
 
   const deviceLocation = DeviceLocationMother.valid()
 
-  const MOCK_ACCESS_TTL_MS = 900000
-  const MOCK_REFRESH_TTL_MS = 604800000
+  const ACCESS_TTL_MS = env.ACCESS_TTL_MS
+  const REFRESH_TTL_MS = env.REFRESH_TTL_MS
 
   const mockedConfigService = mock<ConfigService>()
 
   beforeEach(() => {
     mockReset(mockedConfigService)
 
-    mockedConfigService.get.mockImplementation((key: string) => {
-      if (key === 'REFRESH_TTL_MS') {
-        return MOCK_REFRESH_TTL_MS
-      }
-      if (key === 'ACCESS_TTL_MS') {
-        return MOCK_ACCESS_TTL_MS
-      }
-      return null
-    })
+    mockedConfigService.get.mockImplementation(
+      createConfigServiceMockImplementation({
+        REFRESH_TTL_MS,
+        ACCESS_TTL_MS,
+      }),
+    )
   })
 
   const buildService = () => {
     return new GenerateTokensApplicationService(
       new NodeIdGeneratorService(),
-      new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience'),
-      new NodeHasherService('tests-hash-secret'),
+      new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
+      new HmacHasherService(env.HASH_SECRET),
       mockedConfigService,
     )
   }
@@ -58,8 +57,8 @@ describe('GenerateTokensApplicationService', () => {
       expect(result.accessToken).toEqual(expect.any(String))
       expect(result.refreshToken).toEqual(expect.any(String))
 
-      const expectedAccessExpiresAt = new Date(now.getTime() + MOCK_ACCESS_TTL_MS)
-      const expectedRefreshExpiresAt = new Date(now.getTime() + MOCK_REFRESH_TTL_MS)
+      const expectedAccessExpiresAt = new Date(now.getTime() + ACCESS_TTL_MS)
+      const expectedRefreshExpiresAt = new Date(now.getTime() + REFRESH_TTL_MS)
       expect(result.accessTokenExpiresAt).toEqual(expectedAccessExpiresAt)
       expect(result.refreshTokenExpiresAt).toEqual(expectedRefreshExpiresAt)
 
@@ -75,7 +74,7 @@ describe('GenerateTokensApplicationService', () => {
           sub: userId.toString(),
           sid: result.session.id.toString(),
           iat: Math.floor(now.getTime() / 1000),
-          exp: Math.floor((now.getTime() + MOCK_ACCESS_TTL_MS) / 1000),
+          exp: Math.floor((now.getTime() + ACCESS_TTL_MS) / 1000),
         }),
       )
       expect(result.refreshToken.length).toBe(64)

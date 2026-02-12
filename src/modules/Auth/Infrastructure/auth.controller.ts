@@ -1,23 +1,31 @@
-import type { FastifyReply, FastifyRequest } from 'fastify'
+import type { FastifyReply } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
-import { LOGIN_USER, REFRESH_SESSION } from '~/src/modules/Auth/Infrastructure/auth.tokens'
+import { GENERATE_VERIFICATION_TOKEN, LOGIN_USER, REFRESH_SESSION } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-user-body.dto'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
-import { AUTH_LOGIN_INVALID_EMAIL } from '~/src/modules/Auth/Infrastructure/ApiCodes'
+import {
+  AUTH_LOGIN_INVALID_EMAIL,
+  AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
+  AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+  AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
+  AUTH_VERIFY_EMAIL_INVALID_EMAIL,
+  AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
+  AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+} from '~/src/modules/Auth/Infrastructure/ApiCodes'
 import {
   Body,
   Controller,
   Post,
   Inject,
   Res,
-  Req,
   HttpStatus,
   HttpCode,
   InternalServerErrorException,
   UnauthorizedException,
   UnprocessableEntityException,
   UseGuards,
+  ConflictException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
@@ -27,37 +35,35 @@ import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/R
 import { RefreshTokenDecorator } from '~/src/modules/Auth/Infrastructure/Decorators/refresh-token.decorator'
 import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { RefreshTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/refresh-token.guard'
+import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
+import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationRequestDto'
+import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
+import { VerifyEmailDto } from '~/src/modules/Auth/Infrastructure/Dtos/verify-email.dto'
+import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
+import { UserAgent } from '~/src/modules/Shared/Infrastructure/Decorators/user-agent.decorator'
+import { UserIp } from '~/src/modules/Shared/Infrastructure/Decorators/user-ip.decorator'
 
 @Controller('auth')
 export class AuthController {
   constructor(
     @Inject(LOGIN_USER) private readonly loginUser: LoginUser,
     @Inject(REFRESH_SESSION) private readonly refreshSession: RefreshSession,
+    @Inject(GENERATE_VERIFICATION_TOKEN) private readonly generateVerificationToken: GenerateVerificationToken,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() body: LoginUserBodyDto, @Req() request: FastifyRequest, @Res({ passthrough: true }) response: FastifyReply) {
-    let ip = ''
-    let userAgent = ''
-
-    if (request.headers['x-forwarded-for']) {
-      ip = String(request.headers['x-forwarded-for']).split(',')[0]?.trim()
-    } else {
-      if (request.ip) {
-        ip = request.ip
-      }
-    }
-
-    if (request.headers['user-agent']) {
-      userAgent = String(request.headers['user-agent'])
-    }
-
+  async login(
+    @Body() body: LoginUserBodyDto,
+    @UserIp() userIp: string,
+    @UserAgent() userAgent: string | undefined,
+    @Res({ passthrough: true }) response: FastifyReply,
+  ) {
     const requestDto: LoginUserApplicationRequestDto = {
       email: body.email,
       password: body.password,
-      ip,
+      ip: userIp,
       userAgent,
     }
 
@@ -67,6 +73,13 @@ export class AuthController {
       if (result.error.id === LoginUserApplicationError.invalidUserEmailId) {
         throw new UnprocessableEntityException({
           code: AUTH_LOGIN_INVALID_EMAIL,
+          message: result.error.message,
+        })
+      }
+
+      if (result.error.id === LoginUserApplicationError.invalidPasswordFormatId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
           message: result.error.message,
         })
       }
@@ -96,12 +109,15 @@ export class AuthController {
   @UseGuards(RefreshTokenGuard)
   @HttpCode(HttpStatus.OK)
   async refresh(
-    @Req() _request: FastifyRequest,
+    @UserIp() userIp: string,
+    @UserAgent() userAgent: string | undefined,
     @Res({ passthrough: true }) response: FastifyReply,
     @RefreshTokenDecorator() refreshTokenFromCookie: string,
   ) {
     const requestDto: RefreshSessionApplicationRequestDto = {
-      refreshToken: refreshTokenFromCookie,
+      ip: userIp,
+      userAgent,
+      token: refreshTokenFromCookie,
     }
 
     const result = await this.refreshSession.execute(requestDto)
@@ -119,6 +135,13 @@ export class AuthController {
         })
       }
 
+      if (result.error.id === RefreshSessionApplicationError.invalidTokenFormatId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+          message: result.error.message,
+        })
+      }
+
       throw new InternalServerErrorException(result.error)
     }
 
@@ -127,6 +150,76 @@ export class AuthController {
     this.setCookies(response, accessToken, refreshToken, accessTokenExpiresAt, refreshTokenExpiresAt)
 
     return result.value
+  }
+
+  @Post('verify-email/signup')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async verifyEmailCreateAccount(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
+    const requestDto: GenerateVerificationTokenApplicationRequestDto = {
+      purpose: VerificationTokenPurpose.createAccount().toString(),
+      email: body.email,
+      language: body.language,
+      sendNewToken: body.sendNewToken,
+      ip: userIp,
+      userAgent,
+    }
+
+    const result = await this.generateVerificationToken.execute(requestDto)
+
+    if (!result.success) {
+      this.handleVerifyEmailError(result.error)
+    }
+  }
+
+  @Post('verify-email/reset')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async verifyEmailResetPassword(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
+    const requestDto: GenerateVerificationTokenApplicationRequestDto = {
+      purpose: VerificationTokenPurpose.resetPassword().toString(),
+      email: body.email,
+      language: body.language,
+      sendNewToken: body.sendNewToken,
+      ip: userIp,
+      userAgent,
+    }
+
+    const result = await this.generateVerificationToken.execute(requestDto)
+
+    if (!result.success) {
+      this.handleVerifyEmailError(result.error)
+    }
+  }
+
+  private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {
+    if (error.id === GenerateVerificationTokenApplicationError.invalidEmailId) {
+      throw new UnprocessableEntityException({
+        code: AUTH_VERIFY_EMAIL_INVALID_EMAIL,
+        message: error.message,
+      })
+    }
+
+    if (error.id === GenerateVerificationTokenApplicationError.invalidVerificationTokenPurposeId) {
+      throw new UnprocessableEntityException({
+        code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
+        message: error.message,
+      })
+    }
+
+    if (error.id === GenerateVerificationTokenApplicationError.activeTokenAlreadyIssuedId) {
+      throw new ConflictException({
+        code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+        message: error.message,
+      })
+    }
+
+    if (error.id === GenerateVerificationTokenApplicationError.emailAlreadyTakenId) {
+      throw new ConflictException({
+        code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
+        message: error.message,
+      })
+    }
+
+    throw new InternalServerErrorException(error)
   }
 
   private setCookies(

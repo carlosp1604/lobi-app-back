@@ -8,6 +8,8 @@ export enum ValidUserRoles {
 }
 
 export class UserRole extends ValueObject<ValidUserRoles> {
+  private __userRoleBrand: void
+
   private constructor(value: ValidUserRoles) {
     super(value)
 

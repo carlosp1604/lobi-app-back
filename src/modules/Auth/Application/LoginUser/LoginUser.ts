@@ -1,4 +1,4 @@
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject/EmailAddressValueObject'
 import { User } from '~/src/modules/User/Domain/User'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
@@ -11,8 +11,6 @@ import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceI
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
-import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
-import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -24,7 +22,6 @@ import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainE
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
@@ -32,11 +29,10 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
-
-interface NormalizedIpWithHash {
-  normalizedIp: string
-  hashedIp: UserSessionIpHash
-}
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { PasswordValidator } from '~/src/modules/Shared/Domain/Validator/PasswordValidator'
 
 export class LoginUser {
   constructor(
@@ -47,13 +43,11 @@ export class LoginUser {
     private readonly passwordHasher: PasswordHasherServiceInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
-    private readonly hasherService: HasherServiceInterface,
-    private readonly deviceLocationResolver: DeviceLocationResolverServiceInterface,
+    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
     private readonly idGeneratorService: IdGeneratorServiceInterface,
-    private readonly ipValidator: IpValidatorServiceInterface,
   ) {}
 
   public async execute(
@@ -68,7 +62,22 @@ export class LoginUser {
     }
 
     const userEmail = validateUserEmailResult.value
-    const userAgent = this.validateUserAgent(request.userAgent, userEmail)
+
+    const isPasswordValid = new PasswordValidator().isValid(request.password)
+
+    if (!isPasswordValid) {
+      return fail(LoginUserApplicationError.invalidPasswordFormat())
+    }
+
+    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
+      email: userEmail.toString(),
+    })
+
+    let sessionIpHash: UserSessionIpHash | null = null
+
+    if (ipHash) {
+      sessionIpHash = UserSessionIpHash.fromString(ipHash)
+    }
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const getAndValidateUserResult = await this.getAndValidateUser(userEmail, context)
@@ -79,25 +88,13 @@ export class LoginUser {
 
       const user: User = getAndValidateUserResult.value
 
-      const getUserCredential = await this.getUserCredential(user.id, context)
+      const getUserCredential = await this.getUserCredential(user, context)
 
       if (!getUserCredential.success) {
         return getUserCredential
       }
 
       const credentials = getUserCredential.value
-
-      const validateAndHashIpResult = await this.validateAndHashIp(request.ip, userAgent, user)
-
-      let sessionIpHash: UserSessionIpHash | null = null
-      let normalizedIp: string | null = null
-
-      if (validateAndHashIpResult) {
-        sessionIpHash = validateAndHashIpResult.hashedIp
-        normalizedIp = validateAndHashIpResult.normalizedIp
-      }
-
-      const deviceLocation = await this.resolveDeviceLocation(normalizedIp, userEmail, userAgent)
 
       const passwordMatches = await this.passwordHasher.compare(request.password, credentials.passwordHash.toString())
 
@@ -152,102 +149,46 @@ export class LoginUser {
   private validateUserEmail(email: string): Result<UserEmail, LoginUserApplicationError> {
     try {
       return success(UserEmail.fromString(email))
-    } catch {
+    } catch (exception: unknown) {
+      if (!(exception instanceof UserDomainException)) {
+        throw exception
+      }
+
       return fail(LoginUserApplicationError.invalidUserEmail(email))
     }
   }
 
-  private async getAndValidateUser(userEmail: UserEmail, context: TxContext): Promise<Result<User, LoginUserApplicationError>> {
+  private async getAndValidateUser(
+    userEmail: EmailAddressValueObject,
+    context: TxContext,
+  ): Promise<Result<User, LoginUserApplicationError>> {
     const user = await this.userRepository.findByEmailWithLock(userEmail.toString(), context)
 
-    if (!user) {
-      return fail(LoginUserApplicationError.userNotFound(userEmail.toString()))
-    }
+    if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
+      this.loggerService.warn('Login attempt failed: User not found or inactive', {
+        email: userEmail.toString(),
+        reason: user ? 'Inactive' : 'NotFound',
+      })
 
-    if (user.deletedAt || !user.status.equals(UserStatus.active())) {
       return fail(LoginUserApplicationError.userNotFound(userEmail.toString()))
     }
 
     return success(user)
   }
 
-  private async getUserCredential(userId: UserId, context: TxContext): Promise<Result<UserCredential, LoginUserApplicationError>> {
-    const userCredential = await this.credentialRepository.findByUserId(userId.toString(), context)
+  private async getUserCredential(user: User, context: TxContext): Promise<Result<UserCredential, LoginUserApplicationError>> {
+    const userCredential = await this.credentialRepository.findByUserId(user.id.toString(), context)
 
     if (!userCredential) {
-      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(userId.toString()))
+      this.loggerService.error('Login failed: User exists but has no credentials', undefined, {
+        userId: user.id.toString(),
+        email: user.email.toString(),
+      })
+
+      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(user.id.toString()))
     }
 
     return success(userCredential)
-  }
-
-  private validateUserAgent(userAgent: string, userEmail: UserEmail): UserAgent {
-    try {
-      return UserAgent.fromString(userAgent)
-    } catch {
-      this.loggerService.warn('UA invalid, using fallback', {
-        userEmail: userEmail.toString(),
-        uaSample: userAgent.slice(0, 512),
-        uaLength: userAgent.length,
-      })
-
-      return UserAgent.unknown()
-    }
-  }
-
-  private async validateAndHashIp(ip: string, userAgent: UserAgent, user: User): Promise<NormalizedIpWithHash | null> {
-    let sessionIpHash: UserSessionIpHash | null = null
-    let normalizedIp: string = ip
-
-    if (this.ipValidator.isValid(ip) && this.ipValidator.isPublic(ip)) {
-      normalizedIp = this.ipValidator.normalize(ip)
-
-      const ipHash = await this.hasherService.hash(normalizedIp)
-
-      sessionIpHash = UserSessionIpHash.fromString(ipHash)
-
-      return {
-        normalizedIp,
-        hashedIp: sessionIpHash,
-      }
-    }
-
-    this.loggerService.warn('IP invalid', {
-      userId: user.id.toString(),
-      userAgent: userAgent.toString(),
-      userIp: ip.slice(0, 39),
-    })
-
-    return null
-  }
-
-  private async resolveDeviceLocation(
-    normalizedIp: string | null,
-    userEmail: UserEmail,
-    userAgent: UserAgent,
-  ): Promise<DeviceLocation | null> {
-    if (normalizedIp) {
-      try {
-        const resolvedDeviceLocation = await this.deviceLocationResolver.resolve(normalizedIp)
-
-        if (!resolvedDeviceLocation) {
-          return null
-        }
-
-        return DeviceLocation.fromProps({ city: resolvedDeviceLocation.city, countryCode: resolvedDeviceLocation.countryCode })
-      } catch (exception: unknown) {
-        const stack = exception instanceof Error ? exception.stack : String(exception)
-
-        this.loggerService.error('Device location resolver failed', stack, {
-          userEmail: userEmail.toString(),
-          ip: normalizedIp,
-          userAgent: userAgent.toString(),
-          error: exception,
-        })
-      }
-    }
-
-    return null
   }
 
   private buildFailedAttemptDomainEvent(

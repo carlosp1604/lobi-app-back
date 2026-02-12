@@ -3,7 +3,7 @@ import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { User } from '~/src/modules/User/Domain/User'
-import { DataSource, QueryRunner } from 'typeorm'
+import { DataSource, EntityManager, QueryRunner } from 'typeorm'
 import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
@@ -12,6 +12,8 @@ import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { withTransaction } from '~/src/test/utils/withTransaction'
+import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
+import { runPessimisticLockTest, Tx1Logic, Tx2Logic } from '~/src/test/utils/concurrencyHelper'
 
 describe('PostgresqlUserRepository', () => {
   const userId = UserIdMother.valid()
@@ -21,6 +23,10 @@ describe('PostgresqlUserRepository', () => {
   const now = new Date('2025-09-26T14:11:25Z')
 
   let baseRawUser: UserRawModelWithRelations
+
+  const buildUserDatabaseHelper = (entityManager: EntityManager) => {
+    return new UserDatabaseHelper(entityManager)
+  }
 
   beforeEach(() => {
     baseRawUser = makeRawUser({
@@ -39,7 +45,7 @@ describe('PostgresqlUserRepository', () => {
   })
 
   const checkUserFound = (result: User | null) => {
-    expect(result).toBeTruthy()
+    expect(result).not.toBeNull()
     expect(result?.id.equals(userId)).toBe(true)
     expect(result?.email.equals(userEmail)).toBe(true)
     expect(result?.status.equals(UserStatus.active())).toBe(true)
@@ -55,14 +61,18 @@ describe('PostgresqlUserRepository', () => {
 
   describe('findByEmailWithLock', () => {
     let runner: QueryRunner
+    let userDatabaseHelper: UserDatabaseHelper
 
     withTransaction((queryRunner) => {
       runner = queryRunner
     })
 
+    beforeEach(() => {
+      userDatabaseHelper = buildUserDatabaseHelper(runner.manager)
+    })
+
     it('should find user and translate to domain correctly', async () => {
-      const userRepository = runner.manager.getRepository(UserEntity)
-      await userRepository.save(baseRawUser)
+      await userDatabaseHelper.save(baseRawUser)
 
       const context = new TypeOrmTxContext(runner.manager)
 
@@ -79,6 +89,41 @@ describe('PostgresqlUserRepository', () => {
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
       const result = await repository.findByEmailWithLock(userEmail.toString(), context)
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('findByEmail', () => {
+    let runner: QueryRunner
+    let userDatabaseHelper: UserDatabaseHelper
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    beforeEach(() => {
+      userDatabaseHelper = buildUserDatabaseHelper(runner.manager)
+    })
+
+    it('should find user and translate to domain correctly', async () => {
+      await userDatabaseHelper.save(baseRawUser)
+
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.findByEmail(userEmail.toString(), context)
+
+      checkUserFound(result)
+    })
+
+    it('should return null if user does not exist', async () => {
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.findByEmail(userEmail.toString(), context)
 
       expect(result).toBeNull()
     })
@@ -86,14 +131,18 @@ describe('PostgresqlUserRepository', () => {
 
   describe('findByIdWithLock', () => {
     let runner: QueryRunner
+    let userDatabaseHelper: UserDatabaseHelper
 
     withTransaction((queryRunner) => {
       runner = queryRunner
     })
 
+    beforeEach(() => {
+      userDatabaseHelper = buildUserDatabaseHelper(runner.manager)
+    })
+
     it('should find user and translate to domain correctly', async () => {
-      const userRepository = runner.manager.getRepository(UserEntity)
-      await userRepository.save(baseRawUser)
+      await userDatabaseHelper.save(baseRawUser)
 
       const context = new TypeOrmTxContext(runner.manager)
 
@@ -115,92 +164,49 @@ describe('PostgresqlUserRepository', () => {
     })
   })
 
-  describe('findByEmailWithLock concurrency', () => {
+  describe('concurrency', () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const dataSource: DataSource = global.dataSource
 
-    it('should block a second transaction until first commit', async () => {
-      const updateNow = new Date('2025-10-17T14:11:25Z')
+    const updateNow = new Date()
 
-      const userRepository = dataSource.manager.getRepository(UserEntity)
-      await userRepository.save(baseRawUser)
+    let userDatabaseHelper: UserDatabaseHelper
 
-      const runner1 = dataSource.createQueryRunner()
-      const runner2 = dataSource.createQueryRunner()
-
-      try {
-        await Promise.all([runner1.connect(), runner2.connect()])
-        await Promise.all([runner1.startTransaction(), runner2.startTransaction()])
-
-        const repository1 = new PostgresqlUserRepository({ resolve: () => runner1.manager } as TypeOrmManagerResolver)
-        const repository2 = new PostgresqlUserRepository({ resolve: () => runner2.manager } as TypeOrmManagerResolver)
-
-        const transaction1 = async () => {
-          await repository1.findByEmailWithLock(userEmail.toString(), new TypeOrmTxContext(runner1.manager))
-
-          // TODO: Mutate and save domain object retrieved using the repository
-          // user.deactivate()
-          const userToSave: UserRawModelWithRelations = {
-            ...baseRawUser,
-            updated_at: updateNow,
-            status: UserStatus.deactivated().toString(),
-          }
-
-          const userRepository = runner1.manager.getRepository(UserEntity)
-
-          await userRepository.save(userToSave)
-
-          await runner1.commitTransaction()
-        }
-
-        const transaction2 = async () => {
-          const updatedUser = await repository2.findByEmailWithLock(userEmail.toString(), new TypeOrmTxContext(runner2.manager))
-
-          await runner2.commitTransaction()
-
-          return updatedUser
-        }
-
-        const [, updatedUser] = await Promise.all([transaction1(), transaction2()])
-
-        expect(updatedUser).toBeTruthy()
-        expect(updatedUser?.status.equals(UserStatus.deactivated())).toBe(true)
-        expect(updatedUser?.updatedAt.getTime()).toBe(updateNow.getTime())
-      } finally {
-        await Promise.all([
-          runner1.isTransactionActive && runner1.rollbackTransaction(),
-          runner2.isTransactionActive && runner2.rollbackTransaction(),
-        ])
-        await Promise.all([runner1.release(), runner2.release()])
-
-        await userRepository.remove(baseRawUser)
-      }
+    beforeEach(() => {
+      userDatabaseHelper = buildUserDatabaseHelper(dataSource.manager)
     })
-  })
 
-  describe('findByIdWithLock concurrency', () => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const dataSource: DataSource = global.dataSource
+    describe('find user with lock', () => {
+      const setUpData = async () => {
+        await userDatabaseHelper.save(baseRawUser)
+      }
 
-    it('should block a second transaction until first commit', async () => {
-      const updateNow = new Date('2025-10-17T14:11:25Z')
+      const cleanData = async () => {
+        await userDatabaseHelper.remove(baseRawUser)
+      }
 
-      const userRepository = dataSource.manager.getRepository(UserEntity)
+      const runTestAndAssertResult = async (tx1Logic: Tx1Logic<void>, tx2Logic: Tx2Logic<User | null>) => {
+        const [, updatedUser] = await runPessimisticLockTest<void, User | null>({
+          dataSource,
+          setUpData,
+          cleanData,
+          tx1Logic,
+          tx2Logic,
+        })
 
-      await userRepository.save(baseRawUser)
+        expect(updatedUser).not.toBeNull()
+        expect(updatedUser?.status.equals(UserStatus.deactivated())).toBe(true)
+        expect(updatedUser?.updatedAt.getTime()).toBe(updateNow.getTime())
+      }
 
-      const runner1 = dataSource.createQueryRunner()
-      const runner2 = dataSource.createQueryRunner()
+      it('should block a second transaction until first commit (findByEmailWithLock)', async () => {
+        const tx1Logic = async (runner: QueryRunner, signalAndWait: () => Promise<void>): Promise<void> => {
+          const repository1 = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+          const ctx1 = new TypeOrmTxContext(runner.manager)
 
-      try {
-        await Promise.all([runner1.connect(), runner2.connect()])
-        await Promise.all([runner1.startTransaction(), runner2.startTransaction()])
+          await repository1.findByEmailWithLock(userEmail.toString(), ctx1)
 
-        const repository1 = new PostgresqlUserRepository({ resolve: () => runner1.manager } as TypeOrmManagerResolver)
-        const repository2 = new PostgresqlUserRepository({ resolve: () => runner2.manager } as TypeOrmManagerResolver)
-
-        const transaction1 = async () => {
-          await repository1.findByIdWithLock(userId.toString(), new TypeOrmTxContext(runner1.manager))
+          await signalAndWait()
 
           // TODO: Mutate and save domain object retrieved using the repository
           // user.deactivate()
@@ -209,36 +215,61 @@ describe('PostgresqlUserRepository', () => {
             updated_at: updateNow,
             status: UserStatus.deactivated().toString(),
           }
+          await runner.manager.getRepository(UserEntity).save(userToSave)
 
-          const userRepository = runner1.manager.getRepository(UserEntity)
-
-          await userRepository.save(userToSave)
-
-          await runner1.commitTransaction()
+          await runner.commitTransaction()
         }
 
-        const transaction2 = async () => {
-          const updatedUser = await repository2.findByIdWithLock(userId.toString(), new TypeOrmTxContext(runner2.manager))
+        const tx2Logic = async (runner: QueryRunner, gate: Promise<void>): Promise<User | null> => {
+          const repository2 = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+          const ctx2 = new TypeOrmTxContext(runner.manager)
 
-          await runner2.commitTransaction()
+          await gate
 
+          const updatedUser = await repository2.findByEmailWithLock(userEmail.toString(), ctx2)
+
+          await runner.commitTransaction()
           return updatedUser
         }
 
-        const [, updatedUser] = await Promise.all([transaction1(), transaction2()])
+        await runTestAndAssertResult(tx1Logic, tx2Logic)
+      })
 
-        expect(updatedUser).toBeTruthy()
-        expect(updatedUser?.status.equals(UserStatus.deactivated())).toBe(true)
-        expect(updatedUser?.updatedAt.getTime()).toBe(updateNow.getTime())
-      } finally {
-        await Promise.all([
-          runner1.isTransactionActive && runner1.rollbackTransaction(),
-          runner2.isTransactionActive && runner2.rollbackTransaction(),
-        ])
-        await Promise.all([runner1.release(), runner2.release()])
+      it('should block a second transaction until first commit (findByIdWithLock)', async () => {
+        const tx1Logic = async (runner: QueryRunner, signalAndWait: () => Promise<void>): Promise<void> => {
+          const repository1 = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+          const ctx1 = new TypeOrmTxContext(runner.manager)
 
-        await userRepository.remove(baseRawUser)
-      }
+          await repository1.findByIdWithLock(userId.toString(), ctx1)
+
+          await signalAndWait()
+
+          // TODO: Mutate and save domain object retrieved using the repository
+          // user.deactivate()
+          const userToSave: UserRawModelWithRelations = {
+            ...baseRawUser,
+            updated_at: updateNow,
+            status: UserStatus.deactivated().toString(),
+          }
+          await runner.manager.getRepository(UserEntity).save(userToSave)
+
+          await runner.commitTransaction()
+        }
+
+        const tx2Logic = async (runner: QueryRunner, gate: Promise<void>): Promise<User | null> => {
+          const repository2 = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+          const ctx2 = new TypeOrmTxContext(runner.manager)
+
+          await gate
+
+          const updatedUser = await repository2.findByIdWithLock(userId.toString(), ctx2)
+
+          await runner.commitTransaction()
+          return updatedUser
+        }
+
+        await runTestAndAssertResult(tx1Logic, tx2Logic)
+      })
     })
   })
 })

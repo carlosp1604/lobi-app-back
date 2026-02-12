@@ -1,7 +1,7 @@
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import bcrypt from 'bcrypt'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 
-export class BCryptPasswordHasherService implements PasswordHasherServiceInterface {
+export class BCryptHasherService implements HasherServiceInterface {
   constructor(private readonly saltRounds: number) {}
 
   /**

@@ -11,6 +11,14 @@ export interface UserRepositoryInterface {
   findByEmailWithLock(email: string, context?: TxContext): Promise<User | null>
 
   /**
+   * Finds a user by email
+   * @param email User email
+   * @param context The transactional context
+   * @returns The User entity if found, otherwise null
+   */
+  findByEmail(email: string, context?: TxContext): Promise<User | null>
+
+  /**
    * Finds a user by ID (and acquires a pessimistic lock on the row)
    * @param id User ID
    * @param context The transactional context

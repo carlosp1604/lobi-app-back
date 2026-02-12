@@ -56,7 +56,7 @@ export class AccessTokenGuard implements CanActivate {
           tokenPrefix: token.substring(0, 10),
         })
       } else {
-        const errorStack = exception instanceof Error ? exception.stack : String(exception)
+        const errorStack = exception instanceof Error ? exception.stack : undefined
 
         this.logger.error('Unexpected error during JWT verification', errorStack, {
           requestId: request.id,

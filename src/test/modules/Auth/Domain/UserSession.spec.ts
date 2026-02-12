@@ -13,7 +13,9 @@ import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 describe('UserSession', () => {
   describe('create', () => {
     const now = new Date('2025-01-02T03:04:05.000Z')
-    const expiresAt = new Date('2025-02-02T03:04:05.000Z')
+
+    const expiresTtlMs = 10000
+    const futureExpiresAt = new Date(now.getTime() + expiresTtlMs)
 
     const id = UserSessionIdMother.valid()
     const userId = UserIdMother.valid()
@@ -24,12 +26,12 @@ describe('UserSession', () => {
       const userSessionIpHash: UserSessionIpHash = UserSessionIpHashMother.valid()
       const deviceLocation = DeviceLocationMother.valid()
 
-      const session = UserSession.create(id, userId, tokenHash, userAgent, expiresAt, now, userSessionIpHash, deviceLocation)
+      const session = UserSession.create(id, userId, tokenHash, userAgent, expiresTtlMs, now, userSessionIpHash, deviceLocation)
 
       expect(session.id.equals(id)).toBe(true)
       expect(session.userId.equals(userId)).toBe(true)
       expect(session.tokenHash.equals(tokenHash)).toBe(true)
-      expect(session.expiresAt.getTime()).toBe(expiresAt.getTime())
+      expect(session.expiresAt.getTime()).toBe(futureExpiresAt.getTime())
       expect(session.revokedAt).toBeNull()
       expect(session.ipHash?.equals(userSessionIpHash)).toBe(true)
       expect(session.userAgent?.equals(userAgent)).toBe(true)
@@ -39,7 +41,7 @@ describe('UserSession', () => {
     })
 
     it('should set to NULL when optional params are not given', () => {
-      const session = UserSession.create(id, userId, tokenHash, userAgent, expiresAt, now, null, null)
+      const session = UserSession.create(id, userId, tokenHash, userAgent, expiresTtlMs, now, null, null)
 
       expect(session.ipHash).toBeNull()
       expect(session.deviceLocation).toBeNull()

@@ -8,11 +8,6 @@ describe('IpAddressIpValidatorService', () => {
     service = new IpAddressIpValidatorService()
   })
 
-  afterEach(() => {
-    jest.clearAllMocks()
-    jest.resetAllMocks()
-  })
-
   describe('isValid', () => {
     const invalidIps = [
       '256.0.0.1',

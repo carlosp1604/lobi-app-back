@@ -41,4 +41,12 @@ describe('DomainEventName', () => {
       expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
     })
   })
+
+  describe('emailVerificationRequest', () => {
+    it('factory should return emailVerificationRequest', () => {
+      const domainEventNameValueObject = DomainEventName.emailVerificationRequest()
+
+      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.EMAIL_VERIFICATION_REQUEST)
+    })
+  })
 })

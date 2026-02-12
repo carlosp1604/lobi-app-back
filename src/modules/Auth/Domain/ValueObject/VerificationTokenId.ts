@@ -2,6 +2,8 @@ import { UuidValueObject } from '~/src/modules/Shared/Domain/ValueObject/UuidVal
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 export class VerificationTokenId extends UuidValueObject {
+  private __verificationTokenIdBrand: void
+
   private constructor(value: string) {
     const normalized = value.trim()
 

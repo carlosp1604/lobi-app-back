@@ -143,7 +143,7 @@ describe('AccessTokenGuard', () => {
     const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
 
     expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
-    expect(loggerErrorSpy).toHaveBeenCalledWith('Unexpected error during JWT verification', expect.any(String), {
+    expect(loggerErrorSpy).toHaveBeenCalledWith('Unexpected error during JWT verification', undefined, {
       requestId: 'test-request-id',
       path: 'test-request-url',
       tokenPrefix: FAKE_TOKEN.substring(0, 10),

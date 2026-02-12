@@ -31,10 +31,6 @@ describe('PostgreSqlUserSessionRepository', () => {
     mockedResolver.resolve.mockReturnValueOnce(runner.manager)
   })
 
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
   const checkSession = (userSession: UserSession, rawUserSession: UserSessionRawWithRelationships) => {
     expect(userSession.userId.toString()).toBe(rawUserSession.user_id)
     expect(userSession.createdAt.getTime()).toBe(rawUserSession.created_at.getTime())

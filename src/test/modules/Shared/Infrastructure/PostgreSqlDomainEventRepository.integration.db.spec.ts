@@ -12,6 +12,7 @@ import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObjec
 import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { DomainEventEntity, DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
+import { DomainEventAggregateIdMother } from '~/src/test/mothers/DomainEventAggregateIdMother'
 
 describe('PostgreSqlDomainEventRepository', () => {
   const userId = UserIdMother.valid()
@@ -52,7 +53,7 @@ describe('PostgreSqlDomainEventRepository', () => {
         .withPayload({ payloadProperty: 'value' })
         .withName(DomainEventName.successfulLogin())
         .withAggregateType(DomainEventAggregateType.user())
-        .withAggregateId(DomainEventIdMother.valid())
+        .withAggregateId(DomainEventAggregateIdMother.valid())
         .withOccurredAt(now)
     })
 

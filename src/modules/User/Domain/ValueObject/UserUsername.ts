@@ -2,6 +2,8 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 export class UserUsername extends ValueObject<string> {
+  private __userUsernameBrand: void
+
   private constructor(value: string) {
     const normalized = value.trim()
 

@@ -2,8 +2,9 @@ export class RefreshSessionApplicationError extends Error {
   public readonly id: string
   public readonly name: string
 
-  public static userNotFoundId = 'refresh_session_user_not_found'
+  public static invalidTokenFormatId = 'refresh_session_invalid_token_format'
   public static sessionNotFoundId = 'refresh_session_session_not_found'
+  public static userNotFoundId = 'refresh_session_user_not_found'
   public static sessionAlreadyRevokedId = 'refresh_session_session_already_revoked'
   public static sessionAlreadyExpiredId = 'refresh_session_session_already_expired'
   public static sessionInconsistencyId = 'refresh_session_session_inconsistency'
@@ -14,6 +15,10 @@ export class RefreshSessionApplicationError extends Error {
     super(message)
     this.id = id
     this.name = RefreshSessionApplicationError.name
+  }
+
+  public static invalidTokenFormat() {
+    return new RefreshSessionApplicationError('Invalid token format', this.invalidTokenFormatId)
   }
 
   public static sessionNotFound() {

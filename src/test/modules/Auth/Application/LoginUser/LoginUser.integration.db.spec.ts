@@ -7,8 +7,8 @@ import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/Post
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
-import { BCryptPasswordHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptPasswordHasherService'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
@@ -43,6 +43,9 @@ import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigSe
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -58,14 +61,15 @@ describe('LoginUser', () => {
   const userEmail = UserEmailMother.random()
   const expectedUserAgent = UserAgentMother.random()
   const domainType = DomainEventAggregateType.user().toString()
+  const validPassword = UserPasswordMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
   let domainEventDatabaseHelper: DomainEventDatabaseHelper
 
-  const MOCK_ACCESS_TTL_MS = 900000
-  const MOCK_REFRESH_TTL_MS = 604800000
+  const ACCESS_TTL_MS = env.ACCESS_TTL_MS
+  const REFRESH_TTL_MS = env.REFRESH_TTL_MS
 
   let runner: QueryRunner
 
@@ -79,9 +83,7 @@ describe('LoginUser', () => {
     mockReset(mockedResolver)
     mockReset(mockedConfigService)
 
-    mockedConfigService.get.mockImplementation(
-      createConfigServiceMockImplementation({ REFRESH_TTL_MS: MOCK_REFRESH_TTL_MS, ACCESS_TTL_MS: MOCK_ACCESS_TTL_MS }),
-    )
+    mockedConfigService.get.mockImplementation(createConfigServiceMockImplementation({ REFRESH_TTL_MS, ACCESS_TTL_MS }))
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
@@ -97,7 +99,7 @@ describe('LoginUser', () => {
     })
     await userDatabaseHelper.save(rawUser)
 
-    const userPassword = await passwordHasher.hash('expected-password')
+    const userPassword = await passwordHasher.hash(validPassword)
 
     const rawUserCredential = makeRawUserCredential({
       user_id: userId.toString(),
@@ -109,15 +111,15 @@ describe('LoginUser', () => {
   })
 
   const mockedConfigService = mock<ConfigService>()
-  const passwordHasher = new BCryptPasswordHasherService(1)
-  const hasherService = new NodeHasherService('test-hash-secret')
+  const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
+  const hasherService = new HmacHasherService(env.HASH_SECRET)
   const idGenerator = new NodeIdGeneratorService()
   const loggerService = new LoggerServiceMock()
-  const maxSessions = 3
+  const maxSessions = env.USER_MAX_SESSIONS
 
   const request: LoginUserApplicationRequestDto = {
     email: userEmail.toString(),
-    password: 'expected-password',
+    password: validPassword,
     ip: '127.0.0.0',
     userAgent: expectedUserAgent.toString(),
   }
@@ -131,19 +133,22 @@ describe('LoginUser', () => {
       passwordHasher,
       new GenerateTokensApplicationService(
         idGenerator,
-        new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience'),
+        new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
         hasherService,
         mockedConfigService,
       ),
       new UserSessionPolicyManagerApplicationService(new MaxSessionsPolicy(maxSessions), loggerService),
-      hasherService,
-      new NoopDeviceLocationResolverService(),
+      new RequestOriginApplicationService(
+        new IpAddressIpValidatorService(),
+        hasherService,
+        new NoopDeviceLocationResolverService(),
+        loggerService,
+      ),
       new ClockServiceMock(now),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
       loggerService,
       idGenerator,
-      new IpAddressIpValidatorService(),
     )
   }
 
@@ -183,8 +188,8 @@ describe('LoginUser', () => {
           accessToken: expect.any(String),
           refreshToken: expect.any(String),
           sessionId: expect.any(String),
-          accessTokenExpiresAt: new Date(now.getTime() + MOCK_ACCESS_TTL_MS),
-          refreshTokenExpiresAt: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
+          accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TTL_MS),
+          refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_TTL_MS),
           isNewDevice: newDevice,
         }),
       })
@@ -218,7 +223,7 @@ describe('LoginUser', () => {
       expect(savedSession!.device_country_code).toBeNull()
       expect(savedSession!.device_city).toBeNull()
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
-      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + MOCK_REFRESH_TTL_MS)
+      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + REFRESH_TTL_MS)
 
       expect(domainEvents.length).toBe(1)
       expect(domainEvents[0].name).toBe(DomainEventName.successfulLogin().toString())
@@ -303,7 +308,7 @@ describe('LoginUser', () => {
       const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId.toString(), domainType)
       const userCredentialBefore = await userCredentialDatabaseHelper.findUserCredential(userId.toString())
 
-      const result = await useCase.execute({ ...request, password: 'another-password' })
+      const result = await useCase.execute({ ...request, password: UserPasswordMother.random() })
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
       const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId.toString(), domainType)

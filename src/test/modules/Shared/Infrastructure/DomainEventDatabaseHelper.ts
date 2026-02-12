@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm'
-import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
+import { DomainEventEntity, DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 
 export class DomainEventDatabaseHelper {
   constructor(private readonly entityManager: EntityManager) {}
@@ -11,5 +11,19 @@ export class DomainEventDatabaseHelper {
       aggregate_id: aggregateId,
       aggregate_type: aggregateType,
     })
+  }
+
+  public async findByAggregateType(aggregateType: string) {
+    const domainEventRepository = this.entityManager.getRepository(DomainEventEntity)
+
+    return domainEventRepository.findBy({
+      aggregate_type: aggregateType,
+    })
+  }
+
+  public async save(domainEvent: DomainEventRawModel) {
+    const domainEventRepository = this.entityManager.getRepository(DomainEventEntity)
+
+    return domainEventRepository.save(domainEvent)
   }
 }

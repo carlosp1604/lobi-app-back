@@ -39,4 +39,12 @@ describe('DomainEventAggregateType', () => {
       expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.USER)
     })
   })
+
+  describe('verificationToken', () => {
+    it('factory should return user', () => {
+      const domainEventAggregateTypeValueObject = DomainEventAggregateType.verificationToken()
+
+      expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.VERIFICATION_TOKEN)
+    })
+  })
 })

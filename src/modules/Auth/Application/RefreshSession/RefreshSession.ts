@@ -15,6 +15,8 @@ import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/R
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 
 export class RefreshSession {
   constructor(
@@ -23,6 +25,7 @@ export class RefreshSession {
     private readonly sessionRepository: UserSessionRepositoryInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
+    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly hasherService: HasherServiceInterface,
     private readonly clockService: ClockServiceInterface,
   ) {}
@@ -30,10 +33,26 @@ export class RefreshSession {
   public async execute(
     request: RefreshSessionApplicationRequestDto,
   ): Promise<Result<RefreshSessionApplicationResponseDto, RefreshSessionApplicationError>> {
+    const validateTokenResult = this.validateToken(request.token)
+
+    if (!validateTokenResult.success) {
+      return validateTokenResult
+    }
+
+    const validatedToken = validateTokenResult.value
+
+    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent)
+
+    let sessionIpHash: UserSessionIpHash | null = null
+
+    if (ipHash) {
+      sessionIpHash = UserSessionIpHash.fromString(ipHash)
+    }
+
     return this.unitOfWork.runInTransaction(async (context) => {
       const now = this.clockService.now()
 
-      const findAndValidateSessionResult = await this.findAndValidateSession(request.refreshToken, context, now)
+      const findAndValidateSessionResult = await this.findAndValidateSession(validatedToken, context, now)
 
       if (!findAndValidateSessionResult.success) {
         return findAndValidateSessionResult
@@ -49,9 +68,8 @@ export class RefreshSession {
 
       const user = findAndValidateUserResult.value
 
-      const { userAgent, ipHash, deviceLocation } = currentSession
       const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
-        await this.generateTokensService.generate(user.id, now, userAgent, ipHash, deviceLocation)
+        await this.generateTokensService.generate(user.id, now, userAgent, sessionIpHash, deviceLocation)
 
       const refreshSessionResult = await this.refreshSession(currentSession, session, user.id, now, context)
 
@@ -67,6 +85,18 @@ export class RefreshSession {
         refreshTokenExpiresAt,
       })
     })
+  }
+
+  private validateToken(token: string): Result<string, RefreshSessionApplicationError> {
+    const TOKEN_FORMAT = /^[A-Za-z0-9+/=]+$/
+    const minLength = 40
+    const maxLength = 100
+
+    if (token.length < minLength || token.length > maxLength || !TOKEN_FORMAT.test(token)) {
+      return fail(RefreshSessionApplicationError.invalidTokenFormat())
+    }
+
+    return success(token)
   }
 
   private async findAndValidateSession(

@@ -1,13 +1,13 @@
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 export const makeRawVerificationToken = (overrides: Partial<VerificationTokenRawModel> = {}): VerificationTokenRawModel => {
   return {
     id: overrides.id ?? VerificationTokenIdMother.valid().toString(),
-    email: overrides.email ?? UserEmailMother.random().toString(),
+    email: overrides.email ?? VerificationTokenEmailMother.random().toString(),
     token_hash: overrides.token_hash ?? VerificationTokenTokenHashMother.random().toString(),
     purpose: overrides.purpose ?? VerificationTokenPurpose.createAccount().toString(),
     expires_at: overrides.expires_at ?? new Date(Date.now() + 15 * 60 * 1000),

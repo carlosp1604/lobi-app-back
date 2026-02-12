@@ -6,6 +6,7 @@ const { UserSessionEntity } = require('../../../modules/Auth/Infrastructure/Enti
 const { UserCredentialEntity } = require('../../../modules/Auth/Infrastructure/Entities/user-credential.entity')
 const { DomainEventEntity } = require('../../../modules/Shared/Infrastructure/Entities/domain-event.entity')
 const path = require('path')
+const { VerificationTokenEntity } = require('../../../modules/Auth/Infrastructure/Entities/verification-token.entity')
 const NodeEnvironment = require('jest-environment-node').TestEnvironment
 
 class TestEnvironment extends NodeEnvironment {
@@ -41,8 +42,8 @@ class TestEnvironment extends NodeEnvironment {
           synchronize: false,
           migrationsRun: false,
           logging: false,
-          entities: [UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity],
-          migrations: [path.join(process.cwd(), 'dist/db/migrations/*.js')],
+          entities: [UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity, VerificationTokenEntity],
+          migrations: [path.join(process.cwd(), 'dist/src/db/migrations/*.js')],
         }),
       ],
     }).compile()

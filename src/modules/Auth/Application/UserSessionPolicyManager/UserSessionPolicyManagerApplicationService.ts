@@ -80,7 +80,7 @@ export class UserSessionPolicyManagerApplicationService {
       return success(undefined)
     } catch (exception: unknown) {
       if (!(exception instanceof UserSessionDomainException)) {
-        const stack = exception instanceof Error ? exception.stack : String(exception)
+        const stack = exception instanceof Error ? exception.stack : undefined
 
         this.loggerService.error('Unexpected error while revoking session', stack, {
           sessionId: session.id.toString(),

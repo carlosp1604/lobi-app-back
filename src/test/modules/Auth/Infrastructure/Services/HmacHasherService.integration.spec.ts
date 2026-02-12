@@ -1,8 +1,8 @@
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 
-describe('NodeHasherService', () => {
-  const hasherServiceA = new NodeHasherService('test-secret-a')
-  const hasherServiceB = new NodeHasherService('test-secret-b')
+describe('HmacHasherService', () => {
+  const hasherServiceA = new HmacHasherService('test-secret-a')
+  const hasherServiceB = new HmacHasherService('test-secret-b')
 
   const b64regex = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/
 

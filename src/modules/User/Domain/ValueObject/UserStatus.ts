@@ -7,6 +7,8 @@ export enum ValidUserStatus {
 }
 
 export class UserStatus extends ValueObject<ValidUserStatus> {
+  private __userStatusBrand: void
+
   private constructor(value: ValidUserStatus) {
     super(value)
 

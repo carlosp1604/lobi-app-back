@@ -15,7 +15,7 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
-import { NodeHasherService } from '~/src/modules/Auth/Infrastructure/Services/NodeHasherService'
+import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
@@ -25,11 +25,14 @@ import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Applicat
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { Result } from '~/src/modules/Shared/Domain/Result'
-
 import { RefreshSessionApplicationResponseDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationResponseDto'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
+import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
+import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -43,17 +46,18 @@ describe('RefreshSession', () => {
   const pastExpiresAt = new Date(now.getTime() - 3600)
 
   const userId = UserIdMother.valid()
+  const expectedUserAgent = UserAgentMother.random()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
 
   const mockedConfigService = mock<ConfigService>()
-  const hasherService = new NodeHasherService('test-hash-secret')
-  const jwtGenerator = new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience')
+  const hasherService = new HmacHasherService(env.HASH_SECRET)
+  const jwtGenerator = new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE)
 
-  const MOCK_ACCESS_TTL_MS = 900000
-  const MOCK_REFRESH_TTL_MS = 604800000
-  const maxSessions = 3
+  const ACCESS_TTL_MS = env.ACCESS_TTL_MS
+  const REFRESH_TTL_MS = env.REFRESH_TTL_MS
+  const maxSessions = env.USER_MAX_SESSIONS
 
   let runner: QueryRunner
 
@@ -65,14 +69,13 @@ describe('RefreshSession', () => {
 
   let request: RefreshSessionApplicationRequestDto
   let currentSession: UserSessionRawWithRelationships
+  let hashedIp: string
 
   beforeEach(async () => {
     mockReset(mockedResolver)
     mockReset(mockedConfigService)
 
-    mockedConfigService.get.mockImplementation(
-      createConfigServiceMockImplementation({ REFRESH_TTL_MS: MOCK_REFRESH_TTL_MS, ACCESS_TTL_MS: MOCK_ACCESS_TTL_MS }),
-    )
+    mockedConfigService.get.mockImplementation(createConfigServiceMockImplementation({ REFRESH_TTL_MS, ACCESS_TTL_MS }))
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
@@ -102,8 +105,11 @@ describe('RefreshSession', () => {
     await userSessionDatabaseHelper.save(currentSession)
 
     request = {
-      refreshToken,
+      token: refreshToken,
+      ip: '8.8.8.8',
+      userAgent: expectedUserAgent.toString(),
     }
+    hashedIp = await hasherService.hash(request.ip)
   })
 
   const buildUseCase = () => {
@@ -114,11 +120,17 @@ describe('RefreshSession', () => {
       new PostgreSqlUserSessionRepository(mockedResolver),
       new GenerateTokensApplicationService(
         new NodeIdGeneratorService(),
-        new JWTokenGeneratorApplicationService('test-secret', 'test-issuer', 'test-audience'),
+        new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
         hasherService,
         mockedConfigService,
       ),
       new UserSessionPolicyManagerApplicationService(new MaxSessionsPolicy(maxSessions), new LoggerServiceMock()),
+      new RequestOriginApplicationService(
+        new IpAddressIpValidatorService(),
+        hasherService,
+        new NoopDeviceLocationResolverService(),
+        new LoggerServiceMock(),
+      ),
       hasherService,
       new ClockServiceMock(now),
     )
@@ -151,8 +163,8 @@ describe('RefreshSession', () => {
           accessToken: expect.any(String),
           refreshToken: expect.any(String),
           sessionId: expect.any(String),
-          accessTokenExpiresAt: new Date(now.getTime() + MOCK_ACCESS_TTL_MS),
-          refreshTokenExpiresAt: new Date(now.getTime() + MOCK_REFRESH_TTL_MS),
+          accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TTL_MS),
+          refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_TTL_MS),
         }),
       })
     }
@@ -178,14 +190,14 @@ describe('RefreshSession', () => {
       const savedSession = UserSessionDatabaseHelper.findSessionByIdInArray(activeSessions, sessionId)
       expect(savedSession).toBeDefined()
       expect(savedSession!.user_id).toBe(userId.toString())
-      expect(savedSession!.user_agent).toBe(currentSession.user_agent)
+      expect(savedSession!.user_agent).toBe(expectedUserAgent.toString())
 
-      expect(savedSession!.ip_hash).toBe(currentSession.ip_hash)
+      expect(savedSession!.ip_hash).toBe(hashedIp)
 
       expect(savedSession!.device_country_code).toBeNull()
       expect(savedSession!.device_city).toBeNull()
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
-      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + MOCK_REFRESH_TTL_MS)
+      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + REFRESH_TTL_MS)
     }
 
     it('should revoke current session and create a new user session correctly (no revoke sessions)', async () => {
@@ -244,7 +256,8 @@ describe('RefreshSession', () => {
 
       const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
 
-      const result = await useCase.execute({ refreshToken: 'another-refresh-token' })
+      const anotherRefreshToken = await jwtGenerator.generateSessionToken()
+      const result = await useCase.execute({ ...request, token: anotherRefreshToken })
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
 

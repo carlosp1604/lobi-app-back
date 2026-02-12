@@ -48,11 +48,13 @@ export class UserSession {
     userId: UserId,
     tokenHash: UserSessionTokenHash,
     userAgent: UserAgent,
-    expiresAt: Date,
+    expiresTtlMs: number,
     now: Date,
     ipHash: UserSessionIpHash | null,
     deviceLocation: DeviceLocation | null,
   ): UserSession {
+    const expiresAt = new Date(now.getTime() + expiresTtlMs)
+
     return new UserSession(id, userId, tokenHash, expiresAt, null, ipHash, userAgent, deviceLocation, now, now)
   }
 

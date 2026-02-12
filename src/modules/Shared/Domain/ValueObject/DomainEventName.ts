@@ -4,9 +4,12 @@ import { DomainEventDomainException } from '~/src/modules/Shared/Domain/DomainEv
 export enum ValidDomainEventNames {
   SUCCESSFUL_LOGIN = 'successFulLogin',
   FAILED_LOGIN_ATTEMPT = 'failedLoginAttempt',
+  EMAIL_VERIFICATION_REQUEST = 'emailVerificationRequest',
 }
 
 export class DomainEventName extends ValueObject<ValidDomainEventNames> {
+  private __domainEventNameBrand: void
+
   private constructor(value: ValidDomainEventNames) {
     super(value)
 
@@ -25,6 +28,10 @@ export class DomainEventName extends ValueObject<ValidDomainEventNames> {
 
   static failedLoginAttempt(): DomainEventName {
     return new DomainEventName(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
+  }
+
+  static emailVerificationRequest(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.EMAIL_VERIFICATION_REQUEST)
   }
 
   private isValidDomainEventName(value: string): boolean {

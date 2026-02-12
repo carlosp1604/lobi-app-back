@@ -6,6 +6,7 @@ export class LoginUserApplicationError extends Error {
   public static invalidCredentialsId = 'user_login_invalid_credentials'
   public static userDoesNotHaveCredentialsId = 'user_login_user_does_not_have_credentials'
   public static invalidUserEmailId = 'user_login_invalid_user_email'
+  public static invalidPasswordFormatId = 'user_login_invalid_password_format'
   public static cannotRevokeSessionsId = 'user_login_cannot_revoke_session'
   public static revocationFailedId = 'user_login_revocation_failed'
   public static internalErrorId = 'user_login_internal_error'
@@ -26,6 +27,13 @@ export class LoginUserApplicationError extends Error {
 
   public static invalidUserEmail(userEmail: string) {
     return new LoginUserApplicationError(`Invalid user email ${userEmail}`, this.invalidUserEmailId)
+  }
+
+  public static invalidPasswordFormat() {
+    return new LoginUserApplicationError(
+      'Password must be 8–128 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character',
+      this.invalidPasswordFormatId,
+    )
   }
 
   public static userDoesNotHaveCredentials(userId: string) {

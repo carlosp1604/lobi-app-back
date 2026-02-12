@@ -2,6 +2,8 @@ import { UuidValueObject } from '~/src/modules/Shared/Domain/ValueObject/UuidVal
 import { DomainEventDomainException } from '~/src/modules/Shared/Domain/DomainEventDomainException'
 
 export class DomainEventId extends UuidValueObject {
+  private __domainEventIdBrand: void
+
   private constructor(value: string) {
     const normalized = value.trim()
 
