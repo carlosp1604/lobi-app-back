@@ -11,6 +11,13 @@ export interface VerificationTokenRepositoryInterface {
   findByEmailWithLock(email: string, context: TxContext): Promise<VerificationToken | null>
 
   /**
+   * Finds a specific VerificationToken by email
+   * @param email User email
+   * @returns The VerificationToken entity if found, otherwise null
+   */
+  findByEmail(email: string): Promise<VerificationToken | null>
+
+  /**
    * Saves (inserts or update) a VerificationToken in the database
    * @param verificationToken The VerificationToken domain entity to persist
    * @param context The transactional context
