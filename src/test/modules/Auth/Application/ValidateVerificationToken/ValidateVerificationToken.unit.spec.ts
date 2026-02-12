@@ -13,6 +13,8 @@ import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenI
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2026-02-12T11:41:00Z')
@@ -48,6 +50,8 @@ describe('ValidateVerificationToken', () => {
   }
 
   beforeEach(() => {
+    jest.restoreAllMocks()
+
     mockReset(mockedTokenRepository)
     mockReset(mockedVerifyTokenService)
     mockReset(mockedClockService)
@@ -78,7 +82,7 @@ describe('ValidateVerificationToken', () => {
   })
 
   describe('when there are input errors', () => {
-    it('should return error when email is not valid', async () => {
+    it('should return invalidEmail error when email is not valid', async () => {
       const invalidEmailRequest = { ...requestBase, email: 'invalid-email' }
       const useCase = buildUseCase()
 
@@ -92,7 +96,7 @@ describe('ValidateVerificationToken', () => {
       expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
     })
 
-    it('should return error when purpose is not valid', async () => {
+    it('should return invalidTokenPurpose error when purpose is not valid', async () => {
       const invalidPurposeRequest = { ...requestBase, purpose: 'invalid-purpose' }
       const useCase = buildUseCase()
 
@@ -106,7 +110,7 @@ describe('ValidateVerificationToken', () => {
       expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
     })
 
-    it('should return error when token format is not valid', async () => {
+    it('should return invalidTokenFormat error when token format is not valid', async () => {
       const invalidTokenRequest = { ...requestBase, token: 'invalid-format' }
       const useCase = buildUseCase()
 
@@ -118,6 +122,39 @@ describe('ValidateVerificationToken', () => {
       })
 
       expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
+    })
+
+    it('should re-throw exception when VerificationTokenEmail throws a non-domain error', async () => {
+      const useCase = buildUseCase()
+      const unexpectedError = new Error('Unexpected error during email validation')
+
+      jest.spyOn(VerificationTokenEmail, 'fromString').mockImplementation(() => {
+        throw unexpectedError
+      })
+
+      await expect(useCase.execute(requestBase)).rejects.toThrow(unexpectedError)
+    })
+
+    it('should re-throw exception when VerificationTokenPurpose throws a non-domain error', async () => {
+      const useCase = buildUseCase()
+      const unexpectedError = new Error('Unexpected error during purpose validation')
+
+      jest.spyOn(VerificationTokenPurpose, 'fromString').mockImplementation(() => {
+        throw unexpectedError
+      })
+
+      await expect(useCase.execute(requestBase)).rejects.toThrow(unexpectedError)
+    })
+
+    it('should re-throw exception when VerificationTokenValue throws a non-domain error', async () => {
+      const useCase = buildUseCase()
+      const unexpectedError = new Error('Unexpected error during token value validation')
+
+      jest.spyOn(VerificationTokenValue, 'fromString').mockImplementation(() => {
+        throw unexpectedError
+      })
+
+      await expect(useCase.execute(requestBase)).rejects.toThrow(unexpectedError)
     })
   })
 
@@ -186,7 +223,7 @@ describe('ValidateVerificationToken', () => {
     expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
   })
 
-  it('should return invalidTokenPurpose error when token purpose does not match request purpose', async () => {
+  it('should return tokenPurposeMismatch error when token purpose does not match request purpose', async () => {
     const useCase = buildUseCase()
     const otherPurpose = VerificationTokenPurpose.resetPassword()
     const tokenWithOtherPurpose = createVerificationTokenTestBuilder().withPurpose(otherPurpose).build()
@@ -197,7 +234,7 @@ describe('ValidateVerificationToken', () => {
 
     expect(result).toEqual({
       success: false,
-      error: ValidateVerificationTokenError.invalidTokenPurpose(requestBase.purpose),
+      error: ValidateVerificationTokenError.tokenPurposeMismatch(),
     })
 
     expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()

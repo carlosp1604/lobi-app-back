@@ -1,7 +1,16 @@
 export const AUTH_LOGIN_INVALID_EMAIL = 'auth-login-invalid-email'
 export const AUTH_LOGIN_INVALID_PASSWORD_FORMAT = 'auth-login-invalid-password-format'
+
 export const AUTH_REFRESH_INVALID_TOKEN_FORMAT = 'auth-refresh-invalid-token-format'
+
+export const AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN = 'auth-verify-email-email-already-taken'
 export const AUTH_VERIFY_EMAIL_INVALID_EMAIL = 'auth-verify-email-invalid-email'
 export const AUTH_VERIFY_EMAIL_INVALID_PURPOSE = 'auth-verify-email-invalid-purpose'
 export const AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED = 'auth-verify-email-token-already-issued'
-export const AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN = 'auth-verify-email-email-already-taken'
+
+export const AUTH_VALIDATE_TOKEN_ALREADY_USED = 'auth-validate-token-token-already-used'
+export const AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED = 'auth-validate-token-token-already-expired'
+export const AUTH_VALIDATE_TOKEN_INVALID_EMAIL = 'auth-validate-token-invalid-email'
+export const AUTH_VALIDATE_TOKEN_INVALID_PURPOSE = 'auth-validate-token-invalid-purpose'
+export const AUTH_VALIDATE_TOKEN_INVALID_TOKEN = 'auth-validate-token-invalid-token'
+export const AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT = 'auth-validate-token-invalid-token-format'

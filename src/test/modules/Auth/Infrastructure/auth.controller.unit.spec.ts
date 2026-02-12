@@ -1,5 +1,12 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
-import { ConflictException, InternalServerErrorException, UnauthorizedException, UnprocessableEntityException } from '@nestjs/common'
+import {
+  ConflictException,
+  GoneException,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+  UnprocessableEntityException,
+} from '@nestjs/common'
 import { FastifyReply } from 'fastify'
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
@@ -7,6 +14,12 @@ import {
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+  AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
+  AUTH_VALIDATE_TOKEN_ALREADY_USED,
+  AUTH_VALIDATE_TOKEN_INVALID_EMAIL,
+  AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
+  AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+  AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
   AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
@@ -23,6 +36,10 @@ import { GenerateVerificationToken } from '~/src/modules/Auth/Application/Genera
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
+import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -30,9 +47,10 @@ describe('AuthController', () => {
   const mockedLoginUseCase = mock<LoginUser>()
   const mockedGenerateVerificationTokenUseCase = mock<GenerateVerificationToken>()
   const mockedRefreshSessionUseCase = mock<RefreshSession>()
+  const mockedValidateVerificationTokenUseCase = mock<ValidateVerificationToken>()
 
   const mockedIp = '127.0.0.1'
-  const mockedUserAgent = UserAgentMother.forTesting().toString()
+  const mockedUserAgent = UserAgentMother.forTesting().value
 
   const base = new Date('2025-10-13T14:00:00.014Z')
 
@@ -42,6 +60,7 @@ describe('AuthController', () => {
     mockReset(mockedLoginUseCase)
     mockReset(mockedRefreshSessionUseCase)
     mockReset(mockedGenerateVerificationTokenUseCase)
+    mockReset(mockedValidateVerificationTokenUseCase)
   })
 
   const buildController = () => {
@@ -49,6 +68,7 @@ describe('AuthController', () => {
       mockedLoginUseCase,
       mockedRefreshSessionUseCase,
       mockedGenerateVerificationTokenUseCase,
+      mockedValidateVerificationTokenUseCase,
       mockedConfigService,
     )
   }
@@ -520,7 +540,7 @@ describe('AuthController', () => {
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.createAccount().toString(),
+            purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
             language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
@@ -537,7 +557,7 @@ describe('AuthController', () => {
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.createAccount().toString(),
+            purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
             language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
@@ -556,7 +576,7 @@ describe('AuthController', () => {
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.resetPassword().toString(),
+            purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
             language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
@@ -573,7 +593,7 @@ describe('AuthController', () => {
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.resetPassword().toString(),
+            purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
             language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
@@ -629,7 +649,7 @@ describe('AuthController', () => {
             success: false,
             error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
               mockBody.email,
-              VerificationTokenPurpose.createAccount().toString(),
+              VerificationTokenPurpose.createAccount().value,
             ),
           })
 
@@ -638,7 +658,7 @@ describe('AuthController', () => {
               code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
               message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
                 mockBody.email,
-                VerificationTokenPurpose.createAccount().toString(),
+                VerificationTokenPurpose.createAccount().value,
               ).message,
             }),
           )
@@ -732,7 +752,7 @@ describe('AuthController', () => {
             success: false,
             error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
               mockBody.email,
-              VerificationTokenPurpose.resetPassword().toString(),
+              VerificationTokenPurpose.resetPassword().value,
             ),
           })
 
@@ -741,7 +761,7 @@ describe('AuthController', () => {
               code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
               message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
                 mockBody.email,
-                VerificationTokenPurpose.resetPassword().toString(),
+                VerificationTokenPurpose.resetPassword().value,
               ).message,
             }),
           )
@@ -793,6 +813,210 @@ describe('AuthController', () => {
             Error('Unexpected error'),
           )
         })
+      })
+    })
+  })
+
+  describe('validate token', () => {
+    const mockBody = {
+      email: VerificationTokenEmailMother.valid().value,
+      purpose: VerificationTokenPurpose.createAccount().value,
+      token: VerificationTokenValueMother.valid().value,
+    }
+
+    describe('happy path', () => {
+      beforeEach(() => {
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: true,
+          value: undefined,
+        })
+      })
+
+      it('should call use-case correctly and return', async () => {
+        const controller = buildController()
+
+        const result = await controller.verifyToken(mockBody)
+
+        expect(mockedValidateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedValidateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
+          email: mockBody.email,
+          purpose: mockBody.purpose,
+          token: mockBody.token,
+        })
+        expect(result).toBeUndefined()
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw UnprocessableEntityException if use-case returns invalidEmail error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.invalidEmail('invalid-email'),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new UnprocessableEntityException({
+            code: AUTH_VALIDATE_TOKEN_INVALID_EMAIL,
+            message: ValidateVerificationTokenError.invalidEmail('invalid-email').message,
+          }),
+        )
+      })
+
+      it('should throw UnprocessableEntityException if use-case returns invalidTokenPurpose error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.invalidTokenPurpose('invalid-purpose'),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new UnprocessableEntityException({
+            code: AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
+            message: ValidateVerificationTokenError.invalidTokenPurpose('invalid-purpose').message,
+          }),
+        )
+      })
+
+      it('should throw UnprocessableEntityException if use-case returns invalidTokenFormat error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.invalidTokenFormat(),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new UnprocessableEntityException({
+            code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
+            message: ValidateVerificationTokenError.invalidTokenFormat().message,
+          }),
+        )
+      })
+
+      it('should throw ConflictException if use-case returns tokenAlreadyUsed error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.alreadyUsed(),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new ConflictException({
+            code: AUTH_VALIDATE_TOKEN_ALREADY_USED,
+            message: ValidateVerificationTokenError.alreadyUsed().message,
+          }),
+        )
+      })
+
+      it('should throw GoneException if use-case returns tokenExpired error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.expired(),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new GoneException({
+            code: AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
+            message: ValidateVerificationTokenError.expired().message,
+          }),
+        )
+      })
+
+      it('should throw NotFoundException if use-case returns tokenPurposeMismatch error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.tokenPurposeMismatch(),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new NotFoundException({
+            code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+            message: 'Invalid verification token',
+          }),
+        )
+      })
+
+      it('should throw NotFoundException if use-case returns tokenNotFound error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.notFound(),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new NotFoundException({
+            code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+            message: 'Invalid verification token',
+          }),
+        )
+      })
+
+      it('should throw NotFoundException if use-case returns invalidOwner error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.invalidOwner(),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new NotFoundException({
+            code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+            message: 'Invalid verification token',
+          }),
+        )
+      })
+
+      it('should throw NotFoundException if use-case returns invalidCode error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ValidateVerificationTokenError.invalidToken(),
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(
+          new NotFoundException({
+            code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+            message: 'Invalid verification token',
+          }),
+        )
+      })
+
+      it('should throw InternalServerErrorException if use-case returns an unknown error', async () => {
+        const controller = buildController()
+
+        const useCaseError: ValidateVerificationTokenError = {
+          message: 'Unknown error',
+          id: 'validate_verification_token_unknown_error',
+          name: ValidateVerificationTokenError.name,
+        }
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseError,
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(new InternalServerErrorException(useCaseError))
+      })
+
+      it('should throw error when use-case fails with unexpected error', async () => {
+        const controller = buildController()
+
+        mockedValidateVerificationTokenUseCase.execute.mockImplementation(() => {
+          throw Error('Unexpected error')
+        })
+
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(Error('Unexpected error'))
       })
     })
   })

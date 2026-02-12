@@ -4,7 +4,6 @@ import { AuthModule } from '~/src/modules/Auth/Infrastructure/auth.module'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserCredentialRawWitRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
@@ -26,6 +25,7 @@ import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessi
 import {
   EMAIL_SENDER_SERVICE,
   HASHER_SERVICE,
+  PASSWORD_HASHER,
   REQUEST_ORIGIN_SERVICE,
   TOKEN_GENERATOR,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
@@ -43,6 +43,11 @@ import { VerificationTokenTokenHashMother } from '~/src/test/mothers/Verificatio
 import {
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+  AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
+  AUTH_VALIDATE_TOKEN_ALREADY_USED,
+  AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
+  AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+  AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
   AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
@@ -53,6 +58,10 @@ import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { expectIsoDate } from '~/src/test/utils/matchers'
 import { HashMother } from '~/src/test/mothers/HashMother'
+import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
+import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -140,7 +149,6 @@ describe('AuthController', () => {
   describe('login', () => {
     const userId = UserIdMother.valid()
     const userEmail = UserEmailMother.random()
-    const passwordHasher = new BCryptHasherService(1)
 
     let userDatabaseHelper: UserDatabaseHelper
     let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
@@ -153,10 +161,11 @@ describe('AuthController', () => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
       userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(dataSource.manager)
 
+      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
       const userPassword = await passwordHasher.hash(validPassword)
 
       rawCredential = makeRawUserCredential({
-        user_id: userId.toString(),
+        user_id: userId.value,
         locked_until: null,
         last_login_at: null,
         failed_attempts: 0,
@@ -164,9 +173,9 @@ describe('AuthController', () => {
       })
 
       rawUser = makeRawUser({
-        id: userId.toString(),
-        email: userEmail.toString(),
-        status: UserStatus.active().toString(),
+        id: userId.value,
+        email: userEmail.value,
+        status: UserStatus.active().value,
       })
     })
 
@@ -177,7 +186,7 @@ describe('AuthController', () => {
 
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail.toString(), password: validPassword })
+          .send({ email: userEmail.value, password: validPassword })
           .expect(200)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -212,7 +221,7 @@ describe('AuthController', () => {
                 },
                 statusCode: 400,
                 requestId: expect.any(String),
-                timestamp: expect.any(String),
+                timestamp: expectIsoDate,
               }),
             )
 
@@ -229,7 +238,7 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when password format is not valid', async () => {
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail.toString(), password: 'invalid-password' })
+          .send({ email: userEmail.value, password: 'invalid-password' })
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -240,7 +249,7 @@ describe('AuthController', () => {
               },
               statusCode: 422,
               requestId: expect.any(String),
-              timestamp: expect.any(String),
+              timestamp: expectIsoDate,
             } as Record<string, unknown>)
           })
       })
@@ -249,7 +258,7 @@ describe('AuthController', () => {
         const testCase = async (password: string) => {
           return request(app.getHttpServer())
             .post('/auth/login')
-            .send({ email: userEmail.toString(), password })
+            .send({ email: userEmail.value, password })
             .expect(401)
             .expect((response) => {
               expect(response.body).toEqual({
@@ -260,7 +269,7 @@ describe('AuthController', () => {
                 },
                 statusCode: 401,
                 requestId: expect.any(String),
-                timestamp: expect.any(String),
+                timestamp: expectIsoDate,
               } as Record<string, unknown>)
             })
         }
@@ -276,7 +285,7 @@ describe('AuthController', () => {
         })
 
         it('should throw UnauthorizedException when user is not active', async () => {
-          await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().toString() })
+          await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
           await userCredentialDatabaseHelper.save(rawCredential)
 
           await testCase(validPassword)
@@ -326,12 +335,12 @@ describe('AuthController', () => {
       const hashedToken = await hasherService.hash(inputToken)
 
       rawUser = makeRawUser({
-        id: userId.toString(),
-        status: UserStatus.active().toString(),
+        id: userId.value,
+        status: UserStatus.active().value,
       })
 
       rawCurrentSession = makeRawSession({
-        user_id: userId.toString(),
+        user_id: userId.value,
         revoked_at: null,
         expires_at: futureExpiresAt,
         token_hash: hashedToken,
@@ -378,7 +387,7 @@ describe('AuthController', () => {
                 },
                 statusCode: 401,
                 requestId: expect.any(String),
-                timestamp: expect.any(String),
+                timestamp: expectIsoDate,
               } as Record<string, unknown>)
             })
         }
@@ -394,7 +403,7 @@ describe('AuthController', () => {
         })
 
         it('should throw UnauthorizedException when user is not active', async () => {
-          await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().toString() })
+          await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
           await userSessionDatabaseHelper.save(rawCurrentSession)
 
           await testCase(`${refreshCookieName}=${inputToken}`)
@@ -436,7 +445,7 @@ describe('AuthController', () => {
               },
               statusCode: 422,
               requestId: expect.any(String),
-              timestamp: expect.any(String),
+              timestamp: expectIsoDate,
             } as Record<string, unknown>)
           })
       })
@@ -446,31 +455,31 @@ describe('AuthController', () => {
   describe('verify email', () => {
     const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
 
-    const userEmail = 'test@email.com'
+    const userEmail = VerificationTokenEmailMother.random()
     let userDatabaseHelper: UserDatabaseHelper
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
 
     let rawUser: UserRawModelWithRelations
     let rawCurrentVerificationToken: VerificationTokenRawModel
 
-    const validBody = { email: userEmail.toString(), sendNewToken: false, language: 'es' }
+    const validBody = { email: userEmail.value, sendNewToken: false, language: 'es' }
 
     beforeEach(() => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
       verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(dataSource.manager)
 
       rawUser = makeRawUser({
-        email: userEmail.toString(),
-        status: UserStatus.active().toString(),
+        email: userEmail.value,
+        status: UserStatus.active().value,
         deleted_at: null,
       })
 
       rawCurrentVerificationToken = makeRawVerificationToken({
-        email: userEmail.toString(),
-        purpose: VerificationTokenPurpose.createAccount().toString(),
+        email: userEmail.value,
+        purpose: VerificationTokenPurpose.createAccount().value,
         expires_at: futureExpiresAt,
         used_at: null,
-        token_hash: VerificationTokenTokenHashMother.random().toString(),
+        token_hash: VerificationTokenTokenHashMother.random().value,
       })
     })
 
@@ -507,8 +516,7 @@ describe('AuthController', () => {
                 statusCode: 400,
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 requestId: expect.any(String),
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                timestamp: expect.any(String),
+                timestamp: expectIsoDate,
               })
 
               // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -542,11 +550,11 @@ describe('AuthController', () => {
                 path: path,
                 response: {
                   code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
-                  message: `An active VerificationToken for ${purpose} was already issued for email ${userEmail.toString()}`,
+                  message: `An active VerificationToken for ${purpose} was already issued for email ${userEmail.value}`,
                 },
                 statusCode: 409,
                 requestId: expect.any(String),
-                timestamp: expect.any(String),
+                timestamp: expectIsoDate,
               } as Record<string, unknown>)
             })
         }
@@ -554,17 +562,17 @@ describe('AuthController', () => {
         it('should throw ConflictException for signup', async () => {
           await verificationTokenDatabaseHelper.save(rawCurrentVerificationToken)
 
-          await testCase('/auth/verify-email/signup', VerificationTokenPurpose.createAccount().toString())
+          await testCase('/auth/verify-email/signup', VerificationTokenPurpose.createAccount().value)
         })
 
         it('should throw ConflictException for reset', async () => {
           await userDatabaseHelper.save(rawUser)
           await verificationTokenDatabaseHelper.save({
             ...rawCurrentVerificationToken,
-            purpose: VerificationTokenPurpose.resetPassword().toString(),
+            purpose: VerificationTokenPurpose.resetPassword().value,
           })
 
-          await testCase('/auth/verify-email/reset', VerificationTokenPurpose.resetPassword().toString())
+          await testCase('/auth/verify-email/reset', VerificationTokenPurpose.resetPassword().value)
         })
       })
 
@@ -580,13 +588,228 @@ describe('AuthController', () => {
               path: '/auth/verify-email/signup',
               response: {
                 code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
-                message: `Email ${userEmail.toString()} is already taken`,
+                message: `Email ${userEmail.value} is already taken`,
               },
               statusCode: 409,
               requestId: expect.any(String),
-              timestamp: expect.any(String),
+              timestamp: expectIsoDate,
             } as Record<string, unknown>)
           })
+      })
+    })
+  })
+
+  describe('validate token', () => {
+    const email = VerificationTokenEmailMother.random()
+    const purpose = VerificationTokenPurpose.createAccount()
+    const validTokenValue = VerificationTokenValueMother.random().value
+
+    let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
+    let rawVerificationToken: VerificationTokenRawModel
+
+    const now = new Date()
+    const futureDate = new Date(now.getTime() + 10000)
+    const pastDate = new Date(now.getTime() - 10000)
+
+    beforeEach(async () => {
+      verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(dataSource.manager)
+
+      const tokenHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+      const tokenHash = await tokenHasher.hash(validTokenValue)
+
+      rawVerificationToken = makeRawVerificationToken({
+        id: VerificationTokenIdMother.valid().value,
+        email: email.value,
+        purpose: purpose.value,
+        token_hash: tokenHash,
+        expires_at: futureDate,
+        used_at: null,
+        created_at: now,
+      })
+    })
+
+    describe('happy path', () => {
+      it('should return 204 when token is valid', async () => {
+        await verificationTokenDatabaseHelper.save(rawVerificationToken)
+
+        return request(app.getHttpServer())
+          .post('/auth/validate-token')
+          .send({
+            email: email.value,
+            purpose: purpose.value,
+            token: validTokenValue,
+          })
+          .expect(204)
+          .expect((response) => {
+            expect(response.body).toEqual({})
+          })
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw 400 error if body is not valid', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/validate-token')
+          .send({ email: 'invalid-email' })
+          .expect(400)
+          .expect((response) => {
+            expect(response.body).toEqual(
+              expect.objectContaining<Record<string, unknown>>({
+                path: '/auth/validate-token',
+                response: {
+                  code: VALIDATION_ERROR,
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                  errors: expect.any(Object),
+                },
+                statusCode: 400,
+                requestId: expect.any(String),
+                timestamp: expectIsoDate,
+              }),
+            )
+          })
+      })
+
+      it('should throw UnprocessableEntityException when token purpose is not valid', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/validate-token')
+          .send({
+            email: email.value,
+            purpose: 'INVALID_PURPOSE',
+            token: validTokenValue,
+          })
+          .expect(422)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/validate-token',
+              response: {
+                code: AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
+                message: ValidateVerificationTokenError.invalidTokenPurpose('INVALID_PURPOSE').message,
+              },
+              statusCode: 422,
+              requestId: expect.any(String),
+              timestamp: expectIsoDate,
+            } as Record<string, unknown>)
+          })
+      })
+
+      it('should throw UnprocessableEntityException when token format is not valid', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/validate-token')
+          .send({
+            email: email.value,
+            purpose: purpose.value,
+            token: VerificationTokenValueMother.invalid(),
+          })
+          .expect(422)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/validate-token',
+              response: {
+                code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
+                message: ValidateVerificationTokenError.invalidTokenFormat().message,
+              },
+              statusCode: 422,
+              requestId: expect.any(String),
+              timestamp: expectIsoDate,
+            } as Record<string, unknown>)
+          })
+      })
+
+      it('should throw ConflictException when token is already used', async () => {
+        await verificationTokenDatabaseHelper.save({ ...rawVerificationToken, used_at: now })
+
+        return request(app.getHttpServer())
+          .post('/auth/validate-token')
+          .send({
+            email: email.value,
+            purpose: purpose.value,
+            token: validTokenValue,
+          })
+          .expect(409)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/validate-token',
+              response: {
+                code: AUTH_VALIDATE_TOKEN_ALREADY_USED,
+                message: ValidateVerificationTokenError.alreadyUsed().message,
+              },
+              statusCode: 409,
+              requestId: expect.any(String),
+              timestamp: expectIsoDate,
+            } as Record<string, unknown>)
+          })
+      })
+
+      it('should throw GoneException when token is expired', async () => {
+        await verificationTokenDatabaseHelper.save({ ...rawVerificationToken, expires_at: pastDate })
+
+        return request(app.getHttpServer())
+          .post('/auth/validate-token')
+          .send({
+            email: email.value,
+            purpose: purpose.value,
+            token: validTokenValue,
+          })
+          .expect(410)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/validate-token',
+              response: {
+                code: AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
+                message: ValidateVerificationTokenError.expired().message,
+              },
+              statusCode: 410,
+              requestId: expect.any(String),
+              timestamp: expectIsoDate,
+            } as Record<string, unknown>)
+          })
+      })
+
+      describe('when endpoint throws NotFoundException', () => {
+        const testCase = async (requestEmail: string, requestToken: string, requestPurpose: string) => {
+          return request(app.getHttpServer())
+            .post('/auth/validate-token')
+            .send({
+              email: requestEmail,
+              purpose: requestPurpose,
+              token: requestToken,
+            })
+            .expect(404)
+            .expect((response) => {
+              expect(response.body).toEqual({
+                path: '/auth/validate-token',
+                response: {
+                  code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+                  message: 'Invalid verification token',
+                },
+                statusCode: 404,
+                requestId: expect.any(String),
+                timestamp: expectIsoDate,
+              } as Record<string, unknown>)
+            })
+        }
+
+        it('should throw NotFoundException when token does not exist', async () => {
+          await testCase(email.value, validTokenValue, purpose.value)
+        })
+
+        it('should throw NotFoundException when token exists but email does not match', async () => {
+          await verificationTokenDatabaseHelper.save(rawVerificationToken)
+
+          await testCase(VerificationTokenEmailMother.random().value, validTokenValue, purpose.value)
+        })
+
+        it('should throw NotFoundException when token exists but code is invalid', async () => {
+          await verificationTokenDatabaseHelper.save(rawVerificationToken)
+
+          await testCase(email.value, VerificationTokenValueMother.random().value, purpose.value)
+        })
+
+        it('should throw NotFoundException when token does not exist', async () => {
+          await verificationTokenDatabaseHelper.save(rawVerificationToken)
+
+          await testCase(email.value, validTokenValue, VerificationTokenPurpose.resetPassword().value)
+        })
       })
     })
   })

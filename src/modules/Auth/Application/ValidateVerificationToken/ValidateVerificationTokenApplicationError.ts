@@ -10,9 +10,9 @@ export class ValidateVerificationTokenError extends Error {
   public static tokenNotFoundId = 'validate_verification_token_not_found'
   public static tokenExpiredId = 'validate_token_expired'
   public static tokenAlreadyUsedId = 'validate_token_already_used'
+  public static tokenPurposeMismatchId = 'validate_token_token_purpose_mismatch'
   public static invalidTokenOwnerId = 'validate_token_invalid_owner'
   public static invalidTokenId = 'validate_token_invalid_token'
-  public static internalErrorId = 'validate_token_internal_error'
 
   private constructor(message: string, id: string) {
     super(message)
@@ -53,11 +53,11 @@ export class ValidateVerificationTokenError extends Error {
     )
   }
 
-  public static invalidToken() {
-    return new ValidateVerificationTokenError('The provided token code does not match the stored hash', this.invalidTokenId)
+  public static tokenPurposeMismatch() {
+    return new ValidateVerificationTokenError('The token cannot be used for the requested purpose', this.tokenPurposeMismatchId)
   }
 
-  public static internalError(errorMessage: string) {
-    return new ValidateVerificationTokenError(`Internal error during token validation: ${errorMessage}`, this.internalErrorId)
+  public static invalidToken() {
+    return new ValidateVerificationTokenError('The provided token code does not match the stored hash', this.invalidTokenId)
   }
 }

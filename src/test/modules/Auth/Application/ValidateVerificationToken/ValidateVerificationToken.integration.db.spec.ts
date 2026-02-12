@@ -25,8 +25,8 @@ describe('ValidateVerificationToken', () => {
 
   const email = VerificationTokenEmailMother.random()
   const purpose = VerificationTokenPurpose.createAccount()
-  const validTokenValue = VerificationTokenValueMother.valid().value
-  const wrongTokenValue = '00000000'
+  const validTokenValue = VerificationTokenValueMother.random().value
+  const wrongTokenValue = VerificationTokenValueMother.random().value
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
   const hasherService = new BCryptHasherService(env.SALT_ROUNDS)

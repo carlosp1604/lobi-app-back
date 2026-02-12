@@ -11,7 +11,7 @@ import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 
 export class ValidateVerificationToken {
   constructor(
-    private readonly tokenRepository: VerificationTokenRepositoryInterface,
+    private readonly verificationTokenRepository: VerificationTokenRepositoryInterface,
     private readonly verifyTokenService: VerifyTokenService,
     private readonly clockService: ClockServiceInterface,
   ) {}
@@ -39,7 +39,7 @@ export class ValidateVerificationToken {
     const verificationTokenPurpose = purposeValidationResult.value
     const tokenValue = tokenValueValidationResult.value
 
-    const tokenEntity = await this.tokenRepository.findByEmail(email.value)
+    const tokenEntity = await this.verificationTokenRepository.findByEmail(email.value)
 
     if (!tokenEntity) {
       return fail(ValidateVerificationTokenError.notFound())
@@ -48,7 +48,7 @@ export class ValidateVerificationToken {
     try {
       tokenEntity.validate(now, email, verificationTokenPurpose)
     } catch (exception: unknown) {
-      return this.handleDomainError(exception, verificationTokenPurpose)
+      return this.handleDomainError(exception)
     }
 
     const isCryptoValid = await this.verifyTokenService.verify(tokenEntity, tokenValue)
@@ -60,7 +60,7 @@ export class ValidateVerificationToken {
     return success(undefined)
   }
 
-  private handleDomainError(exception: unknown, purpose: VerificationTokenPurpose): Result<void, ValidateVerificationTokenError> {
+  private handleDomainError(exception: unknown): Result<void, ValidateVerificationTokenError> {
     if (!(exception instanceof VerificationTokenDomainException)) {
       throw exception
     }
@@ -76,7 +76,7 @@ export class ValidateVerificationToken {
         return fail(ValidateVerificationTokenError.invalidOwner())
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId:
-        return fail(ValidateVerificationTokenError.invalidTokenPurpose(purpose.value))
+        return fail(ValidateVerificationTokenError.tokenPurposeMismatch())
 
       default:
         throw exception
@@ -98,7 +98,11 @@ export class ValidateVerificationToken {
   private validateVerificationTokenPurpose(purpose: string): Result<VerificationTokenPurpose, ValidateVerificationTokenError> {
     try {
       return success(VerificationTokenPurpose.fromString(purpose))
-    } catch {
+    } catch (exception: unknown) {
+      if (!(exception instanceof VerificationTokenDomainException)) {
+        throw exception
+      }
+
       return fail(ValidateVerificationTokenError.invalidTokenPurpose(purpose))
     }
   }

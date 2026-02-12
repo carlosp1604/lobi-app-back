@@ -22,7 +22,9 @@ import {
   USER_REPOSITORY,
   USER_SESSION_POLICY_MANAGER_SERVICE,
   USER_SESSION_REPOSITORY,
+  VALIDATE_VERIFICATION_TOKEN,
   VERIFICATION_TOKEN_REPOSITORY,
+  VERIFY_TOKEN_DOMAIN_SERVICE,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -70,6 +72,8 @@ import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServic
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
+import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
+import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
 
 @Module({
   imports: [
@@ -196,6 +200,13 @@ import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entit
       inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_SERVICE],
     },
     {
+      provide: VERIFY_TOKEN_DOMAIN_SERVICE,
+      useFactory: (hasherService: HasherServiceInterface) => {
+        return new VerifyTokenService(hasherService)
+      },
+      inject: [PASSWORD_HASHER],
+    },
+    {
       provide: LOGIN_USER,
       useFactory: (
         userRepository: UserRepositoryInterface,
@@ -320,7 +331,18 @@ import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entit
         ID_GENERATOR,
       ],
     },
+    {
+      provide: VALIDATE_VERIFICATION_TOKEN,
+      useFactory: (
+        verificationTokenRepository: VerificationTokenRepositoryInterface,
+        verifyTokenService: VerifyTokenService,
+        clockService: ClockServiceInterface,
+      ) => {
+        return new ValidateVerificationToken(verificationTokenRepository, verifyTokenService, clockService)
+      },
+      inject: [VERIFICATION_TOKEN_REPOSITORY, VERIFY_TOKEN_DOMAIN_SERVICE, CLOCK_SERVICE],
+    },
   ],
-  exports: [LOGIN_USER, REFRESH_SESSION, GENERATE_VERIFICATION_TOKEN, TypeOrmModule],
+  exports: [LOGIN_USER, REFRESH_SESSION, GENERATE_VERIFICATION_TOKEN, VALIDATE_VERIFICATION_TOKEN, TypeOrmModule],
 })
 export class AuthModule {}
