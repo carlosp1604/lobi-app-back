@@ -581,6 +581,20 @@ describe('GenerateVerificationToken', () => {
       expect(mockedEmailSenderService.sendWithTemplate).not.toHaveBeenCalled()
     })
 
+    it('should re-throw exception when entity throws a non-domain error', async () => {
+      const existingToken = createVerificationTokenTestBuilder().build()
+      mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
+      const useCase = buildUseCase()
+
+      const unhandledDomainError = new Error('Unexpected error')
+
+      jest.spyOn(existingToken, 'validate').mockImplementation(() => {
+        throw unhandledDomainError
+      })
+
+      await expect(useCase.execute(requestBase)).rejects.toThrow(unhandledDomainError)
+    })
+
     it('should throw error when emailSenderService fails', async () => {
       const emailError = new Error('Unexpected emailSenderService error')
       mockedEmailSenderService.sendWithTemplate.mockRejectedValueOnce(emailError)

@@ -27,6 +27,7 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
@@ -104,7 +105,18 @@ export class GenerateVerificationToken {
       let resendCode = false
 
       if (verificationToken) {
-        const isVerificationTokenUsable = verificationToken.canBeUsedForPurpose(now, email, verificationTokenPurpose)
+        let isVerificationTokenUsable: boolean
+        try {
+          verificationToken.validate(now, email, verificationTokenPurpose)
+
+          isVerificationTokenUsable = true
+        } catch (exception: unknown) {
+          if (!(exception instanceof VerificationTokenDomainException)) {
+            throw exception
+          }
+
+          isVerificationTokenUsable = false
+        }
 
         if (isVerificationTokenUsable && !request.sendNewToken) {
           this.loggerService.warn('Email has already an active token for purpose', {
