@@ -90,7 +90,6 @@ describe('GenerateVerificationToken', () => {
     mockedConfigService.get.mockImplementation(
       createConfigServiceMockImplementation({
         VERIFICATION_TOKEN_TTL_MS: env.VERIFICATION_TOKEN_TTL_MS,
-        VERIFICATION_TOKEN_LENGTH: env.VERIFICATION_TOKEN_LENGTH,
       }),
     )
 

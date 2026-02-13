@@ -7,7 +7,8 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build": "nest build",
+    "type-check": "tsc --noEmit",
+    "build": "yarn type-check && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -101,7 +102,7 @@
     "typescript-eslint": "^8.20.0"
   },
   "lint-staged": {
-    "*.{ts}": [
+    "*.ts": [
       "eslint --fix",
       "prettier --write"
     ]
