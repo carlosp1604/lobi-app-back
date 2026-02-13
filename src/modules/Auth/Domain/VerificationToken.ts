@@ -56,26 +56,26 @@ export class VerificationToken {
     return this.expiresAt.getTime() <= now.getTime()
   }
 
-  public canBeUsedForPurpose(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose): boolean {
-    return !this.isUsed() && !this.isExpired(now) && this.email.equals(email) && this.purpose.equals(purpose)
-  }
-
-  public markAsUsedForPurpose(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose) {
+  public validate(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose): void {
     if (this.isUsed()) {
-      throw VerificationTokenDomainException.alreadyUsed(this.id.toString())
+      throw VerificationTokenDomainException.alreadyUsed(this.id.value)
     }
 
     if (this.isExpired(now)) {
-      throw VerificationTokenDomainException.alreadyExpired(this.id.toString())
+      throw VerificationTokenDomainException.alreadyExpired(this.id.value)
     }
 
     if (!this.email.equals(email)) {
-      throw VerificationTokenDomainException.cannotBeUsedByUser(this.id.toString(), email.toString())
+      throw VerificationTokenDomainException.cannotBeUsedByUser(this.id.value, email.value)
     }
 
     if (!this.purpose.equals(purpose)) {
-      throw VerificationTokenDomainException.cannotBeUsedForPurpose(this.id.toString(), purpose.toString())
+      throw VerificationTokenDomainException.cannotBeUsedForPurpose(this.id.value, purpose.value)
     }
+  }
+
+  public markAsUsed(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose): void {
+    this.validate(now, email, purpose)
 
     this._usedAt = now
   }

@@ -36,8 +36,8 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
   describe('findByEmailWithLock', () => {
     const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
-    const rawToken = makeRawVerificationToken({ id: testTokenId.toString() })
-    const email = VerificationTokenEmailMother.random().toString()
+    const rawToken = makeRawVerificationToken({ id: testTokenId.value })
+    const email = VerificationTokenEmailMother.random().value
 
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
@@ -63,46 +63,30 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         expect(mockedQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write')
       }
 
-      it('should call services correctly when verificationToken is found', async () => {
+      it('should call services correctly and return the correct data when verificationToken is found', async () => {
         const verificationTokenModelTranslator = jest
           .spyOn(VerificationTokenModelTranslator, 'toDomain')
           .mockReturnValue(expectedVerificationToken)
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        await repository.findByEmailWithLock(email, fakeContext)
+        const result = await repository.findByEmailWithLock(email, fakeContext)
 
         assertCommonCalls()
         expect(verificationTokenModelTranslator).toHaveBeenCalledTimes(1)
         expect(verificationTokenModelTranslator).toHaveBeenCalledWith(rawToken)
+        expect(result).toBe(expectedVerificationToken)
       })
 
-      it('should call services correctly when verificationToken is not found', async () => {
+      it('should call services correctly and return null when verificationToken is not found', async () => {
         mockedQueryBuilder.getOne.mockResolvedValue(null)
 
         const verificationTokenModelTranslator = jest.spyOn(VerificationTokenModelTranslator, 'toDomain')
 
         const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        await repository.findByEmailWithLock(email, fakeContext)
+        const result = await repository.findByEmailWithLock(email, fakeContext)
 
         assertCommonCalls()
         expect(verificationTokenModelTranslator).not.toHaveBeenCalled()
-      })
-
-      it('should return the correct data when user is found', async () => {
-        jest.spyOn(VerificationTokenModelTranslator, 'toDomain').mockReturnValue(expectedVerificationToken)
-
-        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        const result = await repository.findByEmailWithLock(email, fakeContext)
-
-        expect(result).toBe(expectedVerificationToken)
-      })
-
-      it('should return NULL when user is not found', async () => {
-        mockedQueryBuilder.getOne.mockResolvedValue(null)
-
-        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
-        const result = await repository.findByEmailWithLock(email, fakeContext)
-
         expect(result).toBeNull()
       })
     })
@@ -146,9 +130,96 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     })
   })
 
+  describe('findByEmail', () => {
+    const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
+    const rawToken = makeRawVerificationToken({ id: testTokenId.value })
+    const email = VerificationTokenEmailMother.random().value
+
+    beforeEach(() => {
+      mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
+      mockedQueryBuilder.where.mockReturnValue(mockedQueryBuilder)
+      mockedQueryBuilder.orderBy.mockReturnValue(mockedQueryBuilder)
+      mockedQueryBuilder.getOne.mockResolvedValue(rawToken)
+    })
+
+    describe('happy path', () => {
+      const assertCommonCalls = () => {
+        expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+        expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledTimes(1)
+        expect(mockedQueryBuilder.where).toHaveBeenCalledTimes(1)
+        expect(mockedQueryBuilder.orderBy).toHaveBeenCalledTimes(1)
+        expect(mockedQueryBuilder.getOne).toHaveBeenCalledTimes(1)
+
+        expect(mockedResolver.resolve).toHaveBeenCalledWith()
+        expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledWith(VerificationTokenEntity, 'verification_token')
+        expect(mockedQueryBuilder.where).toHaveBeenCalledWith('verification_token.email = :email', { email })
+        expect(mockedQueryBuilder.orderBy).toHaveBeenCalledWith('verification_token.created_at', 'DESC')
+      }
+
+      it('should call services correctly and return the correct data when verificationToken is found', async () => {
+        const verificationTokenModelTranslator = jest
+          .spyOn(VerificationTokenModelTranslator, 'toDomain')
+          .mockReturnValue(expectedVerificationToken)
+
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+        const result = await repository.findByEmail(email)
+
+        assertCommonCalls()
+        expect(verificationTokenModelTranslator).toHaveBeenCalledTimes(1)
+        expect(verificationTokenModelTranslator).toHaveBeenCalledWith(rawToken)
+        expect(result).toBe(expectedVerificationToken)
+      })
+
+      it('should call services correctly and return null when verificationToken is not found', async () => {
+        mockedQueryBuilder.getOne.mockResolvedValue(null)
+
+        const verificationTokenModelTranslator = jest.spyOn(VerificationTokenModelTranslator, 'toDomain')
+
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+        const result = await repository.findByEmail(email)
+
+        assertCommonCalls()
+        expect(verificationTokenModelTranslator).not.toHaveBeenCalled()
+        expect(result).toBeNull()
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw error if resolver fails', async () => {
+        mockedResolver.resolve.mockImplementation(() => {
+          throw new Error('Something went wrong while resolving entityManager')
+        })
+
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+
+        await expect(repository.findByEmail(email)).rejects.toThrow(Error('Something went wrong while resolving entityManager'))
+      })
+
+      it('should throw error if ORM/Database fails', async () => {
+        mockedQueryBuilder.getOne.mockImplementation(() => {
+          throw new Error('Something went wrong while retrieving data from database')
+        })
+
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+
+        await expect(repository.findByEmail(email)).rejects.toThrow(Error('Something went wrong while retrieving data from database'))
+      })
+
+      it('should throw error if translator fails', async () => {
+        jest.spyOn(VerificationTokenModelTranslator, 'toDomain').mockImplementation(() => {
+          throw new Error('Something went wrong while translating entity to domain')
+        })
+
+        const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+
+        await expect(repository.findByEmail(email)).rejects.toThrow(Error('Something went wrong while translating entity to domain'))
+      })
+    })
+  })
+
   describe('save', () => {
     const verificationTokenToSave = new VerificationTokenTestBuilder().withId(testTokenId).build()
-    const rawToken = makeRawVerificationToken({ id: testTokenId.toString() })
+    const rawToken = makeRawVerificationToken({ id: testTokenId.value })
 
     beforeEach(() => {
       mockedEntityManager.getRepository.mockReturnValue(mockedVerificationTokenRepository)
@@ -210,7 +281,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
   })
 
   describe('delete', () => {
-    const verificationTokenId = VerificationTokenIdMother.valid().toString()
+    const verificationTokenId = VerificationTokenIdMother.valid().value
 
     beforeEach(() => {
       mockedEntityManager.getRepository.mockReturnValue(mockedVerificationTokenRepository)

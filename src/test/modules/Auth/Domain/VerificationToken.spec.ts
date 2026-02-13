@@ -71,19 +71,17 @@ describe('VerificationToken', () => {
     })
   })
 
-  describe('canBeUsedForPurpose', () => {
+  describe('validate', () => {
     const validEmail = VerificationTokenEmailMother.random()
     const validPurpose = VerificationTokenPurpose.createAccount()
 
     const validToken = builder.withEmail(validEmail).withPurpose(validPurpose).withExpiresAt(futureExpiresAt).withUsedAt(null).build()
 
-    it('should return true when token is valid, active and email and purpose match', () => {
-      const result = validToken.canBeUsedForPurpose(now, validEmail, validPurpose)
-
-      expect(result).toBe(true)
+    it('should not throw error when token is valid, active and email and purpose match', () => {
+      expect(() => validToken.validate(now, validEmail, validPurpose)).not.toThrow()
     })
 
-    it('should return false when token is already used', () => {
+    it('should throw alreadyUsed error when token is already used', () => {
       const usedToken = builder
         .withEmail(validEmail)
         .withPurpose(validPurpose)
@@ -91,37 +89,37 @@ describe('VerificationToken', () => {
         .withUsedAt(new Date())
         .build()
 
-      const result = usedToken.canBeUsedForPurpose(now, validEmail, validPurpose)
-
-      expect(result).toBe(false)
+      expect(() => usedToken.validate(now, validEmail, validPurpose)).toThrow(
+        VerificationTokenDomainException.alreadyUsed(usedToken.id.value),
+      )
     })
 
-    it('should return false when the token is expired', () => {
+    it('should throw alreadyExpired error when token is expired', () => {
       const expiredToken = builder.withEmail(validEmail).withPurpose(validPurpose).withExpiresAt(pastExpiresAt).withUsedAt(null).build()
 
-      const result = expiredToken.canBeUsedForPurpose(now, validEmail, validPurpose)
-
-      expect(result).toBe(false)
+      expect(() => expiredToken.validate(now, validEmail, validPurpose)).toThrow(
+        VerificationTokenDomainException.alreadyExpired(expiredToken.id.value),
+      )
     })
 
-    it('should return false when the email does not match', () => {
+    it('should throw cannotBeUsedByUser error when the candidate email does not match', () => {
       const otherEmail = VerificationTokenEmailMother.random()
 
-      const result = validToken.canBeUsedForPurpose(now, otherEmail, validPurpose)
-
-      expect(result).toBe(false)
+      expect(() => validToken.validate(now, otherEmail, validPurpose)).toThrow(
+        VerificationTokenDomainException.cannotBeUsedByUser(validToken.id.value, otherEmail.value),
+      )
     })
 
-    it('should return false when the purpose does not match', () => {
+    it('should throw cannotBeUsedForPurpose error when the candidate purpose does not match', () => {
       const otherPurpose = VerificationTokenPurpose.resetPassword()
 
-      const result = validToken.canBeUsedForPurpose(now, validEmail, otherPurpose)
-
-      expect(result).toBe(false)
+      expect(() => validToken.validate(now, validEmail, otherPurpose)).toThrow(
+        VerificationTokenDomainException.cannotBeUsedForPurpose(validToken.id.value, otherPurpose.value),
+      )
     })
   })
 
-  describe('markAsUsedForPurpose', () => {
+  describe('markAsUsed', () => {
     const validEmail = VerificationTokenEmailMother.random()
     const validPurpose = VerificationTokenPurpose.createAccount()
 
@@ -134,25 +132,27 @@ describe('VerificationToken', () => {
     it('should mark as used (set usedAt) when token is valid, active and email and purpose match', () => {
       expect(validToken.usedAt).toBeNull()
 
-      validToken.markAsUsedForPurpose(now, validEmail, validPurpose)
+      validToken.markAsUsed(now, validEmail, validPurpose)
 
       expect(validToken.usedAt).toBe(now)
     })
 
-    it('should throw error when token is already used', () => {
+    it('should throw alreadyUsed error when token is already used', () => {
+      const usedAt = new Date(now.getTime() - 1000)
       const usedToken = builder
         .withEmail(validEmail)
         .withPurpose(validPurpose)
         .withExpiresAt(futureExpiresAt)
-        .withUsedAt(new Date(now.getTime() - 1000))
+        .withUsedAt(usedAt)
         .build()
 
-      expect(() => usedToken.markAsUsedForPurpose(now, validEmail, validPurpose)).toThrow(
+      expect(() => usedToken.markAsUsed(now, validEmail, validPurpose)).toThrow(
         VerificationTokenDomainException.alreadyUsed(usedToken.id.toString()),
       )
+      expect(usedToken.usedAt).toBe(usedAt)
     })
 
-    it('should throw error when token is expired', () => {
+    it('should throw alreadyExpired error when token is expired', () => {
       const expiredToken = builder
         .withEmail(validEmail)
         .withPurpose(validPurpose)
@@ -160,25 +160,28 @@ describe('VerificationToken', () => {
         .withUsedAt(null)
         .build()
 
-      expect(() => expiredToken.markAsUsedForPurpose(now, validEmail, validPurpose)).toThrow(
-        VerificationTokenDomainException.alreadyExpired(expiredToken.id.toString()),
+      expect(() => expiredToken.markAsUsed(now, validEmail, validPurpose)).toThrow(
+        VerificationTokenDomainException.alreadyExpired(expiredToken.id.value),
       )
+      expect(expiredToken.usedAt).toBeNull()
     })
 
-    it('should throw error when email does not match', () => {
+    it('should throw cannotBeUsedByUser error when candidate email does not match', () => {
       const otherEmail = VerificationTokenEmailMother.random()
 
-      expect(() => validToken.markAsUsedForPurpose(now, otherEmail, validPurpose)).toThrow(
-        VerificationTokenDomainException.cannotBeUsedByUser(validToken.id.toString(), otherEmail.toString()),
+      expect(() => validToken.markAsUsed(now, otherEmail, validPurpose)).toThrow(
+        VerificationTokenDomainException.cannotBeUsedByUser(validToken.id.value, otherEmail.value),
       )
+      expect(validToken.usedAt).toBeNull()
     })
 
-    it('should throw error when purpose does not match', () => {
+    it('should throw cannotBeUsedForPurpose error when candidate purpose does not match', () => {
       const otherPurpose = VerificationTokenPurpose.resetPassword()
 
-      expect(() => validToken.markAsUsedForPurpose(now, validEmail, otherPurpose)).toThrow(
-        VerificationTokenDomainException.cannotBeUsedForPurpose(validToken.id.toString(), otherPurpose.toString()),
+      expect(() => validToken.markAsUsed(now, validEmail, otherPurpose)).toThrow(
+        VerificationTokenDomainException.cannotBeUsedForPurpose(validToken.id.value, otherPurpose.value),
       )
+      expect(validToken.usedAt).toBeNull()
     })
   })
 })

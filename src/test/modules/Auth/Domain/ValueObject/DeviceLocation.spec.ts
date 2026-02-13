@@ -89,7 +89,8 @@ describe('DeviceLocation', () => {
       const deviceLocation = DeviceLocationMother.valid()
       const anotherLocation = new TestLocation({ city: deviceLocation.city, countryCode: deviceLocation.countryCode })
 
-      expect(deviceLocation.equals(anotherLocation)).toBe(false)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      expect(deviceLocation.equals(anotherLocation as any)).toBe(false)
     })
 
     it('should return false when compared with null', () => {

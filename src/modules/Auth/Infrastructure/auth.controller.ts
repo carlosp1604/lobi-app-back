@@ -1,6 +1,11 @@
 import type { FastifyReply } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
-import { GENERATE_VERIFICATION_TOKEN, LOGIN_USER, REFRESH_SESSION } from '~/src/modules/Auth/Infrastructure/auth.tokens'
+import {
+  GENERATE_VERIFICATION_TOKEN,
+  LOGIN_USER,
+  REFRESH_SESSION,
+  VALIDATE_VERIFICATION_TOKEN,
+} from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-user-body.dto'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
@@ -8,6 +13,12 @@ import {
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+  AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
+  AUTH_VALIDATE_TOKEN_ALREADY_USED,
+  AUTH_VALIDATE_TOKEN_INVALID_EMAIL,
+  AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
+  AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+  AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
   AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
@@ -26,6 +37,8 @@ import {
   UnprocessableEntityException,
   UseGuards,
   ConflictException,
+  GoneException,
+  NotFoundException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
@@ -42,6 +55,10 @@ import { VerifyEmailDto } from '~/src/modules/Auth/Infrastructure/Dtos/verify-em
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { UserAgent } from '~/src/modules/Shared/Infrastructure/Decorators/user-agent.decorator'
 import { UserIp } from '~/src/modules/Shared/Infrastructure/Decorators/user-ip.decorator'
+import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationRequestDto'
+import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
+import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
+import { ValidateTokenBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/validate-token-body.dto'
 
 @Controller('auth')
 export class AuthController {
@@ -49,6 +66,7 @@ export class AuthController {
     @Inject(LOGIN_USER) private readonly loginUser: LoginUser,
     @Inject(REFRESH_SESSION) private readonly refreshSession: RefreshSession,
     @Inject(GENERATE_VERIFICATION_TOKEN) private readonly generateVerificationToken: GenerateVerificationToken,
+    @Inject(VALIDATE_VERIFICATION_TOKEN) private readonly validateVerificationToken: ValidateVerificationToken,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
@@ -188,6 +206,73 @@ export class AuthController {
     if (!result.success) {
       this.handleVerifyEmailError(result.error)
     }
+  }
+
+  @Post('validate-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async verifyToken(@Body() body: ValidateTokenBodyDto) {
+    const requestDto: ValidateVerificationTokenApplicationRequestDto = {
+      email: body.email,
+      purpose: body.purpose,
+      token: body.token,
+    }
+
+    const result = await this.validateVerificationToken.execute(requestDto)
+
+    if (!result.success) {
+      const errorId = result.error.id
+
+      if (errorId === ValidateVerificationTokenError.invalidEmailId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_VALIDATE_TOKEN_INVALID_EMAIL,
+          message: result.error.message,
+        })
+      }
+
+      if (errorId === ValidateVerificationTokenError.invalidTokenPurposeId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
+          message: result.error.message,
+        })
+      }
+
+      if (errorId === ValidateVerificationTokenError.invalidTokenFormatId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
+          message: result.error.message,
+        })
+      }
+
+      if (errorId === ValidateVerificationTokenError.tokenAlreadyUsedId) {
+        throw new ConflictException({
+          code: AUTH_VALIDATE_TOKEN_ALREADY_USED,
+          message: result.error.message,
+        })
+      }
+
+      if (errorId === ValidateVerificationTokenError.tokenExpiredId) {
+        throw new GoneException({
+          code: AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
+          message: result.error.message,
+        })
+      }
+
+      if (
+        errorId === ValidateVerificationTokenError.tokenPurposeMismatchId ||
+        errorId === ValidateVerificationTokenError.tokenNotFoundId ||
+        errorId === ValidateVerificationTokenError.invalidTokenOwnerId ||
+        errorId === ValidateVerificationTokenError.invalidTokenId
+      ) {
+        throw new NotFoundException({
+          code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
+          message: 'Invalid verification token',
+        })
+      }
+
+      throw new InternalServerErrorException(result.error)
+    }
+
+    return
   }
 
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {

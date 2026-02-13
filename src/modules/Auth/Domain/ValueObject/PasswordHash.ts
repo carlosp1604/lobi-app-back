@@ -8,7 +8,7 @@ export class PasswordHash extends CredentialHashValueObject {
     super(value)
 
     if (!this.isValid(value)) {
-      throw UserCredentialDomainException.invalidPasswordHash()
+      throw UserCredentialDomainException.invalidPasswordHashFormat()
     }
   }
 

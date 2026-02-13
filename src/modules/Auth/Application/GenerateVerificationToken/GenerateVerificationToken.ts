@@ -27,10 +27,11 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
-  private readonly verificationTokenLength: number
 
   constructor(
     private readonly verificationTokenRepository: VerificationTokenRepositoryInterface,
@@ -47,7 +48,6 @@ export class GenerateVerificationToken {
     private readonly idGeneratorService: IdGeneratorServiceInterface,
   ) {
     this.verificationTokenTtlMs = this.configService.get('VERIFICATION_TOKEN_TTL_MS', { infer: true })
-    this.verificationTokenLength = this.configService.get('VERIFICATION_TOKEN_LENGTH', { infer: true })
   }
 
   public async execute(
@@ -104,7 +104,18 @@ export class GenerateVerificationToken {
       let resendCode = false
 
       if (verificationToken) {
-        const isVerificationTokenUsable = verificationToken.canBeUsedForPurpose(now, email, verificationTokenPurpose)
+        let isVerificationTokenUsable: boolean
+        try {
+          verificationToken.validate(now, email, verificationTokenPurpose)
+
+          isVerificationTokenUsable = true
+        } catch (exception: unknown) {
+          if (!(exception instanceof VerificationTokenDomainException)) {
+            throw exception
+          }
+
+          isVerificationTokenUsable = false
+        }
 
         if (isVerificationTokenUsable && !request.sendNewToken) {
           this.loggerService.warn('Email has already an active token for purpose', {
@@ -128,7 +139,7 @@ export class GenerateVerificationToken {
         }
       }
 
-      const clearRandomCode = this.randomService.getRandomNumericCode(this.verificationTokenLength)
+      const clearRandomCode = this.randomService.getRandomNumericCode(VerificationTokenValue.LENGTH)
       const hashedCode = await this.hasherService.hash(clearRandomCode)
       const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
       const verificationTokenId = this.idGeneratorService.generateId()

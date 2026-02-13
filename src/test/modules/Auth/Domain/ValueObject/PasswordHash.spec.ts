@@ -27,7 +27,7 @@ describe('PasswordHash', () => {
   })
 
   it.each(invalidCases)('should throw error when passwordHash is invalid: %s', (hash) => {
-    expect(() => PasswordHash.fromString(hash)).toThrow(UserCredentialDomainException.invalidPasswordHash())
+    expect(() => PasswordHash.fromString(hash)).toThrow(UserCredentialDomainException.invalidPasswordHashFormat())
   })
 
   it('should store the correct value', () => {

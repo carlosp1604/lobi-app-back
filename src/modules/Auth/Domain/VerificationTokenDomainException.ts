@@ -1,7 +1,9 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
+import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 export class VerificationTokenDomainException extends DomainException {
   public static invalidVerificationTokenIdId = 'verification_token_invalid_verification_token_id'
+  public static invalidVerificationTokenValueId = 'verification_token_invalid_verification_token_value'
   public static invalidVerificationTokenTokenHashId = 'verification_token_invalid_verification_token_token_hash'
   public static invalidVerificationTokenPurposeId = 'verification_token_invalid_verification_token_purpose'
   public static invalidVerificationTokenEmailId = 'verification_token_invalid_verification_token_email'
@@ -18,6 +20,14 @@ export class VerificationTokenDomainException extends DomainException {
     return new VerificationTokenDomainException(
       `${verificationTokenId} is not a valid VerificationToken ID`,
       this.invalidVerificationTokenIdId,
+    )
+  }
+
+  public static invalidVerificationTokenValue(value: string) {
+    const safeValueSample = StringFormatter.formatSafe(value, 20)
+    return new VerificationTokenDomainException(
+      `${safeValueSample} is not a valid VerificationToken value format`,
+      this.invalidVerificationTokenValueId,
     )
   }
 
