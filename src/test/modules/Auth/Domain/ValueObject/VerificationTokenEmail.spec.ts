@@ -3,31 +3,40 @@ import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/Ve
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
-const invalidCases: Array<string> = [
-  '',
-  'no-at-symbol',
-  '@example.com',
-  'user@',
-  'user@example',
-  'user example@example.com',
-  'user@\nexample.com',
-  `${'a'.repeat(65)}@example.com`,
-  `u${'a'.repeat(310)}@example.com`,
-]
-
 describe('VerificationTokenEmail', () => {
-  it('should not throw error when email is valid', () => {
-    fc.assert(
-      fc.property(fc.emailAddress(), (validVerificationTokenEmail) => {
-        expect(() => VerificationTokenEmail.fromString(validVerificationTokenEmail)).not.toThrow()
-      }),
-    )
+  describe('fromString', () => {
+    it('should not throw error when email is valid', () => {
+      fc.assert(
+        fc.property(fc.emailAddress(), (validVerificationTokenEmail) => {
+          expect(() => VerificationTokenEmail.fromString(validVerificationTokenEmail)).not.toThrow()
+        }),
+      )
+    })
+
+    it.each(VerificationTokenEmailMother.INVALID_FORMAT_CASES)('should throw error when email is not valid: %s', (invalidEmail) => {
+      expect(() => VerificationTokenEmail.fromString(invalidEmail)).toThrow(
+        VerificationTokenDomainException.invalidVerificationTokenEmail(invalidEmail),
+      )
+    })
   })
 
-  it.each(invalidCases)('should throw error when email is not valid: %s', (invalidEmail) => {
-    expect(() => VerificationTokenEmail.fromString(invalidEmail)).toThrow(
-      VerificationTokenDomainException.invalidVerificationTokenEmail(invalidEmail),
-    )
+  describe('safeCreate', () => {
+    it('should return success when email is valid', () => {
+      fc.assert(
+        fc.property(fc.emailAddress(), (validVerificationTokenEmail) => {
+          const result = VerificationTokenEmail.safeCreate(validVerificationTokenEmail)
+
+          expect(result.success).toBe(true)
+        }),
+      )
+    })
+
+    it.each(VerificationTokenEmailMother.INVALID_FORMAT_CASES)('should return error when email is not valid: %s', (invalidEmail) => {
+      const result = VerificationTokenEmail.safeCreate(invalidEmail)
+
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(VerificationTokenDomainException.invalidVerificationTokenEmail(invalidEmail))
+    })
   })
 
   it('should store the correct value', () => {

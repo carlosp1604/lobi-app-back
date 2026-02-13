@@ -3,16 +3,43 @@ import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 
 describe('UserPassword', () => {
-  it('should not throw error when password format is valid', () => {
-    const validPasswords = Array.from({ length: 100 }, () => UserPasswordMother.random().value)
+  describe('fromString', () => {
+    it('should not throw error when password format is valid', () => {
+      const validPasswords = Array.from({ length: 100 }, () => UserPasswordMother.randomString())
 
-    validPasswords.forEach((validPassword) => {
-      expect(() => UserPassword.fromString(validPassword)).not.toThrow()
+      validPasswords.forEach((validPassword) => {
+        expect(() => UserPassword.fromString(validPassword)).not.toThrow()
+      })
     })
+
+    it.each(UserPasswordMother.INVALID_FORMAT_CASES)(
+      'should throw error when password format is not valid: "%s"',
+      (invalidPassword) => {
+        expect(() => UserPassword.fromString(invalidPassword)).toThrow(UserCredentialDomainException.invalidPasswordFormat())
+      },
+    )
   })
 
-  it.each(UserPasswordMother.INVALID_FORMAT_CASES)('should throw error when password format is not valid: "%s"', (invalidPassword) => {
-    expect(() => UserPassword.fromString(invalidPassword)).toThrow(UserCredentialDomainException.invalidPasswordFormat())
+  describe('safeCreate', () => {
+    it('should not throw error when password format is valid', () => {
+      const validPasswords = Array.from({ length: 100 }, () => UserPasswordMother.randomString())
+
+      validPasswords.forEach((validPassword) => {
+        const result = UserPassword.safeCreate(validPassword)
+
+        expect(result.success).toBe(true)
+      })
+    })
+
+    it.each(UserPasswordMother.INVALID_FORMAT_CASES)(
+      'should throw error when password format is not valid: "%s"',
+      (invalidPassword) => {
+        const result = UserPassword.safeCreate(invalidPassword)
+
+        expect(result.success).toBe(false)
+        expect(result['error']).toEqual(UserCredentialDomainException.invalidPasswordFormat())
+      },
+    )
   })
 
   it('should store the correct value', () => {

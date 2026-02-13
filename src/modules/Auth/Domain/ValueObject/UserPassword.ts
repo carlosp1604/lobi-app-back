@@ -1,5 +1,7 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
+import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 export class UserPassword extends ValueObject<string> {
   private __userPasswordBrand: void
@@ -12,17 +14,27 @@ export class UserPassword extends ValueObject<string> {
 
   private constructor(value: string) {
     super(value)
-
-    if (!this.isValid(value)) {
-      throw UserCredentialDomainException.invalidPasswordFormat()
-    }
   }
 
   static fromString(value: string): UserPassword {
-    return new UserPassword(value)
+    const result = this.safeCreate(value)
+
+    if (!result.success) {
+      throw result.error
+    }
+
+    return result.value
   }
 
-  private isValid(value: string): boolean {
+  static safeCreate(value: string): Result<UserPassword, UserDomainException> {
+    if (!UserPassword.isValid(value)) {
+      return fail(UserCredentialDomainException.invalidPasswordFormat())
+    }
+
+    return success(new UserPassword(value))
+  }
+
+  private static isValid(value: string): boolean {
     return UserPassword.REGEX.test(value)
   }
 }

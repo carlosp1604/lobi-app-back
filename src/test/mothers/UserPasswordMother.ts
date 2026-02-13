@@ -16,7 +16,7 @@ export class UserPasswordMother {
     return UserPassword.fromString('Abcdef1!')
   }
 
-  public static random(): UserPassword {
+  public static randomString(): string {
     const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     const lowercase = 'abcdefghijklmnopqrstuvwxyz'
     const numbers = '0123456789'
@@ -34,12 +34,14 @@ export class UserPasswordMother {
       password += allChars[Math.floor(Math.random() * allChars.length)]
     }
 
-    const shuffledPassword = password
+    return password
       .split('')
       .sort(() => Math.random() - 0.5)
       .join('')
+  }
 
-    return UserPassword.fromString(shuffledPassword)
+  public static random(): UserPassword {
+    return UserPassword.fromString(this.randomString())
   }
 
   public static invalid(): string {
