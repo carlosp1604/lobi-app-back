@@ -32,7 +32,8 @@ import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/App
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
-import { PasswordValidator } from '~/src/modules/Shared/Domain/Validator/PasswordValidator'
+import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
+import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 
 export class LoginUser {
   constructor(
@@ -56,18 +57,18 @@ export class LoginUser {
     const now = this.clockService.now()
 
     const validateUserEmailResult = this.validateUserEmail(request.email)
+    const validateUserPasswordResult = this.validatePassword(request.password)
 
     if (!validateUserEmailResult.success) {
       return validateUserEmailResult
     }
 
-    const userEmail = validateUserEmailResult.value
-
-    const isPasswordValid = new PasswordValidator().isValid(request.password)
-
-    if (!isPasswordValid) {
-      return fail(LoginUserApplicationError.invalidPasswordFormat())
+    if (!validateUserPasswordResult.success) {
+      return validateUserPasswordResult
     }
+
+    const userEmail = validateUserEmailResult.value
+    const userPassword = validateUserPasswordResult.value
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
       email: userEmail.toString(),
@@ -96,7 +97,7 @@ export class LoginUser {
 
       const credentials = getUserCredential.value
 
-      const passwordMatches = await this.passwordHasher.compare(request.password, credentials.passwordHash.toString())
+      const passwordMatches = await this.passwordHasher.compare(userPassword.value, credentials.passwordHash.toString())
 
       if (!passwordMatches) {
         const domainEvent = this.buildFailedAttemptDomainEvent(user.id, deviceLocation, sessionIpHash, userAgent, now)
@@ -155,6 +156,18 @@ export class LoginUser {
       }
 
       return fail(LoginUserApplicationError.invalidUserEmail(email))
+    }
+  }
+
+  private validatePassword(password: string): Result<UserPassword, LoginUserApplicationError> {
+    try {
+      return success(UserPassword.fromString(password))
+    } catch (exception: unknown) {
+      if (!(exception instanceof UserCredentialDomainException)) {
+        throw exception
+      }
+
+      return fail(LoginUserApplicationError.invalidPasswordFormat())
     }
   }
 
