@@ -5,7 +5,7 @@ export class VerificationTokenValue extends ValueObject<string> {
   private __verificationTokenTokenBrand: void
 
   public static readonly LENGTH = 8
-  public static readonly REGEX: RegExp = new RegExp(`^[0-9]{${this.LENGTH}}$`)
+  public static readonly REGEX = new RegExp(`^[0-9]{${this.LENGTH}}$`)
 
   private constructor(value: string) {
     super(value)

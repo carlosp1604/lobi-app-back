@@ -155,7 +155,7 @@ describe('AuthController', () => {
 
     let rawUser: UserRawModelWithRelations
     let rawCredential: UserCredentialRawWitRelationships
-    const validPassword = UserPasswordMother.valid()
+    const validPassword = UserPasswordMother.valid().value
 
     beforeEach(async () => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
@@ -301,7 +301,7 @@ describe('AuthController', () => {
           await userDatabaseHelper.save(rawUser)
           await userCredentialDatabaseHelper.save(rawCredential)
 
-          await testCase(UserPasswordMother.random())
+          await testCase(UserPasswordMother.random().value)
         })
       })
     })
