@@ -1,6 +1,8 @@
 import { EntitySchema } from 'typeorm'
 import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { SportsmanProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
+import { OwnerProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
 
 export interface UserRawModel {
   id: string
@@ -20,6 +22,8 @@ export type UserRawModelWithRelations = UserRawModel &
   Partial<{
     credential: UserCredentialRawModel | null
     sessions: Array<UserSessionRawModel>
+    sportsmanProfile: SportsmanProfileRawModel | null
+    ownerProfile: OwnerProfileRawModel | null
   }>
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
@@ -86,10 +90,6 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       type: 'one-to-one',
       target: 'UserCredentialEntity',
       lazy: false,
-      joinColumn: {
-        name: 'id',
-        referencedColumnName: 'user_id',
-      },
       inverseSide: 'user',
       cascade: true,
     },
@@ -99,6 +99,20 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       inverseSide: 'user',
       lazy: false,
       cascade: false,
+    },
+    sportsmanProfile: {
+      type: 'one-to-one',
+      target: 'SportsmanProfileEntity',
+      lazy: false,
+      inverseSide: 'user',
+      cascade: true,
+    },
+    ownerProfile: {
+      type: 'one-to-one',
+      target: 'OwnerProfileEntity',
+      lazy: false,
+      inverseSide: 'user',
+      cascade: true,
     },
   },
 })
