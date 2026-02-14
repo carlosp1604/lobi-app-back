@@ -9,7 +9,7 @@ export class DomainEventId extends UuidValueObject {
 
     super(normalized)
 
-    if (!this.isValidId(normalized)) {
+    if (!UuidValueObject.isValidId(normalized)) {
       throw DomainEventDomainException.invalidDomainEventId(value)
     }
   }

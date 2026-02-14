@@ -1,6 +1,18 @@
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 export abstract class EmailAddressMother {
+  public static readonly INVALID_FORMAT_CASES = [
+    '',
+    'no-at-symbol',
+    '@example.com',
+    'user@',
+    'user@example',
+    'user example@example.com',
+    'user@\nexample.com',
+    `${'a'.repeat(65)}@example.com`,
+    `u${'a'.repeat(310)}@example.com`,
+  ]
+
   protected static validString(): string {
     return UserEmail.fromString('test@example.com').toString()
   }
@@ -19,5 +31,10 @@ export abstract class EmailAddressMother {
   private static randomDomain(): string {
     const domains = ['example.com', 'mail.com', 'test.org', 'domain.net', 'my-site.io']
     return domains[Math.floor(Math.random() * domains.length)]
+  }
+
+  protected static invalidValue(): string {
+    const cases = this.INVALID_FORMAT_CASES
+    return cases[Math.floor(Math.random() * cases.length)]
   }
 }

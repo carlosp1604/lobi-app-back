@@ -9,7 +9,7 @@ export class VerificationTokenId extends UuidValueObject {
 
     super(normalized)
 
-    if (!this.isValidId(normalized)) {
+    if (!UuidValueObject.isValidId(normalized)) {
       throw VerificationTokenDomainException.invalidVerificationTokenId(value)
     }
   }

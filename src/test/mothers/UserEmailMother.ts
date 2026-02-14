@@ -9,4 +9,8 @@ export class UserEmailMother extends EmailAddressMother {
   public static random(): UserEmail {
     return UserEmail.fromString(this.randomValidString())
   }
+
+  public static invalid(): string {
+    return this.invalidValue()
+  }
 }

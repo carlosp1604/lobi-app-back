@@ -5,8 +5,6 @@ import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTok
 
 const validValues = fc.stringMatching(VerificationTokenValue.REGEX)
 
-const invalidCases: string[] = ['', '1234567', '123456789', '123a5678', '123 5678', '--------', '        ']
-
 describe('VerificationTokenValue', () => {
   it('should not throw error when token value is valid', () => {
     fc.assert(
@@ -16,11 +14,14 @@ describe('VerificationTokenValue', () => {
     )
   })
 
-  it.each(invalidCases)('should throw error when token value is not valid: "%s"', (invalidCode) => {
-    expect(() => VerificationTokenValue.fromString(invalidCode)).toThrow(
-      VerificationTokenDomainException.invalidVerificationTokenValue(invalidCode),
-    )
-  })
+  it.each(VerificationTokenValueMother.INVALID_FORMAT_CASES)(
+    'should throw error when token value is not valid: "%s"',
+    (invalidCode) => {
+      expect(() => VerificationTokenValue.fromString(invalidCode)).toThrow(
+        VerificationTokenDomainException.invalidVerificationTokenValue(invalidCode),
+      )
+    },
+  )
 
   it('should store the correct value', () => {
     const validValue = VerificationTokenValueMother.valid().value

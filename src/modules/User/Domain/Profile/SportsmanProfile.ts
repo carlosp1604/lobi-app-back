@@ -1,0 +1,45 @@
+import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
+import { SportsmanProfileBio } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBio'
+import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBirthDate'
+
+export class SportsmanProfile {
+  public readonly id: UserProfileId
+  public readonly userId: UserId
+  private readonly _birthDate: SportsmanProfileBirthDate | null
+  private readonly _bio: SportsmanProfileBio | null
+  public readonly createdAt: Date
+  private readonly _updatedAt: Date
+
+  constructor(
+    id: UserProfileId,
+    userId: UserId,
+    birthDate: SportsmanProfileBirthDate | null,
+    bio: SportsmanProfileBio | null,
+    createdAt: Date,
+    updatedAt: Date,
+  ) {
+    this.id = id
+    this.userId = userId
+    this._birthDate = birthDate
+    this._bio = bio
+    this.createdAt = createdAt
+    this._updatedAt = updatedAt
+  }
+
+  public static create(id: UserProfileId, userId: UserId, now: Date): SportsmanProfile {
+    return new SportsmanProfile(id, userId, null, null, now, now)
+  }
+
+  get birthDate(): SportsmanProfileBirthDate | null {
+    return this._birthDate
+  }
+
+  get bio(): SportsmanProfileBio | null {
+    return this._bio
+  }
+
+  get updatedAt(): Date {
+    return this._updatedAt
+  }
+}

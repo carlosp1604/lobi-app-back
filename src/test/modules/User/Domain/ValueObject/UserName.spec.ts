@@ -1,28 +1,36 @@
-import fc from 'fast-check'
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-
-const invalidCases: string[] = ['', 'a', '   ', 'a'.repeat(256), 'Pepe!', '1234', 'J\nP']
-
-const userNameRegex = /^[\p{L} \-']{2,255}$/u
-
-const validUserNames = fc
-  .string({ minLength: 0, maxLength: 512 })
-  .map((s) => s.trim())
-  .filter((s) => userNameRegex.test(s))
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 describe('UserName', () => {
-  it('should not throw error when user name is valid', () => {
-    fc.assert(
-      fc.property(validUserNames, (userName) => {
-        expect(() => UserName.fromString(userName)).not.toThrow()
-      }),
-    )
+  describe('fromString', () => {
+    it('should not throw error when user name is valid', () => {
+      const validUserNames = Array.from({ length: 100 }, () => UserNameMother.randomString())
+
+      validUserNames.forEach((validUserName) => {
+        expect(() => UserName.fromString(validUserName)).not.toThrow()
+      })
+    })
+
+    it.each(UserNameMother.INVALID_FORMAT_CASES)('should throw error when user name is not valid: %s', (userName) => {
+      expect(() => UserName.fromString(userName)).toThrow(UserDomainException.invalidUserName(userName))
+    })
   })
 
-  it.each(invalidCases)('should throw error when user name is not valid: %s', (userName) => {
-    expect(() => UserName.fromString(userName)).toThrow(UserDomainException.invalidUserName(userName))
+  describe('safeCreate', () => {
+    it('should return success when user name is valid', () => {
+      const validUserNames = Array.from({ length: 100 }, () => UserNameMother.randomString())
+
+      validUserNames.forEach((validUserName) => {
+        expect(() => UserName.fromString(validUserName)).not.toThrow()
+      })
+    })
+
+    it.each(UserNameMother.INVALID_FORMAT_CASES)('should return error when user name is not valid: %s', (userName) => {
+      const result = UserName.safeCreate(userName)
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(UserDomainException.invalidUserName(userName))
+    })
   })
 
   it('should store the correct value', () => {

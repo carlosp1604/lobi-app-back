@@ -1,26 +1,38 @@
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { UserRole, ValidUserRoles } from '~/src/modules/User/Domain/ValueObject/UserRole'
-
-const validUserRoles: Array<ValidUserRoles> = Object.values(ValidUserRoles)
-
-const invalidCases = ['', 'random-role', '1111', 'ADMINISTRATOR', 'ADMin', 'admin ', 'superuser']
+import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 
 describe('UserRole', () => {
-  describe('constructor', () => {
-    it.each(validUserRoles)('should not throw error when user role is valid: %s', (userRole) => {
+  describe('fromString', () => {
+    it.each(UserRoleMother.VALID_ROLES)('should not throw error when user role is valid: %s', (userRole) => {
       expect(() => UserRole.fromString(String(userRole))).not.toThrow()
     })
 
-    it.each(invalidCases)('should throw error when user role is not valid: %s', (userRole) => {
+    it.each(UserRoleMother.INVALID_ROLES)('should throw error when user role is not valid: %s', (userRole) => {
       expect(() => UserRole.fromString(userRole)).toThrow(UserDomainException.invalidUserRole(userRole))
+    })
+  })
+
+  describe('safeCreate', () => {
+    it.each(UserRoleMother.VALID_ROLES)('should return success when user role is valid: %s', (userRole) => {
+      const result = UserRole.safeCreate(String(userRole))
+
+      expect(result.success).toBe(true)
+    })
+
+    it.each(UserRoleMother.INVALID_ROLES)('should return error when user role is not valid: %s', (userRole) => {
+      const result = UserRole.safeCreate(String(userRole))
+
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(UserDomainException.invalidUserRole(userRole))
     })
   })
 
   describe('get value', () => {
     it('should store the correct value', () => {
-      const userRoleValueObject = UserRole.fromString(ValidUserRoles.ADMIN)
+      const userRoleValueObject = UserRoleMother.owner()
 
-      expect(userRoleValueObject.value).toEqual(ValidUserRoles.ADMIN)
+      expect(userRoleValueObject.value).toEqual(ValidUserRoles.OWNER)
     })
   })
 
