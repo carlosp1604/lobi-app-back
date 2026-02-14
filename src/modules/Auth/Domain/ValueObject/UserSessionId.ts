@@ -9,7 +9,7 @@ export class UserSessionId extends UuidValueObject {
 
     super(normalized)
 
-    if (!this.isValidId(normalized)) {
+    if (!UuidValueObject.isValidId(normalized)) {
       throw UserSessionDomainException.invalidUserSessionId(value)
     }
   }

@@ -9,7 +9,7 @@ export class UserId extends UuidValueObject {
 
     super(normalized)
 
-    if (!this.isValidId(normalized)) {
+    if (!UuidValueObject.isValidId(normalized)) {
       throw UserDomainException.invalidUserId(value)
     }
   }
