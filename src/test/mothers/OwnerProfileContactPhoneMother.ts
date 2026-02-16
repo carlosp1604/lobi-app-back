@@ -37,7 +37,6 @@ export class OwnerProfileContactPhoneMother {
   }
 
   static invalid(): string {
-    const cases = this.INVALID_FORMAT_CASES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return 'invalid-owner-phone'
   }
 }

@@ -6,7 +6,7 @@ import { OwnerProfileRawModel } from '~/src/modules/User/Infrastructure/Entities
 import { OwnerProfileCompanyName } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileCompanyName'
 import { OwnerProfileContactPhone } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileContactPhone'
 
-export class OwnerProfileTranslator {
+export class OwnerProfileModelTranslator {
   public static toDomain(rawModel: OwnerProfileRawModel): OwnerProfile {
     return new OwnerProfile(
       UserProfileId.fromString(rawModel.id),

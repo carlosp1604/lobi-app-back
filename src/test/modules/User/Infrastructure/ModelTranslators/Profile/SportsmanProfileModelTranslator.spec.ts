@@ -7,13 +7,13 @@ import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/Use
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { SportsmanProfileBio } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBio'
 import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBirthDate'
-import { SportsmanProfileTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/Profile/SportsmanProfileModelTranslator'
+import { SportsmanProfileModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/Profile/SportsmanProfileModelTranslator'
 import { ProfileDomainException } from '~/src/modules/User/Domain/Profile/ProfileDomainException'
 import { SportsmanProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/SportsmanProfileTestBuilder'
 import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 
-describe('SportsmanProfileTranslator', () => {
+describe('SportsmanProfileModelTranslator', () => {
   const isoDate = '2026-02-14T19:05:00.000Z'
   const now = new Date(isoDate)
 
@@ -62,7 +62,7 @@ describe('SportsmanProfileTranslator', () => {
     it('should return domain object when nullable fields are not NULL', () => {
       const raw = { ...baseRaw }
 
-      const result = SportsmanProfileTranslator.toDomain(raw, now)
+      const result = SportsmanProfileModelTranslator.toDomain(raw, now)
 
       checkResult(result, raw)
       expect(result.bio).not.toBeNull()
@@ -72,7 +72,7 @@ describe('SportsmanProfileTranslator', () => {
     it('should return the correct domain object when nullable fields are NULL', () => {
       const raw = { ...baseRaw, bio: null, birth_date: null }
 
-      const result = SportsmanProfileTranslator.toDomain(raw, now)
+      const result = SportsmanProfileModelTranslator.toDomain(raw, now)
 
       checkResult(result, raw)
       expect(result.bio).toBeNull()
@@ -80,10 +80,10 @@ describe('SportsmanProfileTranslator', () => {
     })
 
     it('should propagate errors from ValueObject', () => {
-      const invalidBio = 'A'.repeat(SportsmanProfileBio.MAX_LENGTH + 1)
+      const invalidBio = SportsmanProfileBioMother.invalid()
       const rawInvalidBio = { ...baseRaw, bio: invalidBio }
 
-      expect(() => SportsmanProfileTranslator.toDomain(rawInvalidBio, now)).toThrow(
+      expect(() => SportsmanProfileModelTranslator.toDomain(rawInvalidBio, now)).toThrow(
         ProfileDomainException.invalidSportsmanBio(invalidBio),
       )
     })
@@ -91,7 +91,7 @@ describe('SportsmanProfileTranslator', () => {
     it('does not mutate the input raw model', () => {
       const raw = structuredClone(baseRaw)
 
-      SportsmanProfileTranslator.toDomain(raw, now)
+      SportsmanProfileModelTranslator.toDomain(raw, now)
 
       expect(raw).toEqual(baseRaw)
     })
@@ -133,7 +133,7 @@ describe('SportsmanProfileTranslator', () => {
     it('should return the correct raw model when nullable fields are not NULL', () => {
       const domain = builder.build()
 
-      const result = SportsmanProfileTranslator.toDatabase(domain)
+      const result = SportsmanProfileModelTranslator.toDatabase(domain)
 
       checkResult(result, domain)
       expect(result.bio).not.toBeNull()
@@ -143,7 +143,7 @@ describe('SportsmanProfileTranslator', () => {
     it('should return the correct raw model when nullable fields are NULL', () => {
       const domain = builder.withBio(null).withBirthDate(null).build()
 
-      const result = SportsmanProfileTranslator.toDatabase(domain)
+      const result = SportsmanProfileModelTranslator.toDatabase(domain)
 
       checkResult(result, domain)
       expect(result.bio).toBeNull()
@@ -162,7 +162,7 @@ describe('SportsmanProfileTranslator', () => {
         updatedAt: domain.updatedAt,
       }
 
-      SportsmanProfileTranslator.toDatabase(domain)
+      SportsmanProfileModelTranslator.toDatabase(domain)
 
       expect(domain.id.equals(snapshot.id)).toBe(true)
       expect(domain.userId.equals(snapshot.userId)).toBe(true)

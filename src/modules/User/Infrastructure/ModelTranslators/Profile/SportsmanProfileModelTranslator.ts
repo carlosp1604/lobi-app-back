@@ -5,7 +5,7 @@ import { SportsmanProfileBio } from '~/src/modules/User/Domain/ValueObject/Profi
 import { SportsmanProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
 import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBirthDate'
 
-export class SportsmanProfileTranslator {
+export class SportsmanProfileModelTranslator {
   public static toDomain(rawModel: SportsmanProfileRawModel, now: Date): SportsmanProfile {
     return new SportsmanProfile(
       UserProfileId.fromString(rawModel.id),

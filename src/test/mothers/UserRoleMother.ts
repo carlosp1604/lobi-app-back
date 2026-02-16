@@ -5,8 +5,7 @@ export class UserRoleMother {
   public static readonly VALID_ROLES: Array<ValidUserRoles> = Object.values(ValidUserRoles)
 
   public static invalid(): string {
-    const cases = this.INVALID_ROLES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return 'invalid-user-role'
   }
 
   static sportsman(): UserRole {

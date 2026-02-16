@@ -13,9 +13,9 @@ import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/Use
 import { OwnerProfileCompanyName } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileCompanyName'
 import { OwnerProfileTaxId } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileTaxId'
 import { OwnerProfileContactPhone } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileContactPhone'
-import { OwnerProfileTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/Profile/OwnerProfileModelTranslator'
+import { OwnerProfileModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/Profile/OwnerProfileModelTranslator'
 
-describe('OwnerProfileTranslator', () => {
+describe('OwnerProfileModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
   const now = new Date(isoDate)
 
@@ -63,7 +63,7 @@ describe('OwnerProfileTranslator', () => {
     it('should return domain object when nullable fields are not NULL', () => {
       const raw = { ...baseRaw }
 
-      const result = OwnerProfileTranslator.toDomain(raw)
+      const result = OwnerProfileModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
       expect(result.companyName).not.toBeNull()
@@ -74,7 +74,7 @@ describe('OwnerProfileTranslator', () => {
     it('should return the correct domain object when nullable fields are NULL', () => {
       const raw = { ...baseRaw, company_name: null, tax_id: null, contact_phone: null }
 
-      const result = OwnerProfileTranslator.toDomain(raw)
+      const result = OwnerProfileModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
       expect(result.companyName).toBeNull()
@@ -83,17 +83,18 @@ describe('OwnerProfileTranslator', () => {
     })
 
     it('should propagate errors from ValueObject', () => {
-      const rawInvalidPhone = { ...baseRaw, contact_phone: 'invalid-phone' }
+      const invalidOwnerPhoneContact = OwnerProfileContactPhoneMother.invalid()
+      const rawInvalidPhone = { ...baseRaw, contact_phone: invalidOwnerPhoneContact }
 
-      expect(() => OwnerProfileTranslator.toDomain(rawInvalidPhone)).toThrow(
-        ProfileDomainException.invalidOwnerContactPhone('invalid-phone'),
+      expect(() => OwnerProfileModelTranslator.toDomain(rawInvalidPhone)).toThrow(
+        ProfileDomainException.invalidOwnerContactPhone(invalidOwnerPhoneContact),
       )
     })
 
     it('does not mutate the input raw model', () => {
       const raw = structuredClone(baseRaw)
 
-      OwnerProfileTranslator.toDomain(raw)
+      OwnerProfileModelTranslator.toDomain(raw)
 
       expect(raw).toEqual(baseRaw)
     })
@@ -142,7 +143,7 @@ describe('OwnerProfileTranslator', () => {
     it('should return the correct raw model when nullable fields are not NULL', () => {
       const domain = builder.build()
 
-      const result = OwnerProfileTranslator.toDatabase(domain)
+      const result = OwnerProfileModelTranslator.toDatabase(domain)
 
       checkResult(result, domain)
       expect(result.company_name).not.toBeNull()
@@ -153,7 +154,7 @@ describe('OwnerProfileTranslator', () => {
     it('should return the correct raw model when nullable fields are NULL', () => {
       const domain = builder.withCompanyName(null).withTaxId(null).withContactPhone(null).build()
 
-      const result = OwnerProfileTranslator.toDatabase(domain)
+      const result = OwnerProfileModelTranslator.toDatabase(domain)
 
       checkResult(result, domain)
       expect(result.company_name).toBeNull()
@@ -174,7 +175,7 @@ describe('OwnerProfileTranslator', () => {
         updatedAt: domain.updatedAt,
       }
 
-      OwnerProfileTranslator.toDatabase(domain)
+      OwnerProfileModelTranslator.toDatabase(domain)
 
       expect(domain.id.equals(snapshot.id)).toBe(true)
       expect(domain.userId.equals(snapshot.userId)).toBe(true)

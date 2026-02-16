@@ -20,7 +20,6 @@ export class VerificationTokenValueMother {
   }
 
   public static invalid(): string {
-    const cases = this.INVALID_FORMAT_CASES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return '-1234567'
   }
 }
