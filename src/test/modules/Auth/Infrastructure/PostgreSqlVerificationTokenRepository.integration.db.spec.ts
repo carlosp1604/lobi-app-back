@@ -47,6 +47,19 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     expect(result?.usedAt).toEqual(baseRawVerificationToken.used_at)
   }
 
+  const assertFoundVerificationToken = (
+    foundVerificationToken: VerificationTokenRawModel | null,
+    expectedVerificationToken: VerificationToken,
+  ) => {
+    expect(foundVerificationToken).not.toBeNull()
+    expect(foundVerificationToken!.id).toBe(expectedVerificationToken.id.value)
+    expect(foundVerificationToken!.email).toBe(expectedVerificationToken.email.value)
+    expect(foundVerificationToken!.token_hash).toBe(expectedVerificationToken.tokenHash.value)
+    expect(foundVerificationToken!.purpose).toBe(expectedVerificationToken.purpose.value)
+    expect(foundVerificationToken!.expires_at.getTime()).toBe(expectedVerificationToken.expiresAt.getTime())
+    expect(foundVerificationToken!.used_at).toEqual(expectedVerificationToken.usedAt)
+  }
+
   let baseRawVerificationToken: VerificationTokenRawModel
 
   beforeEach(() => {
@@ -82,50 +95,120 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         .withExpiresAt(futureExpiresAt)
     })
 
-    const assertFoundVerificationToken = (
-      foundVerificationToken: VerificationTokenRawModel | null,
-      expectedVerificationToken: VerificationToken,
-    ) => {
-      expect(foundVerificationToken).not.toBeNull()
-      expect(foundVerificationToken!.id).toBe(expectedVerificationToken.id.value)
-      expect(foundVerificationToken!.email).toBe(expectedVerificationToken.email.value)
-      expect(foundVerificationToken!.token_hash).toBe(expectedVerificationToken.tokenHash.value)
-      expect(foundVerificationToken!.purpose).toBe(expectedVerificationToken.purpose.value)
-      expect(foundVerificationToken!.expires_at.getTime()).toBe(expectedVerificationToken.expiresAt.getTime())
-      expect(foundVerificationToken!.used_at).toEqual(expectedVerificationToken.usedAt)
-    }
-
     it('should save verificationToken correctly', async () => {
       const { context, repository } = buildRepositoryAndContext(runner.manager)
 
       const verificationToken = verificationTokenTestBuilder.build()
 
+      const totalTokensBefore = await verificationTokenDatabaseHelper.count()
+
       await repository.save(verificationToken, context)
+
+      const totalTokensAfter = await verificationTokenDatabaseHelper.count()
 
       const foundVerificationToken = await verificationTokenDatabaseHelper.findById(verificationTokenId.value)
 
+      expect(totalTokensBefore).toBe(0)
+      expect(totalTokensAfter).toBe(1)
       assertFoundVerificationToken(foundVerificationToken, verificationToken)
       expect(foundVerificationToken!.used_at).toBeNull()
     })
 
-    it('should update verificationToken correctly if it already exists', async () => {
+    it('should throw error and not insert when verificationToken already exists', async () => {
       const { context, repository } = buildRepositoryAndContext(runner.manager)
 
-      const initialCreatedAt = new Date(now.getTime() - 10000)
       const initialRawToken = makeRawVerificationToken({
         ...baseRawVerificationToken,
-        created_at: initialCreatedAt,
+        id: verificationTokenId.value,
       })
+      await verificationTokenDatabaseHelper.save(initialRawToken)
+
+      const duplicateVerificationToken = verificationTokenTestBuilder.build()
+
+      const totalTokensBefore = await verificationTokenDatabaseHelper.count()
+      expect(totalTokensBefore).toBe(1)
+
+      await expect(repository.save(duplicateVerificationToken, context)).rejects.toThrow()
+    })
+  })
+
+  describe('update', () => {
+    let runner: QueryRunner
+    let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
+    let verificationTokenTestBuilder = new VerificationTokenTestBuilder()
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    beforeEach(() => {
+      verificationTokenDatabaseHelper = buildVerificationTokenDatabaseHelper(runner.manager)
+      verificationTokenTestBuilder = new VerificationTokenTestBuilder()
+        .withId(verificationTokenId)
+        .withEmail(email)
+        .withTokenHash(verificationTokenTokenHash)
+        .withPurpose(verificationTokenPurpose)
+        .withUsedAt(null)
+        .withCreatedAt(now)
+        .withExpiresAt(futureExpiresAt)
+    })
+
+    it('should update an existing verificationToken correctly', async () => {
+      const { context, repository } = buildRepositoryAndContext(runner.manager)
+
+      const initialRawToken = makeRawVerificationToken({
+        ...baseRawVerificationToken,
+        id: verificationTokenId.value,
+        used_at: null,
+      })
+
       await verificationTokenDatabaseHelper.save(initialRawToken)
 
       const updatedVerificationToken = verificationTokenTestBuilder.withUsedAt(now).build()
 
-      await repository.save(updatedVerificationToken, context)
+      const totalTokensBefore = await verificationTokenDatabaseHelper.count()
+
+      await repository.update(updatedVerificationToken, context)
+
+      const totalTokensAfter = await verificationTokenDatabaseHelper.count()
 
       const foundVerificationToken = await verificationTokenDatabaseHelper.findById(verificationTokenId.value)
 
+      expect(totalTokensBefore).toBe(1)
+      expect(totalTokensAfter).toBe(1)
+
       assertFoundVerificationToken(foundVerificationToken, updatedVerificationToken)
       expect(foundVerificationToken!.used_at?.getTime()).toBe(now.getTime())
+    })
+
+    it('should not affect other tokens when the token does not exist', async () => {
+      const { context, repository } = buildRepositoryAndContext(runner.manager)
+
+      const existingTokenId = VerificationTokenIdMother.valid()
+      const existingRawToken = makeRawVerificationToken({
+        ...baseRawVerificationToken,
+        id: existingTokenId.value,
+        used_at: null,
+      })
+      await verificationTokenDatabaseHelper.save(existingRawToken)
+
+      const ghostVerificationToken = verificationTokenTestBuilder.withUsedAt(now).build()
+
+      const totalTokensBefore = await verificationTokenDatabaseHelper.count()
+
+      await repository.update(ghostVerificationToken, context)
+
+      const totalTokensAfter = await verificationTokenDatabaseHelper.count()
+
+      expect(totalTokensBefore).toBe(1)
+      expect(totalTokensAfter).toBe(1)
+
+      const foundExistingToken = await verificationTokenDatabaseHelper.findById(existingTokenId.value)
+      expect(foundExistingToken).not.toBeNull()
+      expect(foundExistingToken!.used_at).toBeNull()
+
+      const foundGhostToken = await verificationTokenDatabaseHelper.findById(ghostVerificationToken.id.value)
+      expect(foundGhostToken).toBeNull()
     })
   })
 
@@ -209,7 +292,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       expect(result?.createdAt.getTime()).not.toBe(oldDate.getTime())
     })
 
-    it('should return null if verificationToken does not exist', async () => {
+    it('should return null when verificationToken does not exist', async () => {
       const { repository, context } = buildRepositoryAndContext(runner.manager)
 
       const result = await repository.findByEmailWithLock(email.value, context)
@@ -270,7 +353,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       expect(result?.createdAt.getTime()).not.toBe(oldDate.getTime())
     })
 
-    it('should return null if verificationToken does not exist', async () => {
+    it('should return null when verificationToken does not exist', async () => {
       const { repository } = buildRepositoryAndContext(runner.manager)
 
       const result = await repository.findByEmail(email.value)

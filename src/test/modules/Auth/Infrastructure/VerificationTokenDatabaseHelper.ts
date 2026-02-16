@@ -40,4 +40,10 @@ export class VerificationTokenDatabaseHelper {
 
     await verificationTokenRepository.remove(verificationToken)
   }
+
+  public async count(): Promise<number> {
+    const verificationTokenRepository = this.entityManager.getRepository(VerificationTokenEntity)
+
+    return verificationTokenRepository.count()
+  }
 }

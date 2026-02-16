@@ -9,4 +9,8 @@ export class VerificationTokenEmailMother extends EmailAddressMother {
   public static random(): VerificationTokenEmail {
     return VerificationTokenEmail.fromString(this.randomValidString())
   }
+
+  public static invalid(): string {
+    return EmailAddressMother.invalidValue()
+  }
 }
