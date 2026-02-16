@@ -22,7 +22,7 @@ export class UserTestBuilder {
   private _emailVerifiedAt = new Date()
   private _createdAt = new Date()
   private _updatedAt = new Date()
-  private _deletedAt: Date | null = new Date()
+  private _deletedAt: Date | null = null
 
   withId(userId: UserId) {
     this._id = userId

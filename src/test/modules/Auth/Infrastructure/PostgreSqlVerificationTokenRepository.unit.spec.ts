@@ -92,7 +92,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw error if resolver fails', async () => {
+      it('should throw error when resolver fails', async () => {
         mockedResolver.resolve.mockImplementation(() => {
           throw new Error('Something went wrong while resolving entityManager')
         })
@@ -104,7 +104,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         )
       })
 
-      it('should throw error if ORM/Database fails', async () => {
+      it('should throw error when ORM/Database fails', async () => {
         mockedQueryBuilder.getOne.mockImplementation(() => {
           throw new Error('Something went wrong while retrieving data from database')
         })
@@ -116,7 +116,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         )
       })
 
-      it('should throw error if translator fails', async () => {
+      it('should throw error when translator fails', async () => {
         jest.spyOn(VerificationTokenModelTranslator, 'toDomain').mockImplementation(() => {
           throw new Error('Something went wrong while translating entity to domain')
         })
@@ -185,7 +185,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw error if resolver fails', async () => {
+      it('should throw error when resolver fails', async () => {
         mockedResolver.resolve.mockImplementation(() => {
           throw new Error('Something went wrong while resolving entityManager')
         })
@@ -195,7 +195,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         await expect(repository.findByEmail(email)).rejects.toThrow(Error('Something went wrong while resolving entityManager'))
       })
 
-      it('should throw error if ORM/Database fails', async () => {
+      it('should throw error when ORM/Database fails', async () => {
         mockedQueryBuilder.getOne.mockImplementation(() => {
           throw new Error('Something went wrong while retrieving data from database')
         })
@@ -205,7 +205,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         await expect(repository.findByEmail(email)).rejects.toThrow(Error('Something went wrong while retrieving data from database'))
       })
 
-      it('should throw error if translator fails', async () => {
+      it('should throw error when translator fails', async () => {
         jest.spyOn(VerificationTokenModelTranslator, 'toDomain').mockImplementation(() => {
           throw new Error('Something went wrong while translating entity to domain')
         })
@@ -223,27 +223,26 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
     beforeEach(() => {
       mockedEntityManager.getRepository.mockReturnValue(mockedVerificationTokenRepository)
-      mockedVerificationTokenRepository.save.mockResolvedValue(rawToken)
     })
 
     it('should call services correctly', async () => {
-      const verificationTokenModelTranslator = jest.spyOn(VerificationTokenModelTranslator, 'toDatabase').mockReturnValue(rawToken)
+      const verificationTokenModelTranslatorSpy = jest.spyOn(VerificationTokenModelTranslator, 'toDatabase').mockReturnValue(rawToken)
 
       const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
       await repository.save(verificationTokenToSave, fakeContext)
 
       expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
       expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
-      expect(verificationTokenModelTranslator).toHaveBeenCalledTimes(1)
-      expect(mockedVerificationTokenRepository.save).toHaveBeenCalledTimes(1)
+      expect(verificationTokenModelTranslatorSpy).toHaveBeenCalledTimes(1)
+      expect(mockedVerificationTokenRepository.insert).toHaveBeenCalledTimes(1)
 
       expect(mockedResolver.resolve).toHaveBeenCalledWith(fakeContext)
       expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(VerificationTokenEntity)
-      expect(verificationTokenModelTranslator).toHaveBeenCalledWith(verificationTokenToSave)
-      expect(mockedVerificationTokenRepository.save).toHaveBeenCalledWith(rawToken)
+      expect(verificationTokenModelTranslatorSpy).toHaveBeenCalledWith(verificationTokenToSave)
+      expect(mockedVerificationTokenRepository.insert).toHaveBeenCalledWith(rawToken)
     })
 
-    it('should throw error if resolver fails', async () => {
+    it('should throw error when resolver fails', async () => {
       mockedResolver.resolve.mockImplementation(() => {
         throw new Error('Something went wrong while resolving entityManager')
       })
@@ -255,8 +254,8 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       )
     })
 
-    it('should throw error if ORM/Database fails', async () => {
-      mockedVerificationTokenRepository.save.mockImplementation(() => {
+    it('should throw error when ORM/Database fails', async () => {
+      mockedVerificationTokenRepository.insert.mockImplementation(() => {
         throw new Error('Something went wrong while saving data to database')
       })
 
@@ -267,7 +266,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       )
     })
 
-    it('should throw error if translator fails', async () => {
+    it('should throw error when translator fails', async () => {
       jest.spyOn(VerificationTokenModelTranslator, 'toDatabase').mockImplementation(() => {
         throw new Error('Something went wrong while translating entity to database')
       })
@@ -277,6 +276,68 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       await expect(repository.save(verificationTokenToSave, fakeContext)).rejects.toThrow(
         Error('Something went wrong while translating entity to database'),
       )
+    })
+  })
+
+  describe('update', () => {
+    const verificationTokenToUpdate = new VerificationTokenTestBuilder().withId(testTokenId).build()
+    const rawToken = makeRawVerificationToken({ id: testTokenId.value })
+
+    beforeEach(() => {
+      mockedEntityManager.getRepository.mockReturnValue(mockedVerificationTokenRepository)
+    })
+
+    it('should call services correctly', async () => {
+      const verificationTokenModelTranslatorSpy = jest.spyOn(VerificationTokenModelTranslator, 'toDatabase').mockReturnValue(rawToken)
+
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+      await repository.update(verificationTokenToUpdate, fakeContext)
+
+      expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+      expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
+      expect(verificationTokenModelTranslatorSpy).toHaveBeenCalledTimes(1)
+      expect(mockedVerificationTokenRepository.update).toHaveBeenCalledTimes(1)
+
+      expect(mockedResolver.resolve).toHaveBeenCalledWith(fakeContext)
+      expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(VerificationTokenEntity)
+      expect(verificationTokenModelTranslatorSpy).toHaveBeenCalledWith(verificationTokenToUpdate)
+      expect(mockedVerificationTokenRepository.update).toHaveBeenCalledWith(rawToken.id, rawToken)
+    })
+
+    it('should throw error when resolver fails', async () => {
+      const resolverError = new Error('Something went wrong while resolving entityManager')
+
+      mockedResolver.resolve.mockImplementation(() => {
+        throw resolverError
+      })
+
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+
+      await expect(repository.update(verificationTokenToUpdate, fakeContext)).rejects.toThrow(resolverError)
+    })
+
+    it('should throw error when ORM/Database fails', async () => {
+      const dbError = new Error('Something went wrong while updating data in database')
+
+      mockedVerificationTokenRepository.update.mockImplementation(() => {
+        throw dbError
+      })
+
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+
+      await expect(repository.update(verificationTokenToUpdate, fakeContext)).rejects.toThrow(dbError)
+    })
+
+    it('should throw error when translator fails', async () => {
+      const translatorError = new Error('Something went wrong while translating entity to database')
+
+      jest.spyOn(VerificationTokenModelTranslator, 'toDatabase').mockImplementation(() => {
+        throw translatorError
+      })
+
+      const repository = new PostgreSqlVerificationTokenRepository(mockedResolver)
+
+      await expect(repository.update(verificationTokenToUpdate, fakeContext)).rejects.toThrow(translatorError)
     })
   })
 
@@ -301,7 +362,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       expect(mockedVerificationTokenRepository.delete).toHaveBeenCalledWith({ id: verificationTokenId })
     })
 
-    it('should throw error if resolver fails', async () => {
+    it('should throw error when resolver fails', async () => {
       mockedResolver.resolve.mockImplementation(() => {
         throw new Error('Something went wrong while resolving entityManager')
       })
@@ -313,7 +374,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       )
     })
 
-    it('should throw error if ORM/Database fails', async () => {
+    it('should throw error when ORM/Database fails', async () => {
       mockedVerificationTokenRepository.delete.mockImplementation(() => {
         throw new Error('Something went wrong while deleting data from database')
       })

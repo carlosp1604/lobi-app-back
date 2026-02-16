@@ -20,10 +20,10 @@ export class VerificationTokenModelTranslator {
 
   public static toDatabase(domain: VerificationToken): VerificationTokenRawModel {
     return {
-      id: domain.id.toString(),
-      email: domain.email.toString(),
-      token_hash: domain.tokenHash.toString(),
-      purpose: domain.purpose.toString(),
+      id: domain.id.value,
+      email: domain.email.value,
+      token_hash: domain.tokenHash.value,
+      purpose: domain.purpose.value,
       expires_at: domain.expiresAt,
       used_at: domain.usedAt,
       created_at: domain.createdAt,

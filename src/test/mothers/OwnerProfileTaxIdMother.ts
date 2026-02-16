@@ -48,7 +48,6 @@ export class OwnerProfileTaxIdMother {
   }
 
   static invalid(): string {
-    const cases = this.INVALID_FORMAT_CASES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return 'a'.repeat(OwnerProfileTaxId.MAX_LENGTH + 1)
   }
 }

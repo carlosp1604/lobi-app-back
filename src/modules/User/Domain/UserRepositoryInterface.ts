@@ -1,5 +1,7 @@
 import { User } from '~/src/modules/User/Domain/User'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 
 export interface UserRepositoryInterface {
   /**
@@ -25,4 +27,27 @@ export interface UserRepositoryInterface {
    * @returns The locked User entity if found, otherwise null
    */
   findByIdWithLock(id: string, context: TxContext): Promise<User | null>
+
+  /**
+   * Checks if a user exists by email
+   * @param email UserEmail Value Object
+   * @param context The transactional context
+   * @returns True if the user exists, false otherwise
+   */
+  checkEmailExists(email: UserEmail, context?: TxContext): Promise<boolean>
+
+  /**
+   * Checks if a user exists by username
+   * @param username UserUsername Value Object
+   * @param context The transactional context
+   * @returns True if the user exists, false otherwise
+   */
+  checkUsernameExists(username: UserUsername, context?: TxContext): Promise<boolean>
+
+  /**
+   * Persists the given user
+   * @param user User to save
+   * @param context the transactional context
+   */
+  save(user: User, context?: TxContext): Promise<void>
 }

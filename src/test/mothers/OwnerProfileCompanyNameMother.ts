@@ -32,7 +32,6 @@ export class OwnerProfileCompanyNameMother {
   }
 
   static invalid(): string {
-    const cases = this.INVALID_FORMAT_CASES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return 'a'.repeat(OwnerProfileCompanyName.MAX_LENGTH + 1)
   }
 }

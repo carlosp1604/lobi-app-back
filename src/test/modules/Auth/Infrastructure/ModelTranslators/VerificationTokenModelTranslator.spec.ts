@@ -19,7 +19,7 @@ describe('VerificationTokenModelTranslator', () => {
 
   const baseRaw = makeRawVerificationToken({
     email: VerificationTokenEmailMother.random().toString(),
-    purpose: VerificationTokenPurpose.createAccount().toString(),
+    purpose: VerificationTokenPurpose.createAccount().value,
     created_at: now,
     expires_at: futureExpiresAt,
     used_at: null,
@@ -32,10 +32,10 @@ describe('VerificationTokenModelTranslator', () => {
       expect(result.tokenHash).toBeInstanceOf(VerificationTokenTokenHash)
       expect(result.purpose).toBeInstanceOf(VerificationTokenPurpose)
 
-      expect(result.id.toString()).toBe(raw.id)
-      expect(result.email.toString()).toBe(raw.email)
-      expect(result.tokenHash.toString()).toBe(raw.token_hash)
-      expect(result.purpose.toString()).toBe(raw.purpose)
+      expect(result.id.value).toBe(raw.id)
+      expect(result.email.value).toBe(raw.email)
+      expect(result.tokenHash.value).toBe(raw.token_hash)
+      expect(result.purpose.value).toBe(raw.purpose)
       expect(result.expiresAt.getTime()).toBe(raw.expires_at.getTime())
       expect(result.usedAt).toEqual(raw.used_at)
       expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
@@ -68,10 +68,11 @@ describe('VerificationTokenModelTranslator', () => {
     })
 
     it('should propagate errors from ValueObject', () => {
-      const rawInvalidEmail = { ...baseRaw, email: 'not-an-email' }
+      const invalidEmail = VerificationTokenEmailMother.invalid()
+      const rawInvalidEmail = { ...baseRaw, email: invalidEmail }
 
       expect(() => VerificationTokenModelTranslator.toDomain(rawInvalidEmail)).toThrow(
-        VerificationTokenDomainException.invalidVerificationTokenEmail('not-an-email'),
+        VerificationTokenDomainException.invalidVerificationTokenEmail(invalidEmail),
       )
     })
   })
@@ -91,10 +92,10 @@ describe('VerificationTokenModelTranslator', () => {
     })
 
     const checkResult = (result: VerificationTokenRawModel, domain: VerificationToken) => {
-      expect(result.id).toBe(domain.id.toString())
-      expect(result.email).toBe(domain.email.toString())
-      expect(result.token_hash).toBe(domain.tokenHash.toString())
-      expect(result.purpose).toBe(domain.purpose.toString())
+      expect(result.id).toBe(domain.id.value)
+      expect(result.email).toBe(domain.email.value)
+      expect(result.token_hash).toBe(domain.tokenHash.value)
+      expect(result.purpose).toBe(domain.purpose.value)
       expect(result.expires_at.getTime()).toBe(domain.expiresAt.getTime())
       expect(result.used_at).toEqual(domain.usedAt)
       expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())

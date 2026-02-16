@@ -3,6 +3,13 @@ import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 
 export interface UserCredentialRepositoryInterface {
   /**
+   * Persists a new UserCredential in the database
+   * @param userCredential The UserCredential domain entity to insert
+   * @param context The transactional context
+   */
+  save(userCredential: UserCredential, context?: TxContext): Promise<void>
+
+  /**
    * Persists the last successful login access for the given UserCredential
    * @param userCredential UserCredential to update
    * @param context The transactional context

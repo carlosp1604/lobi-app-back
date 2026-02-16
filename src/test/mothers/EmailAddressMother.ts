@@ -34,7 +34,6 @@ export abstract class EmailAddressMother {
   }
 
   protected static invalidValue(): string {
-    const cases = this.INVALID_FORMAT_CASES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return 'not-a-valid-email-address'
   }
 }

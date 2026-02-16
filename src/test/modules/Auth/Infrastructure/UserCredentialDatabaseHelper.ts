@@ -30,4 +30,10 @@ export class UserCredentialDatabaseHelper {
 
     await userCredentialRepository.delete({ user_id: userId })
   }
+
+  public async count(): Promise<number> {
+    const userCredentialRepository = this.entityManager.getRepository(UserCredentialEntity)
+
+    return userCredentialRepository.count()
+  }
 }

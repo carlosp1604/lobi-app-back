@@ -8,8 +8,7 @@ export class UserNameMother {
   }
 
   public static invalid(): string {
-    const cases = this.INVALID_FORMAT_CASES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return 'invalid-user-name!'
   }
 
   public static randomString(): string {

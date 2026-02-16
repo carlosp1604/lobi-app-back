@@ -53,7 +53,7 @@ export class PostgreSqlVerificationTokenRepository implements VerificationTokenR
   }
 
   /**
-   * Saves (inserts or update) a VerificationToken in the database
+   * Saves a VerificationToken in the database
    * @param verificationToken The VerificationToken domain entity to persist
    * @param context The transactional context
    */
@@ -64,7 +64,22 @@ export class PostgreSqlVerificationTokenRepository implements VerificationTokenR
 
     const verificationTokenRawModel = VerificationTokenModelTranslator.toDatabase(verificationToken)
 
-    await verificationTokenRepository.save(verificationTokenRawModel)
+    await verificationTokenRepository.insert(verificationTokenRawModel)
+  }
+
+  /**
+   * Updates an existing VerificationToken in the database
+   * @param verificationToken The VerificationToken domain entity to update
+   * @param context The transactional context
+   */
+  public async update(verificationToken: VerificationToken, context: TxContext): Promise<void> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const verificationTokenRepository = entityManager.getRepository(VerificationTokenEntity)
+
+    const verificationTokenRawModel = VerificationTokenModelTranslator.toDatabase(verificationToken)
+
+    await verificationTokenRepository.update(verificationTokenRawModel.id, verificationTokenRawModel)
   }
 
   /**

@@ -18,7 +18,6 @@ export abstract class UuidMother {
   }
 
   protected static invalidString() {
-    const cases = this.INVALID_FORMAT_CASES
-    return cases[Math.floor(Math.random() * cases.length)]
+    return 'invalid-uuid'
   }
 }

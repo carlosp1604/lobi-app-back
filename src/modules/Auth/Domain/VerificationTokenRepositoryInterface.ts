@@ -18,11 +18,18 @@ export interface VerificationTokenRepositoryInterface {
   findByEmail(email: string): Promise<VerificationToken | null>
 
   /**
-   * Saves (inserts or update) a VerificationToken in the database
+   * Saves a VerificationToken in the database
    * @param verificationToken The VerificationToken domain entity to persist
    * @param context The transactional context
    */
   save(verificationToken: VerificationToken, context: TxContext): Promise<void>
+
+  /**
+   * Updates an existing VerificationToken in the database
+   * @param verificationToken The VerificationToken domain entity to update
+   * @param context The transactional context
+   */
+  update(verificationToken: VerificationToken, context: TxContext): Promise<void>
 
   /**
    * Deletes a VerificationToken from the database given its ID

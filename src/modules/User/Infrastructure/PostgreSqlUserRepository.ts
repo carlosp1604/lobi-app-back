@@ -4,6 +4,8 @@ import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTran
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
+import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 export class PostgresqlUserRepository implements UserRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
@@ -70,5 +72,48 @@ export class PostgresqlUserRepository implements UserRepositoryInterface {
     }
 
     return UserModelTranslator.toDomain(userEntity)
+  }
+
+  /**
+   * Checks if a user exists by email
+   * @param email UserEmail Value Object
+   * @param context The transactional context
+   * @returns True if the user exists, false otherwise
+   */
+  public async checkEmailExists(email: UserEmail, context?: TxContext): Promise<boolean> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userRepository = entityManager.getRepository(UserEntity)
+
+    return userRepository.existsBy({ email: email.value })
+  }
+
+  /**
+   * Checks if a user exists by username
+   * @param username UserUsername Value Object
+   * @param context The transactional context
+   * @returns True if the user exists, false otherwise
+   */
+  public async checkUsernameExists(username: UserUsername, context?: TxContext): Promise<boolean> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userRepository = entityManager.getRepository(UserEntity)
+
+    return userRepository.existsBy({ username: username.value })
+  }
+
+  /**
+   * Persists the given user
+   * @param user User to save
+   * @param context the transactional context
+   */
+  public async save(user: User, context?: TxContext): Promise<void> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userRepository = entityManager.getRepository(UserEntity)
+
+    const userRawModel = UserModelTranslator.toDatabase(user)
+
+    await userRepository.insert(userRawModel)
   }
 }

@@ -25,7 +25,7 @@ describe('UserModelTranslator', () => {
     email_verified_at: now,
     created_at: now,
     updated_at: now,
-    user_upload_id: UserUploadIdMother.valid().toString(),
+    user_upload_id: UserUploadIdMother.valid().value,
     deleted_at: null,
   })
 
@@ -38,18 +38,18 @@ describe('UserModelTranslator', () => {
       expect(result.status).toBeInstanceOf(UserStatus)
       expect(result.role).toBeInstanceOf(UserRole)
 
-      expect(result.id.toString()).toBe(raw.id)
-      expect(result.email.toString()).toBe(raw.email)
-      expect(result.username.toString()).toBe(raw.username)
-      expect(result.name.toString()).toBe(raw.name)
-      expect(result.status.toString()).toBe(raw.status)
-      expect(result.role.toString()).toBe(raw.role)
+      expect(result.id.value).toBe(raw.id)
+      expect(result.email.value).toBe(raw.email)
+      expect(result.username.value).toBe(raw.username)
+      expect(result.name.value).toBe(raw.name)
+      expect(result.status.value).toBe(raw.status)
+      expect(result.role.value).toBe(raw.role)
 
       if (raw.user_upload_id === null) {
         expect(result.userUploadId).toBeNull()
       } else {
         expect(result.userUploadId).toBeInstanceOf(UserUploadId)
-        expect(result.userUploadId?.toString()).toBe(raw.user_upload_id)
+        expect(result.userUploadId?.value).toBe(raw.user_upload_id)
       }
 
       expect(result.emailVerifiedAt.getTime()).toBe(raw.email_verified_at.getTime())
@@ -79,9 +79,10 @@ describe('UserModelTranslator', () => {
     })
 
     it('should propagate errors from ValueObject', () => {
-      const rawInvalidEmail = { ...baseRaw, email: 'not-an-email' }
+      const invalidEmail = UserEmailMother.invalid()
+      const rawInvalidEmail = { ...baseRaw, email: invalidEmail }
 
-      expect(() => UserModelTranslator.toDomain(rawInvalidEmail)).toThrow(UserDomainException.invalidUserEmail('not-an-email'))
+      expect(() => UserModelTranslator.toDomain(rawInvalidEmail)).toThrow(UserDomainException.invalidUserEmail(invalidEmail))
     })
 
     it('does not mutate the input raw model', () => {
@@ -97,18 +98,18 @@ describe('UserModelTranslator', () => {
     let userBuilder: UserTestBuilder
 
     const checkResult = (result: UserRawModelWithRelations, domain: User) => {
-      expect(result.id).toBe(domain.id.toString())
-      expect(result.email).toBe(domain.email.toString())
-      expect(result.username).toBe(domain.username.toString())
-      expect(result.name).toBe(domain.name.toString())
-      expect(result.status).toBe(domain.status.toString())
-      expect(result.role).toBe(domain.role.toString())
+      expect(result.id).toBe(domain.id.value)
+      expect(result.email).toBe(domain.email.value)
+      expect(result.username).toBe(domain.username.value)
+      expect(result.name).toBe(domain.name.value)
+      expect(result.status).toBe(domain.status.value)
+      expect(result.role).toBe(domain.role.value)
 
       if (domain.userUploadId === null) {
         expect(result.user_upload_id).toBeNull()
         expect(domain.userUploadId).toBeNull()
       } else {
-        expect(result.user_upload_id).toBe(domain.userUploadId.toString())
+        expect(result.user_upload_id).toBe(domain.userUploadId.value)
       }
 
       expect(result.email_verified_at?.getTime()).toBe(domain.emailVerifiedAt?.getTime())
