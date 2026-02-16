@@ -10,6 +10,7 @@ import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infras
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 
 describe('PostgresqlUserRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
@@ -17,15 +18,10 @@ describe('PostgresqlUserRepository', () => {
   const mockedEntityManager = mock<EntityManager>({})
   const now = new Date('2025-09-26T14:11:25Z')
 
-  const userId = UserIdMother.valid()
-  const userEmail = UserEmailMother.random()
-
-  let rawUser: UserRawModelWithRelations
+  let baseRawUser: UserRawModelWithRelations
 
   beforeEach(() => {
-    rawUser = makeRawUser({
-      id: userId.toString(),
-      email: userEmail.toString(),
+    baseRawUser = makeRawUser({
       email_verified_at: now,
       created_at: now,
       updated_at: now,
@@ -40,12 +36,23 @@ describe('PostgresqlUserRepository', () => {
     jest.restoreAllMocks()
   })
 
-  describe('findByEmailWithLock', () => {
+  const checkExistsByCalls = (context: TxContext, existBy: { [k: string]: string }) => {
+    expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+    expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
+    expect(mockedUserRepository.existsBy).toHaveBeenCalledTimes(1)
+
+    expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
+    expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(UserEntity)
+    expect(mockedUserRepository.existsBy).toHaveBeenCalledWith(existBy)
+  }
+
+  describe('findWithLock', () => {
+    const userId = UserIdMother.valid()
+    const userEmail = UserEmailMother.random()
+
     const context: TxContext = { __opaque_tx_context: true }
 
     const mockedQueryBuilder = mock<SelectQueryBuilder<UserRawModelWithRelations>>()
-
-    const expectedUser = new UserTestBuilder().withId(userId).build()
 
     beforeEach(() => {
       mockReset(mockedResolver)
@@ -56,116 +63,233 @@ describe('PostgresqlUserRepository', () => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.where.mockReturnValue(mockedQueryBuilder)
       mockedQueryBuilder.setLock.mockReturnValue(mockedQueryBuilder)
-      mockedQueryBuilder.getOne.mockResolvedValue(rawUser)
     })
 
-    describe('happy path', () => {
-      const checkCommonCalls = () => {
-        expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
-        expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
-        expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledTimes(1)
-        expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledWith(UserEntity, 'user')
-        expect(mockedQueryBuilder.where).toHaveBeenCalledTimes(1)
-        expect(mockedQueryBuilder.where).toHaveBeenCalledWith('user.email = :email', { email: 'user@example.com' })
-        expect(mockedQueryBuilder.setLock).toHaveBeenCalledTimes(1)
-        expect(mockedQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write')
-        expect(mockedQueryBuilder.getOne).toHaveBeenCalledTimes(1)
-      }
+    const checkCommonCalls = (where: string, whereValue: { [k: string]: string }) => {
+      expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+      expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledTimes(1)
+      expect(mockedQueryBuilder.where).toHaveBeenCalledTimes(1)
+      expect(mockedQueryBuilder.setLock).toHaveBeenCalledTimes(1)
+      expect(mockedQueryBuilder.getOne).toHaveBeenCalledTimes(1)
 
-      it('should call services correctly when user is found', async () => {
-        const repository = new PostgresqlUserRepository(mockedResolver)
+      expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
+      expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledWith(UserEntity, 'user')
+      expect(mockedQueryBuilder.where).toHaveBeenCalledWith(where, whereValue)
+      expect(mockedQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write')
+    }
 
-        const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
+    describe('findByIdWithLock', () => {
+      const expectedUser = new UserTestBuilder().withId(userId).build()
+      let rawUser: UserRawModelWithRelations
 
-        await repository.findByEmailWithLock('user@example.com', context)
-
-        checkCommonCalls()
-
-        expect(userModelTranslatorSpy).toHaveBeenCalledTimes(1)
-        expect(userModelTranslatorSpy).toHaveBeenCalledWith(rawUser)
+      beforeEach(() => {
+        rawUser = {
+          ...baseRawUser,
+          id: userId.value,
+        }
+        mockedQueryBuilder.getOne.mockResolvedValue(rawUser)
       })
 
-      it('should call services correctly when user is not found', async () => {
-        mockedQueryBuilder.getOne.mockResolvedValue(null)
+      describe('happy path', () => {
+        it('should call services correctly when user is found', async () => {
+          const repository = new PostgresqlUserRepository(mockedResolver)
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+          const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
 
-        const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain')
+          await repository.findByIdWithLock(userId.value, context)
 
-        await repository.findByEmailWithLock('user@example.com', context)
+          checkCommonCalls('user.id = :id', { id: userId.value })
 
-        checkCommonCalls()
+          expect(userModelTranslatorSpy).toHaveBeenCalledTimes(1)
+          expect(userModelTranslatorSpy).toHaveBeenCalledWith(rawUser)
+        })
 
-        expect(userModelTranslatorSpy).not.toHaveBeenCalled()
+        it('should call services correctly when user is not found', async () => {
+          mockedQueryBuilder.getOne.mockResolvedValue(null)
+
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain')
+
+          await repository.findByIdWithLock(userId.value, context)
+
+          checkCommonCalls('user.id = :id', { id: userId.value })
+
+          expect(userModelTranslatorSpy).not.toHaveBeenCalled()
+        })
+
+        it('should return the correct data when user is found', async () => {
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
+
+          const result = await repository.findByIdWithLock(userId.value, context)
+
+          expect(result).toBe(expectedUser)
+        })
+
+        it('should return NULL when user is not found', async () => {
+          mockedQueryBuilder.getOne.mockResolvedValue(null)
+
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          const result = await repository.findByIdWithLock(userId.value, context)
+
+          expect(result).toBeNull()
+        })
       })
 
-      it('should return the correct data when user is found', async () => {
-        const repository = new PostgresqlUserRepository(mockedResolver)
+      describe('when there are errors', () => {
+        it('should throw error when resolver fails', async () => {
+          mockedResolver.resolve.mockImplementation(() => {
+            throw new Error('Something went wrong')
+          })
 
-        jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
+          const repository = new PostgresqlUserRepository(mockedResolver)
 
-        const result = await repository.findByEmailWithLock('user@example.com', context)
+          await expect(repository.findByIdWithLock(userId.value, context)).rejects.toThrow(Error('Something went wrong'))
+        })
 
-        expect(result).toBe(expectedUser)
-      })
+        it('should throw error when ORM/Database fails', async () => {
+          mockedQueryBuilder.getOne.mockImplementation(() => {
+            throw new Error('Something went wrong')
+          })
 
-      it('should return NULL when user is not found', async () => {
-        mockedQueryBuilder.getOne.mockResolvedValue(null)
+          const repository = new PostgresqlUserRepository(mockedResolver)
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+          await expect(repository.findByIdWithLock(userId.value, context)).rejects.toThrow(Error('Something went wrong'))
+        })
 
-        const result = await repository.findByEmailWithLock('user@example.com', context)
+        it('should throw error when translator fails', async () => {
+          jest.spyOn(UserModelTranslator, 'toDomain').mockImplementation(() => {
+            throw new Error('Something went wrong while translating entity to domain')
+          })
 
-        expect(result).toBeNull()
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          await expect(repository.findByIdWithLock(userId.value, context)).rejects.toThrow(
+            Error('Something went wrong while translating entity to domain'),
+          )
+        })
       })
     })
 
-    describe('when there are errors', () => {
-      it('should throw error if resolver fails', async () => {
-        mockedResolver.resolve.mockImplementation(() => {
-          throw new Error('Something went wrong')
-        })
+    describe('findByEmailWithLock', () => {
+      const expectedUser = new UserTestBuilder().withEmail(userEmail).build()
+      let rawUser: UserRawModelWithRelations
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+      beforeEach(() => {
+        rawUser = {
+          ...baseRawUser,
+          email: userEmail.value,
+        }
 
-        await expect(repository.findByEmailWithLock('user@example.com', context)).rejects.toThrow(Error('Something went wrong'))
+        mockedQueryBuilder.getOne.mockResolvedValue(rawUser)
       })
 
-      it('should throw error if ORM/Database fails', async () => {
-        mockedQueryBuilder.getOne.mockImplementation(() => {
-          throw new Error('Something went wrong')
+      describe('happy path', () => {
+        it('should call services correctly when user is found', async () => {
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
+
+          await repository.findByEmailWithLock(userEmail.value, context)
+
+          checkCommonCalls('user.email = :email', { email: userEmail.value })
+
+          expect(userModelTranslatorSpy).toHaveBeenCalledTimes(1)
+          expect(userModelTranslatorSpy).toHaveBeenCalledWith(rawUser)
         })
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+        it('should call services correctly when user is not found', async () => {
+          mockedQueryBuilder.getOne.mockResolvedValue(null)
 
-        await expect(repository.findByEmailWithLock('user@example.com', context)).rejects.toThrow(Error('Something went wrong'))
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain')
+
+          await repository.findByEmailWithLock(userEmail.value, context)
+
+          checkCommonCalls('user.email = :email', { email: userEmail.value })
+
+          expect(userModelTranslatorSpy).not.toHaveBeenCalled()
+        })
+
+        it('should return the correct data when user is found', async () => {
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
+
+          const result = await repository.findByEmailWithLock(userEmail.value, context)
+
+          expect(result).toBe(expectedUser)
+        })
+
+        it('should return NULL when user is not found', async () => {
+          mockedQueryBuilder.getOne.mockResolvedValue(null)
+
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          const result = await repository.findByEmailWithLock(userEmail.value, context)
+
+          expect(result).toBeNull()
+        })
       })
 
-      it('should throw error if translator fails', async () => {
-        jest.spyOn(UserModelTranslator, 'toDomain').mockImplementation(() => {
-          throw new Error('Something went wrong while translating entity to domain')
+      describe('when there are errors', () => {
+        it('should throw error when resolver fails', async () => {
+          mockedResolver.resolve.mockImplementation(() => {
+            throw new Error('Something went wrong')
+          })
+
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          await expect(repository.findByEmailWithLock(userEmail.value, context)).rejects.toThrow(Error('Something went wrong'))
         })
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+        it('should throw error when ORM/Database fails', async () => {
+          mockedQueryBuilder.getOne.mockImplementation(() => {
+            throw new Error('Something went wrong')
+          })
 
-        await expect(repository.findByEmailWithLock('user@example.com', context)).rejects.toThrow(
-          Error('Something went wrong while translating entity to domain'),
-        )
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          await expect(repository.findByEmailWithLock(userEmail.value, context)).rejects.toThrow(Error('Something went wrong'))
+        })
+
+        it('should throw error when translator fails', async () => {
+          jest.spyOn(UserModelTranslator, 'toDomain').mockImplementation(() => {
+            throw new Error('Something went wrong while translating entity to domain')
+          })
+
+          const repository = new PostgresqlUserRepository(mockedResolver)
+
+          await expect(repository.findByEmailWithLock(userEmail.value, context)).rejects.toThrow(
+            Error('Something went wrong while translating entity to domain'),
+          )
+        })
       })
     })
   })
 
   describe('findByEmail', () => {
+    const userEmail = UserEmailMother.valid()
     const context: TxContext = { __opaque_tx_context: true }
+    let rawUser: UserRawModelWithRelations
 
     const mockedUserRepository = mock<Repository<UserRawModelWithRelations>>()
 
-    const expectedUser = new UserTestBuilder().withId(userId).build()
+    const expectedUser = new UserTestBuilder().withEmail(userEmail).build()
 
     beforeEach(() => {
       mockReset(mockedResolver)
       mockReset(mockedEntityManager)
       mockReset(mockedUserRepository)
+
+      rawUser = {
+        ...baseRawUser,
+        email: userEmail.value,
+      }
 
       mockedResolver.resolve.mockReturnValue(mockedEntityManager)
       mockedEntityManager.getRepository.mockReturnValue(mockedUserRepository)
@@ -179,7 +303,7 @@ describe('PostgresqlUserRepository', () => {
         expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
         expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(UserEntity)
         expect(mockedUserRepository.findOneBy).toHaveBeenCalledTimes(1)
-        expect(mockedUserRepository.findOneBy).toHaveBeenCalledWith({ email: 'user@example.com' })
+        expect(mockedUserRepository.findOneBy).toHaveBeenCalledWith({ email: userEmail.value })
       }
 
       it('should call services correctly when user is found', async () => {
@@ -187,7 +311,7 @@ describe('PostgresqlUserRepository', () => {
 
         const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
 
-        await repository.findByEmail('user@example.com', context)
+        await repository.findByEmail(userEmail.value, context)
 
         checkCommonCalls()
 
@@ -202,7 +326,7 @@ describe('PostgresqlUserRepository', () => {
 
         const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain')
 
-        await repository.findByEmail('user@example.com', context)
+        await repository.findByEmail(userEmail.value, context)
 
         checkCommonCalls()
 
@@ -214,7 +338,7 @@ describe('PostgresqlUserRepository', () => {
 
         jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
 
-        const result = await repository.findByEmail('user@example.com', context)
+        const result = await repository.findByEmail(userEmail.value, context)
 
         expect(result).toBe(expectedUser)
       })
@@ -224,167 +348,231 @@ describe('PostgresqlUserRepository', () => {
 
         const repository = new PostgresqlUserRepository(mockedResolver)
 
-        const result = await repository.findByEmail('user@example.com', context)
+        const result = await repository.findByEmail(userEmail.value, context)
 
         expect(result).toBeNull()
       })
     })
 
     describe('when there are errors', () => {
-      it('should throw error if resolver fails', async () => {
+      it('should throw error when resolver fails', async () => {
         mockedResolver.resolve.mockImplementation(() => {
           throw new Error('Something went wrong')
         })
 
         const repository = new PostgresqlUserRepository(mockedResolver)
 
-        await expect(repository.findByEmail('user@example.com', context)).rejects.toThrow(Error('Something went wrong'))
+        await expect(repository.findByEmail(userEmail.value, context)).rejects.toThrow(Error('Something went wrong'))
       })
 
-      it('should throw error if ORM/Database fails', async () => {
+      it('should throw error when ORM/Database fails', async () => {
         mockedUserRepository.findOneBy.mockImplementation(() => {
           throw new Error('Something went wrong')
         })
 
         const repository = new PostgresqlUserRepository(mockedResolver)
 
-        await expect(repository.findByEmail('user@example.com', context)).rejects.toThrow(Error('Something went wrong'))
+        await expect(repository.findByEmail(userEmail.value, context)).rejects.toThrow(Error('Something went wrong'))
       })
 
-      it('should throw error if translator fails', async () => {
+      it('should throw error when translator fails', async () => {
         jest.spyOn(UserModelTranslator, 'toDomain').mockImplementation(() => {
           throw new Error('Something went wrong while translating entity to domain')
         })
 
         const repository = new PostgresqlUserRepository(mockedResolver)
 
-        await expect(repository.findByEmail('user@example.com', context)).rejects.toThrow(
+        await expect(repository.findByEmail(userEmail.value, context)).rejects.toThrow(
           Error('Something went wrong while translating entity to domain'),
         )
       })
     })
   })
 
-  describe('findByIdWithLock', () => {
+  describe('checkEmailExists', () => {
+    const email = UserEmailMother.valid()
     const context: TxContext = { __opaque_tx_context: true }
-    const userId = UserIdMother.valid()
-
-    const mockedQueryBuilder = mock<SelectQueryBuilder<UserRawModelWithRelations>>()
-
-    const rawUser = makeRawUser({
-      id: userId.toString(),
-      email_verified_at: now,
-      created_at: now,
-      updated_at: now,
-    })
-
-    const expectedUser = new UserTestBuilder().withId(userId).build()
 
     beforeEach(() => {
       mockReset(mockedResolver)
       mockReset(mockedEntityManager)
-      mockReset(mockedQueryBuilder)
-
-      mockedResolver.resolve.mockReturnValue(mockedEntityManager)
-      mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
-      mockedQueryBuilder.where.mockReturnValue(mockedQueryBuilder)
-      mockedQueryBuilder.setLock.mockReturnValue(mockedQueryBuilder)
-      mockedQueryBuilder.getOne.mockResolvedValue(rawUser)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserRepository)
     })
 
-    describe('happy path', () => {
-      const checkCommonCalls = () => {
-        expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
-        expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
-        expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledTimes(1)
-        expect(mockedEntityManager.createQueryBuilder).toHaveBeenCalledWith(UserEntity, 'user')
-        expect(mockedQueryBuilder.where).toHaveBeenCalledTimes(1)
-        expect(mockedQueryBuilder.where).toHaveBeenCalledWith('user.id = :id', { id: userId.toString() })
-        expect(mockedQueryBuilder.setLock).toHaveBeenCalledTimes(1)
-        expect(mockedQueryBuilder.setLock).toHaveBeenCalledWith('pessimistic_write')
-        expect(mockedQueryBuilder.getOne).toHaveBeenCalledTimes(1)
+    it('should call services correctly and return true when a user with the email exists', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedUserRepository.existsBy.mockResolvedValueOnce(true)
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      const result = await repository.checkEmailExists(email, context)
+
+      checkExistsByCalls(context, { email: email.value })
+      expect(result).toBe(true)
+    })
+
+    it('should call services correctly and return false when no user with the email exists', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedUserRepository.existsBy.mockResolvedValueOnce(false)
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      const result = await repository.checkEmailExists(email, context)
+
+      checkExistsByCalls(context, { email: email.value })
+      expect(result).toBe(false)
+    })
+
+    it('should throw error when resolver throws', async () => {
+      const resolverError = new Error('Something went wrong while resolving entity manager')
+      mockedResolver.resolve.mockImplementationOnce(() => {
+        throw resolverError
+      })
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      await expect(repository.checkEmailExists(email, context)).rejects.toThrow(resolverError)
+    })
+
+    it('should throw error when ORM/Database fails', async () => {
+      const dbError = new Error('DB Connection lost')
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedUserRepository.existsBy.mockRejectedValueOnce(dbError)
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      await expect(repository.checkEmailExists(email, context)).rejects.toThrow(dbError)
+    })
+  })
+
+  describe('checkUsernameExists', () => {
+    const username = UserUsernameMother.valid()
+    const context: TxContext = { __opaque_tx_context: true }
+
+    beforeEach(() => {
+      mockReset(mockedResolver)
+      mockReset(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserRepository)
+    })
+
+    it('should call services correctly and return true when a user with the username exists', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedUserRepository.existsBy.mockResolvedValueOnce(true)
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      const result = await repository.checkUsernameExists(username, context)
+
+      checkExistsByCalls(context, { username: username.value })
+      expect(result).toBe(true)
+    })
+
+    it('should call services correctly and return false when no user with the username exists', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedUserRepository.existsBy.mockResolvedValueOnce(false)
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      const result = await repository.checkUsernameExists(username, context)
+
+      checkExistsByCalls(context, { username: username.value })
+      expect(result).toBe(false)
+    })
+
+    it('should throw error when resolver throws', async () => {
+      const resolverError = new Error('Something went wrong while resolving entity manager')
+      mockedResolver.resolve.mockImplementationOnce(() => {
+        throw resolverError
+      })
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      await expect(repository.checkUsernameExists(username, context)).rejects.toThrow(resolverError)
+    })
+
+    it('should throw error when ORM/Database fails', async () => {
+      const dbError = new Error('DB Connection lost')
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      mockedUserRepository.existsBy.mockRejectedValueOnce(dbError)
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      await expect(repository.checkUsernameExists(username, context)).rejects.toThrow(dbError)
+    })
+  })
+
+  describe('save', () => {
+    const context: TxContext = { __opaque_tx_context: true }
+
+    const user = new UserTestBuilder().build()
+
+    let expectedRawUser: UserRawModelWithRelations
+
+    beforeEach(() => {
+      expectedRawUser = {
+        ...baseRawUser,
+        id: user.id.value,
+        email: user.email.value,
+        username: user.username.value,
       }
 
-      it('should call services correctly when user is found', async () => {
-        const repository = new PostgresqlUserRepository(mockedResolver)
-
-        const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
-
-        await repository.findByIdWithLock(userId.toString(), context)
-
-        checkCommonCalls()
-
-        expect(userModelTranslatorSpy).toHaveBeenCalledTimes(1)
-        expect(userModelTranslatorSpy).toHaveBeenCalledWith(rawUser)
-      })
-
-      it('should call services correctly when user is not found', async () => {
-        mockedQueryBuilder.getOne.mockResolvedValue(null)
-
-        const repository = new PostgresqlUserRepository(mockedResolver)
-
-        const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDomain')
-
-        await repository.findByIdWithLock(userId.toString(), context)
-
-        checkCommonCalls()
-
-        expect(userModelTranslatorSpy).not.toHaveBeenCalled()
-      })
-
-      it('should return the correct data when user is found', async () => {
-        const repository = new PostgresqlUserRepository(mockedResolver)
-
-        jest.spyOn(UserModelTranslator, 'toDomain').mockReturnValue(expectedUser)
-
-        const result = await repository.findByIdWithLock(userId.toString(), context)
-
-        expect(result).toBe(expectedUser)
-      })
-
-      it('should return NULL when user is not found', async () => {
-        mockedQueryBuilder.getOne.mockResolvedValue(null)
-
-        const repository = new PostgresqlUserRepository(mockedResolver)
-
-        const result = await repository.findByIdWithLock(userId.toString(), context)
-
-        expect(result).toBeNull()
-      })
+      mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserRepository)
     })
 
-    describe('when there are errors', () => {
-      it('should throw error if resolver fails', async () => {
-        mockedResolver.resolve.mockImplementation(() => {
-          throw new Error('Something went wrong')
-        })
+    it('should call services correctly', async () => {
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      const repository = new PostgresqlUserRepository(mockedResolver)
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+      const userModelTranslatorSpy = jest.spyOn(UserModelTranslator, 'toDatabase').mockReturnValueOnce(expectedRawUser)
 
-        await expect(repository.findByIdWithLock(userId.toString(), context)).rejects.toThrow(Error('Something went wrong'))
+      await repository.save(user, context)
+
+      expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+      expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
+      expect(userModelTranslatorSpy).toHaveBeenCalledTimes(1)
+      expect(mockedUserRepository.insert).toHaveBeenCalledTimes(1)
+
+      expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
+      expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(UserEntity)
+      expect(userModelTranslatorSpy).toHaveBeenCalledWith(user)
+      expect(mockedUserRepository.insert).toHaveBeenCalledWith(expectedRawUser)
+    })
+
+    it('should throw error when resolver throws', async () => {
+      const resolverError = new Error('Something went wrong while resolving entity manager')
+      mockedResolver.resolve.mockImplementationOnce(() => {
+        throw resolverError
       })
 
-      it('should throw error if ORM/Database fails', async () => {
-        mockedQueryBuilder.getOne.mockImplementation(() => {
-          throw new Error('Something went wrong')
-        })
+      const repository = new PostgresqlUserRepository(mockedResolver)
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+      await expect(repository.save(user, context)).rejects.toThrow(resolverError)
+    })
 
-        await expect(repository.findByIdWithLock(userId.toString(), context)).rejects.toThrow(Error('Something went wrong'))
+    it('should throw error when ORM/Database fails', async () => {
+      const databaseError = new Error('DB Connection lost')
+
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      jest.spyOn(UserModelTranslator, 'toDatabase').mockReturnValueOnce(expectedRawUser)
+      mockedUserRepository.insert.mockImplementationOnce(() => {
+        throw databaseError
       })
 
-      it('should throw error if translator fails', async () => {
-        jest.spyOn(UserModelTranslator, 'toDomain').mockImplementation(() => {
-          throw new Error('Something went wrong while translating entity to domain')
-        })
+      const repository = new PostgresqlUserRepository(mockedResolver)
 
-        const repository = new PostgresqlUserRepository(mockedResolver)
+      await expect(repository.save(user, context)).rejects.toThrow(databaseError)
+    })
 
-        await expect(repository.findByIdWithLock(userId.toString(), context)).rejects.toThrow(
-          Error('Something went wrong while translating entity to domain'),
-        )
+    it('should throw error when translator fails', async () => {
+      const translatorError = new Error('Something went wrong while translating entity to database')
+      mockedResolver.resolve.mockReturnValueOnce(mockedEntityManager)
+      jest.spyOn(UserModelTranslator, 'toDatabase').mockImplementationOnce(() => {
+        throw translatorError
       })
+
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      await expect(repository.save(user, context)).rejects.toThrow(translatorError)
     })
   })
 })

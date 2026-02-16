@@ -14,6 +14,8 @@ import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { runPessimisticLockTest, Tx1Logic, Tx2Logic } from '~/src/test/utils/concurrencyHelper'
+import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
+import { mock, mockReset } from 'jest-mock-extended'
 
 describe('PostgresqlUserRepository', () => {
   const userId = UserIdMother.valid()
@@ -30,12 +32,12 @@ describe('PostgresqlUserRepository', () => {
 
   beforeEach(() => {
     baseRawUser = makeRawUser({
-      id: userId.toString(),
-      email: userEmail.toString(),
-      status: UserStatus.active().toString(),
-      username: username.toString(),
-      role: UserRole.sportsman().toString(),
-      name: userName.toString(),
+      id: userId.value,
+      email: userEmail.value,
+      status: UserStatus.active().value,
+      username: username.value,
+      role: UserRole.sportsman().value,
+      name: userName.value,
       user_upload_id: null,
       deleted_at: null,
       email_verified_at: now,
@@ -78,17 +80,17 @@ describe('PostgresqlUserRepository', () => {
 
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-      const result = await repository.findByEmailWithLock(userEmail.toString(), context)
+      const result = await repository.findByEmailWithLock(userEmail.value, context)
 
       checkUserFound(result)
     })
 
-    it('should return null if user does not exist', async () => {
+    it('should return null when user does not exist', async () => {
       const context = new TypeOrmTxContext(runner.manager)
 
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-      const result = await repository.findByEmailWithLock(userEmail.toString(), context)
+      const result = await repository.findByEmailWithLock(userEmail.value, context)
 
       expect(result).toBeNull()
     })
@@ -113,17 +115,17 @@ describe('PostgresqlUserRepository', () => {
 
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-      const result = await repository.findByEmail(userEmail.toString(), context)
+      const result = await repository.findByEmail(userEmail.value, context)
 
       checkUserFound(result)
     })
 
-    it('should return null if user does not exist', async () => {
+    it('should return null when user does not exist', async () => {
       const context = new TypeOrmTxContext(runner.manager)
 
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-      const result = await repository.findByEmail(userEmail.toString(), context)
+      const result = await repository.findByEmail(userEmail.value, context)
 
       expect(result).toBeNull()
     })
@@ -148,19 +150,153 @@ describe('PostgresqlUserRepository', () => {
 
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-      const result = await repository.findByIdWithLock(userId.toString(), context)
+      const result = await repository.findByIdWithLock(userId.value, context)
 
       checkUserFound(result)
     })
 
-    it('should return null if user does not exist', async () => {
+    it('should return null when user does not exist', async () => {
       const context = new TypeOrmTxContext(runner.manager)
 
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
 
-      const result = await repository.findByIdWithLock(userId.toString(), context)
+      const result = await repository.findByIdWithLock(userId.value, context)
 
       expect(result).toBeNull()
+    })
+  })
+
+  describe('checkEmailExists', () => {
+    let runner: QueryRunner
+    let userDatabaseHelper: UserDatabaseHelper
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    beforeEach(() => {
+      userDatabaseHelper = buildUserDatabaseHelper(runner.manager)
+    })
+
+    it('should return true when a user with the email already exists', async () => {
+      await userDatabaseHelper.save(baseRawUser)
+
+      const context = new TypeOrmTxContext(runner.manager)
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.checkEmailExists(userEmail, context)
+
+      expect(result).toBe(true)
+    })
+
+    it('should return false when no user with the email exists', async () => {
+      const nonExistentEmail = UserEmailMother.random()
+
+      const context = new TypeOrmTxContext(runner.manager)
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.checkEmailExists(nonExistentEmail, context)
+
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('checkUsernameExists', () => {
+    let runner: QueryRunner
+    let userDatabaseHelper: UserDatabaseHelper
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    beforeEach(() => {
+      userDatabaseHelper = buildUserDatabaseHelper(runner.manager)
+    })
+
+    it('should return true when a user with the username already exists', async () => {
+      await userDatabaseHelper.save(baseRawUser)
+
+      const context = new TypeOrmTxContext(runner.manager)
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.checkUsernameExists(username, context)
+
+      expect(result).toBe(true)
+    })
+
+    it('should return false when no user with the username exists', async () => {
+      const nonExistentUsername = UserUsernameMother.random()
+
+      const context = new TypeOrmTxContext(runner.manager)
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      const result = await repository.checkUsernameExists(nonExistentUsername, context)
+
+      expect(result).toBe(false)
+    })
+  })
+
+  describe('save', () => {
+    let runner: QueryRunner
+    let userTestBuilder: UserTestBuilder
+    let userDatabaseHelper: UserDatabaseHelper
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    const mockedResolver = mock<TypeOrmManagerResolver>()
+
+    beforeEach(() => {
+      mockReset(mockedResolver)
+
+      userDatabaseHelper = buildUserDatabaseHelper(runner.manager)
+
+      userTestBuilder = new UserTestBuilder()
+        .withId(userId)
+        .withEmail(userEmail)
+        .withUsername(username)
+        .withName(userName)
+        .withCreatedAt(now)
+        .withUpdatedAt(now)
+
+      mockedResolver.resolve.mockReturnValueOnce(runner.manager)
+    })
+
+    it('should save user correctly', async () => {
+      const repository = new PostgresqlUserRepository(mockedResolver)
+
+      const user = userTestBuilder.build()
+      const context = new TypeOrmTxContext(runner.manager)
+
+      await repository.save(user, context)
+
+      const userRepository = runner.manager.getRepository(UserEntity)
+
+      const foundUser = await userRepository.findOneBy({
+        id: userId.value,
+      })
+
+      expect(foundUser?.id).toBe(user.id.value)
+      expect(foundUser?.email).toBe(user.email.value)
+      expect(foundUser?.username).toBe(user.username.value)
+      expect(foundUser?.name).toBe(user.name.value)
+      expect(foundUser?.status).toBe(user.status.value)
+      expect(foundUser?.role).toBe(user.role.value)
+      expect(foundUser?.user_upload_id).toBe(user.userUploadId?.value ?? null)
+      expect(foundUser?.created_at.getTime()).toBe(user.createdAt.getTime())
+      expect(foundUser?.updated_at.getTime()).toBe(user.updatedAt.getTime())
+    })
+
+    it('should throw error when user already exists', async () => {
+      const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+
+      await userDatabaseHelper.save(baseRawUser)
+
+      const user = userTestBuilder.build()
+      const context = new TypeOrmTxContext(runner.manager)
+
+      await expect(repository.save(user, context)).rejects.toThrow()
     })
   })
 
@@ -204,7 +340,7 @@ describe('PostgresqlUserRepository', () => {
           const repository1 = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
           const ctx1 = new TypeOrmTxContext(runner.manager)
 
-          await repository1.findByEmailWithLock(userEmail.toString(), ctx1)
+          await repository1.findByEmailWithLock(userEmail.value, ctx1)
 
           await signalAndWait()
 
@@ -213,7 +349,7 @@ describe('PostgresqlUserRepository', () => {
           const userToSave: UserRawModelWithRelations = {
             ...baseRawUser,
             updated_at: updateNow,
-            status: UserStatus.deactivated().toString(),
+            status: UserStatus.deactivated().value,
           }
           await runner.manager.getRepository(UserEntity).save(userToSave)
 
@@ -226,7 +362,7 @@ describe('PostgresqlUserRepository', () => {
 
           await gate
 
-          const updatedUser = await repository2.findByEmailWithLock(userEmail.toString(), ctx2)
+          const updatedUser = await repository2.findByEmailWithLock(userEmail.value, ctx2)
 
           await runner.commitTransaction()
           return updatedUser
@@ -240,7 +376,7 @@ describe('PostgresqlUserRepository', () => {
           const repository1 = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
           const ctx1 = new TypeOrmTxContext(runner.manager)
 
-          await repository1.findByIdWithLock(userId.toString(), ctx1)
+          await repository1.findByIdWithLock(userId.value, ctx1)
 
           await signalAndWait()
 
@@ -249,7 +385,7 @@ describe('PostgresqlUserRepository', () => {
           const userToSave: UserRawModelWithRelations = {
             ...baseRawUser,
             updated_at: updateNow,
-            status: UserStatus.deactivated().toString(),
+            status: UserStatus.deactivated().value,
           }
           await runner.manager.getRepository(UserEntity).save(userToSave)
 
@@ -262,7 +398,7 @@ describe('PostgresqlUserRepository', () => {
 
           await gate
 
-          const updatedUser = await repository2.findByIdWithLock(userId.toString(), ctx2)
+          const updatedUser = await repository2.findByIdWithLock(userId.value, ctx2)
 
           await runner.commitTransaction()
           return updatedUser
