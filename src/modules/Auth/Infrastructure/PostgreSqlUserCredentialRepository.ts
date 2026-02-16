@@ -9,6 +9,21 @@ export class PostgreSqlUserCredentialRepository implements UserCredentialReposit
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
 
   /**
+   * Persists a new UserCredential in the database
+   * @param userCredential The UserCredential domain entity to insert
+   * @param context The transactional context
+   */
+  public async save(userCredential: UserCredential, context?: TxContext): Promise<void> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userCredentialRepository = entityManager.getRepository(UserCredentialEntity)
+
+    const userCredentialRawModel = UserCredentialModelTranslator.toDatabase(userCredential)
+
+    await userCredentialRepository.insert(userCredentialRawModel)
+  }
+
+  /**
    * Persists the last successful login access for the given UserCredential
    * @param userCredential UserCredential to update
    * @param context the transactional context

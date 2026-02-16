@@ -25,8 +25,8 @@ describe('UserCredentialModelTranslator', () => {
       expect(result.userId).toBeInstanceOf(UserId)
       expect(result.passwordHash).toBeInstanceOf(PasswordHash)
 
-      expect(result.userId.toString()).toBe(raw.user_id)
-      expect(result.passwordHash.toString()).toBe(raw.password_hash)
+      expect(result.userId.value).toBe(raw.user_id)
+      expect(result.passwordHash.value).toBe(raw.password_hash)
       expect(result.failedAttempts).toBe(raw.failed_attempts)
       expect(result.lockedUntil).toEqual(raw.locked_until)
       expect(result.lastLoginAt).toEqual(raw.last_login_at)
@@ -71,8 +71,8 @@ describe('UserCredentialModelTranslator', () => {
     let userCredentialTestBuilder: UserCredentialTestBuilder
 
     const checkDatabaseResult = (result: UserCredentialRawWitRelationships, domain: UserCredential) => {
-      expect(result.user_id).toBe(domain.userId.toString())
-      expect(result.password_hash).toBe(domain.passwordHash.toString())
+      expect(result.user_id).toBe(domain.userId.value)
+      expect(result.password_hash).toBe(domain.passwordHash.value)
       expect(result.failed_attempts).toBe(domain.failedAttempts)
       expect(result.locked_until).toEqual(domain.lockedUntil)
       expect(result.last_login_at).toEqual(domain.lastLoginAt)

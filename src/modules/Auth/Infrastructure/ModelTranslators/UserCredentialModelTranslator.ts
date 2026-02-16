@@ -18,8 +18,8 @@ export class UserCredentialModelTranslator {
 
   public static toDatabase(domain: UserCredential): UserCredentialRawModel {
     return {
-      user_id: domain.userId.toString(),
-      password_hash: domain.passwordHash.toString(),
+      user_id: domain.userId.value,
+      password_hash: domain.passwordHash.value,
       failed_attempts: domain.failedAttempts,
       locked_until: domain.lockedUntil,
       last_login_at: domain.lastLoginAt,

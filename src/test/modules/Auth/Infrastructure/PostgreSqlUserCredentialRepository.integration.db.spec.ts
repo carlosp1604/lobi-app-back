@@ -7,20 +7,76 @@ import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
-import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
-import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
+import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
+import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 
 describe('PostgreSqlUserCredentialRepository', () => {
   const now = new Date('2025-09-26T14:11:25Z')
 
   let runner: QueryRunner
+  let userDatabaseHelper: UserDatabaseHelper
+  let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
 
-  withTransaction((r) => {
-    runner = r
+  withTransaction((queryRunner) => {
+    runner = queryRunner
+  })
+
+  beforeEach(() => {
+    userDatabaseHelper = new UserDatabaseHelper(runner.manager)
+    userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(runner.manager)
+  })
+
+  describe('save', () => {
+    const userId = UserIdMother.valid()
+    const userEmail = UserEmailMother.valid()
+
+    beforeEach(async () => {
+      const rawUser = makeRawUser({ id: userId.value, email: userEmail.value })
+      await userDatabaseHelper.save(rawUser)
+    })
+
+    it('should save user credential correctly', async () => {
+      const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      const context = new TypeOrmTxContext(runner.manager)
+      const userCredential = new UserCredentialTestBuilder().withUserId(userId).build()
+
+      const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
+
+      await repository.save(userCredential, context)
+
+      const userCredentialsCountAfter = await userCredentialDatabaseHelper.count()
+
+      expect(userCredentialsCountBefore).toBe(0)
+      expect(userCredentialsCountAfter).toBe(1)
+
+      const savedRow = await userCredentialDatabaseHelper.findUserCredential(userId.value)
+
+      expect(savedRow).not.toBeNull()
+      expect(savedRow!.user_id).toBe(userCredential.userId.value)
+      expect(savedRow!.password_hash).toBe(userCredential.passwordHash.value)
+      expect(savedRow!.failed_attempts).toBe(userCredential.failedAttempts)
+      expect(savedRow!.locked_until).toEqual(userCredential.lockedUntil)
+      expect(savedRow!.last_login_at).toEqual(userCredential.lastLoginAt)
+    })
+
+    it('should throw error and not insert if credential already exists', async () => {
+      const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      const context = new TypeOrmTxContext(runner.manager)
+
+      const rawUserCredential = makeRawUserCredential({ user_id: userId.value })
+      await userCredentialDatabaseHelper.save(rawUserCredential)
+
+      const duplicateUserCredential = new UserCredentialTestBuilder().withUserId(userId).build()
+
+      const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
+      expect(userCredentialsCountBefore).toBe(1)
+
+      await expect(repository.save(duplicateUserCredential, context)).rejects.toThrow()
+    })
   })
 
   describe('saveLoginSuccess', () => {
@@ -28,7 +84,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
     const userEmail = UserEmailMother.valid()
 
     const rawUserCredential = makeRawUserCredential({
-      user_id: userId.toString(),
+      user_id: userId.value,
     })
 
     const updatedAt = new Date(now.getTime() + 500)
@@ -44,69 +100,66 @@ describe('PostgreSqlUserCredentialRepository', () => {
     }
 
     beforeEach(async () => {
-      const userRepository = runner.manager.getRepository(UserEntity)
-
       const rawUser = makeRawUser({
-        id: userId.toString(),
-        email: userEmail.toString(),
+        id: userId.value,
+        email: userEmail.value,
       })
-      await userRepository.save(rawUser)
+      await userDatabaseHelper.save(rawUser)
     })
 
     it('should update entity correctly', async () => {
-      const credentialRepository = runner.manager.getRepository(UserCredentialEntity)
-      await credentialRepository.save(rawUserCredential)
+      await userCredentialDatabaseHelper.save(rawUserCredential)
 
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
-
       const context = new TypeOrmTxContext(runner.manager)
-
       const userCredential = createUserCredential(userId)
+
+      const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
 
       await repository.saveLoginSuccess(userCredential, context)
 
-      const updatedRow = await credentialRepository.findOne({
-        where: {
-          user_id: rawUserCredential.user_id,
-        },
-      })
+      const userCredentialsCountAfter = await userCredentialDatabaseHelper.count()
 
-      expect(updatedRow?.failed_attempts).toBe(0)
-      expect(updatedRow?.locked_until).toBeNull()
-      expect(updatedRow?.last_login_at?.getTime()).toBe(updatedAt.getTime())
-      expect(updatedRow?.updated_at.getTime()).toBe(updatedAt.getTime())
+      const updatedRow = await userCredentialDatabaseHelper.findUserCredential(rawUserCredential.user_id)
+
+      expect(userCredentialsCountBefore).toBe(1)
+      expect(userCredentialsCountAfter).toBe(1)
+
+      expect(updatedRow).not.toBeNull()
+      expect(updatedRow!.failed_attempts).toBe(0)
+      expect(updatedRow!.locked_until).toBeNull()
+      expect(updatedRow!.last_login_at?.getTime()).toBe(updatedAt.getTime())
+      expect(updatedRow!.updated_at.getTime()).toBe(updatedAt.getTime())
     })
 
-    it('should not update entity if is not found', async () => {
-      const credentialRepository = runner.manager.getRepository(UserCredentialEntity)
-      await credentialRepository.save(rawUserCredential)
+    it('should not update entity when it is not found', async () => {
+      await userCredentialDatabaseHelper.save(rawUserCredential)
 
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
-
       const context = new TypeOrmTxContext(runner.manager)
 
       const anotherUserId = UserIdMother.valid()
       const userCredential = createUserCredential(anotherUserId)
 
+      const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
+
       await repository.saveLoginSuccess(userCredential, context)
 
-      const originalRow = await credentialRepository.findOne({
-        where: {
-          user_id: rawUserCredential.user_id,
-        },
-      })
+      const userCredentialsCountAfter = await userCredentialDatabaseHelper.count()
 
-      const expectedToUpdateRow = await credentialRepository.findOne({
-        where: {
-          user_id: anotherUserId.toString(),
-        },
-      })
+      const originalRow = await userCredentialDatabaseHelper.findUserCredential(rawUserCredential.user_id)
+      const expectedToUpdateRow = await userCredentialDatabaseHelper.findUserCredential(anotherUserId.value)
+
+      expect(userCredentialsCountBefore).toBe(1)
+      expect(userCredentialsCountAfter).toBe(1)
 
       expect(expectedToUpdateRow).toBeNull()
-      expect(originalRow?.failed_attempts).toBe(rawUserCredential.failed_attempts)
-      expect(originalRow?.locked_until?.getTime()).toBe(rawUserCredential.locked_until?.getTime())
-      expect(originalRow?.last_login_at).toBe(rawUserCredential.last_login_at)
-      expect(originalRow?.updated_at.getTime()).toBe(rawUserCredential.updated_at.getTime())
+
+      expect(originalRow).not.toBeNull()
+      expect(originalRow!.failed_attempts).toBe(rawUserCredential.failed_attempts)
+      expect(originalRow!.locked_until?.getTime()).toBe(rawUserCredential.locked_until?.getTime())
+      expect(originalRow!.last_login_at).toBe(rawUserCredential.last_login_at)
+      expect(originalRow!.updated_at.getTime()).toBe(rawUserCredential.updated_at.getTime())
     })
   })
 
@@ -116,57 +169,52 @@ describe('PostgreSqlUserCredentialRepository', () => {
     const passwordHash = PasswordHashMother.valid()
 
     beforeEach(async () => {
-      const userRepository = runner.manager.getRepository(UserEntity)
-
       const rawUser = makeRawUser({
-        id: userId.toString(),
-        email: userEmail.toString(),
+        id: userId.value,
+        email: userEmail.value,
         created_at: now,
         updated_at: now,
       })
-      await userRepository.save(rawUser)
+      await userDatabaseHelper.save(rawUser)
     })
 
     const rawUserCredential = makeRawUserCredential({
-      user_id: userId.toString(),
+      user_id: userId.value,
       updated_at: now,
       created_at: now,
       failed_attempts: 2,
       last_login_at: null,
       locked_until: null,
-      password_hash: passwordHash.toString(),
+      password_hash: passwordHash.value,
     })
 
     const checkUserCredentialFound = (result: UserCredential | null) => {
-      expect(result).toBeTruthy()
-      expect(result?.userId.equals(userId)).toBe(true)
-      expect(result?.passwordHash.equals(passwordHash)).toBe(true)
-      expect(result?.updatedAt.getTime()).toBe(now.getTime())
-      expect(result?.createdAt.getTime()).toBe(now.getTime())
-      expect(result?.failedAttempts).toBe(2)
-      expect(result?.lastLoginAt).toBe(null)
-      expect(result?.lockedUntil).toBe(null)
+      expect(result).not.toBeNull()
+      expect(result!.userId.equals(userId)).toBe(true)
+      expect(result!.passwordHash.equals(passwordHash)).toBe(true)
+      expect(result!.updatedAt.getTime()).toBe(now.getTime())
+      expect(result!.createdAt.getTime()).toBe(now.getTime())
+      expect(result!.failedAttempts).toBe(2)
+      expect(result!.lastLoginAt).toBe(null)
+      expect(result!.lockedUntil).toBe(null)
     }
 
     it('should find user and translate to domain correctly', async () => {
-      const userCredentialRepository = runner.manager.getRepository(UserCredentialEntity)
-      await userCredentialRepository.save(rawUserCredential)
-
-      const context = new TypeOrmTxContext(runner.manager)
+      await userCredentialDatabaseHelper.save(rawUserCredential)
 
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      const context = new TypeOrmTxContext(runner.manager)
 
-      const result = await repository.findByUserId(userId.toString(), context)
+      const result = await repository.findByUserId(userId.value, context)
 
       checkUserCredentialFound(result)
     })
 
-    it('should return null if user does not exist', async () => {
+    it('should return null when user does not exist', async () => {
+      const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
       const context = new TypeOrmTxContext(runner.manager)
 
-      const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
-
-      const result = await repository.findByUserId(userId.toString(), context)
+      const result = await repository.findByUserId(userId.value, context)
 
       expect(result).toBeNull()
     })

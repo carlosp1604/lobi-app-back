@@ -6,8 +6,8 @@ export const makeRawUserCredential = (overrides: Partial<UserCredentialRawModel>
   const now = new Date()
 
   return {
-    user_id: overrides.user_id ?? UserIdMother.valid().toString(),
-    password_hash: overrides.password_hash ?? PasswordHashMother.valid().toString(),
+    user_id: overrides.user_id ?? UserIdMother.valid().value,
+    password_hash: overrides.password_hash ?? PasswordHashMother.valid().value,
     failed_attempts: overrides.failed_attempts ?? 0,
     locked_until: overrides.locked_until ?? null,
     last_login_at: overrides.last_login_at ?? null,
