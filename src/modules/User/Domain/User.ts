@@ -45,17 +45,9 @@ export class User {
     this.emailVerifiedAt = emailVerifiedAt
   }
 
-  public static create(
-    userId: UserId,
-    email: UserEmail,
-    username: UserUsername,
-    name: UserName,
-    role: UserRole,
-    userUploadId: UserUploadId | null,
-    now: Date,
-  ): User {
+  public static create(userId: UserId, email: UserEmail, username: UserUsername, name: UserName, role: UserRole, now: Date): User {
     const status = UserStatus.active()
 
-    return new User(userId, email, username, name, status, role, userUploadId, now, now, now, null)
+    return new User(userId, email, username, name, status, role, null, now, now, now, null)
   }
 }

@@ -1,6 +1,8 @@
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { compareExceptModifiedFields } from '~/src/test/utils/snapshot'
+import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 interface UserCredentialSnapshot {
   userId: string
@@ -151,6 +153,23 @@ describe('UserCredential', () => {
       const result = userCredential.isLocked(now)
 
       expect(result).toBe(false)
+    })
+  })
+
+  describe('create', () => {
+    it('should initialize the UserCredential instance correctly', () => {
+      const userId = UserIdMother.valid()
+      const passwordHash = PasswordHashMother.valid()
+
+      const userCredential = UserCredential.create(userId, passwordHash, now)
+
+      expect(userCredential.userId.equals(userId)).toBe(true)
+      expect(userCredential.passwordHash.equals(passwordHash)).toBe(true)
+      expect(userCredential.failedAttempts).toBe(0)
+      expect(userCredential.lockedUntil).toBeNull()
+      expect(userCredential.lastLoginAt).toBeNull()
+      expect(userCredential.createdAt.getTime()).toBe(now.getTime())
+      expect(userCredential.updatedAt.getTime()).toBe(now.getTime())
     })
   })
 })
