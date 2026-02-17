@@ -1,6 +1,7 @@
 import type { FastifyReply } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import {
+  CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
   LOGIN_USER,
   REFRESH_SESSION,
@@ -10,6 +11,17 @@ import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-u
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import {
+  AUTH_CREATE_USER_DUPLICATED_EMAIL,
+  AUTH_CREATE_USER_DUPLICATED_USERNAME,
+  AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
+  AUTH_CREATE_USER_INVALID_NAME_FORMAT,
+  AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+  AUTH_CREATE_USER_INVALID_TOKEN,
+  AUTH_CREATE_USER_INVALID_TOKEN_FORMAT,
+  AUTH_CREATE_USER_INVALID_USER_ROLE,
+  AUTH_CREATE_USER_INVALID_USERNAME_FORMAT,
+  AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
+  AUTH_CREATE_USER_TOKEN_ALREADY_USED,
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
@@ -59,6 +71,10 @@ import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { ValidateTokenBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/validate-token-body.dto'
+import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
+import { CreateUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/create-user-body.dto'
+import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
+import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 
 @Controller('auth')
 export class AuthController {
@@ -67,6 +83,7 @@ export class AuthController {
     @Inject(REFRESH_SESSION) private readonly refreshSession: RefreshSession,
     @Inject(GENERATE_VERIFICATION_TOKEN) private readonly generateVerificationToken: GenerateVerificationToken,
     @Inject(VALIDATE_VERIFICATION_TOKEN) private readonly validateVerificationToken: ValidateVerificationToken,
+    @Inject(CREATE_USER) private readonly createUser: CreateUser,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
@@ -267,6 +284,131 @@ export class AuthController {
           code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN,
           message: 'Invalid verification token',
         })
+      }
+
+      throw new InternalServerErrorException(result.error)
+    }
+
+    return
+  }
+
+  @Post('signup')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async signup(@Body() body: CreateUserBodyDto, @UserIp() userIp: string, @UserAgent() userAgent: string | undefined) {
+    const requestDto: CreateUserApplicationRequestDto = {
+      email: body.email,
+      username: body.username,
+      name: body.name,
+      password: body.password,
+      token: body.token,
+      requestedRole: body.requestedRole,
+      ip: userIp,
+      userAgent,
+    }
+
+    const result = await this.createUser.execute(requestDto)
+
+    if (!result.success) {
+      const errorId = result.error.id
+
+      if (errorId === CreateUserApplicationError.invalidInputId) {
+        throw new UnprocessableEntityException({
+          message: 'One or more fields have invalid formats',
+          errors: result.error.errors.map((createUserError) => {
+            switch (createUserError.id) {
+              case CreateUserError.invalidUsernameId:
+                return {
+                  code: AUTH_CREATE_USER_INVALID_USERNAME_FORMAT,
+                  message: createUserError.message,
+                }
+              case CreateUserError.invalidEmailId:
+                return {
+                  code: AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
+                  message: createUserError.message,
+                }
+              case CreateUserError.invalidPasswordId:
+                return {
+                  code: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+                  message: createUserError.message,
+                }
+              case CreateUserError.invalidTokenFormatId:
+                return {
+                  code: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT,
+                  message: createUserError.message,
+                }
+              case CreateUserError.invalidNameId:
+                return {
+                  code: AUTH_CREATE_USER_INVALID_NAME_FORMAT,
+                  message: createUserError.message,
+                }
+              case CreateUserError.invalidRoleId:
+                return {
+                  code: AUTH_CREATE_USER_INVALID_USER_ROLE,
+                  message: createUserError.message,
+                }
+              default:
+                throw new InternalServerErrorException(result.error)
+            }
+          }),
+        })
+      }
+
+      if (errorId === CreateUserApplicationError.duplicatedId) {
+        throw new ConflictException({
+          message: 'Some provided data is already in use',
+          errors: result.error.errors.map((createUserError) => {
+            switch (createUserError.id) {
+              case CreateUserError.duplicatedEmailId:
+                return {
+                  code: AUTH_CREATE_USER_DUPLICATED_EMAIL,
+                  message: createUserError.message,
+                }
+              case CreateUserError.duplicatedUsernameId:
+                return {
+                  code: AUTH_CREATE_USER_DUPLICATED_USERNAME,
+                  message: createUserError.message,
+                }
+              default:
+                throw new InternalServerErrorException(result.error)
+            }
+          }),
+        })
+      }
+
+      if (errorId === CreateUserApplicationError.notFoundId) {
+        throw new NotFoundException({
+          code: AUTH_CREATE_USER_INVALID_TOKEN,
+          message: 'Invalid verification token',
+        })
+      }
+
+      if (errorId === CreateUserApplicationError.invalidTokenId) {
+        const specificError = result.error.errors[0]
+
+        switch (specificError.id) {
+          case CreateUserError.tokenExpiredId:
+            throw new GoneException({
+              code: AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
+              message: specificError.message,
+            })
+
+          case CreateUserError.tokenAlreadyUsedId:
+            throw new ConflictException({
+              code: AUTH_CREATE_USER_TOKEN_ALREADY_USED,
+              message: specificError.message,
+            })
+
+          case CreateUserError.tokenPurposeMismatchId:
+          case CreateUserError.tokenInvalidOwnerId:
+          case CreateUserError.invalidVerificationTokenId:
+            throw new NotFoundException({
+              code: AUTH_CREATE_USER_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            })
+
+          default:
+            throw new InternalServerErrorException(result.error)
+        }
       }
 
       throw new InternalServerErrorException(result.error)
