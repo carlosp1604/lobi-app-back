@@ -14,6 +14,12 @@ export class UserDatabaseHelper {
     }
   }
 
+  public async findByEmail(email: string): Promise<UserRawModelWithRelations | null> {
+    const userRepository = this.entityManager.getRepository(UserEntity)
+
+    return userRepository.findOneBy({ email })
+  }
+
   public async update(id: string, dataToUpdate: Partial<UserRawModelWithRelations>) {
     const userRepository = this.entityManager.getRepository(UserEntity)
 
@@ -24,5 +30,11 @@ export class UserDatabaseHelper {
     const userRepository = this.entityManager.getRepository(UserEntity)
 
     await userRepository.remove(user)
+  }
+
+  public async count(): Promise<number> {
+    const userRepository = this.entityManager.getRepository(UserEntity)
+
+    return userRepository.count()
   }
 }

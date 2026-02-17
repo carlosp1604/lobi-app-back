@@ -7,7 +7,6 @@ export class CreateUserApplicationError {
   public static duplicatedId = 'create_user_application_duplicated'
   public static notFoundId = 'create_user_application_not_found'
   public static invalidTokenId = 'create_user_application_invalid_token'
-  public static internalErrorId = 'create_user_application_internal_error'
 
   private constructor(id: string, errors: Array<CreateUserError>) {
     this.id = id
@@ -30,10 +29,6 @@ export class CreateUserApplicationError {
   public static invalidToken(error: CreateUserError) {
     return new CreateUserApplicationError(this.invalidTokenId, [error])
   }
-
-  public static internalError(error: CreateUserError) {
-    return new CreateUserApplicationError(this.internalErrorId, [error])
-  }
 }
 
 export class CreateUserError extends Error {
@@ -49,7 +44,6 @@ export class CreateUserError extends Error {
   public static tokenNotFoundId = 'create_user_error_token_not_found'
   public static duplicatedEmailId = 'create_user_error_duplicated_email'
   public static duplicatedUsernameId = 'create_user_error_duplicated_username'
-  public static internalProcessErrorId = 'create_user_error_internal_process'
   public static invalidVerificationTokenId = 'create_user_error_invalid_verification_token'
   public static tokenExpiredId = 'create_user_error_token_expired'
   public static tokenAlreadyUsedId = 'create_user_error_token_already_used'
@@ -87,7 +81,7 @@ export class CreateUserError extends Error {
   }
 
   public static tokenNotFound(email: string) {
-    return new CreateUserError(`Token associated to email ${email} was not found`, this.invalidTokenFormatId)
+    return new CreateUserError(`Token associated to email ${email} was not found`, this.tokenNotFoundId)
   }
 
   public static duplicatedEmail(email: string) {
@@ -96,10 +90,6 @@ export class CreateUserError extends Error {
 
   public static duplicatedUsername(username: string) {
     return new CreateUserError(`The username ${username} is already taken`, this.duplicatedUsernameId)
-  }
-
-  public static internalProcessError(message: string) {
-    return new CreateUserError(message, this.internalProcessErrorId)
   }
 
   public static invalidToken() {
