@@ -35,11 +35,11 @@ export class ValidateVerificationTokenError extends Error {
   }
 
   public static notFound() {
-    return new ValidateVerificationTokenError('Verification token was not found', this.tokenNotFoundId)
+    return new ValidateVerificationTokenError('the verification token was not found', this.tokenNotFoundId)
   }
 
   public static expired() {
-    return new ValidateVerificationTokenError('The verification token has expired', this.tokenExpiredId)
+    return new ValidateVerificationTokenError('The verification token has already expired', this.tokenExpiredId)
   }
 
   public static alreadyUsed() {
