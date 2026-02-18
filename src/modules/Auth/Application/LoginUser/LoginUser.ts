@@ -71,7 +71,7 @@ export class LoginUser {
     const userPassword = validateUserPasswordResult.value
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: userEmail.toString(),
+      email: userEmail.value,
     })
 
     let sessionIpHash: UserSessionIpHash | null = null
@@ -97,14 +97,14 @@ export class LoginUser {
 
       const credentials = getUserCredential.value
 
-      const passwordMatches = await this.passwordHasher.compare(userPassword.value, credentials.passwordHash.toString())
+      const passwordMatches = await this.passwordHasher.compare(userPassword.value, credentials.passwordHash.value)
 
       if (!passwordMatches) {
         const domainEvent = this.buildFailedAttemptDomainEvent(user.id, deviceLocation, sessionIpHash, userAgent, now)
 
         await this.domainEventRepository.save(domainEvent, context)
 
-        return fail(LoginUserApplicationError.invalidCredentials(user.id.toString()))
+        return fail(LoginUserApplicationError.invalidCredentials(user.id.value))
       }
 
       credentials.resetAfterSuccessfulLogin(now)
@@ -112,7 +112,7 @@ export class LoginUser {
       const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
         await this.generateTokensService.generate(user.id, now, userAgent, sessionIpHash, deviceLocation)
 
-      const activeSessions = await this.sessionRepository.findUserActiveSessions(user.id.toString(), now, context)
+      const activeSessions = await this.sessionRepository.findUserActiveSessions(user.id.value, now, context)
 
       const isNewDevice = !activeSessions.find((activeSession) => activeSession.isSameDeviceAs(session))
 
@@ -139,7 +139,7 @@ export class LoginUser {
       return success({
         accessToken,
         refreshToken,
-        sessionId: session.id.toString(),
+        sessionId: session.id.value,
         accessTokenExpiresAt,
         refreshTokenExpiresAt,
         isNewDevice,
@@ -175,30 +175,30 @@ export class LoginUser {
     userEmail: EmailAddressValueObject,
     context: TxContext,
   ): Promise<Result<User, LoginUserApplicationError>> {
-    const user = await this.userRepository.findByEmailWithLock(userEmail.toString(), context)
+    const user = await this.userRepository.findByEmailWithLock(userEmail.value, context)
 
     if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
       this.loggerService.warn('Login attempt failed: User not found or inactive', {
-        email: userEmail.toString(),
+        email: userEmail.value,
         reason: user ? 'Inactive' : 'NotFound',
       })
 
-      return fail(LoginUserApplicationError.userNotFound(userEmail.toString()))
+      return fail(LoginUserApplicationError.userNotFound(userEmail.value))
     }
 
     return success(user)
   }
 
   private async getUserCredential(user: User, context: TxContext): Promise<Result<UserCredential, LoginUserApplicationError>> {
-    const userCredential = await this.credentialRepository.findByUserId(user.id.toString(), context)
+    const userCredential = await this.credentialRepository.findByUserId(user.id.value, context)
 
     if (!userCredential) {
       this.loggerService.error('Login failed: User exists but has no credentials', undefined, {
-        userId: user.id.toString(),
-        email: user.email.toString(),
+        userId: user.id.value,
+        email: user.email.value,
       })
 
-      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(user.id.toString()))
+      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(user.id.value))
     }
 
     return success(userCredential)
@@ -215,9 +215,9 @@ export class LoginUser {
       DomainEventId.fromString(this.idGeneratorService.generateId()),
       DomainEventName.failedLoginAttempt(),
       DomainEventAggregateType.user(),
-      DomainEventAggregateId.fromString(userId.toString()),
+      DomainEventAggregateId.fromString(userId.value),
       {
-        userId: userId.toString(),
+        userId: userId.value,
         deviceLocation: deviceLocation
           ? {
               city: deviceLocation.city,
@@ -226,8 +226,8 @@ export class LoginUser {
           : null,
       },
       {
-        ipHash: ipHash ? ipHash.toString() : null,
-        ua: userAgent.toString(),
+        ipHash: ipHash ? ipHash.value : null,
+        ua: userAgent.value,
       },
       now,
     )
@@ -238,21 +238,21 @@ export class LoginUser {
       DomainEventId.fromString(this.idGeneratorService.generateId()),
       DomainEventName.successfulLogin(),
       DomainEventAggregateType.user(),
-      DomainEventAggregateId.fromString(session.userId.toString()),
+      DomainEventAggregateId.fromString(session.userId.value),
       {
-        userId: session.userId.toString(),
+        userId: session.userId.value,
         deviceLocation: session.deviceLocation
           ? {
               city: session.deviceLocation.city,
               countryCode: session.deviceLocation.countryCode,
             }
           : null,
-        sessionId: session.id.toString(),
+        sessionId: session.id.value,
         isNewDevice,
       },
       {
-        ipHash: session.ipHash ? session.ipHash.toString() : null,
-        ua: session.userAgent.toString(),
+        ipHash: session.ipHash ? session.ipHash.value : null,
+        ua: session.userAgent.value,
       },
       now,
     )
