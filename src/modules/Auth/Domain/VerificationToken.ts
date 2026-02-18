@@ -3,6 +3,7 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 
 export class VerificationToken {
   public readonly id: VerificationTokenId
@@ -56,26 +57,36 @@ export class VerificationToken {
     return this.expiresAt.getTime() <= now.getTime()
   }
 
-  public validate(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose): void {
+  public validate(
+    now: Date,
+    email: VerificationTokenEmail,
+    purpose: VerificationTokenPurpose,
+  ): Result<void, VerificationTokenDomainException> {
     if (this.isUsed()) {
-      throw VerificationTokenDomainException.alreadyUsed(this.id.value)
+      return fail(VerificationTokenDomainException.alreadyUsed(this.id.value))
     }
 
     if (this.isExpired(now)) {
-      throw VerificationTokenDomainException.alreadyExpired(this.id.value)
+      return fail(VerificationTokenDomainException.alreadyExpired(this.id.value))
     }
 
     if (!this.email.equals(email)) {
-      throw VerificationTokenDomainException.cannotBeUsedByUser(this.id.value, email.value)
+      return fail(VerificationTokenDomainException.cannotBeUsedByUser(this.id.value, email.value))
     }
 
     if (!this.purpose.equals(purpose)) {
-      throw VerificationTokenDomainException.cannotBeUsedForPurpose(this.id.value, purpose.value)
+      return fail(VerificationTokenDomainException.cannotBeUsedForPurpose(this.id.value, purpose.value))
     }
+
+    return success(undefined)
   }
 
   public markAsUsed(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose): void {
-    this.validate(now, email, purpose)
+    const validationResult = this.validate(now, email, purpose)
+
+    if (!validationResult.success) {
+      throw validationResult.error
+    }
 
     this._usedAt = now
   }
