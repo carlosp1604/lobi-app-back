@@ -11,6 +11,17 @@ import { FastifyReply } from 'fastify'
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import {
+  AUTH_CREATE_USER_DUPLICATED_EMAIL,
+  AUTH_CREATE_USER_DUPLICATED_USERNAME,
+  AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
+  AUTH_CREATE_USER_INVALID_NAME_FORMAT,
+  AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+  AUTH_CREATE_USER_INVALID_TOKEN,
+  AUTH_CREATE_USER_INVALID_TOKEN_FORMAT,
+  AUTH_CREATE_USER_INVALID_USER_ROLE,
+  AUTH_CREATE_USER_INVALID_USERNAME_FORMAT,
+  AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
+  AUTH_CREATE_USER_TOKEN_ALREADY_USED,
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
@@ -40,6 +51,12 @@ import { ValidateVerificationToken } from '~/src/modules/Auth/Application/Valida
 import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
+import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
+import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
+import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
+import { UserNameMother } from '~/src/test/mothers/UserNameMother'
+import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
+import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -48,6 +65,7 @@ describe('AuthController', () => {
   const mockedGenerateVerificationTokenUseCase = mock<GenerateVerificationToken>()
   const mockedRefreshSessionUseCase = mock<RefreshSession>()
   const mockedValidateVerificationTokenUseCase = mock<ValidateVerificationToken>()
+  const mockedCreateUserUseCase = mock<CreateUser>()
 
   const mockedIp = '127.0.0.1'
   const mockedUserAgent = UserAgentMother.forTesting().value
@@ -61,6 +79,7 @@ describe('AuthController', () => {
     mockReset(mockedRefreshSessionUseCase)
     mockReset(mockedGenerateVerificationTokenUseCase)
     mockReset(mockedValidateVerificationTokenUseCase)
+    mockReset(mockedCreateUserUseCase)
   })
 
   const buildController = () => {
@@ -69,6 +88,7 @@ describe('AuthController', () => {
       mockedRefreshSessionUseCase,
       mockedGenerateVerificationTokenUseCase,
       mockedValidateVerificationTokenUseCase,
+      mockedCreateUserUseCase,
       mockedConfigService,
     )
   }
@@ -157,7 +177,7 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw UnprocessableEntityException if use-case returns invalidEmail error', async () => {
+      it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -173,7 +193,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnprocessableEntityException if use-case returns invalidPasswordFormat error', async () => {
+      it('should throw UnprocessableEntityException when use-case returns invalidPasswordFormat error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -189,7 +209,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnauthorizedException if use-case returns invalidCredentials error', async () => {
+      it('should throw UnauthorizedException when use-case returns invalidCredentials error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -205,7 +225,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnauthorizedException if use-case returns userNotFound error', async () => {
+      it('should throw UnauthorizedException when use-case returns userNotFound error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -221,7 +241,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnauthorizedException if use-case returns userDoesNotHaveCredentials error', async () => {
+      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -237,7 +257,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnauthorizedException if use-case returns userDoesNotHaveCredentials error', async () => {
+      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -253,7 +273,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnauthorizedException if use-case returns userDoesNotHaveCredentials error', async () => {
+      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -269,7 +289,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw InternalServerErrorException if use-case returns internalError', async () => {
+      it('should throw InternalServerErrorException when use-case returns internalError', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -282,7 +302,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw InternalServerErrorException if use-case returns revocationFailed', async () => {
+      it('should throw InternalServerErrorException when use-case returns revocationFailed', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -295,7 +315,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw InternalServerErrorException if use-case returns an unknown error', async () => {
+      it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
         const controller = buildController()
 
         const unexpectedError: LoginUserApplicationError = {
@@ -313,7 +333,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw error if use-case fails with an unexpected error', async () => {
+      it('should throw error when use-case fails with an unexpected error', async () => {
         const controller = buildController()
 
         mockedLoginUseCase.execute.mockImplementation(() => {
@@ -446,7 +466,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnprocessableEntityException if use-case returns invalidTokenFormat error', async () => {
+      it('should throw UnprocessableEntityException when use-case returns invalidTokenFormat error', async () => {
         const controller = buildController()
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -610,7 +630,7 @@ describe('AuthController', () => {
       const mockBody = { email: 'test@example.com', sendNewToken: false, language: 'es' }
 
       describe('signup', () => {
-        it('should throw UnprocessableEntityException if use-case returns invalidEmail error', async () => {
+        it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -626,7 +646,7 @@ describe('AuthController', () => {
           )
         })
 
-        it('should throw UnprocessableEntityException if use-case returns invalidVerificationTokenPurpose error', async () => {
+        it('should throw UnprocessableEntityException when use-case returns invalidVerificationTokenPurpose error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -642,7 +662,7 @@ describe('AuthController', () => {
           )
         })
 
-        it('should throw ConflictException if use-case returns activeTokenAlreadyIssued error', async () => {
+        it('should throw ConflictException when use-case returns activeTokenAlreadyIssued error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -664,7 +684,7 @@ describe('AuthController', () => {
           )
         })
 
-        it('should throw ConflictException if use-case returns emailAlreadyTaken error', async () => {
+        it('should throw ConflictException when use-case returns emailAlreadyTaken error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -713,7 +733,7 @@ describe('AuthController', () => {
       })
 
       describe('reset', () => {
-        it('should throw UnprocessableEntityException if use-case returns invalidEmail error', async () => {
+        it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -729,7 +749,7 @@ describe('AuthController', () => {
           )
         })
 
-        it('should throw UnprocessableEntityException if use-case returns invalidVerificationTokenPurpose error', async () => {
+        it('should throw UnprocessableEntityException when use-case returns invalidVerificationTokenPurpose error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -745,7 +765,7 @@ describe('AuthController', () => {
           )
         })
 
-        it('should throw ConflictException if use-case returns activeTokenAlreadyIssued error', async () => {
+        it('should throw ConflictException when use-case returns activeTokenAlreadyIssued error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -767,7 +787,7 @@ describe('AuthController', () => {
           )
         })
 
-        it('should throw ConflictException if use-case returns emailAlreadyTaken error', async () => {
+        it('should throw ConflictException when use-case returns emailAlreadyTaken error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -848,7 +868,7 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw UnprocessableEntityException if use-case returns invalidEmail error', async () => {
+      it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -864,7 +884,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnprocessableEntityException if use-case returns invalidTokenPurpose error', async () => {
+      it('should throw UnprocessableEntityException when use-case returns invalidTokenPurpose error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -880,7 +900,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnprocessableEntityException if use-case returns invalidTokenFormat error', async () => {
+      it('should throw UnprocessableEntityException when use-case returns invalidTokenFormat error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -896,7 +916,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw ConflictException if use-case returns tokenAlreadyUsed error', async () => {
+      it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -912,7 +932,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw GoneException if use-case returns tokenExpired error', async () => {
+      it('should throw GoneException when use-case returns tokenExpired error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -928,7 +948,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw NotFoundException if use-case returns tokenPurposeMismatch error', async () => {
+      it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -944,7 +964,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw NotFoundException if use-case returns tokenNotFound error', async () => {
+      it('should throw NotFoundException when use-case returns tokenNotFound error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -960,7 +980,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw NotFoundException if use-case returns invalidOwner error', async () => {
+      it('should throw NotFoundException when use-case returns invalidOwner error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -976,7 +996,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw NotFoundException if use-case returns invalidCode error', async () => {
+      it('should throw NotFoundException when use-case returns invalidCode error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
@@ -992,7 +1012,7 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw InternalServerErrorException if use-case returns an unknown error', async () => {
+      it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
         const controller = buildController()
 
         const useCaseError: ValidateVerificationTokenError = {
@@ -1009,7 +1029,7 @@ describe('AuthController', () => {
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(new InternalServerErrorException(useCaseError))
       })
 
-      it('should throw error when use-case fails with unexpected error', async () => {
+      it('should throw InternalServerErrorException when use-case fails with a unexpected error', async () => {
         const controller = buildController()
 
         mockedValidateVerificationTokenUseCase.execute.mockImplementation(() => {
@@ -1017,6 +1037,345 @@ describe('AuthController', () => {
         })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(Error('Unexpected error'))
+      })
+    })
+  })
+
+  describe('signup', () => {
+    const mockBody = {
+      email: VerificationTokenEmailMother.valid().value,
+      username: UserUsernameMother.valid().value,
+      name: UserNameMother.valid().value,
+      password: UserPasswordMother.valid().value,
+      token: VerificationTokenValueMother.valid().value,
+      requestedRole: UserRole.sportsman().value,
+    }
+
+    describe('happy path', () => {
+      beforeEach(() => {
+        mockedCreateUserUseCase.execute.mockResolvedValue({
+          success: true,
+          value: undefined,
+        })
+      })
+
+      it('should call use-case correctly passing IP and UserAgent and return nothing', async () => {
+        const controller = buildController()
+
+        const result = await controller.signup(mockBody, mockedIp, mockedUserAgent)
+
+        expect(mockedCreateUserUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedCreateUserUseCase.execute).toHaveBeenCalledWith({
+          ...mockBody,
+          ip: mockedIp,
+          userAgent: mockedUserAgent,
+        })
+        expect(result).toBeUndefined()
+      })
+
+      it('should call use-case correctly when UserAgent is undefined', async () => {
+        const controller = buildController()
+
+        const result = await controller.signup(mockBody, mockedIp, undefined)
+
+        expect(mockedCreateUserUseCase.execute).toHaveBeenCalledWith({
+          ...mockBody,
+          ip: mockedIp,
+          userAgent: undefined,
+        })
+        expect(result).toBeUndefined()
+      })
+    })
+
+    describe('when there are errors', () => {
+      type ErrorWithApiCode = {
+        error: CreateUserError
+        apiCode: string
+      }
+      const testInvalidInputMapping = async (errorsWithApiCode: ErrorWithApiCode | Array<ErrorWithApiCode>) => {
+        const controller = buildController()
+
+        mockedCreateUserUseCase.execute.mockResolvedValue({
+          success: false,
+          error: CreateUserApplicationError.invalidInput(
+            Array.isArray(errorsWithApiCode)
+              ? errorsWithApiCode.map((errorWithApiCode) => errorWithApiCode.error)
+              : [errorsWithApiCode.error],
+          ),
+        })
+
+        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          new UnprocessableEntityException({
+            message: 'One or more fields have invalid formats',
+            errors: Array.isArray(errorsWithApiCode)
+              ? errorsWithApiCode.map((errorWithCode) => ({
+                  code: errorWithCode.apiCode,
+                  message: errorWithCode.error.message,
+                }))
+              : [
+                  {
+                    code: errorsWithApiCode.apiCode,
+                    message: errorsWithApiCode.error.message,
+                  },
+                ],
+          }),
+        )
+      }
+
+      const testDuplicatedMapping = async (errorsWithApiCode: ErrorWithApiCode | Array<ErrorWithApiCode>) => {
+        const controller = buildController()
+
+        mockedCreateUserUseCase.execute.mockResolvedValue({
+          success: false,
+          error: CreateUserApplicationError.duplicated(
+            Array.isArray(errorsWithApiCode)
+              ? errorsWithApiCode.map((errorWithApiCode) => errorWithApiCode.error)
+              : [errorsWithApiCode.error],
+          ),
+        })
+
+        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          new ConflictException({
+            message: 'Some provided data is already in use',
+            errors: Array.isArray(errorsWithApiCode)
+              ? errorsWithApiCode.map((errorWithCode) => ({
+                  code: errorWithCode.apiCode,
+                  message: errorWithCode.error.message,
+                }))
+              : [
+                  {
+                    code: errorsWithApiCode.apiCode,
+                    message: errorsWithApiCode.error.message,
+                  },
+                ],
+          }),
+        )
+      }
+
+      describe('when input data is invalid', () => {
+        it('should throw UnprocessableEntityException mapped for invalid username', async () => {
+          await testInvalidInputMapping({ error: CreateUserError.invalidUsername(), apiCode: AUTH_CREATE_USER_INVALID_USERNAME_FORMAT })
+        })
+
+        it('should throw UnprocessableEntityException mapped for invalid email', async () => {
+          await testInvalidInputMapping({ error: CreateUserError.invalidEmail(), apiCode: AUTH_CREATE_USER_INVALID_EMAIL_FORMAT })
+        })
+
+        it('should throw UnprocessableEntityException mapped for invalid password', async () => {
+          await testInvalidInputMapping({ error: CreateUserError.invalidPassword(), apiCode: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT })
+        })
+
+        it('should throw UnprocessableEntityException mapped for invalid token format', async () => {
+          await testInvalidInputMapping({ error: CreateUserError.invalidTokenFormat(), apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT })
+        })
+
+        it('should throw UnprocessableEntityException mapped for invalid name', async () => {
+          await testInvalidInputMapping({ error: CreateUserError.invalidName(), apiCode: AUTH_CREATE_USER_INVALID_NAME_FORMAT })
+        })
+
+        it('should throw UnprocessableEntityException mapped for invalid role', async () => {
+          await testInvalidInputMapping({ error: CreateUserError.invalidRole(), apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE })
+        })
+
+        it('should throw UnprocessableEntityException mapped for multiple input errors', async () => {
+          await testInvalidInputMapping([
+            { error: CreateUserError.invalidRole(), apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE },
+            { error: CreateUserError.invalidTokenFormat(), apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT },
+          ])
+        })
+
+        it('should throw InternalServerErrorException when an unexpected invalidInput error is returned', async () => {
+          const controller = buildController()
+          const unknownError = { id: 'unknown-id', message: 'Unknown', name: 'Unknown' } as CreateUserError
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.invalidInput([unknownError]),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        })
+      })
+
+      describe('when data is duplicated', () => {
+        it('should throw ConflictException mapped for duplicated email', async () => {
+          await testDuplicatedMapping({
+            error: CreateUserError.duplicatedEmail(mockBody.email),
+            apiCode: AUTH_CREATE_USER_DUPLICATED_EMAIL,
+          })
+        })
+
+        it('should throw ConflictException mapped for duplicated username', async () => {
+          await testDuplicatedMapping({
+            error: CreateUserError.duplicatedUsername(mockBody.username),
+            apiCode: AUTH_CREATE_USER_DUPLICATED_USERNAME,
+          })
+        })
+
+        it('should throw ConflictException mapped for multiple duplicated errors', async () => {
+          await testDuplicatedMapping([
+            { error: CreateUserError.duplicatedEmail(mockBody.email), apiCode: AUTH_CREATE_USER_DUPLICATED_EMAIL },
+            { error: CreateUserError.duplicatedUsername(mockBody.username), apiCode: AUTH_CREATE_USER_DUPLICATED_USERNAME },
+          ])
+        })
+
+        it('should throw InternalServerErrorException when an unknown duplicated error is returned', async () => {
+          const controller = buildController()
+          const unknownError = { id: 'unknown-id', message: 'Unknown', name: 'Unknown' } as CreateUserError
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.duplicated([unknownError]),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        })
+      })
+
+      describe('when token is invalid', () => {
+        it('should throw NotFoundException when use-case returns notFound error', async () => {
+          const controller = buildController()
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(mockBody.email)),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_CREATE_USER_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw GoneException when use-case returns tokenExpired error', async () => {
+          const controller = buildController()
+          const specificError = CreateUserError.tokenExpired()
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.invalidToken(specificError),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new GoneException({
+              code: AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
+              message: specificError.message,
+            }),
+          )
+        })
+
+        it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
+          const controller = buildController()
+          const specificError = CreateUserError.tokenAlreadyUsed()
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.invalidToken(specificError),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new ConflictException({
+              code: AUTH_CREATE_USER_TOKEN_ALREADY_USED,
+              message: specificError.message,
+            }),
+          )
+        })
+
+        it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
+          const controller = buildController()
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch()),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_CREATE_USER_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw NotFoundException when use-case returns tokenInvalidOwner error', async () => {
+          const controller = buildController()
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner()),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_CREATE_USER_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw NotFoundException when use-case return invalidToken error', async () => {
+          const controller = buildController()
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_CREATE_USER_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw InternalServerErrorException when use-case returns an unknown CreateUserError error', async () => {
+          const controller = buildController()
+
+          const useCaseError: CreateUserError = {
+            id: 'create_user_unknown_error',
+            name: CreateUserError.name,
+            message: 'Unknown error',
+          }
+
+          mockedCreateUserUseCase.execute.mockResolvedValue({
+            success: false,
+            error: CreateUserApplicationError.invalidToken(useCaseError),
+          })
+
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        })
+      })
+
+      it('should throw InternalServerErrorException when use-case returns an unknown CreateUserApplicationError error', async () => {
+        const controller = buildController()
+
+        const useCaseApplicationError: CreateUserApplicationError = {
+          id: 'create_user_application_unknown_error',
+          name: CreateUserApplicationError.name,
+          errors: [],
+        }
+
+        mockedCreateUserUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseApplicationError,
+        })
+
+        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+      })
+
+      it('should throw InternalServerErrorException when use-case fails with a unexpected error', async () => {
+        const controller = buildController()
+
+        const unexpectedError = new Error('Unexpected error')
+
+        mockedCreateUserUseCase.execute.mockImplementation(() => {
+          throw unexpectedError
+        })
+
+        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(unexpectedError)
       })
     })
   })

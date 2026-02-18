@@ -1,7 +1,6 @@
 import { User } from '~/src/modules/User/Domain/User'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
@@ -15,9 +14,8 @@ describe('create', () => {
     const username = UserUsernameMother.valid()
     const name = UserNameMother.valid()
     const role = UserRole.sportsman()
-    const uploadId: UserUploadId | null = null
 
-    const user = User.create(id, email, username, name, role, uploadId, now)
+    const user = User.create(id, email, username, name, role, now)
 
     expect(user.id.equals(id)).toBe(true)
     expect(user.email.equals(email)).toBe(true)

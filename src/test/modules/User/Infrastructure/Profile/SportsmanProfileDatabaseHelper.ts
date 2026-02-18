@@ -24,6 +24,12 @@ export class SportsmanProfileDatabaseHelper {
     return sportsmanProfileRepository.findOneBy({ id: profileId })
   }
 
+  public async findByUserId(userId: string): Promise<SportsmanProfileRawWithRelationships | null> {
+    const sportsmanProfileRepository = this.entityManager.getRepository(SportsmanProfileEntity)
+
+    return sportsmanProfileRepository.findOneBy({ user_id: userId })
+  }
+
   public async count(): Promise<number> {
     const sportsmanProfileRepository = this.entityManager.getRepository(SportsmanProfileEntity)
 

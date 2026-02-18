@@ -70,4 +70,8 @@ export class UserCredential {
   public isLocked(now: Date): boolean {
     return !!this._lockedUntil && this._lockedUntil > now
   }
+
+  public static create(userId: UserId, passwordHash: PasswordHash, now: Date): UserCredential {
+    return new UserCredential(userId, passwordHash, 0, null, null, now, now)
+  }
 }

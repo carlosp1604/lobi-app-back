@@ -23,6 +23,12 @@ export class OwnerProfileDatabaseHelper {
     return ownerProfileRepository.findOneBy({ id: profileId })
   }
 
+  public async findByUserId(userId: string): Promise<OwnerProfileRawWithRelationships | null> {
+    const ownerProfileRepository = this.entityManager.getRepository(OwnerProfileEntity)
+
+    return ownerProfileRepository.findOneBy({ user_id: userId })
+  }
+
   public async count(): Promise<number> {
     const ownerProfileRepository = this.entityManager.getRepository(OwnerProfileEntity)
 

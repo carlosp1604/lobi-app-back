@@ -29,6 +29,12 @@ export class VerificationTokenDatabaseHelper {
     return verificationTokenRepository.findBy({ email })
   }
 
+  public async findOneByEmail(email: string): Promise<VerificationTokenRawModel | null> {
+    const verificationTokenRepository = this.entityManager.getRepository(VerificationTokenEntity)
+
+    return verificationTokenRepository.findOneBy({ email })
+  }
+
   public async update(id: string, dataToUpdate: Partial<VerificationTokenRawModel>) {
     const verificationTokenRepository = this.entityManager.getRepository(VerificationTokenEntity)
 

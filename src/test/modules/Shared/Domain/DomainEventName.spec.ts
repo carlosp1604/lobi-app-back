@@ -1,17 +1,14 @@
 import { DomainEventName, ValidDomainEventNames } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventDomainException } from '~/src/modules/Shared/Domain/DomainEventDomainException'
-
-const validDomainEventNames: Array<ValidDomainEventNames> = Object.values(ValidDomainEventNames)
-
-const invalidCases = ['', 'random-event-name', '1111', 'REMOVE_LOGIN', 'LOGIN', 'successFulLogin ', 'successFulLogOUT']
+import { DomainEventNameMother } from '~/src/test/mothers/DomainEventNameMother'
 
 describe('DomainEventName', () => {
   describe('constructor', () => {
-    it.each(validDomainEventNames)('should not throw error when domain event name is valid: %s', (domainEventName) => {
+    it.each(DomainEventNameMother.VALID_VALUES)('should not throw error when domain event name is valid: %s', (domainEventName) => {
       expect(() => DomainEventName.fromString(String(domainEventName))).not.toThrow()
     })
 
-    it.each(invalidCases)('should throw error when domain event name is not valid: %s', (domainEventName) => {
+    it.each(DomainEventNameMother.INVALID_VALUES)('should throw error when domain event name is not valid: %s', (domainEventName) => {
       expect(() => DomainEventName.fromString(domainEventName)).toThrow(
         DomainEventDomainException.invalidDomainEventName(domainEventName),
       )
@@ -26,23 +23,25 @@ describe('DomainEventName', () => {
     })
   })
 
-  describe('successfulLogin', () => {
+  describe('factories', () => {
     it('factory should return successfulLogin', () => {
       const domainEventNameValueObject = DomainEventName.successfulLogin()
 
       expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_LOGIN)
     })
-  })
 
-  describe('failedLoginAttempt', () => {
+    it('factory should return successfulSignup', () => {
+      const domainEventNameValueObject = DomainEventName.successfulSignup()
+
+      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_SIGNUP)
+    })
+
     it('factory should return failedLoginAttempt', () => {
       const domainEventNameValueObject = DomainEventName.failedLoginAttempt()
 
       expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
     })
-  })
 
-  describe('emailVerificationRequest', () => {
     it('factory should return emailVerificationRequest', () => {
       const domainEventNameValueObject = DomainEventName.emailVerificationRequest()
 

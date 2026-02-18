@@ -26,4 +26,10 @@ export class DomainEventDatabaseHelper {
 
     return domainEventRepository.save(domainEvent)
   }
+
+  public async count(): Promise<number> {
+    const domainEventRepository = this.entityManager.getRepository(DomainEventEntity)
+
+    return domainEventRepository.count()
+  }
 }

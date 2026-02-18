@@ -1,5 +1,6 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
 
 export class VerificationTokenValue extends ValueObject<string> {
   private __verificationTokenTokenBrand: void
@@ -9,17 +10,27 @@ export class VerificationTokenValue extends ValueObject<string> {
 
   private constructor(value: string) {
     super(value)
-
-    if (!this.isValid(value)) {
-      throw VerificationTokenDomainException.invalidVerificationTokenValue(value)
-    }
   }
 
   static fromString(value: string): VerificationTokenValue {
-    return new VerificationTokenValue(value)
+    const result = this.safeCreate(value)
+
+    if (!result.success) {
+      throw result.error
+    }
+
+    return result.value
   }
 
-  private isValid(value: string): boolean {
+  static safeCreate(value: string): Result<VerificationTokenValue, VerificationTokenDomainException> {
+    if (!VerificationTokenValue.isValid(value)) {
+      return fail(VerificationTokenDomainException.invalidVerificationTokenValue(value))
+    }
+
+    return success(new VerificationTokenValue(value))
+  }
+
+  private static isValid(value: string): boolean {
     return VerificationTokenValue.REGEX.test(value)
   }
 }

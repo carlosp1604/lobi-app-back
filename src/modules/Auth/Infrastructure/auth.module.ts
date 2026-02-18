@@ -4,6 +4,7 @@ import { LOGGER_SERVICE } from '~/src/modules/Shared/Infrastructure/logger.modul
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import {
+  CREATE_USER,
   DEVICE_LOCATION_RESOLVER,
   DOMAIN_EVENT_REPOSITORY,
   EMAIL_SENDER_SERVICE,
@@ -14,6 +15,7 @@ import {
   LOGIN_USER,
   MAX_SESSIONS_POLICY,
   PASSWORD_HASHER,
+  USER_PROFILE_REPOSITORY,
   RANDOM_SERVICE,
   REFRESH_SESSION,
   REQUEST_ORIGIN_SERVICE,
@@ -74,11 +76,24 @@ import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/
 import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
+import { PostgreSqlProfileRepository } from '~/src/modules/User/Infrastructure/Profile/PostgreSqlProfileRepository'
+import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/ProfileRepositoryInterface'
+import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
+import { SportsmanProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
+import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity, VerificationTokenEntity]),
+    TypeOrmModule.forFeature([
+      UserEntity,
+      UserSessionEntity,
+      UserCredentialEntity,
+      DomainEventEntity,
+      VerificationTokenEntity,
+      SportsmanProfileEntity,
+      OwnerProfileEntity,
+    ]),
   ],
   controllers: [AuthController],
   providers: [
@@ -86,6 +101,13 @@ import { ValidateVerificationToken } from '~/src/modules/Auth/Application/Valida
       provide: USER_REPOSITORY,
       useFactory: (managerResolver: TypeOrmManagerResolver) => {
         return new PostgresqlUserRepository(managerResolver)
+      },
+      inject: [TYPEORM_MANAGER_RESOLVER],
+    },
+    {
+      provide: USER_PROFILE_REPOSITORY,
+      useFactory: (managerResolver: TypeOrmManagerResolver) => {
+        return new PostgreSqlProfileRepository(managerResolver)
       },
       inject: [TYPEORM_MANAGER_RESOLVER],
     },
@@ -342,7 +364,52 @@ import { ValidateVerificationToken } from '~/src/modules/Auth/Application/Valida
       },
       inject: [VERIFICATION_TOKEN_REPOSITORY, VERIFY_TOKEN_DOMAIN_SERVICE, CLOCK_SERVICE],
     },
+    {
+      provide: CREATE_USER,
+      useFactory: (
+        userRepository: UserRepositoryInterface,
+        credentialRepository: UserCredentialRepositoryInterface,
+        profileRepository: ProfileRepositoryInterface,
+        verificationTokenRepository: VerificationTokenRepositoryInterface,
+        domainEventRepository: DomainEventRepositoryInterface,
+        verifyTokenService: VerifyTokenService,
+        passwordHasher: PasswordHasherServiceInterface,
+        requestOriginApplicationService: RequestOriginApplicationService,
+        clockService: NodeClockService,
+        unitOfWork: UnitOfWork,
+        loggerService: LoggerServiceInterface,
+        idGeneratorService: IdGeneratorServiceInterface,
+      ) =>
+        new CreateUser(
+          userRepository,
+          credentialRepository,
+          profileRepository,
+          verificationTokenRepository,
+          domainEventRepository,
+          verifyTokenService,
+          passwordHasher,
+          requestOriginApplicationService,
+          clockService,
+          unitOfWork,
+          loggerService,
+          idGeneratorService,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        USER_CREDENTIAL_REPOSITORY,
+        USER_PROFILE_REPOSITORY,
+        VERIFICATION_TOKEN_REPOSITORY,
+        DOMAIN_EVENT_REPOSITORY,
+        VERIFY_TOKEN_DOMAIN_SERVICE,
+        PASSWORD_HASHER,
+        REQUEST_ORIGIN_SERVICE,
+        CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_SERVICE,
+        ID_GENERATOR,
+      ],
+    },
   ],
-  exports: [LOGIN_USER, REFRESH_SESSION, GENERATE_VERIFICATION_TOKEN, VALIDATE_VERIFICATION_TOKEN, TypeOrmModule],
+  exports: [LOGIN_USER, REFRESH_SESSION, GENERATE_VERIFICATION_TOKEN, VALIDATE_VERIFICATION_TOKEN, CREATE_USER, TypeOrmModule],
 })
 export class AuthModule {}

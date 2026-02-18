@@ -41,6 +41,12 @@ import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import {
+  AUTH_CREATE_USER_DUPLICATED_EMAIL,
+  AUTH_CREATE_USER_DUPLICATED_USERNAME,
+  AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+  AUTH_CREATE_USER_INVALID_TOKEN,
+  AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
+  AUTH_CREATE_USER_TOKEN_ALREADY_USED,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
   AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
@@ -62,6 +68,10 @@ import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTok
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
+import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
+import { UserNameMother } from '~/src/test/mothers/UserNameMother'
+import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
+import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -809,6 +819,222 @@ describe('AuthController', () => {
           await verificationTokenDatabaseHelper.save(rawVerificationToken)
 
           await testCase(email.value, validTokenValue, VerificationTokenPurpose.resetPassword().value)
+        })
+      })
+    })
+  })
+
+  describe('signup', () => {
+    const validEmail = UserEmailMother.random()
+    const validUsername = UserUsernameMother.random()
+    const validName = UserNameMother.random()
+    const validPassword = UserPasswordMother.valid()
+    const validTokenValue = VerificationTokenValueMother.valid()
+    const validRole = UserRoleMother.sportsman()
+
+    let userDatabaseHelper: UserDatabaseHelper
+    let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
+
+    beforeEach(() => {
+      userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
+      verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(dataSource.manager)
+    })
+
+    const getValidPayload = () => ({
+      email: validEmail.value,
+      username: validUsername.value,
+      name: validName.value,
+      password: validPassword.value,
+      token: validTokenValue.value,
+      requestedRole: validRole.value,
+    })
+
+    const saveTokenInDatabase = async (overrides: Partial<VerificationTokenRawModel> = {}) => {
+      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+      const tokenHash = await passwordHasher.hash(validTokenValue.value)
+      const rawToken = makeRawVerificationToken({
+        id: VerificationTokenIdMother.valid().value,
+        email: validEmail.value,
+        purpose: VerificationTokenPurpose.createAccount().value,
+        expires_at: new Date(now.getTime() + 3600 * 1000),
+        used_at: null,
+        token_hash: tokenHash,
+        ...overrides,
+      })
+
+      await verificationTokenDatabaseHelper.save(rawToken)
+      return rawToken
+    }
+
+    describe('happy path', () => {
+      it('should return 204 No Content when user is registered correctly', async () => {
+        await saveTokenInDatabase()
+
+        await request(app.getHttpServer())
+          .post('/auth/signup')
+          .send(getValidPayload())
+          .expect(204)
+          .expect((response) => {
+            expect(response.body).toEqual({})
+          })
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw 400 error if body is not valid', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/signup')
+          .send({ page: 5, perPage: 12 })
+          .expect(400)
+          .expect((response) => {
+            expect(response.body).toEqual(
+              expect.objectContaining<Record<string, unknown>>({
+                path: '/auth/signup',
+                response: {
+                  code: VALIDATION_ERROR,
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                  errors: expect.any(Object),
+                },
+                statusCode: 400,
+                requestId: expect.any(String),
+                timestamp: expectIsoDate,
+              }),
+            )
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            const errorMessages = Object.keys(response.body.response.errors).join(' ')
+            expect(errorMessages).toContain('email')
+            expect(errorMessages).toContain('password')
+            expect(errorMessages).toContain('username')
+            expect(errorMessages).toContain('page')
+            expect(errorMessages).toContain('perPage')
+          })
+      })
+
+      it('should throw UnprocessableEntityException when password format is not valid', async () => {
+        await saveTokenInDatabase()
+
+        return request(app.getHttpServer())
+          .post('/auth/signup')
+          .send({ ...getValidPayload(), password: 'invalid-password' })
+          .expect(422)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/signup',
+              response: {
+                message: 'One or more fields have invalid formats',
+                errors: [
+                  {
+                    code: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+                    message: CreateUserError.invalidPassword().message,
+                  },
+                ],
+              },
+              statusCode: 422,
+              requestId: expect.any(String),
+              timestamp: expectIsoDate,
+            } as Record<string, unknown>)
+          })
+      })
+
+      describe('when data is duplicated', () => {
+        it('should throw ConflictException when email is already registered', async () => {
+          await saveTokenInDatabase()
+
+          await userDatabaseHelper.save(
+            makeRawUser({
+              id: UserIdMother.valid().value,
+              email: validEmail.value,
+              status: UserStatus.active().value,
+            }),
+          )
+
+          return request(app.getHttpServer())
+            .post('/auth/signup')
+            .send(getValidPayload())
+            .expect(409)
+            .expect((response) => {
+              expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_EMAIL)
+              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedEmail(validEmail.value).message)
+            })
+        })
+
+        it('should throw ConflictException when username is already taken', async () => {
+          await saveTokenInDatabase()
+
+          await userDatabaseHelper.save(
+            makeRawUser({
+              id: UserIdMother.valid().value,
+              email: UserEmailMother.random().value,
+              username: validUsername.value,
+              status: UserStatus.active().value,
+            }),
+          )
+
+          return request(app.getHttpServer())
+            .post('/auth/signup')
+            .send(getValidPayload())
+            .expect(409)
+            .expect((response) => {
+              expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_USERNAME)
+              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedUsername(validUsername.value).message)
+            })
+        })
+      })
+
+      describe('when token is not valid', () => {
+        it('should throw NotFoundException when token does not exist', async () => {
+          return request(app.getHttpServer())
+            .post('/auth/signup')
+            .send(getValidPayload())
+            .expect(404)
+            .expect((response) => {
+              expect(response.body.response.code).toEqual(AUTH_CREATE_USER_INVALID_TOKEN)
+              expect(response.body.response.message).toEqual('Invalid verification token')
+            })
+        })
+
+        it('should throw GoneException when token is already expired', async () => {
+          await saveTokenInDatabase({
+            expires_at: new Date(now.getTime() - 1000),
+          })
+
+          return request(app.getHttpServer())
+            .post('/auth/signup')
+            .send(getValidPayload())
+            .expect(410)
+            .expect((response) => {
+              expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED)
+              expect(response.body.response.message).toEqual(CreateUserError.tokenExpired().message)
+            })
+        })
+
+        it('should throw ConflictException when token is already used', async () => {
+          await saveTokenInDatabase({
+            used_at: new Date(now.getTime() - 5000),
+          })
+
+          return request(app.getHttpServer())
+            .post('/auth/signup')
+            .send(getValidPayload())
+            .expect(409)
+            .expect((response) => {
+              expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_USED)
+              expect(response.body.response.message).toEqual(CreateUserError.tokenAlreadyUsed().message)
+            })
+        })
+
+        it('should throw NotFoundException when token exists but code is invalid', async () => {
+          await saveTokenInDatabase()
+
+          return request(app.getHttpServer())
+            .post('/auth/signup')
+            .send({ ...getValidPayload(), token: VerificationTokenValueMother.random().value })
+            .expect(404)
+            .expect((response) => {
+              expect(response.body.response.code).toEqual(AUTH_CREATE_USER_INVALID_TOKEN)
+              expect(response.body.response.message).toEqual('Invalid verification token')
+            })
         })
       })
     })
