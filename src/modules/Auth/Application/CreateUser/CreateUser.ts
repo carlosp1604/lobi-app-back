@@ -89,10 +89,14 @@ export class CreateUser {
         return fail(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(verificationTokenEmail.value)))
       }
 
-      try {
-        verificationToken.validate(now, verificationTokenEmail, VerificationTokenPurpose.createAccount())
-      } catch (exception: unknown) {
-        return this.handleDomainError(exception, verificationToken, userEmail)
+      const validateVerificationTokenResult = verificationToken.validate(
+        now,
+        verificationTokenEmail,
+        VerificationTokenPurpose.createAccount(),
+      )
+
+      if (!validateVerificationTokenResult.success) {
+        return this.handleDomainError(validateVerificationTokenResult.error, verificationToken, userEmail)
       }
 
       const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue.value)
@@ -215,14 +219,10 @@ export class CreateUser {
   }
 
   private handleDomainError(
-    exception: unknown,
+    exception: VerificationTokenDomainException,
     verificationToken: VerificationToken,
     userEmail: UserEmail,
   ): Result<void, CreateUserApplicationError> {
-    if (!(exception instanceof VerificationTokenDomainException)) {
-      throw exception
-    }
-
     switch (exception.id) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId: {
         this.loggerService.warn('Verification token validation failed: tokenExpired', {

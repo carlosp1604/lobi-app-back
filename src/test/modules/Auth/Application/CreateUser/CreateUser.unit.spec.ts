@@ -19,7 +19,6 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
-import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
@@ -37,7 +36,6 @@ import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
@@ -48,9 +46,9 @@ import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCr
 import { SportsmanProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/SportsmanProfileTestBuilder'
 import { OwnerProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/OwnerProfileTestBuilder'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 
 describe('CreateUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -67,6 +65,8 @@ describe('CreateUser', () => {
   const mockedUnitOfWork = mock<UnitOfWork>()
 
   const now = new Date('2026-02-16T20:43:00.000Z')
+  const pastDate = new Date(now.getTime() - 3600 * 1000)
+  const futureDate = new Date(now.getTime() + 3600 * 1000)
   const fakeContext: TxContext = { __opaque_tx_context: true }
 
   const validEmail = UserEmailMother.valid()
@@ -87,21 +87,9 @@ describe('CreateUser', () => {
   const validDeviceLocation = DeviceLocationMother.valid()
   const validIpHash = UserSessionIpHashMother.valid()
 
-  const expectedRequestOriginData: RequestOriginData = {
-    userAgent: validUA,
-    ipHash: validIpHash.value,
-    normalizedIp: 'normalized-ip',
-    deviceLocation: validDeviceLocation,
-  }
-
   let baseRequest: CreateUserApplicationRequestDto
-
-  const mockedVerificationToken = mock<VerificationToken>({
-    id: VerificationTokenIdMother.valid(),
-    email: UserEmail.fromString(validEmail.value),
-    expiresAt: new Date(now.getTime() + 1000),
-    purpose: VerificationTokenPurpose.createAccount(),
-  })
+  let verificationTokenBuilder: VerificationTokenTestBuilder
+  let requestOriginData: RequestOriginData
 
   const buildUseCase = () => {
     return new CreateUser(
@@ -135,7 +123,6 @@ describe('CreateUser', () => {
     mockReset(mockedIdGenerator)
     mockReset(mockedLogger)
     mockReset(mockedUnitOfWork)
-    mockReset(mockedVerificationToken)
 
     baseRequest = {
       email: validEmail.value,
@@ -148,15 +135,29 @@ describe('CreateUser', () => {
       userAgent: validUA.value,
     }
 
+    verificationTokenBuilder = new VerificationTokenTestBuilder()
+      .withEmail(VerificationTokenEmail.fromString(validEmail.value))
+      .withPurpose(VerificationTokenPurpose.createAccount())
+      .withExpiresAt(futureDate)
+      .withUsedAt(null)
+
+    requestOriginData = {
+      userAgent: validUA,
+      ipHash: validIpHash.value,
+      normalizedIp: 'normalized-ip',
+      deviceLocation: validDeviceLocation,
+    }
+
     mockedClock.now.mockReturnValue(now)
-    mockedRequestOriginService.process.mockResolvedValue(expectedRequestOriginData)
+    mockedRequestOriginService.process.mockResolvedValue(requestOriginData)
     mockedPasswordHasher.hash.mockResolvedValue(validPasswordHash.value)
 
     mockedUnitOfWork.runInTransaction.mockImplementation(async (work) => {
       return work(fakeContext)
     })
 
-    mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(mockedVerificationToken)
+    const expectedVerificationToken = verificationTokenBuilder.build()
+    mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(expectedVerificationToken)
     mockedVerifyTokenService.verify.mockResolvedValue(true)
     mockedUserRepository.checkEmailExists.mockResolvedValue(false)
     mockedUserRepository.checkUsernameExists.mockResolvedValue(false)
@@ -253,17 +254,18 @@ describe('CreateUser', () => {
       const expectedUserCredential = buildExpectedUserCredential()
       const expectedDomainEvent = buildExpectedDomainEvent(expectedDeviceLocation)
       const expectedSportsmanProfile = buildExpectedSportsmanProfile()
+      const expectedInitialVerificationToken = verificationTokenBuilder.build()
+      const usedVerificationToken = verificationTokenBuilder.withUsedAt(now).build()
 
+      expect(expectedInitialVerificationToken.usedAt).toBeNull()
       expect(mockedRequestOriginService.process).toHaveBeenCalledTimes(1)
       expect(mockedPasswordHasher.hash).toHaveBeenCalledTimes(1)
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)
-      expect(mockedVerificationToken.validate).toHaveBeenCalledTimes(1)
       expect(mockedVerifyTokenService.verify).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.checkUsernameExists).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.checkEmailExists).toHaveBeenCalledTimes(1)
       expect(mockedIdGenerator.generateId).toHaveBeenCalledTimes(idGeneratorExpectedCalls)
-      expect(mockedVerificationToken.markAsUsed).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedProfileRepository.saveSportsmanProfile).toHaveBeenCalledTimes(1)
       expect(mockedCredentialRepository.save).toHaveBeenCalledTimes(1)
@@ -277,19 +279,18 @@ describe('CreateUser', () => {
       })
       expect(mockedPasswordHasher.hash).toHaveBeenCalledWith(baseRequest.password)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledWith(validEmail.value, fakeContext)
-      expect(mockedVerificationToken.validate).toHaveBeenCalledWith(
-        now,
-        VerificationTokenEmail.fromString(validEmail.value),
-        VerificationTokenPurpose.createAccount(),
+      expect(mockedVerifyTokenService.verify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: expectedInitialVerificationToken.id,
+        }),
+        validTokenValue.value,
       )
-      expect(mockedVerifyTokenService.verify).toHaveBeenCalledWith(mockedVerificationToken, validTokenValue.value)
       expect(mockedUserRepository.checkEmailExists).toHaveBeenCalledWith(expect.anything(), fakeContext)
       expect(mockedUserRepository.checkUsernameExists).toHaveBeenCalledWith(expect.anything(), fakeContext)
-      expect(mockedVerificationToken.markAsUsed).toHaveBeenCalledWith(now, expect.anything(), VerificationTokenPurpose.createAccount())
       expect(mockedUserRepository.save).toHaveBeenCalledWith(expectedUser, fakeContext)
       expect(mockedCredentialRepository.save).toHaveBeenCalledWith(expectedUserCredential, fakeContext)
       expect(mockedProfileRepository.saveSportsmanProfile).toHaveBeenCalledWith(expectedSportsmanProfile, fakeContext)
-      expect(mockedVerificationTokenRepository.update).toHaveBeenCalledWith(mockedVerificationToken, fakeContext)
+      expect(mockedVerificationTokenRepository.update).toHaveBeenCalledWith(usedVerificationToken, fakeContext)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(expectedDomainEvent, fakeContext)
     }
 
@@ -297,13 +298,13 @@ describe('CreateUser', () => {
       const useCase = buildUseCase()
       const result = await useCase.execute(baseRequest)
 
-      assertCommonCallsAndResult(result, validSportsmanRole, 3, expectedRequestOriginData.deviceLocation)
+      assertCommonCallsAndResult(result, validSportsmanRole, 3, requestOriginData.deviceLocation)
       expect(mockedProfileRepository.saveOwnerProfile).not.toHaveBeenCalled()
     })
 
     it('should call services, repositories and entities correctly and return the correct result when requested role is owner', async () => {
       mockedRequestOriginService.process.mockResolvedValue({
-        ...expectedRequestOriginData,
+        ...requestOriginData,
         deviceLocation: null,
       })
       mockedIdGenerator.generateId.mockReset()
@@ -418,10 +419,8 @@ describe('CreateUser', () => {
       })
 
       it('should return tokenExpired error when token is already expired', async () => {
-        const domainException = VerificationTokenDomainException.alreadyExpired(mockedVerificationToken.id.value)
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
-        })
+        const expiredVerificationToken = verificationTokenBuilder.withExpiresAt(pastDate).build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(expiredVerificationToken)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
@@ -431,18 +430,16 @@ describe('CreateUser', () => {
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired()),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenExpired', {
-          message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
+          message: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
+          verificationTokenId: expiredVerificationToken.id.value,
           email: validEmail.value,
-          expiresAt: mockedVerificationToken.expiresAt,
+          expiresAt: expiredVerificationToken.expiresAt,
         })
       })
 
       it('should return tokenAlreadyUsed error when token is already used', async () => {
-        const domainException = VerificationTokenDomainException.alreadyUsed(mockedVerificationToken.id.value)
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
-        })
+        const usedVerificationToken = verificationTokenBuilder.withUsedAt(pastDate).build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(usedVerificationToken)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
@@ -452,17 +449,21 @@ describe('CreateUser', () => {
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed()),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenAlreadyUsed', {
-          message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
+          message: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
+          verificationTokenId: usedVerificationToken.id.value,
           email: validEmail.value,
-          usedAt: mockedVerificationToken.usedAt,
+          usedAt: usedVerificationToken.usedAt,
         })
       })
 
       it('should return tokenInvalidOwner when token does not belong to user', async () => {
-        const domainException = VerificationTokenDomainException.cannotBeUsedByUser(mockedVerificationToken.id.value, validEmail.value)
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
+        const verificationToken = verificationTokenBuilder.build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
+
+        const domainException = VerificationTokenDomainException.cannotBeUsedByUser(verificationToken.id.value, validEmail.value)
+        jest.spyOn(verificationToken, 'validate').mockReturnValue({
+          success: false,
+          error: domainException,
         })
 
         const useCase = buildUseCase()
@@ -474,21 +475,19 @@ describe('CreateUser', () => {
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenInvalidOwner', {
           message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
+          verificationTokenId: verificationToken.id.value,
           email: validEmail.value,
-          ownerEmail: mockedVerificationToken.email.value,
+          ownerEmail: verificationToken.email.value,
         })
       })
 
       it('should return tokenPurposeMismatch when token cannot be used for the current operation', async () => {
+        const notAccountCreateVerificationToken = verificationTokenBuilder.withPurpose(VerificationTokenPurpose.resetPassword()).build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(notAccountCreateVerificationToken)
         const domainException = VerificationTokenDomainException.cannotBeUsedForPurpose(
-          mockedVerificationToken.id.value,
-          VerificationTokenPurpose.resetPassword().value,
+          notAccountCreateVerificationToken.id.value,
+          VerificationTokenPurpose.createAccount().value,
         )
-
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
-        })
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
@@ -499,31 +498,10 @@ describe('CreateUser', () => {
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenPurposeMismatch', {
           message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
+          verificationTokenId: notAccountCreateVerificationToken.id.value,
           email: validEmail.value,
-          verificationTokenPurpose: mockedVerificationToken.purpose,
+          verificationTokenPurpose: notAccountCreateVerificationToken.purpose,
         })
-      })
-
-      it('should re-throw exception when VerificationToken throws a non-domain exception', async () => {
-        const unexpectedError = new Error('Unexpected error')
-
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw unexpectedError
-        })
-
-        const useCase = buildUseCase()
-        await expect(useCase.execute(baseRequest)).rejects.toThrow(unexpectedError)
-      })
-
-      it('should re-throw exception when VerificationToken throws a unexpected domain exception', async () => {
-        const unexpectedError = VerificationTokenDomainException.invalidTokenHash()
-
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw unexpectedError
-        })
-        const useCase = buildUseCase()
-        await expect(useCase.execute(baseRequest)).rejects.toThrow(unexpectedError)
       })
 
       it('should return invalidToken error when cryptographic verification fails', async () => {
@@ -539,6 +517,20 @@ describe('CreateUser', () => {
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token cryptography verification failed', {
           email: validEmail.value,
         })
+      })
+
+      it('should re-throw exception when entity returns a unexpected VerificationTokenDomainException', async () => {
+        const verificationToken = verificationTokenBuilder.build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
+
+        const unhandledDomainError = VerificationTokenDomainException.invalidTokenHash()
+        jest.spyOn(verificationToken, 'validate').mockImplementation(() => {
+          throw unhandledDomainError
+        })
+
+        const useCase = buildUseCase()
+
+        await expect(useCase.execute(baseRequest)).rejects.toThrow(unhandledDomainError)
       })
     })
 
