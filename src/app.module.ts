@@ -11,6 +11,7 @@ import { DatabaseModule } from '~/src/db/database.module'
 import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentry-exception.filter'
 import { RateLimitModule } from '~/src/modules/Shared/Infrastructure/rate-limit.module'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
     LoggerModule,
     RateLimitModule,
     SharedModule,
+    ContextModule,
     AuthModule,
   ],
   controllers: [AppController],
