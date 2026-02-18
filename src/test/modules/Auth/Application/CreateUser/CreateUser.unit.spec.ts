@@ -500,7 +500,7 @@ describe('CreateUser', () => {
           message: domainException.message,
           verificationTokenId: notAccountCreateVerificationToken.id.value,
           email: validEmail.value,
-          verificationTokenPurpose: notAccountCreateVerificationToken.purpose,
+          verificationTokenPurpose: notAccountCreateVerificationToken.purpose.value,
         })
       })
 
@@ -535,6 +535,15 @@ describe('CreateUser', () => {
     })
 
     describe('when data is duplicated', () => {
+      const assertLoggerCall = (emailExists: boolean, usernameExists: boolean) => {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Signup attempt with existing credentials', {
+          username: validUsername.value,
+          email: validEmail.value,
+          emailExists,
+          usernameExists,
+        })
+      }
+
       it('should return error when email is duplicated', async () => {
         mockedUserRepository.checkEmailExists.mockResolvedValue(true)
 
@@ -545,6 +554,7 @@ describe('CreateUser', () => {
           success: false,
           error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail(validEmail.value)]),
         })
+        assertLoggerCall(true, false)
         expect(mockedUserRepository.save).not.toHaveBeenCalled()
       })
 
@@ -558,6 +568,8 @@ describe('CreateUser', () => {
           success: false,
           error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername(validUsername.value)]),
         })
+        assertLoggerCall(false, true)
+        expect(mockedUserRepository.save).not.toHaveBeenCalled()
       })
 
       it('should return multiple duplicated errors when both exist', async () => {
@@ -574,6 +586,8 @@ describe('CreateUser', () => {
             CreateUserError.duplicatedUsername(validUsername.value),
           ]),
         })
+        assertLoggerCall(true, true)
+        expect(mockedUserRepository.save).not.toHaveBeenCalled()
       })
     })
 

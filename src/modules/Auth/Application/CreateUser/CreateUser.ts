@@ -115,6 +115,13 @@ export class CreateUser {
       ])
 
       if (emailExists || usernameExists) {
+        this.loggerService.warn('Signup attempt with existing credentials', {
+          email: userEmail.value,
+          username: username.value,
+          emailExists,
+          usernameExists,
+        })
+
         const errors: Array<CreateUserError> = []
 
         if (emailExists) {
@@ -262,7 +269,7 @@ export class CreateUser {
           message: exception.message,
           email: userEmail.value,
           verificationTokenId: verificationToken.id.value,
-          verificationTokenPurpose: verificationToken.purpose,
+          verificationTokenPurpose: verificationToken.purpose.value,
         })
 
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch()))
@@ -297,7 +304,7 @@ export class CreateUser {
       },
       {
         ipHash: ipHash,
-        ua: userAgent.toString(),
+        ua: userAgent.value,
       },
       now,
     )
