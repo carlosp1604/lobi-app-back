@@ -34,8 +34,8 @@ describe('UserSessionPolicyManagerApplicationService', () => {
   const assertLoggerErrorCall = (message: string, userSession: UserSession, error: unknown, stack?: string) => {
     expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.error).toHaveBeenCalledWith(message, stack, {
-      sessionId: userSession.id.toString(),
-      userId: userSession.userId.toString(),
+      sessionId: userSession.id.value,
+      userId: userSession.userId.value,
       revokedAt: userSession.revokedAt,
       expiresAt: userSession.expiresAt,
       error,
@@ -45,8 +45,8 @@ describe('UserSessionPolicyManagerApplicationService', () => {
   const assertLoggerWarnCall = (message: string, userSession: UserSession, error: string) => {
     expect(mockedLoggerService.warn).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.warn).toHaveBeenCalledWith(message, {
-      sessionId: userSession.id.toString(),
-      userId: userSession.userId.toString(),
+      sessionId: userSession.id.value,
+      userId: userSession.userId.value,
       revokedAt: userSession.revokedAt,
       expiresAt: userSession.expiresAt,
       error,
@@ -125,7 +125,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       it('should return error when revocation fails because of session is already revoked or expired', () => {
         mockedMaxSessionRepository.sessionsToRevoke.mockReturnValue([activeSession2])
 
-        const expectedDomainException = UserSessionDomainException.sessionAlreadyRevoked(activeSession2.id.toString())
+        const expectedDomainException = UserSessionDomainException.sessionAlreadyRevoked(activeSession2.id.value)
         activeSession2.revoke.mockImplementation(() => {
           throw expectedDomainException
         })
@@ -154,7 +154,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         const service = buildService()
 
         expect(() => service.applyPolicyAndRevokeForLogin(activeSessions, now)).toThrow(
-          `Unexpected error while revoking session ${activeSession2.id.toString()}`,
+          `Unexpected error while revoking session ${activeSession2.id.value}`,
         )
 
         assertLoggerErrorCall('Unexpected error while revoking session', activeSession2, unexpectedException, unexpectedException.stack)
@@ -173,7 +173,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         const service = buildService()
 
         expect(() => service.applyPolicyAndRevokeForLogin(activeSessions, now)).toThrow(
-          `Unexpected error while revoking session ${activeSession2.id.toString()}`,
+          `Unexpected error while revoking session ${activeSession2.id.value}`,
         )
 
         assertLoggerErrorCall('Unexpected error while revoking session', activeSession2, unexpectedException, undefined)
@@ -267,19 +267,19 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         expect(result.success).toBe(false)
         expect(result).toEqual({
           success: false,
-          error: UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSession.id.toString(), userId.toString()),
+          error: UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSession.id.value, userId.value),
         })
 
         expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
         expect(mockedLoggerService.error).toHaveBeenCalledWith(
           'Session refresh logic inconsistency. Current session not found in active sessions list',
           undefined,
-          { sessionId: currentSession.id.toString(), userId: currentSession.userId.toString() },
+          { sessionId: currentSession.id.value, userId: currentSession.userId.value },
         )
       })
 
       it('should return error if current session cannot be revoked', () => {
-        const expectedDomainException = UserSessionDomainException.sessionAlreadyRevoked(currentSession.id.toString())
+        const expectedDomainException = UserSessionDomainException.sessionAlreadyRevoked(currentSession.id.value)
 
         currentSession.revoke.mockImplementation(() => {
           throw expectedDomainException
@@ -308,7 +308,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         const service = buildService()
 
         expect(() => service.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)).toThrow(
-          Error(`Unexpected error while revoking session ${currentSession.id.toString()}`),
+          Error(`Unexpected error while revoking session ${currentSession.id.value}`),
         )
 
         assertLoggerErrorCall('Unexpected error while revoking session', currentSession, unexpectedError, unexpectedError.stack)
@@ -325,7 +325,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         const service = buildService()
 
         expect(() => service.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)).toThrow(
-          Error(`Unexpected error while revoking session ${currentSession.id.toString()}`),
+          Error(`Unexpected error while revoking session ${currentSession.id.value}`),
         )
 
         assertLoggerErrorCall('Unexpected error while revoking session', currentSession, unexpectedError, undefined)
@@ -333,7 +333,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
       it('should return error if session to revoke cannot be revoked', () => {
         mockedMaxSessionRepository.sessionsToRevoke.mockReturnValue([activeSession2])
-        const expectedDomainException = UserSessionDomainException.sessionAlreadyRevoked(currentSession.id.toString())
+        const expectedDomainException = UserSessionDomainException.sessionAlreadyRevoked(currentSession.id.value)
 
         activeSession2.revoke.mockImplementation(() => {
           throw expectedDomainException
@@ -363,7 +363,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         const service = buildService()
 
         expect(() => service.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)).toThrow(
-          Error(`Unexpected error while revoking session ${activeSession2.id.toString()}`),
+          Error(`Unexpected error while revoking session ${activeSession2.id.value}`),
         )
 
         assertLoggerErrorCall('Unexpected error while revoking session', activeSession2, unexpectedError, unexpectedError.stack)
@@ -381,7 +381,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         const service = buildService()
 
         expect(() => service.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)).toThrow(
-          Error(`Unexpected error while revoking session ${activeSession2.id.toString()}`),
+          Error(`Unexpected error while revoking session ${activeSession2.id.value}`),
         )
 
         assertLoggerErrorCall('Unexpected error while revoking session', activeSession2, unexpectedError, undefined)

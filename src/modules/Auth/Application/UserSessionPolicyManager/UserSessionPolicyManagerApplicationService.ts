@@ -27,13 +27,11 @@ export class UserSessionPolicyManagerApplicationService {
 
     if (!isCurrentInList) {
       this.loggerService.error('Session refresh logic inconsistency. Current session not found in active sessions list', undefined, {
-        sessionId: currentSession.id.toString(),
-        userId: currentSession.userId.toString(),
+        sessionId: currentSession.id.value,
+        userId: currentSession.userId.value,
       })
 
-      return fail(
-        UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSession.id.toString(), currentSession.userId.toString()),
-      )
+      return fail(UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSession.id.value, currentSession.userId.value))
     }
 
     const revokeCurrentResult = this.handleRevocation(currentSession, now)
@@ -83,19 +81,19 @@ export class UserSessionPolicyManagerApplicationService {
         const stack = exception instanceof Error ? exception.stack : undefined
 
         this.loggerService.error('Unexpected error while revoking session', stack, {
-          sessionId: session.id.toString(),
-          userId: session.userId.toString(),
+          sessionId: session.id.value,
+          userId: session.userId.value,
           revokedAt: session.revokedAt,
           expiresAt: session.expiresAt,
           error: exception,
         })
 
-        throw new Error(`Unexpected error while revoking session ${session.id.toString()}`)
+        throw new Error(`Unexpected error while revoking session ${session.id.value}`)
       }
 
       this.loggerService.warn('Cannot revoke session', {
-        sessionId: session.id.toString(),
-        userId: session.userId.toString(),
+        sessionId: session.id.value,
+        userId: session.userId.value,
         revokedAt: session.revokedAt,
         expiresAt: session.expiresAt,
         error: exception.message,
