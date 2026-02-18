@@ -27,7 +27,6 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
-import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 
 export class GenerateVerificationToken {
@@ -104,18 +103,9 @@ export class GenerateVerificationToken {
       let resendCode = false
 
       if (verificationToken) {
-        let isVerificationTokenUsable: boolean
-        try {
-          verificationToken.validate(now, email, verificationTokenPurpose)
+        const validateVerificationTokenResult = verificationToken.validate(now, email, verificationTokenPurpose)
 
-          isVerificationTokenUsable = true
-        } catch (exception: unknown) {
-          if (!(exception instanceof VerificationTokenDomainException)) {
-            throw exception
-          }
-
-          isVerificationTokenUsable = false
-        }
+        const isVerificationTokenUsable = validateVerificationTokenResult.success
 
         if (isVerificationTokenUsable && !request.sendNewToken) {
           this.loggerService.warn('Email has already an active token for purpose', {
@@ -190,21 +180,25 @@ export class GenerateVerificationToken {
   }
 
   private validateEmail(email: string): Result<VerificationTokenEmail, GenerateVerificationTokenApplicationError> {
-    try {
-      return success(VerificationTokenEmail.fromString(email))
-    } catch {
+    const createVerificationTokenEmailResult = VerificationTokenEmail.safeCreate(email)
+
+    if (!createVerificationTokenEmailResult.success) {
       return fail(GenerateVerificationTokenApplicationError.invalidEmail(email))
     }
+
+    return success(createVerificationTokenEmailResult.value)
   }
 
   private validateVerificationTokenPurpose(
     purpose: string,
   ): Result<VerificationTokenPurpose, GenerateVerificationTokenApplicationError> {
-    try {
-      return success(VerificationTokenPurpose.fromString(purpose))
-    } catch {
+    const createVerificationTokenPurposeResult = VerificationTokenPurpose.safeCreate(purpose)
+
+    if (!createVerificationTokenPurposeResult.success) {
       return fail(GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose(purpose))
     }
+
+    return success(createVerificationTokenPurposeResult.value)
   }
 
   private async sendEmail(
