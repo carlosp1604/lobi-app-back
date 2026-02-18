@@ -156,6 +156,31 @@ describe('UserCredential', () => {
     })
   })
 
+  describe('updatePasswordHash', () => {
+    const updatedAt = new Date(now.getTime() + 50)
+
+    it('should update password hash, updatedAt and reset security counters', () => {
+      const lockedUntil = new Date(now.getTime() + 10000)
+      const userCredential = new UserCredentialTestBuilder().withFailedAttempts(5).withLockedUntil(lockedUntil).build()
+
+      const newPasswordHash = PasswordHashMother.other()
+
+      const beforeSnapshot = createSnapshot(userCredential)
+
+      userCredential.updatePasswordHash(newPasswordHash, updatedAt)
+
+      const afterSnapshot = createSnapshot(userCredential)
+
+      expect(userCredential.passwordHash.equals(newPasswordHash)).toBe(true)
+      expect(userCredential.updatedAt).toBe(updatedAt)
+
+      expect(userCredential.failedAttempts).toBe(0)
+      expect(userCredential.lockedUntil).toBeNull()
+
+      compareExceptModifiedFields(beforeSnapshot, afterSnapshot, ['passwordHash', 'updatedAt', 'failedAttempts', 'lockedUntil'])
+    })
+  })
+
   describe('create', () => {
     it('should initialize the UserCredential instance correctly', () => {
       const userId = UserIdMother.valid()

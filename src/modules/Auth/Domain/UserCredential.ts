@@ -3,7 +3,7 @@ import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash
 
 export class UserCredential {
   public readonly userId: UserId
-  public readonly passwordHash: PasswordHash
+  public _passwordHash: PasswordHash
   private _failedAttempts: number
   private _lockedUntil: Date | null
   private _lastLoginAt: Date | null
@@ -20,7 +20,7 @@ export class UserCredential {
     updatedAt: Date,
   ) {
     this.userId = userId
-    this.passwordHash = passwordHash
+    this._passwordHash = passwordHash
     this._failedAttempts = failedAttempts
     this._lockedUntil = lockedUntil
     this._lastLoginAt = lastLoginAt
@@ -42,6 +42,10 @@ export class UserCredential {
 
   public get updatedAt(): Date {
     return this._updatedAt
+  }
+
+  public get passwordHash(): PasswordHash {
+    return this._passwordHash
   }
 
   public incrementFailedAttempts(now: Date): void {
@@ -69,6 +73,13 @@ export class UserCredential {
 
   public isLocked(now: Date): boolean {
     return !!this._lockedUntil && this._lockedUntil > now
+  }
+
+  public updatePasswordHash(newPasswordHash: PasswordHash, now: Date): void {
+    this._passwordHash = newPasswordHash
+    this._updatedAt = now
+    this._failedAttempts = 0
+    this._lockedUntil = null
   }
 
   public static create(userId: UserId, passwordHash: PasswordHash, now: Date): UserCredential {
