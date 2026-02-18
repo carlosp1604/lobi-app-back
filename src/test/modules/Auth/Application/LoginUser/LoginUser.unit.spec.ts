@@ -196,7 +196,7 @@ describe('LoginUser', () => {
       expect(activeSession2.isSameDeviceAs).toHaveBeenCalledTimes(1)
       expect(activeSession3.isSameDeviceAs).toHaveBeenCalledTimes(1)
       expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin).toHaveBeenCalledTimes(1)
-      expect(mockedCredentialsRepository.saveLoginSuccess).toHaveBeenCalledTimes(1)
+      expect(mockedCredentialsRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
 
       expect(mockedRequestOriginService.process).toHaveBeenCalledWith(request.ip, request.userAgent, { email: validEmail.value })
@@ -219,7 +219,7 @@ describe('LoginUser', () => {
         [activeSession1, activeSession2, activeSession3],
         now,
       )
-      expect(mockedCredentialsRepository.saveLoginSuccess).toHaveBeenCalledWith(mockedCredential, fakeContext)
+      expect(mockedCredentialsRepository.update).toHaveBeenCalledWith(mockedCredential, fakeContext)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           aggregateId: DomainEventAggregateId.fromString(validUserId.value),

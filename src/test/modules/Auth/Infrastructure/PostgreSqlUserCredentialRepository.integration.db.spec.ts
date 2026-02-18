@@ -13,6 +13,7 @@ import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
+import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 
 describe('PostgreSqlUserCredentialRepository', () => {
   const now = new Date('2025-09-26T14:11:25Z')
@@ -79,19 +80,24 @@ describe('PostgreSqlUserCredentialRepository', () => {
     })
   })
 
-  describe('saveLoginSuccess', () => {
+  describe('update', () => {
     const userId = UserIdMother.valid()
     const userEmail = UserEmailMother.valid()
 
+    const initialPasswordHash = PasswordHashMother.valid()
+    const newPasswordHash = PasswordHashMother.other()
+
     const rawUserCredential = makeRawUserCredential({
       user_id: userId.value,
+      password_hash: initialPasswordHash.value,
     })
 
     const updatedAt = new Date(now.getTime() + 500)
 
-    const createUserCredential = (userCredentialUserId: UserId) => {
+    const createUserCredential = (userCredentialUserId: UserId, passwordHash: PasswordHash) => {
       return new UserCredentialTestBuilder()
         .withUserId(userCredentialUserId)
+        .withPasswordHash(passwordHash)
         .withFailedAttempts(0)
         .withLastLoginAt(updatedAt)
         .withLockedUntil(null)
@@ -107,19 +113,19 @@ describe('PostgreSqlUserCredentialRepository', () => {
       await userDatabaseHelper.save(rawUser)
     })
 
-    it('should update entity correctly', async () => {
+    it('should update entity correctly including password hash', async () => {
       await userCredentialDatabaseHelper.save(rawUserCredential)
 
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
       const context = new TypeOrmTxContext(runner.manager)
-      const userCredential = createUserCredential(userId)
+
+      const userCredential = createUserCredential(userId, newPasswordHash)
 
       const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
 
-      await repository.saveLoginSuccess(userCredential, context)
+      await repository.update(userCredential, context)
 
       const userCredentialsCountAfter = await userCredentialDatabaseHelper.count()
-
       const updatedRow = await userCredentialDatabaseHelper.findUserCredential(rawUserCredential.user_id)
 
       expect(userCredentialsCountBefore).toBe(1)
@@ -130,6 +136,8 @@ describe('PostgreSqlUserCredentialRepository', () => {
       expect(updatedRow!.locked_until).toBeNull()
       expect(updatedRow!.last_login_at?.getTime()).toBe(updatedAt.getTime())
       expect(updatedRow!.updated_at.getTime()).toBe(updatedAt.getTime())
+      expect(updatedRow!.password_hash).toBe(newPasswordHash.value)
+      expect(updatedRow!.password_hash).not.toBe(initialPasswordHash.value)
     })
 
     it('should not update entity when it is not found', async () => {
@@ -139,11 +147,11 @@ describe('PostgreSqlUserCredentialRepository', () => {
       const context = new TypeOrmTxContext(runner.manager)
 
       const anotherUserId = UserIdMother.valid()
-      const userCredential = createUserCredential(anotherUserId)
+      const userCredential = createUserCredential(anotherUserId, newPasswordHash)
 
       const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
 
-      await repository.saveLoginSuccess(userCredential, context)
+      await repository.update(userCredential, context)
 
       const userCredentialsCountAfter = await userCredentialDatabaseHelper.count()
 
@@ -156,6 +164,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
       expect(expectedToUpdateRow).toBeNull()
 
       expect(originalRow).not.toBeNull()
+      expect(originalRow!.password_hash).toBe(initialPasswordHash.value)
       expect(originalRow!.failed_attempts).toBe(rawUserCredential.failed_attempts)
       expect(originalRow!.locked_until?.getTime()).toBe(rawUserCredential.locked_until?.getTime())
       expect(originalRow!.last_login_at).toBe(rawUserCredential.last_login_at)

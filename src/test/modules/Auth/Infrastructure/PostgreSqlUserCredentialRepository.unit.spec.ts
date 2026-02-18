@@ -12,6 +12,7 @@ import {
   UserCredentialRawWitRelationships,
 } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
+import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 describe('PostgreSqlUserCredentialRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
@@ -109,7 +110,8 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
   describe('saveLoginSuccess', () => {
     const userId = UserIdMother.valid().value
-    const userCredential = new UserCredentialTestBuilder().withFailedAttempts(10).build()
+    const userCredentialToUpdate = new UserCredentialTestBuilder().build()
+
     const context: TxContext = { __opaque_tx_context: true }
 
     const rawUserCredential = makeRawUserCredential({
@@ -119,6 +121,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
       failed_attempts: 0,
       locked_until: null,
       last_login_at: now,
+      password_hash: PasswordHashMother.valid().value,
     })
 
     beforeEach(() => {
@@ -134,19 +137,14 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
       const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
 
-      await repository.saveLoginSuccess(userCredential, context)
+      await repository.update(userCredentialToUpdate, context)
 
       expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
       expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
       expect(userCredentialModelTranslatorSpy).toHaveBeenCalledTimes(1)
-      expect(userCredentialModelTranslatorSpy).toHaveBeenCalledWith(userCredential)
+      expect(userCredentialModelTranslatorSpy).toHaveBeenCalledWith(userCredentialToUpdate)
       expect(mockedUserCredentialRepository.update).toHaveBeenCalledTimes(1)
-      expect(mockedUserCredentialRepository.update).toHaveBeenCalledWith(userId, {
-        locked_until: null,
-        failed_attempts: 0,
-        last_login_at: now,
-        updated_at: now,
-      })
+      expect(mockedUserCredentialRepository.update).toHaveBeenCalledWith(userId, rawUserCredential)
     })
 
     it('should throw error when resolver throws', async () => {
@@ -158,7 +156,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
       const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
 
-      await expect(repository.saveLoginSuccess(userCredential, context)).rejects.toThrow(resolverError)
+      await expect(repository.update(userCredentialToUpdate, context)).rejects.toThrow(resolverError)
     })
 
     it('should throw error when ORM/Database fails', async () => {
@@ -172,7 +170,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
       const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
 
-      await expect(repository.saveLoginSuccess(userCredential, context)).rejects.toThrow(ormError)
+      await expect(repository.update(userCredentialToUpdate, context)).rejects.toThrow(ormError)
     })
 
     it('should throw error when translator fails', async () => {
@@ -185,7 +183,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
       const repository = new PostgreSqlUserCredentialRepository(mockedResolver)
 
-      await expect(repository.saveLoginSuccess(userCredential, context)).rejects.toThrow(translatorError)
+      await expect(repository.update(userCredentialToUpdate, context)).rejects.toThrow(translatorError)
     })
   })
 

@@ -10,11 +10,11 @@ export interface UserCredentialRepositoryInterface {
   save(userCredential: UserCredential, context?: TxContext): Promise<void>
 
   /**
-   * Persists the last successful login access for the given UserCredential
-   * @param userCredential UserCredential to update
+   * Updates an existing UserCredential in the database
+   * @param userCredential The UserCredential domain entity to update
    * @param context The transactional context
    */
-  saveLoginSuccess(userCredential: UserCredential, context: TxContext): Promise<void>
+  update(userCredential: UserCredential, context: TxContext): Promise<void>
 
   /**
    * Finds the UserCredential entity for a given user ID

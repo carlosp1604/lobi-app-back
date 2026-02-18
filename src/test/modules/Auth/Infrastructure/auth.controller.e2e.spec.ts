@@ -72,6 +72,7 @@ import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -106,6 +107,7 @@ describe('AuthController', () => {
           isGlobal: true,
           load: [() => env],
         }),
+        ContextModule,
         LoggerModule,
         RateLimitModule,
         SharedModule,

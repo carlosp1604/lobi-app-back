@@ -132,7 +132,7 @@ export class LoginUser {
 
       await this.sessionRepository.save([...sessionsToRevoke, session], context)
 
-      await this.credentialRepository.saveLoginSuccess(credentials, context)
+      await this.credentialRepository.update(credentials, context)
 
       await this.domainEventRepository.save(domainEvent, context)
 
