@@ -2,10 +2,11 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { DomainEventDomainException } from '~/src/modules/Shared/Domain/DomainEventDomainException'
 
 export enum ValidDomainEventNames {
-  SUCCESSFUL_LOGIN = 'successFulLogin',
+  SUCCESSFUL_LOGIN = 'successfulLogin',
   FAILED_LOGIN_ATTEMPT = 'failedLoginAttempt',
   EMAIL_VERIFICATION_REQUEST = 'emailVerificationRequest',
   SUCCESSFUL_SIGNUP = 'successfulSignup',
+  SUCCESSFUL_RESET_PASSWORD = 'successfulResetPassword',
 }
 
 export class DomainEventName extends ValueObject<ValidDomainEventNames> {
@@ -37,6 +38,10 @@ export class DomainEventName extends ValueObject<ValidDomainEventNames> {
 
   static successfulSignup(): DomainEventName {
     return new DomainEventName(ValidDomainEventNames.SUCCESSFUL_SIGNUP)
+  }
+
+  static successfulResetPassword(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.SUCCESSFUL_RESET_PASSWORD)
   }
 
   private isValidDomainEventName(value: string): boolean {
