@@ -68,29 +68,27 @@ export class GenerateVerificationToken {
     const email = emailValidationResult.value
     const verificationTokenPurpose = purposeValidationResult.value
 
-    const user = await this.userRepository.findByEmail(email.toString())
+    const user = await this.userRepository.findByEmail(email.value)
 
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.createAccount())) {
       if (user) {
         this.loggerService.warn('Create account requested for an already taken email', {
-          email: email.toString(),
+          email: email.value,
         })
 
-        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.toString()))
+        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
       }
     }
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: email.toString(),
+      email: email.value,
     })
 
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.resetPassword())) {
       if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
         this.loggerService.warn('Password reset requested for non-existent or inactive email', {
-          email: email.toString(),
+          email: email.value,
           reason: user ? 'Inactive' : 'NotFound',
-          ip: request.ip.slice(0, 39),
-          userAgent: userAgent.toString(),
         })
 
         return success(undefined)
@@ -98,7 +96,7 @@ export class GenerateVerificationToken {
     }
 
     return this.unitOfWork.runInTransaction(async (context) => {
-      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.toString(), context)
+      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       let resendCode = false
 
@@ -109,19 +107,17 @@ export class GenerateVerificationToken {
 
         if (isVerificationTokenUsable && !request.sendNewToken) {
           this.loggerService.warn('Email has already an active token for purpose', {
-            email: email.toString(),
-            purpose: verificationTokenPurpose.toString(),
-            tokenId: verificationToken.id,
-            tokenExpiresAt: verificationToken.expiresAt.toISOString(),
+            email: email.value,
+            purpose: verificationTokenPurpose.value,
+            tokenId: verificationToken.id.value,
+            tokenExpiresAt: verificationToken.expiresAt,
           })
 
-          return fail(
-            GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.toString(), verificationTokenPurpose.toString()),
-          )
+          return fail(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, verificationTokenPurpose.value))
         }
 
         if (!verificationToken.isUsed()) {
-          await this.verificationTokenRepository.delete(verificationToken.id.toString(), context)
+          await this.verificationTokenRepository.delete(verificationToken.id.value, context)
         }
 
         if (request.sendNewToken) {
@@ -150,8 +146,8 @@ export class GenerateVerificationToken {
         DomainEventAggregateType.verificationToken(),
         DomainEventAggregateId.fromString(verificationTokenId),
         {
-          email: email.toString(),
-          purpose: verificationTokenPurpose.toString(),
+          email: email.value,
+          purpose: verificationTokenPurpose.value,
           resendCode,
           lang: request.language,
           deviceLocation: deviceLocation
@@ -162,8 +158,8 @@ export class GenerateVerificationToken {
             : null,
         },
         {
-          ipHash: ipHash ? ipHash.toString() : null,
-          ua: userAgent.toString(),
+          ipHash: ipHash ? ipHash : null,
+          ua: userAgent.value,
         },
         now,
       )
@@ -219,6 +215,6 @@ export class GenerateVerificationToken {
       expiration_minutes: expirationMinutes,
     }
 
-    await this.emailSenderService.sendWithTemplate(email.toString(), templateAlias, context, language, now)
+    await this.emailSenderService.sendWithTemplate(email.value, templateAlias, context, language, now)
   }
 }

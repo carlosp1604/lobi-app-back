@@ -425,12 +425,11 @@ describe('GenerateVerificationToken', () => {
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
       })
 
-      const testCase = async (ipOverride?: string) => {
+      const testCase = async () => {
         const useCase = buildUseCase()
 
         const resetPasswordRequest = {
           ...requestBase,
-          ip: ipOverride ?? requestBase.ip,
           purpose: purposeResetPassword.value,
         }
 
@@ -446,18 +445,14 @@ describe('GenerateVerificationToken', () => {
       }
 
       it('should return success when user does not exist', async () => {
-        const longIpAttack = '2001:0db8:85a3:0000:0000:8a2e:0370:7334'.padEnd(50, '_Attack')
-
         mockedUserRepository.findByEmail.mockResolvedValue(null)
 
-        await testCase(longIpAttack)
+        await testCase()
 
         expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
         expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
           email: verificationTokenEmail.value,
           reason: 'NotFound',
-          ip: longIpAttack.slice(0, 39),
-          userAgent: validUA.value,
         })
       })
 
@@ -471,8 +466,6 @@ describe('GenerateVerificationToken', () => {
         expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
           email: verificationTokenEmail.value,
           reason: 'Inactive',
-          ip: requestBase.ip.slice(0, 39),
-          userAgent: validUA.value,
         })
       })
 
@@ -486,8 +479,6 @@ describe('GenerateVerificationToken', () => {
         expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
           email: verificationTokenEmail.value,
           reason: 'Inactive',
-          ip: requestBase.ip.slice(0, 39),
-          userAgent: validUA.value,
         })
       })
     })
@@ -511,8 +502,8 @@ describe('GenerateVerificationToken', () => {
       expect(mockedLogger.warn).toHaveBeenCalledWith('Email has already an active token for purpose', {
         email: verificationTokenEmail.value,
         purpose: purposeCreateAccount.value,
-        tokenId: existingToken.id,
-        tokenExpiresAt: existingToken.expiresAt.toISOString(),
+        tokenId: existingToken.id.value,
+        tokenExpiresAt: existingToken.expiresAt,
       })
       expect(mockedVerificationTokenRepository.delete).not.toHaveBeenCalled()
       expect(mockedRandomService.getRandomNumericCode).not.toHaveBeenCalled()
