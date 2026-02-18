@@ -45,10 +45,10 @@ export class ValidateVerificationToken {
       return fail(ValidateVerificationTokenError.notFound())
     }
 
-    try {
-      tokenEntity.validate(now, email, verificationTokenPurpose)
-    } catch (exception: unknown) {
-      return this.handleDomainError(exception)
+    const validateVerificationTokenResult = tokenEntity.validate(now, email, verificationTokenPurpose)
+
+    if (!validateVerificationTokenResult.success) {
+      return this.handleDomainError(validateVerificationTokenResult.error)
     }
 
     const isCryptoValid = await this.verifyTokenService.verify(tokenEntity, tokenValue)
@@ -60,12 +60,8 @@ export class ValidateVerificationToken {
     return success(undefined)
   }
 
-  private handleDomainError(exception: unknown): Result<void, ValidateVerificationTokenError> {
-    if (!(exception instanceof VerificationTokenDomainException)) {
-      throw exception
-    }
-
-    switch (exception.id) {
+  private handleDomainError(error: VerificationTokenDomainException): Result<void, ValidateVerificationTokenError> {
+    switch (error.id) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId:
         return fail(ValidateVerificationTokenError.expired())
 
@@ -79,45 +75,37 @@ export class ValidateVerificationToken {
         return fail(ValidateVerificationTokenError.tokenPurposeMismatch())
 
       default:
-        throw exception
+        throw error
     }
   }
 
   private validateEmail(email: string): Result<VerificationTokenEmail, ValidateVerificationTokenError> {
-    try {
-      return success(VerificationTokenEmail.fromString(email))
-    } catch (exception: unknown) {
-      if (!(exception instanceof VerificationTokenDomainException)) {
-        throw exception
-      }
+    const createVerificationTokenEmailResult = VerificationTokenEmail.safeCreate(email)
 
+    if (!createVerificationTokenEmailResult.success) {
       return fail(ValidateVerificationTokenError.invalidEmail(email))
     }
+
+    return success(createVerificationTokenEmailResult.value)
   }
 
   private validateVerificationTokenPurpose(purpose: string): Result<VerificationTokenPurpose, ValidateVerificationTokenError> {
-    try {
-      return success(VerificationTokenPurpose.fromString(purpose))
-    } catch (exception: unknown) {
-      if (!(exception instanceof VerificationTokenDomainException)) {
-        throw exception
-      }
+    const createVerificationTokenPurposeResult = VerificationTokenPurpose.safeCreate(purpose)
 
+    if (!createVerificationTokenPurposeResult.success) {
       return fail(ValidateVerificationTokenError.invalidTokenPurpose(purpose))
     }
+
+    return success(createVerificationTokenPurposeResult.value)
   }
 
   private validateTokenValue(tokenValue: string): Result<string, ValidateVerificationTokenError> {
-    try {
-      const verificationTokenValue = VerificationTokenValue.fromString(tokenValue)
+    const createVerificationTokenValueResult = VerificationTokenValue.safeCreate(tokenValue)
 
-      return success(verificationTokenValue.value)
-    } catch (exception: unknown) {
-      if (!(exception instanceof VerificationTokenDomainException)) {
-        throw exception
-      }
-
+    if (!createVerificationTokenValueResult.success) {
       return fail(ValidateVerificationTokenError.invalidTokenFormat())
     }
+
+    return success(createVerificationTokenValueResult.value.value)
   }
 }

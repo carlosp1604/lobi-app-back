@@ -13,8 +13,7 @@ import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenI
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
-import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
+import { VerificationTokenPurposeMother } from '~/src/test/mothers/VerificationTokenPurposeMother'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2026-02-12T11:41:00Z')
@@ -38,7 +37,7 @@ describe('ValidateVerificationToken', () => {
     return new ValidateVerificationToken(mockedTokenRepository, mockedVerifyTokenService, mockedClockService)
   }
 
-  const createVerificationTokenTestBuilder = () => {
+  const verificationTokenTestBuilder = () => {
     return new VerificationTokenTestBuilder()
       .withId(tokenId)
       .withEmail(email)
@@ -63,7 +62,7 @@ describe('ValidateVerificationToken', () => {
   describe('happy path', () => {
     it('should return success when token is valid and correct', async () => {
       const useCase = buildUseCase()
-      const verificationToken = createVerificationTokenTestBuilder().build()
+      const verificationToken = verificationTokenTestBuilder().build()
 
       mockedTokenRepository.findByEmail.mockResolvedValue(verificationToken)
 
@@ -83,35 +82,38 @@ describe('ValidateVerificationToken', () => {
 
   describe('when there are input errors', () => {
     it('should return invalidEmail error when email is not valid', async () => {
-      const invalidEmailRequest = { ...requestBase, email: 'invalid-email' }
+      const invalidEmail = VerificationTokenEmailMother.invalid()
+      const invalidEmailRequest = { ...requestBase, email: invalidEmail }
       const useCase = buildUseCase()
 
       const result = await useCase.execute(invalidEmailRequest)
 
       expect(result).toEqual({
         success: false,
-        error: ValidateVerificationTokenError.invalidEmail('invalid-email'),
+        error: ValidateVerificationTokenError.invalidEmail(invalidEmail),
       })
 
       expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
     })
 
     it('should return invalidTokenPurpose error when purpose is not valid', async () => {
-      const invalidPurposeRequest = { ...requestBase, purpose: 'invalid-purpose' }
+      const invalidTokenPurpose = VerificationTokenPurposeMother.invalid()
+      const invalidPurposeRequest = { ...requestBase, purpose: invalidTokenPurpose }
       const useCase = buildUseCase()
 
       const result = await useCase.execute(invalidPurposeRequest)
 
       expect(result).toEqual({
         success: false,
-        error: ValidateVerificationTokenError.invalidTokenPurpose('invalid-purpose'),
+        error: ValidateVerificationTokenError.invalidTokenPurpose(invalidTokenPurpose),
       })
 
       expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
     })
 
     it('should return invalidTokenFormat error when token format is not valid', async () => {
-      const invalidTokenRequest = { ...requestBase, token: 'invalid-format' }
+      const invalidTokenValue = VerificationTokenValueMother.invalid()
+      const invalidTokenRequest = { ...requestBase, token: invalidTokenValue }
       const useCase = buildUseCase()
 
       const result = await useCase.execute(invalidTokenRequest)
@@ -123,42 +125,9 @@ describe('ValidateVerificationToken', () => {
 
       expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
     })
-
-    it('should re-throw exception when VerificationTokenEmail throws a non-domain error', async () => {
-      const useCase = buildUseCase()
-      const unexpectedError = new Error('Unexpected error during email validation')
-
-      jest.spyOn(VerificationTokenEmail, 'fromString').mockImplementation(() => {
-        throw unexpectedError
-      })
-
-      await expect(useCase.execute(requestBase)).rejects.toThrow(unexpectedError)
-    })
-
-    it('should re-throw exception when VerificationTokenPurpose throws a non-domain error', async () => {
-      const useCase = buildUseCase()
-      const unexpectedError = new Error('Unexpected error during purpose validation')
-
-      jest.spyOn(VerificationTokenPurpose, 'fromString').mockImplementation(() => {
-        throw unexpectedError
-      })
-
-      await expect(useCase.execute(requestBase)).rejects.toThrow(unexpectedError)
-    })
-
-    it('should re-throw exception when VerificationTokenValue throws a non-domain error', async () => {
-      const useCase = buildUseCase()
-      const unexpectedError = new Error('Unexpected error during token value validation')
-
-      jest.spyOn(VerificationTokenValue, 'fromString').mockImplementation(() => {
-        throw unexpectedError
-      })
-
-      await expect(useCase.execute(requestBase)).rejects.toThrow(unexpectedError)
-    })
   })
 
-  it('should return notFound error when token does not exist in repository', async () => {
+  it('should return notFound error when token does not exist', async () => {
     const useCase = buildUseCase()
     mockedTokenRepository.findByEmail.mockResolvedValue(null)
 
@@ -174,7 +143,7 @@ describe('ValidateVerificationToken', () => {
 
   it('should return expired error when token is expired', async () => {
     const useCase = buildUseCase()
-    const expiredToken = createVerificationTokenTestBuilder()
+    const expiredToken = verificationTokenTestBuilder()
       .withExpiresAt(new Date(now.getTime() - 1000))
       .build()
 
@@ -192,7 +161,7 @@ describe('ValidateVerificationToken', () => {
 
   it('should return alreadyUsed error when token is already used', async () => {
     const useCase = buildUseCase()
-    const usedToken = createVerificationTokenTestBuilder().withUsedAt(now).build()
+    const usedToken = verificationTokenTestBuilder().withUsedAt(now).build()
 
     mockedTokenRepository.findByEmail.mockResolvedValue(usedToken)
 
@@ -209,7 +178,7 @@ describe('ValidateVerificationToken', () => {
   it('should return invalidOwner error when token email does not match request email', async () => {
     const useCase = buildUseCase()
     const otherEmail = VerificationTokenEmailMother.random()
-    const tokenWithOtherEmail = createVerificationTokenTestBuilder().withEmail(otherEmail).build()
+    const tokenWithOtherEmail = verificationTokenTestBuilder().withEmail(otherEmail).build()
 
     mockedTokenRepository.findByEmail.mockResolvedValue(tokenWithOtherEmail)
 
@@ -226,7 +195,7 @@ describe('ValidateVerificationToken', () => {
   it('should return tokenPurposeMismatch error when token purpose does not match request purpose', async () => {
     const useCase = buildUseCase()
     const otherPurpose = VerificationTokenPurpose.resetPassword()
-    const tokenWithOtherPurpose = createVerificationTokenTestBuilder().withPurpose(otherPurpose).build()
+    const tokenWithOtherPurpose = verificationTokenTestBuilder().withPurpose(otherPurpose).build()
 
     mockedTokenRepository.findByEmail.mockResolvedValue(tokenWithOtherPurpose)
 
@@ -240,30 +209,16 @@ describe('ValidateVerificationToken', () => {
     expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
   })
 
-  it('should re-throw exception when entity throws a non-domain error (unexpected system error)', async () => {
+  it('should re-throw exception when entity returns a unexpected VerificationTokenDomainException', async () => {
     const useCase = buildUseCase()
-    const verificationToken = createVerificationTokenTestBuilder().build()
-    const unexpectedError = new Error('Unexpected error')
-
-    mockedTokenRepository.findByEmail.mockResolvedValue(verificationToken)
-
-    jest.spyOn(verificationToken, 'validate').mockImplementation(() => {
-      throw unexpectedError
-    })
-
-    await expect(useCase.execute(requestBase)).rejects.toThrow(unexpectedError)
-  })
-
-  it('should re-throw exception when entity throws a VerificationTokenDomainException that is not mapped in the switch', async () => {
-    const useCase = buildUseCase()
-    const verificationToken = createVerificationTokenTestBuilder().build()
+    const verificationToken = verificationTokenTestBuilder().build()
 
     mockedTokenRepository.findByEmail.mockResolvedValue(verificationToken)
 
     const unhandledDomainError = VerificationTokenDomainException.invalidTokenHash()
 
     jest.spyOn(verificationToken, 'validate').mockImplementation(() => {
-      throw unhandledDomainError
+      return { success: false, error: unhandledDomainError }
     })
 
     await expect(useCase.execute(requestBase)).rejects.toThrow(unhandledDomainError)
@@ -271,7 +226,7 @@ describe('ValidateVerificationToken', () => {
 
   it('should return invalidToken error when cryptographic verification fails', async () => {
     const useCase = buildUseCase()
-    const verificationToken = createVerificationTokenTestBuilder().build()
+    const verificationToken = verificationTokenTestBuilder().build()
 
     mockedTokenRepository.findByEmail.mockResolvedValue(verificationToken)
     mockedVerifyTokenService.verify.mockResolvedValue(false)
@@ -284,7 +239,7 @@ describe('ValidateVerificationToken', () => {
     })
   })
 
-  it('should throw exception when repository throws unexpected error', async () => {
+  it('should throw exception when repository throws a unexpected error', async () => {
     const useCase = buildUseCase()
     const dbError = new Error('Unexpected verificationTokenRepository error')
 
@@ -293,9 +248,9 @@ describe('ValidateVerificationToken', () => {
     await expect(useCase.execute(requestBase)).rejects.toThrow(dbError)
   })
 
-  it('should throw exception when verify service throws unexpected error', async () => {
+  it('should throw exception when verify service throws a unexpected error', async () => {
     const useCase = buildUseCase()
-    const verificationToken = createVerificationTokenTestBuilder().build()
+    const verificationToken = verificationTokenTestBuilder().build()
     const verifyError = new Error('Unexpected verifyTokenService error')
 
     mockedTokenRepository.findByEmail.mockResolvedValue(verificationToken)

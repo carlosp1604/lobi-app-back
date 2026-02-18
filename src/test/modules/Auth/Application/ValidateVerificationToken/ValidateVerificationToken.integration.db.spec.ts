@@ -15,7 +15,6 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
-import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 
 describe('ValidateVerificationToken', () => {
@@ -34,6 +33,7 @@ describe('ValidateVerificationToken', () => {
   let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
   let runner: QueryRunner
   let validTokenHash: string
+  let baseRequest: ValidateVerificationTokenApplicationRequestDto
 
   withTransaction((queryRunner) => {
     runner = queryRunner
@@ -45,6 +45,12 @@ describe('ValidateVerificationToken', () => {
 
     verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(runner.manager)
     validTokenHash = await hasherService.hash(validTokenValue)
+
+    baseRequest = {
+      email: email.value,
+      purpose: purpose.value,
+      token: validTokenValue,
+    }
   })
 
   const buildUseCase = () => {
@@ -55,11 +61,11 @@ describe('ValidateVerificationToken', () => {
     )
   }
 
-  const createAndSaveToken = async (expiresAt: Date): Promise<VerificationTokenRawModel> => {
+  const createAndSaveToken = async (expiresAt: Date): Promise<void> => {
     const rawToken = makeRawVerificationToken({
-      id: VerificationTokenIdMother.valid().toString(),
-      email: email.toString(),
-      purpose: purpose.toString(),
+      id: VerificationTokenIdMother.valid().value,
+      email: email.value,
+      purpose: purpose.value,
       token_hash: validTokenHash,
       expires_at: expiresAt,
       used_at: null,
@@ -67,7 +73,6 @@ describe('ValidateVerificationToken', () => {
     })
 
     await verificationTokenDatabaseHelper.save(rawToken)
-    return rawToken
   }
 
   describe('happy path', () => {
@@ -75,13 +80,8 @@ describe('ValidateVerificationToken', () => {
       await createAndSaveToken(futureExpiresAt)
 
       const useCase = buildUseCase()
-      const request: ValidateVerificationTokenApplicationRequestDto = {
-        email: email.toString(),
-        purpose: purpose.toString(),
-        token: validTokenValue,
-      }
 
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result).toEqual({
         success: true,
@@ -93,13 +93,8 @@ describe('ValidateVerificationToken', () => {
   describe('when there are errors', () => {
     it('should return notFound error when token does not exist in database', async () => {
       const useCase = buildUseCase()
-      const request: ValidateVerificationTokenApplicationRequestDto = {
-        email: email.toString(),
-        purpose: purpose.toString(),
-        token: validTokenValue,
-      }
 
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result).toEqual({
         success: false,
@@ -111,13 +106,12 @@ describe('ValidateVerificationToken', () => {
       await createAndSaveToken(futureExpiresAt)
 
       const useCase = buildUseCase()
-      const request: ValidateVerificationTokenApplicationRequestDto = {
-        email: email.toString(),
-        purpose: purpose.toString(),
+      const requestWithWrongTokenValue = {
+        ...baseRequest,
         token: wrongTokenValue,
       }
 
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(requestWithWrongTokenValue)
 
       expect(result).toEqual({
         success: false,
@@ -129,13 +123,8 @@ describe('ValidateVerificationToken', () => {
       await createAndSaveToken(pastExpiresAt)
 
       const useCase = buildUseCase()
-      const request: ValidateVerificationTokenApplicationRequestDto = {
-        email: email.toString(),
-        purpose: purpose.toString(),
-        token: validTokenValue,
-      }
 
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result).toEqual({
         success: false,
