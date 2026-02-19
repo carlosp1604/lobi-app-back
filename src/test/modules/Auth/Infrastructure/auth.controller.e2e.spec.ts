@@ -49,6 +49,9 @@ import {
   AUTH_CREATE_USER_TOKEN_ALREADY_USED,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_TOKEN,
+  AUTH_RESET_PASSWORD_SAME_PASSWORD,
   AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
   AUTH_VALIDATE_TOKEN_ALREADY_USED,
   AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
@@ -217,7 +220,7 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw 400 error if body is not valid', async () => {
+      it('should throw 400 error when body is not valid', async () => {
         return request(app.getHttpServer())
           .post('/auth/login')
           .send({ page: 5, perPage: 12 })
@@ -505,7 +508,7 @@ describe('AuthController', () => {
         return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
       })
 
-      it('should return 204 if user does not exist for reset password', async () => {
+      it('should return 204 when user does not exist for reset password', async () => {
         return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
       })
     })
@@ -659,7 +662,7 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw 400 error if body is not valid', async () => {
+      it('should throw 400 error when body is not valid', async () => {
         return request(app.getHttpServer())
           .post('/auth/validate-token')
           .send({ email: 'invalid-email' })
@@ -883,7 +886,7 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw 400 error if body is not valid', async () => {
+      it('should throw 400 error when body is not valid', async () => {
         return request(app.getHttpServer())
           .post('/auth/signup')
           .send({ page: 5, perPage: 12 })
@@ -1035,6 +1038,168 @@ describe('AuthController', () => {
             .expect(404)
             .expect((response) => {
               expect(response.body.response.code).toEqual(AUTH_CREATE_USER_INVALID_TOKEN)
+              expect(response.body.response.message).toEqual('Invalid verification token')
+            })
+        })
+      })
+    })
+  })
+
+  describe('reset-password', () => {
+    const validEmail = UserEmailMother.random()
+    const validTokenValue = VerificationTokenValueMother.valid()
+    const validNewPassword = UserPasswordMother.valid()
+    const validOldPassword = UserPasswordMother.random()
+
+    const now = new Date()
+
+    let userDatabaseHelper: UserDatabaseHelper
+    let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
+    let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
+
+    beforeEach(() => {
+      userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
+      userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(dataSource.manager)
+      verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(dataSource.manager)
+    })
+
+    const getValidPayload = () => ({
+      email: validEmail.value,
+      token: validTokenValue.value,
+      password: validNewPassword.value,
+    })
+
+    const saveSetupInDatabase = async (overrides: Partial<VerificationTokenRawModel> = {}) => {
+      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+      const tokenHash = await passwordHasher.hash(validTokenValue.value)
+      const oldPasswordHash = await passwordHasher.hash(validOldPassword.value)
+
+      const userId = UserIdMother.valid().value
+
+      const rawUser = makeRawUser({
+        id: userId,
+        email: validEmail.value,
+        status: UserStatus.active().value,
+      })
+
+      const rawCredential = makeRawUserCredential({
+        user_id: userId,
+        password_hash: oldPasswordHash,
+      })
+
+      const rawToken = makeRawVerificationToken({
+        id: VerificationTokenIdMother.valid().value,
+        email: validEmail.value,
+        purpose: VerificationTokenPurpose.resetPassword().value,
+        expires_at: new Date(now.getTime() + 3600 * 1000),
+        used_at: null,
+        token_hash: tokenHash,
+        ...overrides,
+      })
+
+      await userDatabaseHelper.save(rawUser)
+      await userCredentialDatabaseHelper.save(rawCredential)
+      await verificationTokenDatabaseHelper.save(rawToken)
+
+      return { rawUser, rawCredential, rawToken }
+    }
+
+    describe('happy path', () => {
+      it('should return 204 No Content when password is reset correctly', async () => {
+        await saveSetupInDatabase()
+
+        await request(app.getHttpServer())
+          .post('/auth/reset-password')
+          .send(getValidPayload())
+          .expect(204)
+          .expect((response) => {
+            expect(response.body).toEqual({})
+          })
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw 400 error when body is not valid', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/reset-password')
+          .send({ email: 'not-an-email' })
+          .expect(400)
+          .expect((response) => {
+            expect(response.body).toEqual(
+              expect.objectContaining<Record<string, unknown>>({
+                path: '/auth/reset-password',
+                response: expect.objectContaining({
+                  code: VALIDATION_ERROR,
+                }),
+                statusCode: 400,
+              }),
+            )
+
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+            const errorMessages = Object.keys(response.body.response.errors).join(' ')
+            expect(errorMessages).toContain('email')
+            expect(errorMessages).toContain('password')
+            expect(errorMessages).toContain('token')
+          })
+      })
+
+      it('should throw UnprocessableEntityException when password format is not valid', async () => {
+        await saveSetupInDatabase()
+
+        return request(app.getHttpServer())
+          .post('/auth/reset-password')
+          .send({ ...getValidPayload(), password: UserPasswordMother.invalid() })
+          .expect(422)
+          .expect((response) => {
+            expect(response.body.response.errors[0].code).toEqual(AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT)
+          })
+      })
+
+      it('should throw ConflictException when trying to use the same password', async () => {
+        await saveSetupInDatabase()
+
+        return request(app.getHttpServer())
+          .post('/auth/reset-password')
+          .send({ ...getValidPayload(), password: validOldPassword.value })
+          .expect(409)
+          .expect((response) => {
+            expect(response.body.response.code).toEqual(AUTH_RESET_PASSWORD_SAME_PASSWORD)
+            expect(response.body.response.message).toEqual('New password cannot be the same as the current password')
+          })
+      })
+
+      describe('when token or user is not found', () => {
+        it('should throw NotFoundException when token does not exist', async () => {
+          await userDatabaseHelper.save(makeRawUser({ email: validEmail.value }))
+
+          return request(app.getHttpServer())
+            .post('/auth/reset-password')
+            .send(getValidPayload())
+            .expect(404)
+            .expect((response) => {
+              expect(response.body.response.code).toEqual(AUTH_RESET_PASSWORD_INVALID_TOKEN)
+              expect(response.body.response.message).toEqual('Invalid verification token')
+            })
+        })
+
+        it('should throw NotFoundException when user does not exist', async () => {
+          const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+          const tokenHash = await passwordHasher.hash(validTokenValue.value)
+
+          await verificationTokenDatabaseHelper.save(
+            makeRawVerificationToken({
+              email: validEmail.value,
+              purpose: VerificationTokenPurpose.resetPassword().value,
+              token_hash: tokenHash,
+            }),
+          )
+
+          return request(app.getHttpServer())
+            .post('/auth/reset-password')
+            .send(getValidPayload())
+            .expect(404)
+            .expect((response) => {
+              expect(response.body.response.code).toEqual(AUTH_RESET_PASSWORD_INVALID_TOKEN)
               expect(response.body.response.message).toEqual('Invalid verification token')
             })
         })
