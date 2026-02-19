@@ -27,6 +27,7 @@ import {
   VALIDATE_VERIFICATION_TOKEN,
   VERIFICATION_TOKEN_REPOSITORY,
   VERIFY_TOKEN_DOMAIN_SERVICE,
+  RESET_USER_PASSWORD,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -81,6 +82,7 @@ import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/Pr
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { SportsmanProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
 import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
+import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
 
 @Module({
   imports: [
@@ -409,7 +411,57 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         ID_GENERATOR,
       ],
     },
+    {
+      provide: RESET_USER_PASSWORD,
+      useFactory: (
+        userRepository: UserRepositoryInterface,
+        credentialRepository: UserCredentialRepositoryInterface,
+        verificationTokenRepository: VerificationTokenRepositoryInterface,
+        domainEventRepository: DomainEventRepositoryInterface,
+        verifyTokenService: VerifyTokenService,
+        hasherService: HasherServiceInterface,
+        requestOriginApplicationService: RequestOriginApplicationService,
+        clockService: NodeClockService,
+        unitOfWork: UnitOfWork,
+        loggerService: LoggerServiceInterface,
+        idGeneratorService: IdGeneratorServiceInterface,
+      ) =>
+        new ResetUserPassword(
+          userRepository,
+          credentialRepository,
+          verificationTokenRepository,
+          domainEventRepository,
+          verifyTokenService,
+          hasherService,
+          requestOriginApplicationService,
+          clockService,
+          unitOfWork,
+          loggerService,
+          idGeneratorService,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        USER_CREDENTIAL_REPOSITORY,
+        VERIFICATION_TOKEN_REPOSITORY,
+        DOMAIN_EVENT_REPOSITORY,
+        VERIFY_TOKEN_DOMAIN_SERVICE,
+        PASSWORD_HASHER,
+        REQUEST_ORIGIN_SERVICE,
+        CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_SERVICE,
+        ID_GENERATOR,
+      ],
+    },
   ],
-  exports: [LOGIN_USER, REFRESH_SESSION, GENERATE_VERIFICATION_TOKEN, VALIDATE_VERIFICATION_TOKEN, CREATE_USER, TypeOrmModule],
+  exports: [
+    LOGIN_USER,
+    REFRESH_SESSION,
+    GENERATE_VERIFICATION_TOKEN,
+    VALIDATE_VERIFICATION_TOKEN,
+    CREATE_USER,
+    RESET_USER_PASSWORD,
+    TypeOrmModule,
+  ],
 })
 export class AuthModule {}
