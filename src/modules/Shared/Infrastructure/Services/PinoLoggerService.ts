@@ -1,7 +1,7 @@
-import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import type { Logger } from 'pino'
 import { ClsService } from 'nestjs-cls'
 import { ContextClsStore } from '~/src/modules/Shared/Infrastructure/ContextClsStore'
+import { LoggerMetaData, LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 
 export class PinoLoggerService implements LoggerServiceInterface {
   constructor(
@@ -15,7 +15,7 @@ export class PinoLoggerService implements LoggerServiceInterface {
    * @param message Descriptive text of the event or state to be logged
    * @param metadata Additional structured information to enrich the log context
    */
-  public debug(message: string, ...metadata: any[]): void {
+  public debug(message: string, ...metadata: LoggerMetaData): void {
     this.pino.debug(this.resolveContext(metadata), message)
   }
 
@@ -26,7 +26,7 @@ export class PinoLoggerService implements LoggerServiceInterface {
    * @param trace The stack trace or error trace associated with the event
    * @param metadata Additional structured information to enrich the log context
    */
-  public error(message: string, trace?: string, ...metadata: any[]): void {
+  public error(message: string, trace?: string, ...metadata: LoggerMetaData): void {
     const context = this.resolveContext(metadata)
 
     if (trace) {
@@ -42,7 +42,7 @@ export class PinoLoggerService implements LoggerServiceInterface {
    * @param message Descriptive text of the event or state to be logged
    * @param metadata Additional structured information to enrich the log context
    */
-  public log(message: string, ...metadata: any[]): void {
+  public log(message: string, ...metadata: LoggerMetaData): void {
     this.pino.info(this.resolveContext(metadata), message)
   }
 
@@ -52,7 +52,7 @@ export class PinoLoggerService implements LoggerServiceInterface {
    * @param message Descriptive text of the event or state to be logged
    * @param metadata Additional structured information to enrich the log context
    */
-  public info(message: string, ...metadata: any[]): void {
+  public info(message: string, ...metadata: LoggerMetaData): void {
     this.pino.info(this.resolveContext(metadata), message)
   }
 
@@ -62,7 +62,7 @@ export class PinoLoggerService implements LoggerServiceInterface {
    * @param message Descriptive text of the event or state to be logged
    * @param metadata Additional structured information to enrich the log context
    */
-  public warn(message: string, ...metadata: any[]): void {
+  public warn(message: string, ...metadata: LoggerMetaData): void {
     this.pino.warn(this.resolveContext(metadata), message)
   }
 
@@ -72,11 +72,11 @@ export class PinoLoggerService implements LoggerServiceInterface {
    * @param message Descriptive text of the event or state to be logged
    * @param metadata Additional structured information to enrich the log context
    */
-  public verbose(message: string, ...metadata: any[]): void {
+  public verbose(message: string, ...metadata: LoggerMetaData): void {
     this.pino.trace(this.resolveContext(metadata), message)
   }
 
-  private resolveContext(params: any[]): Record<string, unknown> {
+  private resolveContext(params: LoggerMetaData): Record<string, unknown> {
     const requestId = this.cls.get('requestId')
     const ip = this.cls.get('ip')
     const ua = this.cls.get('ua')
