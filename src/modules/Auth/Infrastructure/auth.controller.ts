@@ -5,6 +5,7 @@ import {
   GENERATE_VERIFICATION_TOKEN,
   LOGIN_USER,
   REFRESH_SESSION,
+  RESET_USER_PASSWORD,
   VALIDATE_VERIFICATION_TOKEN,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-user-body.dto'
@@ -25,6 +26,13 @@ import {
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_TOKEN,
+  AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
+  AUTH_RESET_PASSWORD_SAME_PASSWORD,
+  AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
+  AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
   AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
   AUTH_VALIDATE_TOKEN_ALREADY_USED,
   AUTH_VALIDATE_TOKEN_INVALID_EMAIL,
@@ -75,6 +83,13 @@ import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser
 import { CreateUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/create-user-body.dto'
 import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { ResetUserPasswordBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/reset-user-password-body.dto'
+import { ResetUserPasswordApplicationRequestDto } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationRequestDto'
+import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
+import {
+  ResetUserPasswordApplicationError,
+  ResetUserPasswordError,
+} from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 
 @Controller('auth')
 export class AuthController {
@@ -84,6 +99,7 @@ export class AuthController {
     @Inject(GENERATE_VERIFICATION_TOKEN) private readonly generateVerificationToken: GenerateVerificationToken,
     @Inject(VALIDATE_VERIFICATION_TOKEN) private readonly validateVerificationToken: ValidateVerificationToken,
     @Inject(CREATE_USER) private readonly createUser: CreateUser,
+    @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
@@ -409,6 +425,102 @@ export class AuthController {
           default:
             throw new InternalServerErrorException(result.error)
         }
+      }
+
+      throw new InternalServerErrorException(result.error)
+    }
+
+    return
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async resetPassword(@Body() body: ResetUserPasswordBodyDto, @UserIp() userIp: string, @UserAgent() userAgent: string | undefined) {
+    const requestDto: ResetUserPasswordApplicationRequestDto = {
+      email: body.email,
+      token: body.token,
+      password: body.password,
+      ip: userIp,
+      userAgent,
+    }
+
+    const result = await this.resetUserPassword.execute(requestDto)
+
+    if (!result.success) {
+      const errorId = result.error.id
+
+      if (errorId === ResetUserPasswordApplicationError.invalidInputId) {
+        throw new UnprocessableEntityException({
+          message: 'One or more fields have invalid formats',
+          errors: result.error.errors.map((error) => {
+            switch (error.id) {
+              case ResetUserPasswordError.invalidEmailId:
+                return {
+                  code: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
+                  message: error.message,
+                }
+              case ResetUserPasswordError.invalidPasswordId:
+                return {
+                  code: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+                  message: error.message,
+                }
+              case ResetUserPasswordError.invalidTokenFormatId:
+                return {
+                  code: AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
+                  message: error.message,
+                }
+              default:
+                throw new InternalServerErrorException(result.error)
+            }
+          }),
+        })
+      }
+
+      if (errorId === ResetUserPasswordApplicationError.notFoundId) {
+        throw new NotFoundException({
+          code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+          message: 'Invalid verification token',
+        })
+      }
+
+      if (errorId === ResetUserPasswordApplicationError.invalidTokenId) {
+        const specificError = result.error.errors[0]
+
+        switch (specificError.id) {
+          case ResetUserPasswordError.tokenExpiredId:
+            throw new GoneException({
+              code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
+              message: specificError.message,
+            })
+
+          case ResetUserPasswordError.tokenAlreadyUsedId:
+            throw new ConflictException({
+              code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
+              message: specificError.message,
+            })
+
+          case ResetUserPasswordError.tokenPurposeMismatchId:
+          case ResetUserPasswordError.tokenInvalidOwnerId:
+          case ResetUserPasswordError.invalidVerificationTokenId:
+            throw new NotFoundException({
+              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            })
+
+          default:
+            throw new InternalServerErrorException(result.error)
+        }
+      }
+
+      if (errorId === ResetUserPasswordApplicationError.cannotResetPasswordId) {
+        throw new ConflictException({
+          code: AUTH_RESET_PASSWORD_SAME_PASSWORD,
+          message: 'New password cannot be the same as the current password',
+        })
+      }
+
+      if (errorId === ResetUserPasswordApplicationError.inconsistentStateId) {
+        throw new InternalServerErrorException(result.error)
       }
 
       throw new InternalServerErrorException(result.error)

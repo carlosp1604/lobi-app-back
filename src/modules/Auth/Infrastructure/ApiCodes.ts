@@ -26,3 +26,11 @@ export const AUTH_CREATE_USER_INVALID_USERNAME_FORMAT = 'auth-create-user-invali
 export const AUTH_CREATE_USER_INVALID_TOKEN = 'auth-create-user-invalid-token'
 export const AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED = 'auth-create-user-token-already-expired'
 export const AUTH_CREATE_USER_TOKEN_ALREADY_USED = 'auth-create-user-token-already-used'
+
+export const AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT = 'auth-reset-password-invalid-email-format'
+export const AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT = 'auth-reset-password-invalid-password-format'
+export const AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT = 'auth-reset-password-invalid-token-format'
+export const AUTH_RESET_PASSWORD_INVALID_TOKEN = 'auth-reset-password-invalid-token'
+export const AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED = 'auth-reset-password-token-already-expired'
+export const AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED = 'auth-reset-password-token-already-used'
+export const AUTH_RESET_PASSWORD_SAME_PASSWORD = 'auth-reset-password-same-password'
