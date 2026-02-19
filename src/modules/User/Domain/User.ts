@@ -50,4 +50,8 @@ export class User {
 
     return new User(userId, email, username, name, status, role, null, now, now, now, null)
   }
+
+  public isActive(): boolean {
+    return this.deletedAt === null && this.status.equals(UserStatus.active())
+  }
 }

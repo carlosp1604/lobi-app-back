@@ -3,7 +3,7 @@ import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash
 
 export class UserCredential {
   public readonly userId: UserId
-  public _passwordHash: PasswordHash
+  private _passwordHash: PasswordHash
   private _failedAttempts: number
   private _lockedUntil: Date | null
   private _lastLoginAt: Date | null
