@@ -17,20 +17,13 @@ import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { User } from '~/src/modules/User/Domain/User'
 import { ResetUserPasswordApplicationRequestDto } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationRequestDto'
 import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 type ValidatedResetPasswordInput = {
   userEmail: UserEmail
@@ -62,6 +55,7 @@ export class ResetUserPassword {
     if (!inputValidationResult.success) {
       return inputValidationResult
     }
+
     const { userEmail, verificationTokenEmail, password, tokenValue } = inputValidationResult.value
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
@@ -87,33 +81,63 @@ export class ResetUserPassword {
       const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue.value)
 
       if (!isCryptoValid) {
-        this.loggerService.warn('Reset password token cryptography verification failed', {
-          email: verificationTokenEmail.value,
-        })
+        this.loggerService.warn(
+          'Token cryptography verification failed',
+          { email: verificationTokenEmail.value },
+          ResetUserPassword.name,
+        )
+
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()))
       }
 
       const user = await this.userRepository.findByEmail(verificationTokenEmail.value, context)
       if (!user || !user.isActive()) {
+        this.loggerService.warn(
+          'User not found or inactive',
+          {
+            email: userEmail.value,
+            reason: user ? 'Inactive' : 'NotFound',
+          },
+          ResetUserPassword.name,
+        )
+
         return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(userEmail.value)))
       }
 
       const userCredential = await this.userCredentialRepository.findByUserId(user.id.value, context)
       if (!userCredential) {
-        this.loggerService.error('Inconsistent state: Active user has no credentials', undefined, { userId: user.id.value })
+        this.loggerService.error(
+          'Inconsistent state: Active user has no credentials',
+          undefined,
+          {
+            userId: user.id.value,
+          },
+          ResetUserPassword.name,
+        )
         return fail(ResetUserPasswordApplicationError.inconsistentState(user.id.value))
       }
 
       const passwordMatchCurrentOne = await this.hasherService.compare(password.value, userCredential.passwordHash.value)
 
       if (passwordMatchCurrentOne) {
+        this.loggerService.warn('New password same as current', { userId: user.id.value }, ResetUserPassword.name)
+
         return fail(ResetUserPasswordApplicationError.cannotResetPassword())
       }
 
       userCredential.updatePasswordHash(newPasswordHash, now)
       verificationToken.markAsUsed(now, verificationTokenEmail, VerificationTokenPurpose.resetPassword())
 
-      const domainEvent = this.buildResetPasswordEvent(user, deviceLocation, userAgent, ipHash, now)
+      const domainEventId = this.idGeneratorService.generateId()
+      const domainEvent = AuthDomainEventFactory.createPasswordResetEvent(
+        domainEventId,
+        user.id,
+        user.email,
+        deviceLocation,
+        userAgent,
+        ipHash,
+        now,
+      )
 
       await this.userCredentialRepository.update(userCredential, context)
       await this.verificationTokenRepository.update(verificationToken, context)
@@ -164,81 +188,68 @@ export class ResetUserPassword {
   ): Result<void, ResetUserPasswordApplicationError> {
     switch (exception.id) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId: {
-        this.loggerService.warn('Verification token validation failed: tokenExpired', {
-          message: exception.message,
-          email: verificationToken.email.value,
-          verificationTokenId: verificationToken.id.value,
-          expiresAt: verificationToken.expiresAt,
-        })
+        this.loggerService.warn(
+          'Verification token validation failed: tokenExpired',
+          {
+            message: exception.message,
+            email: verificationToken.email.value,
+            verificationTokenId: verificationToken.id.value,
+            expiresAt: verificationToken.expiresAt,
+          },
+          ResetUserPassword.name,
+        )
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()))
       }
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId: {
-        this.loggerService.warn('Verification token validation failed: tokenAlreadyUsed', {
-          message: exception.message,
-          email: verificationToken.email.value,
-          verificationTokenId: verificationToken.id.value,
-          usedAt: verificationToken.usedAt,
-        })
+        this.loggerService.warn(
+          'Verification token validation failed: tokenAlreadyUsed',
+          {
+            message: exception.message,
+            email: verificationToken.email.value,
+            verificationTokenId: verificationToken.id.value,
+            usedAt: verificationToken.usedAt,
+          },
+          ResetUserPassword.name,
+        )
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId: {
-        this.loggerService.warn('Verification token validation failed: tokenInvalidOwner', {
-          message: exception.message,
-          email: verificationToken.email.value,
-          ownerEmail: userEmail.value,
-          verificationTokenId: verificationToken.id.value,
-        })
+        this.loggerService.warn(
+          'Verification token validation failed: tokenInvalidOwner',
+          {
+            message: exception.message,
+            email: verificationToken.email.value,
+            ownerEmail: userEmail.value,
+            verificationTokenId: verificationToken.id.value,
+          },
+          ResetUserPassword.name,
+        )
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId: {
-        this.loggerService.warn('Verification token validation failed: tokenPurposeMismatch', {
-          message: exception.message,
-          email: verificationToken.email.value,
-          verificationTokenId: verificationToken.id.value,
-          verificationTokenPurpose: verificationToken.purpose.value,
-        })
+        this.loggerService.warn(
+          'Verification token validation failed: tokenPurposeMismatch',
+          {
+            message: exception.message,
+            email: verificationToken.email.value,
+            verificationTokenId: verificationToken.id.value,
+            verificationTokenPurpose: verificationToken.purpose.value,
+          },
+          ResetUserPassword.name,
+        )
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()))
       }
 
-      default:
+      default: {
         throw exception
+      }
     }
-  }
-
-  private buildResetPasswordEvent(
-    user: User,
-    deviceLocation: DeviceLocation | null,
-    userAgent: UserAgent,
-    ipHash: string | null,
-    now: Date,
-  ): DomainEvent {
-    return DomainEvent.create(
-      DomainEventId.fromString(this.idGeneratorService.generateId()),
-      DomainEventName.successfulResetPassword(),
-      DomainEventAggregateType.user(),
-      DomainEventAggregateId.fromString(user.id.value),
-      {
-        userId: user.id.value,
-        email: user.email.value,
-        deviceLocation: deviceLocation
-          ? {
-              city: deviceLocation.city,
-              countryCode: deviceLocation.countryCode,
-            }
-          : null,
-      },
-      {
-        ipHash: ipHash,
-        ua: userAgent.value,
-      },
-      now,
-    )
   }
 }
