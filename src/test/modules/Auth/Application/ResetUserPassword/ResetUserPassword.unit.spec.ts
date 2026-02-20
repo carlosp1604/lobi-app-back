@@ -301,16 +301,12 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'Verification token validation failed: tokenExpired',
-          {
-            message: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
-            email: validEmail.value,
-            verificationTokenId: expiredVerificationToken.id.value,
-            expiresAt: expiredVerificationToken.expiresAt,
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenExpired', {
+          message: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
+          email: validEmail.value,
+          verificationTokenId: expiredVerificationToken.id.value,
+          expiresAt: expiredVerificationToken.expiresAt,
+        })
       })
 
       it('should return tokenAlreadyUsed error when token is already used', async () => {
@@ -324,16 +320,12 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'Verification token validation failed: tokenAlreadyUsed',
-          {
-            message: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
-            email: validEmail.value,
-            verificationTokenId: usedVerificationToken.id.value,
-            usedAt: usedVerificationToken.usedAt,
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenAlreadyUsed', {
+          message: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
+          email: validEmail.value,
+          verificationTokenId: usedVerificationToken.id.value,
+          usedAt: usedVerificationToken.usedAt,
+        })
       })
 
       it('should return tokenInvalidOwner when token does not belong to user', async () => {
@@ -353,16 +345,12 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'Verification token validation failed: tokenInvalidOwner',
-          {
-            message: domainException.message,
-            email: validEmail.value,
-            verificationTokenId: verificationToken.id.value,
-            ownerEmail: verificationToken.email.value,
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenInvalidOwner', {
+          message: domainException.message,
+          email: validEmail.value,
+          verificationTokenId: verificationToken.id.value,
+          ownerEmail: verificationToken.email.value,
+        })
       })
 
       it('should return tokenPurposeMismatch when token cannot be used for the current operation', async () => {
@@ -381,16 +369,12 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'Verification token validation failed: tokenPurposeMismatch',
-          {
-            message: domainException.message,
-            email: validEmail.value,
-            verificationTokenId: notResetPasswordToken.id.value,
-            verificationTokenPurpose: notResetPasswordToken.purpose.value,
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenPurposeMismatch', {
+          message: domainException.message,
+          email: validEmail.value,
+          verificationTokenId: notResetPasswordToken.id.value,
+          verificationTokenPurpose: notResetPasswordToken.purpose.value,
+        })
       })
 
       it('should return invalidToken error when cryptographic verification fails', async () => {
@@ -403,13 +387,9 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'Token cryptography verification failed',
-          {
-            email: validEmail.value,
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
+          email: validEmail.value,
+        })
       })
 
       it('should throw exception when entity returns a unexpected VerificationTokenDomainException', async () => {
@@ -441,14 +421,10 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'User not found or inactive',
-          {
-            email: validEmail.value,
-            reason: 'NotFound',
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('User not found or inactive', {
+          email: validEmail.value,
+          reason: 'NotFound',
+        })
       })
 
       it('should return userNotFound error when user is inactive', async () => {
@@ -462,14 +438,10 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'User not found or inactive',
-          {
-            email: validEmail.value,
-            reason: 'Inactive',
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('User not found or inactive', {
+          email: validEmail.value,
+          reason: 'Inactive',
+        })
       })
 
       it('should return inconsistentState error when active user has no credentials', async () => {
@@ -482,14 +454,9 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.inconsistentState(validUserId.value),
         })
-        expect(mockedLogger.error).toHaveBeenCalledWith(
-          'Inconsistent state: Active user has no credentials',
-          undefined,
-          {
-            userId: validUserId.value,
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state: Active user has no credentials', undefined, {
+          userId: validUserId.value,
+        })
       })
 
       it('should return cannotResetPassword error when new password is the same as the current one', async () => {
@@ -502,13 +469,9 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.cannotResetPassword(),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith(
-          'New password same as current',
-          {
-            userId: validUserId.value,
-          },
-          ResetUserPassword.name,
-        )
+        expect(mockedLogger.warn).toHaveBeenCalledWith('New password same as current', {
+          userId: validUserId.value,
+        })
       })
     })
 

@@ -81,46 +81,33 @@ export class ResetUserPassword {
       const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue.value)
 
       if (!isCryptoValid) {
-        this.loggerService.warn(
-          'Token cryptography verification failed',
-          { email: verificationTokenEmail.value },
-          ResetUserPassword.name,
-        )
+        this.loggerService.warn('Token cryptography verification failed', { email: verificationTokenEmail.value })
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()))
       }
 
       const user = await this.userRepository.findByEmail(verificationTokenEmail.value, context)
       if (!user || !user.isActive()) {
-        this.loggerService.warn(
-          'User not found or inactive',
-          {
-            email: userEmail.value,
-            reason: user ? 'Inactive' : 'NotFound',
-          },
-          ResetUserPassword.name,
-        )
+        this.loggerService.warn('User not found or inactive', {
+          email: userEmail.value,
+          reason: user ? 'Inactive' : 'NotFound',
+        })
 
         return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(userEmail.value)))
       }
 
       const userCredential = await this.userCredentialRepository.findByUserId(user.id.value, context)
       if (!userCredential) {
-        this.loggerService.error(
-          'Inconsistent state: Active user has no credentials',
-          undefined,
-          {
-            userId: user.id.value,
-          },
-          ResetUserPassword.name,
-        )
+        this.loggerService.error('Inconsistent state: Active user has no credentials', undefined, {
+          userId: user.id.value,
+        })
         return fail(ResetUserPasswordApplicationError.inconsistentState(user.id.value))
       }
 
       const passwordMatchCurrentOne = await this.hasherService.compare(password.value, userCredential.passwordHash.value)
 
       if (passwordMatchCurrentOne) {
-        this.loggerService.warn('New password same as current', { userId: user.id.value }, ResetUserPassword.name)
+        this.loggerService.warn('New password same as current', { userId: user.id.value })
 
         return fail(ResetUserPasswordApplicationError.cannotResetPassword())
       }
@@ -188,61 +175,45 @@ export class ResetUserPassword {
   ): Result<void, ResetUserPasswordApplicationError> {
     switch (exception.id) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId: {
-        this.loggerService.warn(
-          'Verification token validation failed: tokenExpired',
-          {
-            message: exception.message,
-            email: verificationToken.email.value,
-            verificationTokenId: verificationToken.id.value,
-            expiresAt: verificationToken.expiresAt,
-          },
-          ResetUserPassword.name,
-        )
+        this.loggerService.warn('Verification token validation failed: tokenExpired', {
+          message: exception.message,
+          email: verificationToken.email.value,
+          verificationTokenId: verificationToken.id.value,
+          expiresAt: verificationToken.expiresAt,
+        })
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()))
       }
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId: {
-        this.loggerService.warn(
-          'Verification token validation failed: tokenAlreadyUsed',
-          {
-            message: exception.message,
-            email: verificationToken.email.value,
-            verificationTokenId: verificationToken.id.value,
-            usedAt: verificationToken.usedAt,
-          },
-          ResetUserPassword.name,
-        )
+        this.loggerService.warn('Verification token validation failed: tokenAlreadyUsed', {
+          message: exception.message,
+          email: verificationToken.email.value,
+          verificationTokenId: verificationToken.id.value,
+          usedAt: verificationToken.usedAt,
+        })
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId: {
-        this.loggerService.warn(
-          'Verification token validation failed: tokenInvalidOwner',
-          {
-            message: exception.message,
-            email: verificationToken.email.value,
-            ownerEmail: userEmail.value,
-            verificationTokenId: verificationToken.id.value,
-          },
-          ResetUserPassword.name,
-        )
+        this.loggerService.warn('Verification token validation failed: tokenInvalidOwner', {
+          message: exception.message,
+          email: verificationToken.email.value,
+          ownerEmail: userEmail.value,
+          verificationTokenId: verificationToken.id.value,
+        })
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId: {
-        this.loggerService.warn(
-          'Verification token validation failed: tokenPurposeMismatch',
-          {
-            message: exception.message,
-            email: verificationToken.email.value,
-            verificationTokenId: verificationToken.id.value,
-            verificationTokenPurpose: verificationToken.purpose.value,
-          },
-          ResetUserPassword.name,
-        )
+        this.loggerService.warn('Verification token validation failed: tokenPurposeMismatch', {
+          message: exception.message,
+          email: verificationToken.email.value,
+          verificationTokenId: verificationToken.id.value,
+          verificationTokenPurpose: verificationToken.purpose.value,
+        })
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()))
       }
