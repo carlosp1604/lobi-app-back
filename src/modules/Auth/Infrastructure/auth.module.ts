@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
-import { LOGGER_SERVICE } from '~/src/modules/Shared/Infrastructure/logger.module'
+import { LOGGER_FACTORY } from '~/src/modules/Shared/Infrastructure/logger.module'
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import {
@@ -47,7 +47,6 @@ import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceI
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { NodeClockService } from '~/src/modules/Shared/Infrastructure/Services/NodeClockService'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
-import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
@@ -82,6 +81,7 @@ import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser
 import { SportsmanProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
 import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
+import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 
 @Module({
   imports: [
@@ -188,10 +188,13 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
     },
     {
       provide: USER_SESSION_POLICY_MANAGER_SERVICE,
-      useFactory: (maxSessionsPolicy: MaxSessionsPolicy, loggerService: LoggerServiceInterface) => {
-        return new UserSessionPolicyManagerApplicationService(maxSessionsPolicy, loggerService)
+      useFactory: (maxSessionsPolicy: MaxSessionsPolicy, loggerFactory: LoggerFactoryInterface) => {
+        return new UserSessionPolicyManagerApplicationService(
+          maxSessionsPolicy,
+          loggerFactory.createLogger(UserSessionPolicyManagerApplicationService.name),
+        )
       },
-      inject: [MAX_SESSIONS_POLICY, LOGGER_SERVICE],
+      inject: [MAX_SESSIONS_POLICY, LOGGER_FACTORY],
     },
     {
       provide: RANDOM_SERVICE,
@@ -199,16 +202,16 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
     },
     {
       provide: EMAIL_SENDER_SERVICE,
-      useFactory: (configService: ConfigService<Env, true>, loggerService: LoggerServiceInterface) => {
+      useFactory: (configService: ConfigService<Env, true>, loggerFactory: LoggerFactoryInterface) => {
         return new PostmarkEmailSenderService(
           new ServerClient(configService.get('EMAIL_API_TOKEN', { infer: true })),
           configService.get('EMAIL_FROM_ADDRESS', { infer: true }),
           configService.get('EMAIL_COMPANY_NAME', { infer: true }),
           configService.get('EMAIL_APP_NAME', { infer: true }),
-          loggerService,
+          loggerFactory.createLogger(PostmarkEmailSenderService.name),
         )
       },
-      inject: [ConfigService, LOGGER_SERVICE],
+      inject: [ConfigService, LOGGER_FACTORY],
     },
     {
       provide: REQUEST_ORIGIN_SERVICE,
@@ -216,11 +219,16 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         ipValidator: IpValidatorServiceInterface,
         hasherService: HasherServiceInterface,
         deviceLocationResolver: DeviceLocationResolverServiceInterface,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
       ) => {
-        return new RequestOriginApplicationService(ipValidator, hasherService, deviceLocationResolver, loggerService)
+        return new RequestOriginApplicationService(
+          ipValidator,
+          hasherService,
+          deviceLocationResolver,
+          loggerFactory.createLogger(RequestOriginApplicationService.name),
+        )
       },
-      inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_SERVICE],
+      inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_FACTORY],
     },
     {
       provide: VERIFY_TOKEN_DOMAIN_SERVICE,
@@ -242,7 +250,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
       ) =>
         new LoginUser(
@@ -256,7 +264,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
           requestOriginApplicationService,
           clockService,
           unitOfWork,
-          loggerService,
+          loggerFactory.createLogger(LoginUser.name),
           idGeneratorService,
         ),
       inject: [
@@ -270,7 +278,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
-        LOGGER_SERVICE,
+        LOGGER_FACTORY,
         ID_GENERATOR,
       ],
     },
@@ -321,7 +329,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         clockService: ClockServiceInterface,
         randomService: RandomServiceInterface,
         configService: ConfigService<Env, true>,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
       ) => {
         return new GenerateVerificationToken(
@@ -335,7 +343,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
           clockService,
           randomService,
           configService,
-          loggerService,
+          loggerFactory.createLogger(GenerateVerificationToken.name),
           idGeneratorService,
         )
       },
@@ -350,7 +358,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         CLOCK_SERVICE,
         RANDOM_SERVICE,
         ConfigService,
-        LOGGER_SERVICE,
+        LOGGER_FACTORY,
         ID_GENERATOR,
       ],
     },
@@ -378,7 +386,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
       ) =>
         new CreateUser(
@@ -392,7 +400,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
           requestOriginApplicationService,
           clockService,
           unitOfWork,
-          loggerService,
+          loggerFactory.createLogger(CreateUser.name),
           idGeneratorService,
         ),
       inject: [
@@ -406,7 +414,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
-        LOGGER_SERVICE,
+        LOGGER_FACTORY,
         ID_GENERATOR,
       ],
     },
@@ -422,7 +430,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
       ) =>
         new ResetUserPassword(
@@ -435,7 +443,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
           requestOriginApplicationService,
           clockService,
           unitOfWork,
-          loggerService,
+          loggerFactory.createLogger(ResetUserPassword.name),
           idGeneratorService,
         ),
       inject: [
@@ -448,7 +456,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
-        LOGGER_SERVICE,
+        LOGGER_FACTORY,
         ID_GENERATOR,
       ],
     },

@@ -7,6 +7,7 @@ export class PinoLoggerService implements LoggerServiceInterface {
   constructor(
     private readonly pino: Logger,
     private readonly cls: ClsService<ContextClsStore>,
+    private readonly context: string,
   ) {}
 
   /**
@@ -81,19 +82,29 @@ export class PinoLoggerService implements LoggerServiceInterface {
     const ip = this.cls.get('ip')
     const ua = this.cls.get('ua')
 
-    const requestContext = requestId || ip || ua ? { requestId, ip, ua } : undefined
-
-    let finalMetadata: Record<string, unknown> = {}
-
-    if (requestContext) {
-      finalMetadata.requestContext = requestContext
-    }
+    let currentContext = this.context
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const args = [...params]
 
     if (args.length > 0 && typeof args[args.length - 1] === 'string') {
-      finalMetadata.context = args.pop()
+      currentContext = args.pop() as string
+    }
+
+    let finalMetadata: Record<string, unknown> = {
+      context: currentContext,
+    }
+
+    if (requestId) {
+      finalMetadata.reqId = requestId
+    }
+
+    if (ip) {
+      finalMetadata.ip = ip
+    }
+
+    if (ua) {
+      finalMetadata.userAgent = ua
     }
 
     args.forEach((arg) => {
