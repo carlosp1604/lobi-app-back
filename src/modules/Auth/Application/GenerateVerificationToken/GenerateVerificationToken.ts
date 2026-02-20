@@ -23,7 +23,6 @@ import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
@@ -85,7 +84,7 @@ export class GenerateVerificationToken {
     })
 
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.resetPassword())) {
-      if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
+      if (!user || !user.isActive()) {
         this.loggerService.warn('Password reset requested for non-existent or inactive email', {
           email: email.value,
           reason: user ? 'Inactive' : 'NotFound',

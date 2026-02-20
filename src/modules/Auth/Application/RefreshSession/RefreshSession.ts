@@ -6,7 +6,6 @@ import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Applicat
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { success, fail, Result } from '~/src/modules/Shared/Domain/Result'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { User } from '~/src/modules/User/Domain/User'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
@@ -133,7 +132,7 @@ export class RefreshSession {
       return fail(RefreshSessionApplicationError.userNotFound(userSession.userId.toString()))
     }
 
-    if (user.deletedAt || !user.status.equals(UserStatus.active())) {
+    if (!user.isActive()) {
       return fail(RefreshSessionApplicationError.userNotFound(userSession.userId.toString()))
     }
 

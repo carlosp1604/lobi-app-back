@@ -12,7 +12,6 @@ import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSe
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
@@ -177,7 +176,7 @@ export class LoginUser {
   ): Promise<Result<User, LoginUserApplicationError>> {
     const user = await this.userRepository.findByEmailWithLock(userEmail.value, context)
 
-    if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
+    if (!user || !user.isActive()) {
       this.loggerService.warn('Login attempt failed: User not found or inactive', {
         email: userEmail.value,
         reason: user ? 'Inactive' : 'NotFound',
