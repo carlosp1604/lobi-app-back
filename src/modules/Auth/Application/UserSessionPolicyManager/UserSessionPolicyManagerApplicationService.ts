@@ -1,3 +1,4 @@
+import { ErrorUtils } from '~/src/modules/Shared/Domain/ErrorUtils'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
@@ -26,9 +27,10 @@ export class UserSessionPolicyManagerApplicationService {
     const isCurrentInList = activeSessions.some((session) => session.id.equals(currentSession.id))
 
     if (!isCurrentInList) {
-      this.loggerService.error('Session refresh logic inconsistency. Current session not found in active sessions list', undefined, {
+      this.loggerService.error('Inconsistent state', undefined, {
         sessionId: currentSession.id.value,
         userId: currentSession.userId.value,
+        reason: 'Current session not found in active sessions list',
       })
 
       return fail(UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSession.id.value, currentSession.userId.value))
@@ -47,6 +49,7 @@ export class UserSessionPolicyManagerApplicationService {
     if (!maxSessionsPolicyResult.success) {
       return maxSessionsPolicyResult
     }
+
     const revokedByPolicy = maxSessionsPolicyResult.value
 
     return success([currentSession, ...revokedByPolicy])
@@ -57,6 +60,7 @@ export class UserSessionPolicyManagerApplicationService {
     now: Date,
   ): Result<Array<UserSession>, UserSessionPolicyManagerApplicationError> {
     const sessionsToRevoke = this.maxSessionsPolicy.sessionsToRevoke(activeSessions)
+
     const successfullyRevoked: Array<UserSession> = []
     for (const session of sessionsToRevoke) {
       const revokeResult = this.handleRevocation(session, now)
@@ -77,29 +81,30 @@ export class UserSessionPolicyManagerApplicationService {
 
       return success(undefined)
     } catch (exception: unknown) {
-      if (!(exception instanceof UserSessionDomainException)) {
-        const stack = exception instanceof Error ? exception.stack : undefined
+      const normalizedError = ErrorUtils.normalize(exception)
 
-        this.loggerService.error('Unexpected error while revoking session', stack, {
-          sessionId: session.id.value,
-          userId: session.userId.value,
-          revokedAt: session.revokedAt,
-          expiresAt: session.expiresAt,
-          error: exception,
+      const errorMetadata = {
+        sessionId: session.id.value,
+        userId: session.userId.value,
+        revokedAt: session.revokedAt,
+        expiresAt: session.expiresAt,
+      }
+
+      if (!(exception instanceof UserSessionDomainException)) {
+        this.loggerService.error('Unexpected error while revoking session', normalizedError.stack, {
+          ...errorMetadata,
+          error: normalizedError.message,
         })
 
         throw new Error(`Unexpected error while revoking session ${session.id.value}`)
       }
 
-      this.loggerService.warn('Cannot revoke session', {
-        sessionId: session.id.value,
-        userId: session.userId.value,
-        revokedAt: session.revokedAt,
-        expiresAt: session.expiresAt,
-        error: exception.message,
+      this.loggerService.warn('Session revocation failed', {
+        ...errorMetadata,
+        error: normalizedError.message,
       })
 
-      return fail(UserSessionPolicyManagerApplicationError.revocationFailed(exception.message))
+      return fail(UserSessionPolicyManagerApplicationError.revocationFailed(normalizedError.message))
     }
   }
 }
