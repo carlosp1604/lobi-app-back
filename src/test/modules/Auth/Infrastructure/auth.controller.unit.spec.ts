@@ -70,6 +70,7 @@ import {
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -132,7 +133,10 @@ describe('AuthController', () => {
   }
 
   describe('login', () => {
-    const mockBody = { email: 'test@example.com', password: 'password123' }
+    const validEmail = UserEmailMother.valid().value
+    const validPassword = UserPasswordMother.valid().value
+
+    const mockBody = { email: validEmail, password: validPassword }
 
     beforeEach(() => {
       mockedConfigService.get.mockImplementation(
@@ -196,15 +200,14 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: LoginUserApplicationError.invalidUserEmail('test@example.com'),
-        })
+        const useCaseError = LoginUserApplicationError.invalidUserEmail(validEmail)
+
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_EMAIL,
-            message: LoginUserApplicationError.invalidUserEmail('test@example.com').message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -212,15 +215,17 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when use-case returns invalidPasswordFormat error', async () => {
         const controller = buildController()
 
+        const useCaseError = LoginUserApplicationError.invalidPasswordFormat()
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.invalidPasswordFormat(),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
-            message: LoginUserApplicationError.invalidPasswordFormat().message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -230,7 +235,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.invalidCredentials('test-user-id'),
+          error: LoginUserApplicationError.invalidCredentials(UserIdMother.valid().value),
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
@@ -246,7 +251,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.userNotFound('test@example.com'),
+          error: LoginUserApplicationError.userNotFound(validEmail),
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
@@ -257,106 +262,80 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
+      it('should throw InternalServerErrorException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
+
+        const useCaseError = LoginUserApplicationError.userDoesNotHaveCredentials(validEmail)
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new UnauthorizedException({
-            code: UNAUTHORIZED_ACCESS,
-            message: 'Unauthorized access',
-          }),
-        )
-      })
-
-      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
-        const controller = buildController()
-
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
-        })
-
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new UnauthorizedException({
-            code: UNAUTHORIZED_ACCESS,
-            message: 'Unauthorized access',
-          }),
-        )
-      })
-
-      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
-        const controller = buildController()
-
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
-        })
-
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new UnauthorizedException({
-            code: UNAUTHORIZED_ACCESS,
-            message: 'Unauthorized access',
-          }),
+          new InternalServerErrorException(useCaseError),
         )
       })
 
       it('should throw InternalServerErrorException when use-case returns internalError', async () => {
         const controller = buildController()
 
+        const useCaseError = LoginUserApplicationError.internalError('Unexpected error')
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.internalError('An unexpected error'),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(LoginUserApplicationError.internalError('An unexpected error')),
+          new InternalServerErrorException(useCaseError),
         )
       })
 
       it('should throw InternalServerErrorException when use-case returns revocationFailed', async () => {
         const controller = buildController()
 
+        const useCaseError = LoginUserApplicationError.revocationFailed('Cannot revoke a session')
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.revocationFailed('Cannot revoke a session'),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(LoginUserApplicationError.revocationFailed('Cannot revoke a session')),
+          new InternalServerErrorException(useCaseError),
         )
       })
 
-      it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
+      it('should throw InternalServerErrorException when use-case returns a unknown error', async () => {
         const controller = buildController()
 
-        const unexpectedError: LoginUserApplicationError = {
+        const unexpectedUseCaseError: LoginUserApplicationError = {
           id: 'UNKNOWN-ERROR',
           message: 'Unknown error',
           name: LoginUserApplicationError.name,
         }
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: unexpectedError,
+          error: unexpectedUseCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(unexpectedError),
+          new InternalServerErrorException(unexpectedUseCaseError),
         )
       })
 
-      it('should throw error when use-case fails with an unexpected error', async () => {
+      it('should throw error when use-case fails with a unexpected error', async () => {
         const controller = buildController()
 
+        const unexpectedError = new Error('Unexpected error')
+
         mockedLoginUseCase.execute.mockImplementation(() => {
-          throw new Error('Unexpected error')
+          throw unexpectedError
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(Error('Unexpected error'))
+        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(unexpectedError)
       })
     })
   })

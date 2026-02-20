@@ -19,7 +19,7 @@ import { validationPipe } from '~/src/modules/Shared/Infrastructure/global-valid
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentry-exception.filter'
-import { UNAUTHORIZED_ACCESS, VALIDATION_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
+import { INTERNAL_SERVER_ERROR, UNAUTHORIZED_ACCESS, VALIDATION_ERROR } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import {
@@ -162,15 +162,14 @@ describe('AuthController', () => {
   }
 
   describe('login', () => {
-    const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.random()
+    const userId = UserIdMother.valid().value
+    const userEmail = UserEmailMother.random().value
+    const validPassword = UserPasswordMother.valid().value
 
     let userDatabaseHelper: UserDatabaseHelper
     let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
-
     let rawUser: UserRawModelWithRelations
     let rawCredential: UserCredentialRawWitRelationships
-    const validPassword = UserPasswordMother.valid().value
 
     beforeEach(async () => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
@@ -180,7 +179,7 @@ describe('AuthController', () => {
       const userPassword = await passwordHasher.hash(validPassword)
 
       rawCredential = makeRawUserCredential({
-        user_id: userId.value,
+        user_id: userId,
         locked_until: null,
         last_login_at: null,
         failed_attempts: 0,
@@ -188,8 +187,8 @@ describe('AuthController', () => {
       })
 
       rawUser = makeRawUser({
-        id: userId.value,
-        email: userEmail.value,
+        id: userId,
+        email: userEmail,
         status: UserStatus.active().value,
       })
     })
@@ -201,7 +200,7 @@ describe('AuthController', () => {
 
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail.value, password: validPassword })
+          .send({ email: userEmail, password: validPassword })
           .expect(200)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -253,7 +252,7 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when password format is not valid', async () => {
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail.value, password: 'invalid-password' })
+          .send({ email: userEmail, password: 'invalid-password' })
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -273,7 +272,7 @@ describe('AuthController', () => {
         const testCase = async (password: string) => {
           return request(app.getHttpServer())
             .post('/auth/login')
-            .send({ email: userEmail.value, password })
+            .send({ email: userEmail, password })
             .expect(401)
             .expect((response) => {
               expect(response.body).toEqual({
@@ -306,18 +305,33 @@ describe('AuthController', () => {
           await testCase(validPassword)
         })
 
-        it('should throw UnauthorizedException when user does not have credentials', async () => {
-          await userDatabaseHelper.save(rawUser)
-
-          await testCase(validPassword)
-        })
-
         it('should throw UnauthorizedException when user password does not match', async () => {
           await userDatabaseHelper.save(rawUser)
           await userCredentialDatabaseHelper.save(rawCredential)
 
           await testCase(UserPasswordMother.random().value)
         })
+      })
+
+      it('should throw InternalServerErrorException when user does not have credentials', async () => {
+        await userDatabaseHelper.save(rawUser)
+
+        return request(app.getHttpServer())
+          .post('/auth/login')
+          .send({ email: userEmail, password: validPassword })
+          .expect(500)
+          .expect((response) => {
+            expect(response.body).toEqual({
+              path: '/auth/login',
+              response: {
+                code: INTERNAL_SERVER_ERROR,
+                message: 'Something went wrong while processing your request',
+              },
+              statusCode: 500,
+              requestId: expect.any(String),
+              timestamp: expectIsoDate,
+            } as Record<string, unknown>)
+          })
       })
     })
   })

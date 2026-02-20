@@ -137,13 +137,16 @@ export class AuthController {
 
       if (
         result.error.id === LoginUserApplicationError.invalidCredentialsId ||
-        result.error.id === LoginUserApplicationError.userDoesNotHaveCredentialsId ||
         result.error.id === LoginUserApplicationError.userNotFoundId
       ) {
         throw new UnauthorizedException({
           code: UNAUTHORIZED_ACCESS,
           message: 'Unauthorized access',
         })
+      }
+
+      if (result.error.id === LoginUserApplicationError.userDoesNotHaveCredentialsId) {
+        throw new InternalServerErrorException(result.error)
       }
 
       throw new InternalServerErrorException(result.error)
