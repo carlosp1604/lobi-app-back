@@ -7,7 +7,6 @@ import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/Use
 import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/ProfileRepositoryInterface'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import {
   RequestOriginApplicationService,
@@ -49,6 +48,7 @@ import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainE
 import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 
 describe('CreateUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -56,8 +56,8 @@ describe('CreateUser', () => {
   const mockedProfileRepository = mock<ProfileRepositoryInterface>()
   const mockedVerificationTokenRepository = mock<VerificationTokenRepositoryInterface>()
   const mockedDomainEventRepository = mock<DomainEventRepositoryInterface>()
+  const mockedHasherService = mock<HasherServiceInterface>()
   const mockedVerifyTokenService = mock<VerifyTokenService>()
-  const mockedPasswordHasher = mock<PasswordHasherServiceInterface>()
   const mockedRequestOriginService = mock<RequestOriginApplicationService>()
   const mockedClock = mock<ClockServiceInterface>()
   const mockedIdGenerator = mock<IdGeneratorServiceInterface>()
@@ -99,7 +99,7 @@ describe('CreateUser', () => {
       mockedVerificationTokenRepository,
       mockedDomainEventRepository,
       mockedVerifyTokenService,
-      mockedPasswordHasher,
+      mockedHasherService,
       mockedRequestOriginService,
       mockedClock,
       mockedUnitOfWork,
@@ -117,12 +117,12 @@ describe('CreateUser', () => {
     mockReset(mockedVerificationTokenRepository)
     mockReset(mockedDomainEventRepository)
     mockReset(mockedVerifyTokenService)
-    mockReset(mockedPasswordHasher)
+    mockReset(mockedHasherService)
     mockReset(mockedRequestOriginService)
     mockReset(mockedClock)
-    mockReset(mockedIdGenerator)
     mockReset(mockedLogger)
     mockReset(mockedUnitOfWork)
+    mockReset(mockedIdGenerator)
 
     baseRequest = {
       email: validEmail.value,
@@ -150,7 +150,7 @@ describe('CreateUser', () => {
 
     mockedClock.now.mockReturnValue(now)
     mockedRequestOriginService.process.mockResolvedValue(requestOriginData)
-    mockedPasswordHasher.hash.mockResolvedValue(validPasswordHash.value)
+    mockedHasherService.hash.mockResolvedValue(validPasswordHash.value)
 
     mockedUnitOfWork.runInTransaction.mockImplementation(async (work) => {
       return work(fakeContext)
@@ -259,7 +259,7 @@ describe('CreateUser', () => {
 
       expect(expectedInitialVerificationToken.usedAt).toBeNull()
       expect(mockedRequestOriginService.process).toHaveBeenCalledTimes(1)
-      expect(mockedPasswordHasher.hash).toHaveBeenCalledTimes(1)
+      expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)
       expect(mockedVerifyTokenService.verify).toHaveBeenCalledTimes(1)
@@ -277,7 +277,7 @@ describe('CreateUser', () => {
       expect(mockedRequestOriginService.process).toHaveBeenCalledWith(baseRequest.ip, baseRequest.userAgent, {
         email: validEmail.value,
       })
-      expect(mockedPasswordHasher.hash).toHaveBeenCalledWith(baseRequest.password)
+      expect(mockedHasherService.hash).toHaveBeenCalledWith(baseRequest.password)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledWith(validEmail.value, fakeContext)
       expect(mockedVerifyTokenService.verify).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -606,7 +606,7 @@ describe('CreateUser', () => {
 
       it('should throw error when PasswordHasher fails', async () => {
         const hashingError = new Error('Unexpected hashing failed')
-        mockedPasswordHasher.hash.mockImplementation(() => {
+        mockedHasherService.hash.mockImplementation(() => {
           throw hashingError
         })
 

@@ -25,7 +25,7 @@ import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessi
 import {
   EMAIL_SENDER_SERVICE,
   HASHER_SERVICE,
-  PASSWORD_HASHER,
+  PASSWORD_HASHER_SERVICE,
   REQUEST_ORIGIN_SERVICE,
   TOKEN_GENERATOR,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
@@ -176,7 +176,7 @@ describe('AuthController', () => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
       userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(dataSource.manager)
 
-      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
       const userPassword = await passwordHasher.hash(validPassword)
 
       rawCredential = makeRawUserCredential({
@@ -629,7 +629,7 @@ describe('AuthController', () => {
     beforeEach(async () => {
       verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(dataSource.manager)
 
-      const tokenHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+      const tokenHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
       const tokenHash = await tokenHasher.hash(validTokenValue)
 
       rawVerificationToken = makeRawVerificationToken({
@@ -855,7 +855,7 @@ describe('AuthController', () => {
     })
 
     const saveTokenInDatabase = async (overrides: Partial<VerificationTokenRawModel> = {}) => {
-      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
       const tokenHash = await passwordHasher.hash(validTokenValue.value)
       const rawToken = makeRawVerificationToken({
         id: VerificationTokenIdMother.valid().value,
@@ -1070,7 +1070,7 @@ describe('AuthController', () => {
     })
 
     const saveSetupInDatabase = async (overrides: Partial<VerificationTokenRawModel> = {}) => {
-      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+      const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
       const tokenHash = await passwordHasher.hash(validTokenValue.value)
       const oldPasswordHash = await passwordHasher.hash(validOldPassword.value)
 
@@ -1183,7 +1183,7 @@ describe('AuthController', () => {
         })
 
         it('should throw NotFoundException when user does not exist', async () => {
-          const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER)
+          const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
           const tokenHash = await passwordHasher.hash(validTokenValue.value)
 
           await verificationTokenDatabaseHelper.save(

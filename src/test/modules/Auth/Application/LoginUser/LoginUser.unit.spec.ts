@@ -4,7 +4,6 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -44,13 +43,14 @@ import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { LoginUserApplicationResponseDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationResponseDto'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 
 describe('LoginUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
   const mockedCredentialsRepository = mock<UserCredentialRepositoryInterface>()
   const mockedSessionsRepository = mock<UserSessionRepositoryInterface>()
   const mockedDomainEventRepository = mock<DomainEventRepositoryInterface>()
-  const mockedPasswordHasher = mock<PasswordHasherServiceInterface>()
+  const mockedHasherService = mock<HasherServiceInterface>()
   const mockedGenerateTokensService = mock<GenerateTokensApplicationService>()
   const mockedUserSessionPolicyManagerService = mock<UserSessionPolicyManagerApplicationService>()
   const mockedClock = mock<ClockServiceInterface>()
@@ -120,7 +120,7 @@ describe('LoginUser', () => {
       mockedCredentialsRepository,
       mockedSessionsRepository,
       mockedDomainEventRepository,
-      mockedPasswordHasher,
+      mockedHasherService,
       mockedGenerateTokensService,
       mockedUserSessionPolicyManagerService,
       mockedRequestOriginService,
@@ -138,7 +138,7 @@ describe('LoginUser', () => {
     mockReset(mockedCredentialsRepository)
     mockReset(mockedSessionsRepository)
     mockReset(mockedDomainEventRepository)
-    mockReset(mockedPasswordHasher)
+    mockReset(mockedHasherService)
     mockReset(mockedGenerateTokensService)
     mockReset(mockedUserSessionPolicyManagerService)
     mockReset(mockedClock)
@@ -154,7 +154,7 @@ describe('LoginUser', () => {
     mockedIdGenerator.generateId.mockReturnValue(expectedDomainEventId.value)
     mockedUserRepository.findByEmailWithLock.mockResolvedValue(user)
     mockedCredentialsRepository.findByUserId.mockResolvedValue(mockedCredential)
-    mockedPasswordHasher.compare.mockResolvedValue(true)
+    mockedHasherService.compare.mockResolvedValue(true)
     mockedGenerateTokensService.generate.mockResolvedValue({ ...expectedGenerateTokensResponse, session: expectedSession })
     mockedSessionsRepository.findUserActiveSessions.mockResolvedValue([activeSession1, activeSession2, activeSession3])
     mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin.mockReturnValue({ success: true, value: [] })
@@ -189,7 +189,7 @@ describe('LoginUser', () => {
       expect(mockedUserRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)
       expect(mockedCredentialsRepository.findByUserId).toHaveBeenCalledTimes(1)
 
-      expect(mockedPasswordHasher.compare).toHaveBeenCalledTimes(1)
+      expect(mockedHasherService.compare).toHaveBeenCalledTimes(1)
       expect(mockedGenerateTokensService.generate).toHaveBeenCalledTimes(1)
       expect(mockedSessionsRepository.findUserActiveSessions).toHaveBeenCalledTimes(1)
       expect(activeSession1.isSameDeviceAs).toHaveBeenCalledTimes(1)
@@ -202,7 +202,7 @@ describe('LoginUser', () => {
       expect(mockedRequestOriginService.process).toHaveBeenCalledWith(request.ip, request.userAgent, { email: validEmail.value })
       expect(mockedUserRepository.findByEmailWithLock).toHaveBeenCalledWith(validEmail.value, fakeContext)
       expect(mockedCredentialsRepository.findByUserId).toHaveBeenCalledWith(validUserId.value, fakeContext)
-      expect(mockedPasswordHasher.compare).toHaveBeenCalledWith(request.password, validPasswordHash.value)
+      expect(mockedHasherService.compare).toHaveBeenCalledWith(request.password, validPasswordHash.value)
 
       expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(
         validUserId,
@@ -465,12 +465,12 @@ describe('LoginUser', () => {
         email: validEmail.value,
       })
 
-      expect(mockedPasswordHasher.compare).not.toHaveBeenCalled()
+      expect(mockedHasherService.compare).not.toHaveBeenCalled()
     })
 
     describe('when passwords do not match', () => {
       beforeEach(() => {
-        mockedPasswordHasher.compare.mockResolvedValue(false)
+        mockedHasherService.compare.mockResolvedValue(false)
       })
 
       const expectedDomainEvent = {
@@ -618,7 +618,7 @@ describe('LoginUser', () => {
     })
 
     it('should throw error when PasswordHasher fails', async () => {
-      mockedPasswordHasher.compare.mockImplementationOnce(() => {
+      mockedHasherService.compare.mockImplementationOnce(() => {
         throw Error('Unexpected Error')
       })
 

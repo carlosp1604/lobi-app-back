@@ -31,13 +31,13 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/ProfileRepositoryInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 
 type ValidatedCreateUserInput = {
   userEmail: UserEmail
@@ -57,7 +57,7 @@ export class CreateUser {
     private readonly verificationTokenRepository: VerificationTokenRepositoryInterface,
     private readonly domainEventRepository: DomainEventRepositoryInterface,
     private readonly verifyTokenService: VerifyTokenService,
-    private readonly passwordHasher: PasswordHasherServiceInterface,
+    private readonly hasherService: HasherServiceInterface,
     private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
@@ -79,7 +79,7 @@ export class CreateUser {
       email: userEmail.value,
     })
 
-    const passwordHashString = await this.passwordHasher.hash(password.value)
+    const passwordHashString = await this.hasherService.hash(password.value)
     const passwordHash = PasswordHash.fromString(passwordHashString)
 
     return this.unitOfWork.runInTransaction(async (context: TxContext) => {

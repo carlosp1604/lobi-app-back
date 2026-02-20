@@ -14,7 +14,7 @@ import {
   IP_VALIDATOR,
   LOGIN_USER,
   MAX_SESSIONS_POLICY,
-  PASSWORD_HASHER,
+  PASSWORD_HASHER_SERVICE,
   USER_PROFILE_REPOSITORY,
   RANDOM_SERVICE,
   REFRESH_SESSION,
@@ -42,7 +42,6 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
@@ -142,7 +141,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
       inject: [TYPEORM_MANAGER_RESOLVER],
     },
     {
-      provide: PASSWORD_HASHER,
+      provide: PASSWORD_HASHER_SERVICE,
       useFactory: (configService: ConfigService<Env, true>) => {
         return new BCryptHasherService(configService.get('SALT_ROUNDS', { infer: true }))
       },
@@ -228,7 +227,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
       useFactory: (hasherService: HasherServiceInterface) => {
         return new VerifyTokenService(hasherService)
       },
-      inject: [PASSWORD_HASHER],
+      inject: [PASSWORD_HASHER_SERVICE],
     },
     {
       provide: LOGIN_USER,
@@ -237,7 +236,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         credentialRepository: UserCredentialRepositoryInterface,
         sessionRepository: UserSessionRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
-        passwordHasher: PasswordHasherServiceInterface,
+        hasherService: HasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
         requestOriginApplicationService: RequestOriginApplicationService,
@@ -251,7 +250,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
           credentialRepository,
           sessionRepository,
           domainEventRepository,
-          passwordHasher,
+          hasherService,
           generateTokensService,
           userSessionManagerService,
           requestOriginApplicationService,
@@ -265,7 +264,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         USER_CREDENTIAL_REPOSITORY,
         USER_SESSION_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
-        PASSWORD_HASHER,
+        PASSWORD_HASHER_SERVICE,
         GENERATE_TOKENS_SERVICE,
         USER_SESSION_POLICY_MANAGER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
@@ -346,7 +345,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         DOMAIN_EVENT_REPOSITORY,
         EMAIL_SENDER_SERVICE,
         UNIT_OF_WORK,
-        PASSWORD_HASHER,
+        PASSWORD_HASHER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         RANDOM_SERVICE,
@@ -375,7 +374,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         verificationTokenRepository: VerificationTokenRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
         verifyTokenService: VerifyTokenService,
-        passwordHasher: PasswordHasherServiceInterface,
+        hasherService: HasherServiceInterface,
         requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
@@ -389,7 +388,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
           verificationTokenRepository,
           domainEventRepository,
           verifyTokenService,
-          passwordHasher,
+          hasherService,
           requestOriginApplicationService,
           clockService,
           unitOfWork,
@@ -403,7 +402,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         VERIFICATION_TOKEN_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
         VERIFY_TOKEN_DOMAIN_SERVICE,
-        PASSWORD_HASHER,
+        PASSWORD_HASHER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
@@ -445,7 +444,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
         VERIFICATION_TOKEN_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
         VERIFY_TOKEN_DOMAIN_SERVICE,
-        PASSWORD_HASHER,
+        PASSWORD_HASHER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,

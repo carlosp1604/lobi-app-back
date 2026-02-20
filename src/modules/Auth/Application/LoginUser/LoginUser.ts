@@ -10,7 +10,6 @@ import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginU
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
@@ -33,6 +32,7 @@ import { UserDomainException } from '~/src/modules/User/Domain/UserDomainExcepti
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 
 export class LoginUser {
   constructor(
@@ -40,7 +40,7 @@ export class LoginUser {
     private readonly credentialRepository: UserCredentialRepositoryInterface,
     private readonly sessionRepository: UserSessionRepositoryInterface,
     private readonly domainEventRepository: DomainEventRepositoryInterface,
-    private readonly passwordHasher: PasswordHasherServiceInterface,
+    private readonly hasherService: HasherServiceInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
     private readonly requestOriginApplicationService: RequestOriginApplicationService,
@@ -96,7 +96,7 @@ export class LoginUser {
 
       const credentials = getUserCredential.value
 
-      const passwordMatches = await this.passwordHasher.compare(userPassword.value, credentials.passwordHash.value)
+      const passwordMatches = await this.hasherService.compare(userPassword.value, credentials.passwordHash.value)
 
       if (!passwordMatches) {
         const domainEvent = this.buildFailedAttemptDomainEvent(user.id, deviceLocation, sessionIpHash, userAgent, now)
