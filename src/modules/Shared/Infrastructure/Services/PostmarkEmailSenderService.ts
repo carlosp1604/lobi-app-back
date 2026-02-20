@@ -2,6 +2,7 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 import { ServerClient, Errors, TemplatedMessage } from 'postmark'
 import { TemplateAlias, TemplateContextMap } from '~/src/modules/Shared/Domain/EmailTemplates'
+import { ErrorUtils } from '~/src/modules/Shared/Domain/ErrorUtils'
 
 export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
   constructor(
@@ -58,14 +59,13 @@ export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
         provider: 'Postmark',
       })
     } catch (error: unknown) {
-      const errorMessage = 'Failed to send email'
-      const stack = error instanceof Error ? error.stack : undefined
+      const normalizedError = ErrorUtils.normalize(error)
 
       let errorDetails: Record<string, any> = {
         recipient: to,
         templateAlias,
         provider: 'Postmark',
-        error: error instanceof Error ? error.message : String(error),
+        error: normalizedError.message,
       }
 
       if (error instanceof Errors.PostmarkError) {
@@ -77,7 +77,7 @@ export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
         }
       }
 
-      this.loggerService.error(errorMessage, stack, errorDetails)
+      this.loggerService.error('Failed to send email', normalizedError.stack, errorDetails)
       throw error
     }
   }

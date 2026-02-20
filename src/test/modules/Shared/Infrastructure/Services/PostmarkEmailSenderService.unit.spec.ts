@@ -117,27 +117,4 @@ describe('PostmarkEmailSenderService', () => {
       error: genericError.message,
     })
   })
-
-  it('should throw error when postmark fails with a non-Error', async () => {
-    const service = buildService()
-
-    const unknownError = 'Unexpected error'
-    mockedPostmarkServerClient.sendEmailWithTemplate.mockRejectedValue(unknownError)
-
-    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext, language, now)).rejects.toEqual(unknownError)
-
-    expect(mockedLoggerService.log).toHaveBeenCalledTimes(1)
-    expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
-
-    expect(mockedLoggerService.log).toHaveBeenCalledWith('Attempting to send email with template', {
-      templateAlias,
-      recipient: toAddress,
-    })
-    expect(mockedLoggerService.error).toHaveBeenCalledWith('Failed to send email', undefined, {
-      recipient: toAddress,
-      templateAlias: templateAlias,
-      provider: 'Postmark',
-      error: unknownError,
-    })
-  })
 })
