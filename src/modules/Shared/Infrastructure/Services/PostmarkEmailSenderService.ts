@@ -45,35 +45,39 @@ export class PostmarkEmailSenderService implements EmailSenderServiceInterface {
     }
 
     try {
-      this.loggerService.log(`Attempting to send email with template [${templateAlias}] to [${to}]`)
+      this.loggerService.log('Attempting to send email with template', {
+        recipient: to,
+        templateAlias,
+      })
 
       const response = await this.postmarkClient.sendEmailWithTemplate(message)
 
-      this.loggerService.log(`Email sent successfully via Postmark to [${to}], MessageID: ${response.MessageID}`)
+      this.loggerService.log('Email sent successfully', {
+        recipient: to,
+        messageId: response.MessageID,
+        provider: 'Postmark',
+      })
     } catch (error: unknown) {
-      let errorMessage = 'Failed to send email via Postmark'
-      let errorDetails: Record<string, any> = { recipient: to, templateAlias }
+      const errorMessage = 'Failed to send email'
+      const stack = error instanceof Error ? error.stack : undefined
 
-      if (error instanceof Errors.PostmarkError) {
-        errorMessage = `Postmark API error: ${error.statusCode} - ${error.message}`
-
-        errorDetails = {
-          ...errorDetails,
-          statusCode: error.statusCode,
-          postmarkErrorCode: error.code,
-          originalError: error,
-        }
-
-        this.loggerService.error(errorMessage, error.stack, errorDetails)
-      } else if (error instanceof Error) {
-        errorMessage = `Unexpected error sending email: ${error.message}`
-        errorDetails.error = error.message
-        this.loggerService.error(errorMessage, error.stack, errorDetails)
-      } else {
-        errorDetails.error = String(error)
-        this.loggerService.error(errorMessage, undefined, errorDetails)
+      let errorDetails: Record<string, any> = {
+        recipient: to,
+        templateAlias,
+        provider: 'Postmark',
+        error: error instanceof Error ? error.message : String(error),
       }
 
+      if (error instanceof Errors.PostmarkError) {
+        errorDetails = {
+          ...errorDetails,
+          type: 'PostmarkAPIError',
+          statusCode: error.statusCode,
+          postmarkErrorCode: error.code,
+        }
+      }
+
+      this.loggerService.error(errorMessage, stack, errorDetails)
       throw error
     }
   }
