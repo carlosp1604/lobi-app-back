@@ -301,11 +301,14 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenExpired', {
-          message: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
-          email: validEmail.value,
-          verificationTokenId: expiredVerificationToken.id.value,
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
+          error: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
+          reason: 'Token has already expired',
+          email: expiredVerificationToken.email.value,
           expiresAt: expiredVerificationToken.expiresAt,
+          usedAt: expiredVerificationToken.usedAt,
+          purpose: expiredVerificationToken.purpose.value,
+          verificationTokenId: expiredVerificationToken.id.value,
         })
       })
 
@@ -320,11 +323,14 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenAlreadyUsed', {
-          message: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
-          email: validEmail.value,
-          verificationTokenId: usedVerificationToken.id.value,
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
+          error: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
+          reason: 'Token was already used',
+          email: usedVerificationToken.email.value,
+          expiresAt: usedVerificationToken.expiresAt,
           usedAt: usedVerificationToken.usedAt,
+          purpose: usedVerificationToken.purpose.value,
+          verificationTokenId: usedVerificationToken.id.value,
         })
       })
 
@@ -345,11 +351,15 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenInvalidOwner', {
-          message: domainException.message,
-          email: validEmail.value,
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
+          error: domainException.message,
+          reason: 'Token belongs to a different email address',
+          email: verificationToken.email.value,
+          requestEmail: validEmail.value,
+          expiresAt: verificationToken.expiresAt,
+          usedAt: verificationToken.usedAt,
+          purpose: verificationToken.purpose.value,
           verificationTokenId: verificationToken.id.value,
-          ownerEmail: verificationToken.email.value,
         })
       })
 
@@ -369,11 +379,14 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenPurposeMismatch', {
-          message: domainException.message,
-          email: validEmail.value,
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
+          error: domainException.message,
+          reason: 'Token was not generated for password reset',
+          email: notResetPasswordToken.email.value,
+          expiresAt: notResetPasswordToken.expiresAt,
+          usedAt: notResetPasswordToken.usedAt,
+          purpose: notResetPasswordToken.purpose.value,
           verificationTokenId: notResetPasswordToken.id.value,
-          verificationTokenPurpose: notResetPasswordToken.purpose.value,
         })
       })
 
@@ -421,9 +434,9 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('User not found or inactive', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
           email: validEmail.value,
-          reason: 'NotFound',
+          reason: 'User not found',
         })
       })
 
@@ -438,9 +451,9 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('User not found or inactive', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
           email: validEmail.value,
-          reason: 'Inactive',
+          reason: 'User is disabled',
         })
       })
 
@@ -454,8 +467,9 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.inconsistentState(validUserId.value),
         })
-        expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state: Active user has no credentials', undefined, {
+        expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
           userId: validUserId.value,
+          reason: 'Active user has no credentials',
         })
       })
 
@@ -469,7 +483,8 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.cannotResetPassword(),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('New password same as current', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset rejected', {
+          reason: 'The new password is the same as the current one',
           userId: validUserId.value,
         })
       })
