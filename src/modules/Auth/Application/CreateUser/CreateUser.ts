@@ -89,20 +89,16 @@ export class CreateUser {
         return fail(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(verificationTokenEmail.value)))
       }
 
-      const validateVerificationTokenResult = verificationToken.validate(
-        now,
-        verificationTokenEmail,
-        VerificationTokenPurpose.createAccount(),
-      )
+      const validateTokenResult = verificationToken.validate(now, verificationTokenEmail, VerificationTokenPurpose.createAccount())
 
-      if (!validateVerificationTokenResult.success) {
-        return this.handleDomainError(validateVerificationTokenResult.error, verificationToken, userEmail)
+      if (!validateTokenResult.success) {
+        return this.handleDomainError(validateTokenResult.error, verificationToken, userEmail)
       }
 
       const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue.value)
 
       if (!isCryptoValid) {
-        this.loggerService.warn('Verification token cryptography verification failed', {
+        this.loggerService.warn('Token cryptography verification failed', {
           email: userEmail.value,
         })
 
@@ -115,9 +111,10 @@ export class CreateUser {
       ])
 
       if (emailExists || usernameExists) {
-        this.loggerService.warn('Signup attempt with existing credentials', {
+        this.loggerService.warn('Signup rejected', {
           email: userEmail.value,
           username: username.value,
+          reason: 'User is already registered',
           emailExists,
           usernameExists,
         })
@@ -230,48 +227,46 @@ export class CreateUser {
     verificationToken: VerificationToken,
     userEmail: UserEmail,
   ): Result<void, CreateUserApplicationError> {
+    const tokenState = {
+      verificationTokenId: verificationToken.id.value,
+      email: verificationToken.email.value,
+      expiresAt: verificationToken.expiresAt,
+      usedAt: verificationToken.usedAt,
+      purpose: verificationToken.purpose.value,
+      error: exception.message,
+    }
+
     switch (exception.id) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId: {
-        this.loggerService.warn('Verification token validation failed: tokenExpired', {
-          message: exception.message,
-          email: userEmail.value,
-          verificationTokenId: verificationToken.id.value,
-          expiresAt: verificationToken.expiresAt,
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token has already expired',
         })
-
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired()))
       }
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId: {
-        this.loggerService.warn('Verification token validation failed: tokenAlreadyUsed', {
-          message: exception.message,
-          email: userEmail.value,
-          verificationTokenId: verificationToken.id.value,
-          usedAt: verificationToken.usedAt,
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token was already used',
         })
-
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed()))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId: {
-        this.loggerService.warn('Verification token validation failed: tokenInvalidOwner', {
-          message: exception.message,
-          email: userEmail.value,
-          ownerEmail: verificationToken.email.value,
-          verificationTokenId: verificationToken.id.value,
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token belongs to a different email address',
+          requestEmail: userEmail.value,
         })
-
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner()))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId: {
-        this.loggerService.warn('Verification token validation failed: tokenPurposeMismatch', {
-          message: exception.message,
-          email: userEmail.value,
-          verificationTokenId: verificationToken.id.value,
-          verificationTokenPurpose: verificationToken.purpose.value,
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token was not generated for signup',
         })
-
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch()))
       }
 

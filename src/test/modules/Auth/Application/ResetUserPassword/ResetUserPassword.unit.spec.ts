@@ -277,7 +277,7 @@ describe('ResetUserPassword', () => {
       })
     })
 
-    describe('when token is not valid', () => {
+    describe('when token is not valid (not found, expired, used, incorrect code, incorrect user, incorrect purpose)', () => {
       it('should return notFound error when token does not exist', async () => {
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(null)
 

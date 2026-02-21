@@ -49,6 +49,7 @@ import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTok
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
+import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 
 describe('CreateUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -406,6 +407,24 @@ describe('CreateUser', () => {
     })
 
     describe('when token is not valid (not found, expired, used, incorrect code, incorrect user, incorrect purpose)', () => {
+      const asserLoggerCall = (
+        expectedErrorMessage: string,
+        expectedReason: string,
+        expectedToken: VerificationToken,
+        extraData?: Record<string, unknown>,
+      ) => {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
+          error: expectedErrorMessage,
+          reason: expectedReason,
+          email: expectedToken.email.value,
+          expiresAt: expectedToken.expiresAt,
+          usedAt: expectedToken.usedAt,
+          purpose: expectedToken.purpose.value,
+          verificationTokenId: expectedToken.id.value,
+          ...(extraData ? extraData : {}),
+        })
+      }
+
       it('should return notFound error when token does not exist', async () => {
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(null)
 
@@ -429,12 +448,11 @@ describe('CreateUser', () => {
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenExpired', {
-          message: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
-          verificationTokenId: expiredVerificationToken.id.value,
-          email: validEmail.value,
-          expiresAt: expiredVerificationToken.expiresAt,
-        })
+        asserLoggerCall(
+          VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
+          'Token has already expired',
+          expiredVerificationToken,
+        )
       })
 
       it('should return tokenAlreadyUsed error when token is already used', async () => {
@@ -448,12 +466,11 @@ describe('CreateUser', () => {
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenAlreadyUsed', {
-          message: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
-          verificationTokenId: usedVerificationToken.id.value,
-          email: validEmail.value,
-          usedAt: usedVerificationToken.usedAt,
-        })
+        asserLoggerCall(
+          VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
+          'Token was already used',
+          usedVerificationToken,
+        )
       })
 
       it('should return tokenInvalidOwner when token does not belong to user', async () => {
@@ -473,11 +490,8 @@ describe('CreateUser', () => {
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenInvalidOwner', {
-          message: domainException.message,
-          verificationTokenId: verificationToken.id.value,
-          email: validEmail.value,
-          ownerEmail: verificationToken.email.value,
+        asserLoggerCall(domainException.message, 'Token belongs to a different email address', verificationToken, {
+          requestEmail: validEmail.value,
         })
       })
 
@@ -496,12 +510,7 @@ describe('CreateUser', () => {
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenPurposeMismatch', {
-          message: domainException.message,
-          verificationTokenId: notAccountCreateVerificationToken.id.value,
-          email: validEmail.value,
-          verificationTokenPurpose: notAccountCreateVerificationToken.purpose.value,
-        })
+        asserLoggerCall(domainException.message, 'Token was not generated for signup', notAccountCreateVerificationToken)
       })
 
       it('should return invalidToken error when cryptographic verification fails', async () => {
@@ -514,12 +523,12 @@ describe('CreateUser', () => {
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token cryptography verification failed', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: validEmail.value,
         })
       })
 
-      it('should re-throw exception when entity returns a unexpected VerificationTokenDomainException', async () => {
+      it('should throw exception when entity returns a unexpected VerificationTokenDomainException', async () => {
         const verificationToken = verificationTokenBuilder.build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
 
@@ -536,9 +545,10 @@ describe('CreateUser', () => {
 
     describe('when data is duplicated', () => {
       const assertLoggerCall = (emailExists: boolean, usernameExists: boolean) => {
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Signup attempt with existing credentials', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Signup rejected', {
           username: validUsername.value,
           email: validEmail.value,
+          reason: 'User is already registered',
           emailExists,
           usernameExists,
         })
