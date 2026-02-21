@@ -285,35 +285,38 @@ import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactor
     {
       provide: REFRESH_SESSION,
       useFactory: (
-        unitOfWork: UnitOfWork,
         userRepository: UserRepositoryInterface,
         sessionRepository: UserSessionRepositoryInterface,
+        hasherService: HasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
         requestOriginApplicationService: RequestOriginApplicationService,
-        hasherService: HasherServiceInterface,
         clockService: NodeClockService,
+        unitOfWork: UnitOfWork,
+        loggerFactory: LoggerFactoryInterface,
       ) => {
         return new RefreshSession(
-          unitOfWork,
           userRepository,
           sessionRepository,
+          hasherService,
           generateTokensService,
           userSessionManagerService,
           requestOriginApplicationService,
-          hasherService,
           clockService,
+          unitOfWork,
+          loggerFactory.createLogger(RefreshSession.name),
         )
       },
       inject: [
-        UNIT_OF_WORK,
         USER_REPOSITORY,
         USER_SESSION_REPOSITORY,
+        HASHER_SERVICE,
         GENERATE_TOKENS_SERVICE,
         USER_SESSION_POLICY_MANAGER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
-        HASHER_SERVICE,
         CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_FACTORY,
       ],
     },
     {
@@ -368,10 +371,16 @@ import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactor
         verificationTokenRepository: VerificationTokenRepositoryInterface,
         verifyTokenService: VerifyTokenService,
         clockService: ClockServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
       ) => {
-        return new ValidateVerificationToken(verificationTokenRepository, verifyTokenService, clockService)
+        return new ValidateVerificationToken(
+          verificationTokenRepository,
+          verifyTokenService,
+          clockService,
+          loggerFactory.createLogger(ValidateVerificationToken.name),
+        )
       },
-      inject: [VERIFICATION_TOKEN_REPOSITORY, VERIFY_TOKEN_DOMAIN_SERVICE, CLOCK_SERVICE],
+      inject: [VERIFICATION_TOKEN_REPOSITORY, VERIFY_TOKEN_DOMAIN_SERVICE, CLOCK_SERVICE, LOGGER_FACTORY],
     },
     {
       provide: CREATE_USER,

@@ -8,12 +8,15 @@ import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/V
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationRequestDto'
+import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
+import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 
 export class ValidateVerificationToken {
   constructor(
     private readonly verificationTokenRepository: VerificationTokenRepositoryInterface,
     private readonly verifyTokenService: VerifyTokenService,
     private readonly clockService: ClockServiceInterface,
+    private readonly loggerService: LoggerServiceInterface,
   ) {}
 
   public async execute(request: ValidateVerificationTokenApplicationRequestDto): Promise<Result<void, ValidateVerificationTokenError>> {
@@ -39,43 +42,75 @@ export class ValidateVerificationToken {
     const verificationTokenPurpose = purposeValidationResult.value
     const tokenValue = tokenValueValidationResult.value
 
-    const tokenEntity = await this.verificationTokenRepository.findByEmail(email.value)
+    const verificationToken = await this.verificationTokenRepository.findByEmail(email.value)
 
-    if (!tokenEntity) {
+    if (!verificationToken) {
       return fail(ValidateVerificationTokenError.notFound())
     }
 
-    const validateVerificationTokenResult = tokenEntity.validate(now, email, verificationTokenPurpose)
+    const validateVerificationTokenResult = verificationToken.validate(now, email, verificationTokenPurpose)
 
     if (!validateVerificationTokenResult.success) {
-      return this.handleDomainError(validateVerificationTokenResult.error)
+      return this.handleDomainError(validateVerificationTokenResult.error, verificationToken)
     }
 
-    const isCryptoValid = await this.verifyTokenService.verify(tokenEntity, tokenValue)
+    const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue)
 
     if (!isCryptoValid) {
+      this.loggerService.warn('Token cryptography verification failed', {
+        email: email.value,
+      })
+
       return fail(ValidateVerificationTokenError.invalidToken())
     }
 
     return success(undefined)
   }
 
-  private handleDomainError(error: VerificationTokenDomainException): Result<void, ValidateVerificationTokenError> {
-    switch (error.id) {
+  private handleDomainError(
+    exception: VerificationTokenDomainException,
+    verificationToken: VerificationToken,
+  ): Result<void, ValidateVerificationTokenError> {
+    const tokenState = {
+      verificationTokenId: verificationToken.id.value,
+      email: verificationToken.email.value,
+      expiresAt: verificationToken.expiresAt,
+      usedAt: verificationToken.usedAt,
+      purpose: verificationToken.purpose.value,
+      error: exception.message,
+    }
+
+    switch (exception.id) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId:
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token has already expired',
+        })
         return fail(ValidateVerificationTokenError.expired())
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId:
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token was already used',
+        })
         return fail(ValidateVerificationTokenError.alreadyUsed())
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId:
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token belongs to a different email address',
+        })
         return fail(ValidateVerificationTokenError.invalidOwner())
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId:
+        this.loggerService.warn('Verification token validation failed', {
+          ...tokenState,
+          reason: 'Token was not generated for the requested purpose',
+        })
         return fail(ValidateVerificationTokenError.tokenPurposeMismatch())
 
       default:
-        throw error
+        throw exception
     }
   }
 

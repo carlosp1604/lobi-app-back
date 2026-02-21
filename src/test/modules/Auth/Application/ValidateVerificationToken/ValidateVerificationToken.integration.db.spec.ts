@@ -16,6 +16,7 @@ import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenI
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
+import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
@@ -58,6 +59,7 @@ describe('ValidateVerificationToken', () => {
       new PostgreSqlVerificationTokenRepository(mockedResolver),
       new VerifyTokenService(hasherService),
       new ClockServiceMock(now),
+      new LoggerServiceMock(),
     )
   }
 

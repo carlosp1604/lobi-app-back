@@ -114,10 +114,9 @@ describe('RefreshSession', () => {
 
   const buildUseCase = () => {
     return new RefreshSession(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      new TypeOrmUnitOfWork(global.dataSource),
       new PostgresqlUserRepository(mockedResolver),
       new PostgreSqlUserSessionRepository(mockedResolver),
+      hasherService,
       new GenerateTokensApplicationService(
         new NodeIdGeneratorService(),
         new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
@@ -131,8 +130,10 @@ describe('RefreshSession', () => {
         new NoopDeviceLocationResolverService(),
         new LoggerServiceMock(),
       ),
-      hasherService,
       new ClockServiceMock(now),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      new TypeOrmUnitOfWork(global.dataSource),
+      new LoggerServiceMock(),
     )
   }
 
