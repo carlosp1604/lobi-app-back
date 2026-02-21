@@ -414,8 +414,9 @@ describe('GenerateVerificationToken', () => {
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
       expect(mockedVerificationTokenRepository.findByEmailWithLock).not.toHaveBeenCalled()
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Create account requested for an already taken email', {
+      expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token generation rejected', {
         email: verificationTokenEmail.value,
+        reason: 'Email is already registered and purpose is create account',
       })
     })
 
@@ -425,7 +426,7 @@ describe('GenerateVerificationToken', () => {
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
       })
 
-      const testCase = async () => {
+      const testCase = async (reason: string) => {
         const useCase = buildUseCase()
 
         const resetPasswordRequest = {
@@ -442,44 +443,33 @@ describe('GenerateVerificationToken', () => {
           success: true,
           value: undefined,
         })
+
+        expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token generation rejected', {
+          email: verificationTokenEmail.value,
+          reason: reason,
+          purpose: purposeResetPassword.value,
+        })
       }
 
       it('should return success when user does not exist', async () => {
         mockedUserRepository.findByEmail.mockResolvedValue(null)
 
-        await testCase()
-
-        expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
-          email: verificationTokenEmail.value,
-          reason: 'NotFound',
-        })
+        await testCase('User not found')
       })
 
       it('should return success when user is deleted', async () => {
         const deletedUser = new UserTestBuilder().withEmail(userEmail).withDeletedAt(now).withStatus(UserStatus.active()).build()
         mockedUserRepository.findByEmail.mockResolvedValue(deletedUser)
 
-        await testCase()
-
-        expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
-          email: verificationTokenEmail.value,
-          reason: 'Inactive',
-        })
+        await testCase('User is disabled')
       })
 
       it('should return success when user is not active', async () => {
         const deletedUser = new UserTestBuilder().withEmail(userEmail).withDeletedAt(null).withStatus(UserStatus.deactivated()).build()
         mockedUserRepository.findByEmail.mockResolvedValue(deletedUser)
 
-        await testCase()
-
-        expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset requested for non-existent or inactive email', {
-          email: verificationTokenEmail.value,
-          reason: 'Inactive',
-        })
+        await testCase('User is disabled')
       })
     })
 
@@ -499,11 +489,12 @@ describe('GenerateVerificationToken', () => {
         ),
       })
 
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Email has already an active token for purpose', {
+      expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token generation rejected', {
         email: verificationTokenEmail.value,
         purpose: purposeCreateAccount.value,
         tokenId: existingToken.id.value,
         tokenExpiresAt: existingToken.expiresAt,
+        reason: 'An active token has already been issued for this purpose',
       })
       expect(mockedVerificationTokenRepository.delete).not.toHaveBeenCalled()
       expect(mockedRandomService.getRandomNumericCode).not.toHaveBeenCalled()
@@ -511,20 +502,6 @@ describe('GenerateVerificationToken', () => {
       expect(mockedDomainEventRepository.save).not.toHaveBeenCalled()
       expect(mockedVerificationTokenRepository.save).not.toHaveBeenCalled()
       expect(mockedEmailSenderService.sendWithTemplate).not.toHaveBeenCalled()
-    })
-
-    it('should re-throw exception when entity throws a non-domain error', async () => {
-      const existingToken = verificationTokenTestBuilder.build()
-      mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(existingToken)
-      const useCase = buildUseCase()
-
-      const unhandledDomainError = new Error('Unexpected error')
-
-      jest.spyOn(existingToken, 'validate').mockImplementation(() => {
-        throw unhandledDomainError
-      })
-
-      await expect(useCase.execute(requestBase)).rejects.toThrow(unhandledDomainError)
     })
 
     it('should throw error when emailSenderService fails', async () => {

@@ -71,8 +71,9 @@ export class GenerateVerificationToken {
 
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.createAccount())) {
       if (user) {
-        this.loggerService.warn('Create account requested for an already taken email', {
+        this.loggerService.warn('Verification token generation rejected', {
           email: email.value,
+          reason: 'Email is already registered and purpose is create account',
         })
 
         return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
@@ -85,9 +86,10 @@ export class GenerateVerificationToken {
 
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.resetPassword())) {
       if (!user || !user.isActive()) {
-        this.loggerService.warn('Password reset requested for non-existent or inactive email', {
+        this.loggerService.warn('Verification token generation rejected', {
           email: email.value,
-          reason: user ? 'Inactive' : 'NotFound',
+          reason: user ? 'User is disabled' : 'User not found',
+          purpose: verificationTokenPurpose.value,
         })
 
         return success(undefined)
@@ -100,16 +102,17 @@ export class GenerateVerificationToken {
       let resendCode = false
 
       if (verificationToken) {
-        const validateVerificationTokenResult = verificationToken.validate(now, email, verificationTokenPurpose)
+        const validateTokenResult = verificationToken.validate(now, email, verificationTokenPurpose)
 
-        const isVerificationTokenUsable = validateVerificationTokenResult.success
+        const isVerificationTokenUsable = validateTokenResult.success
 
         if (isVerificationTokenUsable && !request.sendNewToken) {
-          this.loggerService.warn('Email has already an active token for purpose', {
+          this.loggerService.warn('Verification token generation rejected', {
             email: email.value,
             purpose: verificationTokenPurpose.value,
             tokenId: verificationToken.id.value,
             tokenExpiresAt: verificationToken.expiresAt,
+            reason: 'An active token has already been issued for this purpose',
           })
 
           return fail(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, verificationTokenPurpose.value))
