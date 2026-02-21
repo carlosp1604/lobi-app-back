@@ -177,9 +177,9 @@ export class LoginUser {
     const user = await this.userRepository.findByEmailWithLock(userEmail.value, context)
 
     if (!user || !user.isActive()) {
-      this.loggerService.warn('Login attempt failed: User not found or inactive', {
+      this.loggerService.warn('Login rejected', {
         email: userEmail.value,
-        reason: user ? 'Inactive' : 'NotFound',
+        reason: user ? 'User is disabled' : 'User not found',
       })
 
       return fail(LoginUserApplicationError.userNotFound(userEmail.value))
@@ -192,9 +192,10 @@ export class LoginUser {
     const userCredential = await this.credentialRepository.findByUserId(user.id.value, context)
 
     if (!userCredential) {
-      this.loggerService.error('Login failed: User exists but has no credentials', undefined, {
+      this.loggerService.error('Inconsistent state', undefined, {
         userId: user.id.value,
         email: user.email.value,
+        reason: 'Active user has no credentials',
       })
 
       return fail(LoginUserApplicationError.userDoesNotHaveCredentials(user.id.value))

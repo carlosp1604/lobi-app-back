@@ -402,9 +402,9 @@ describe('LoginUser', () => {
 
         await runTestCaseAndAssertResult()
 
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Login attempt failed: User not found or inactive', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Login rejected', {
           email: validEmail.value,
-          reason: 'NotFound',
+          reason: 'User not found',
         })
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
       })
@@ -421,9 +421,9 @@ describe('LoginUser', () => {
 
         await runTestCaseAndAssertResult()
 
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Login attempt failed: User not found or inactive', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Login rejected', {
           email: validEmail.value,
-          reason: 'Inactive',
+          reason: 'User is disabled',
         })
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
       })
@@ -440,9 +440,9 @@ describe('LoginUser', () => {
 
         await runTestCaseAndAssertResult()
 
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Login attempt failed: User not found or inactive', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Login rejected', {
           email: validEmail.value,
-          reason: 'Inactive',
+          reason: 'User is disabled',
         })
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
       })
@@ -460,9 +460,10 @@ describe('LoginUser', () => {
         error: LoginUserApplicationError.userDoesNotHaveCredentials(validUserId.value),
       })
 
-      expect(mockedLogger.error).toHaveBeenCalledWith('Login failed: User exists but has no credentials', undefined, {
+      expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
         userId: validUserId.value,
         email: validEmail.value,
+        reason: 'Active user has no credentials',
       })
 
       expect(mockedHasherService.compare).not.toHaveBeenCalled()
