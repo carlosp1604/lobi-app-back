@@ -1,6 +1,5 @@
 import { User } from '~/src/modules/User/Domain/User'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
@@ -11,23 +10,17 @@ import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSe
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
-import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
-import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 export class LoginUser {
   constructor(
@@ -42,7 +35,7 @@ export class LoginUser {
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
-    private readonly idGeneratorService: IdGeneratorServiceInterface,
+    private readonly authDomainEventFactory: AuthDomainEventFactory,
   ) {}
 
   public async execute(
@@ -94,7 +87,7 @@ export class LoginUser {
       const passwordMatches = await this.hasherService.compare(userPassword.value, credentials.passwordHash.value)
 
       if (!passwordMatches) {
-        const domainEvent = this.buildFailedAttemptDomainEvent(user.id, deviceLocation, sessionIpHash, userAgent, now)
+        const domainEvent = this.authDomainEventFactory.createFailedAttemptEvent(user.id, deviceLocation, ipHash, userAgent, now)
 
         await this.domainEventRepository.save(domainEvent, context)
 
@@ -122,7 +115,7 @@ export class LoginUser {
 
       const sessionsToRevoke = serviceResult.value
 
-      const domainEvent = this.buildSuccessfulLoginDomainEvent(session, isNewDevice, now)
+      const domainEvent = this.authDomainEventFactory.createSuccessfulLoginEvent(session, isNewDevice, now)
 
       await this.sessionRepository.save([...sessionsToRevoke, session], context)
 
@@ -148,7 +141,7 @@ export class LoginUser {
       return fail(LoginUserApplicationError.invalidUserEmail(email))
     }
 
-    return success(EmailAddress.fromString(email))
+    return success(emailResult.value)
   }
 
   private validatePassword(password: string): Result<UserPassword, LoginUserApplicationError> {
@@ -190,59 +183,5 @@ export class LoginUser {
     }
 
     return success(userCredential)
-  }
-
-  private buildFailedAttemptDomainEvent(
-    userId: Identifier,
-    deviceLocation: DeviceLocation | null,
-    ipHash: UserSessionIpHash | null,
-    userAgent: UserAgent,
-    now: Date,
-  ): DomainEvent {
-    return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
-      DomainEventName.failedLoginAttempt(),
-      DomainEventAggregateType.user(),
-      userId,
-      {
-        userId: userId.value,
-        deviceLocation: deviceLocation
-          ? {
-              city: deviceLocation.city,
-              countryCode: deviceLocation.countryCode,
-            }
-          : null,
-      },
-      {
-        ipHash: ipHash ? ipHash.value : null,
-        ua: userAgent.value,
-      },
-      now,
-    )
-  }
-
-  private buildSuccessfulLoginDomainEvent(session: UserSession, isNewDevice: boolean, now: Date): DomainEvent {
-    return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
-      DomainEventName.successfulLogin(),
-      DomainEventAggregateType.user(),
-      session.userId,
-      {
-        userId: session.userId.value,
-        deviceLocation: session.deviceLocation
-          ? {
-              city: session.deviceLocation.city,
-              countryCode: session.deviceLocation.countryCode,
-            }
-          : null,
-        sessionId: session.id.value,
-        isNewDevice,
-      },
-      {
-        ipHash: session.ipHash ? session.ipHash.value : null,
-        ua: session.userAgent.value,
-      },
-      now,
-    )
   }
 }

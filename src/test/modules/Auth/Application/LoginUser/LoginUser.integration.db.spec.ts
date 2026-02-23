@@ -46,6 +46,7 @@ import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -114,6 +115,7 @@ describe('LoginUser', () => {
   const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
   const hasherService = new HmacHasherService(env.HASH_SECRET)
   const idGenerator = new NodeIdGeneratorService()
+  const domainEventFactory = new AuthDomainEventFactory(idGenerator)
   const loggerService = new LoggerServiceMock()
   const maxSessions = env.USER_MAX_SESSIONS
 
@@ -148,7 +150,7 @@ describe('LoginUser', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
       loggerService,
-      idGenerator,
+      domainEventFactory,
     )
   }
 

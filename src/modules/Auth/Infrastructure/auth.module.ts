@@ -244,6 +244,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
       useFactory: (idGeneratorService: IdGeneratorServiceInterface) => {
         return new AuthDomainEventFactory(idGeneratorService)
       },
+      inject: [ID_GENERATOR],
     },
     {
       provide: LOGIN_USER,
@@ -259,7 +260,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
-        idGeneratorService: IdGeneratorServiceInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
       ) =>
         new LoginUser(
           userRepository,
@@ -273,7 +274,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
           clockService,
           unitOfWork,
           loggerFactory.createLogger(LoginUser.name),
-          idGeneratorService,
+          authDomainEventFactory,
         ),
       inject: [
         USER_REPOSITORY,
@@ -287,7 +288,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
-        ID_GENERATOR,
+        AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
     {
