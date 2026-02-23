@@ -10,7 +10,7 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
@@ -34,13 +34,11 @@ import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import {
   RequestOriginApplicationService,
   RequestOriginData,
 } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
-import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { LoginUserApplicationResponseDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationResponseDto'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
@@ -65,7 +63,7 @@ describe('LoginUser', () => {
   const expectedAccessExpiresAt = new Date(now.getTime() + 1000)
   const expectedRefreshExpiresAt = new Date(now.getTime() + 3600)
 
-  const validEmail = UserEmailMother.valid()
+  const validEmail = EmailAddressMother.valid()
   const validUserId = UserIdMother.valid()
   const validPasswordHash = PasswordHashMother.valid()
   const validIpHash = UserSessionIpHashMother.valid()
@@ -132,8 +130,6 @@ describe('LoginUser', () => {
   }
 
   beforeEach(() => {
-    jest.restoreAllMocks()
-
     mockReset(mockedUserRepository)
     mockReset(mockedCredentialsRepository)
     mockReset(mockedSessionsRepository)
@@ -338,12 +334,13 @@ describe('LoginUser', () => {
 
   describe('when there are errors', () => {
     it('should return error when email is not valid', async () => {
+      const invalidEmail = EmailAddressMother.invalid()
       const useCase = buildUseCase()
-      const result = await useCase.execute({ ...request, email: 'not-an-email' })
+      const result = await useCase.execute({ ...request, email: invalidEmail })
 
       expect(result).toMatchObject({
         success: false,
-        error: LoginUserApplicationError.invalidUserEmail('not-an-email'),
+        error: LoginUserApplicationError.invalidUserEmail(invalidEmail),
       })
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
@@ -358,30 +355,6 @@ describe('LoginUser', () => {
         error: LoginUserApplicationError.invalidPasswordFormat(),
       })
 
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
-    })
-
-    it('should re-throw exception when UserPassword throws a non-domain error', async () => {
-      const useCase = buildUseCase()
-      const unexpectedError = new Error('Unexpected error during password format validation')
-
-      jest.spyOn(UserPassword, 'fromString').mockImplementationOnce(() => {
-        throw unexpectedError
-      })
-
-      await expect(useCase.execute(request)).rejects.toThrow(unexpectedError)
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
-    })
-
-    it('should re-throw exception when UserEmail throws a non-domain error', async () => {
-      const useCase = buildUseCase()
-      const unexpectedError = new Error('Unexpected error during password format validation')
-
-      jest.spyOn(UserEmail, 'fromString').mockImplementationOnce(() => {
-        throw Error('Unexpected error during password format validation')
-      })
-
-      await expect(useCase.execute(request)).rejects.toThrow(unexpectedError)
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 

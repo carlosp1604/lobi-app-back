@@ -11,7 +11,7 @@ import {
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
@@ -28,7 +28,7 @@ describe('RequestOriginApplicationService', () => {
   }
   const validIpHash = UserSessionIpHashMother.valid()
   const validUA = UserAgentMother.valid()
-  const validEmail = UserEmailMother.valid()
+  const validEmail = EmailAddressMother.valid()
   const validIp = 'valid-ip'
   const purposeCreateAccount = VerificationTokenPurpose.createAccount().value
 

@@ -3,8 +3,8 @@ import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 
 describe('User', () => {
@@ -38,7 +38,7 @@ describe('User', () => {
     it('should initialize the User instance correctly', () => {
       const now = new Date('2025-01-02T03:04:05.000Z')
       const id = UserIdMother.valid()
-      const email = UserEmailMother.valid()
+      const email = EmailAddressMother.valid()
       const username = UserUsernameMother.valid()
       const name = UserNameMother.valid()
       const role = UserRole.sportsman()

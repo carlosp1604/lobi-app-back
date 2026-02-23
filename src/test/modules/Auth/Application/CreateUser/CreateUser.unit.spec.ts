@@ -22,7 +22,6 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
@@ -37,7 +36,6 @@ import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { Result } from '~/src/modules/Shared/Domain/Result'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
@@ -45,11 +43,11 @@ import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCr
 import { SportsmanProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/SportsmanProfileTestBuilder'
 import { OwnerProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/OwnerProfileTestBuilder'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 
 describe('CreateUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -70,7 +68,7 @@ describe('CreateUser', () => {
   const futureDate = new Date(now.getTime() + 3600 * 1000)
   const fakeContext: TxContext = { __opaque_tx_context: true }
 
-  const validEmail = UserEmailMother.valid()
+  const validEmail = EmailAddressMother.valid()
   const validUsername = UserUsernameMother.valid()
   const validName = UserNameMother.valid()
   const validPassword = UserPasswordMother.valid()
@@ -137,7 +135,7 @@ describe('CreateUser', () => {
     }
 
     verificationTokenBuilder = new VerificationTokenTestBuilder()
-      .withEmail(VerificationTokenEmail.fromString(validEmail.value))
+      .withEmail(validEmail)
       .withPurpose(VerificationTokenPurpose.createAccount())
       .withExpiresAt(futureDate)
       .withUsedAt(null)
@@ -332,7 +330,7 @@ describe('CreateUser', () => {
     describe('when input data is not valid', () => {
       it('should return error when email is invalid', async () => {
         const useCase = buildUseCase()
-        const result = await useCase.execute({ ...baseRequest, email: VerificationTokenEmailMother.invalid() })
+        const result = await useCase.execute({ ...baseRequest, email: EmailAddressMother.invalid() })
 
         expect(result).toMatchObject({
           success: false,
@@ -395,7 +393,7 @@ describe('CreateUser', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute({
           ...baseRequest,
-          email: UserEmailMother.invalid(),
+          email: EmailAddressMother.invalid(),
           password: UserPasswordMother.invalid(),
         })
 
@@ -474,14 +472,11 @@ describe('CreateUser', () => {
       })
 
       it('should return tokenInvalidOwner when token does not belong to user', async () => {
-        const verificationToken = verificationTokenBuilder.build()
+        const anotherEmail = EmailAddressMother.random()
+        const verificationToken = verificationTokenBuilder.withEmail(anotherEmail).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
 
         const domainException = VerificationTokenDomainException.cannotBeUsedByUser(verificationToken.id.value, validEmail.value)
-        jest.spyOn(verificationToken, 'validate').mockReturnValue({
-          success: false,
-          error: domainException,
-        })
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)

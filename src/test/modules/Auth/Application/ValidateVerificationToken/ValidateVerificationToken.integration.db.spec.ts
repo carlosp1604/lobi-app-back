@@ -10,7 +10,7 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
@@ -23,7 +23,7 @@ describe('ValidateVerificationToken', () => {
   const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
   const pastExpiresAt = new Date(now.getTime() - 3600 * 1000)
 
-  const email = VerificationTokenEmailMother.random()
+  const email = EmailAddressMother.random()
   const purpose = VerificationTokenPurpose.createAccount()
   const validTokenValue = VerificationTokenValueMother.random().value
   const wrongTokenValue = VerificationTokenValueMother.random().value

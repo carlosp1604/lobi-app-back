@@ -5,7 +5,7 @@ import { mock, mockReset } from 'jest-mock-extended'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
@@ -155,7 +155,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     const now = new Date('2025-10-17T15:26:21Z')
     const expiresAt = new Date(now.getTime() + 3600)
     const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.valid()
+    const userEmail = EmailAddressMother.valid()
 
     let userSessionTestBuilder = new UserSessionTestBuilder()
 

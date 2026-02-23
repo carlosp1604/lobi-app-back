@@ -1,4 +1,3 @@
-import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject/EmailAddressValueObject'
 import { User } from '~/src/modules/User/Domain/User'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
@@ -27,11 +26,9 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
-import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 
 export class LoginUser {
@@ -55,7 +52,7 @@ export class LoginUser {
   ): Promise<Result<LoginUserApplicationResponseDto, LoginUserApplicationError>> {
     const now = this.clockService.now()
 
-    const validateUserEmailResult = this.validateUserEmail(request.email)
+    const validateUserEmailResult = this.validateEmail(request.email)
     const validateUserPasswordResult = this.validatePassword(request.password)
 
     if (!validateUserEmailResult.success) {
@@ -146,34 +143,27 @@ export class LoginUser {
     })
   }
 
-  private validateUserEmail(email: string): Result<UserEmail, LoginUserApplicationError> {
-    try {
-      return success(UserEmail.fromString(email))
-    } catch (exception: unknown) {
-      if (!(exception instanceof UserDomainException)) {
-        throw exception
-      }
+  private validateEmail(email: string): Result<EmailAddress, LoginUserApplicationError> {
+    const emailResult = EmailAddress.safeCreate(email)
 
+    if (!emailResult.success) {
       return fail(LoginUserApplicationError.invalidUserEmail(email))
     }
+
+    return success(EmailAddress.fromString(email))
   }
 
   private validatePassword(password: string): Result<UserPassword, LoginUserApplicationError> {
-    try {
-      return success(UserPassword.fromString(password))
-    } catch (exception: unknown) {
-      if (!(exception instanceof UserCredentialDomainException)) {
-        throw exception
-      }
+    const passwordResult = UserPassword.safeCreate(password)
 
+    if (!passwordResult.success) {
       return fail(LoginUserApplicationError.invalidPasswordFormat())
     }
+
+    return success(passwordResult.value)
   }
 
-  private async getAndValidateUser(
-    userEmail: EmailAddressValueObject,
-    context: TxContext,
-  ): Promise<Result<User, LoginUserApplicationError>> {
+  private async getAndValidateUser(userEmail: EmailAddress, context: TxContext): Promise<Result<User, LoginUserApplicationError>> {
     const user = await this.userRepository.findByEmailWithLock(userEmail.value, context)
 
     if (!user || !user.isActive()) {

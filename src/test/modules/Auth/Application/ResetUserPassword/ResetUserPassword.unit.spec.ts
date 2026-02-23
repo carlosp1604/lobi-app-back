@@ -15,7 +15,7 @@ import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGener
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
@@ -32,13 +32,12 @@ import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 
 describe('ResetUserPassword', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -58,8 +57,7 @@ describe('ResetUserPassword', () => {
   const futureDate = new Date(now.getTime() + 3600 * 1000)
   const fakeContext: TxContext = { __opaque_tx_context: true }
 
-  const validEmail = UserEmailMother.valid()
-  const validVerificationTokenEmail = VerificationTokenEmailMother.valid()
+  const validEmail = EmailAddressMother.valid()
   const validNewPassword = UserPasswordMother.valid()
   const validTokenValue = VerificationTokenValueMother.valid()
   const validUserId = UserIdMother.valid()
@@ -117,7 +115,7 @@ describe('ResetUserPassword', () => {
 
     verificationTokenBuilder = new VerificationTokenTestBuilder()
       .withId(validTokenId)
-      .withEmail(validVerificationTokenEmail)
+      .withEmail(validEmail)
       .withPurpose(VerificationTokenPurpose.resetPassword())
       .withExpiresAt(futureDate)
       .withUsedAt(null)
@@ -191,7 +189,7 @@ describe('ResetUserPassword', () => {
       const tokenPassedToVerify = mockedVerifyTokenService.verify.mock.calls[0][0]
       expect(usedAtAtMomentOfVerify).toBeNull()
       expect(tokenPassedToVerify.id.equals(validTokenId)).toBe(true)
-      expect(tokenPassedToVerify.email.equals(validVerificationTokenEmail)).toBe(true)
+      expect(tokenPassedToVerify.email.equals(validEmail)).toBe(true)
       expect(mockedVerifyTokenService.verify.mock.calls[0][1]).toBe(validTokenValue.value)
 
       const [updatedCredential, credentialCtx] = mockedCredentialRepository.update.mock.calls[0]
@@ -224,7 +222,7 @@ describe('ResetUserPassword', () => {
       it('should return error when email is invalid', async () => {
         const useCase = buildUseCase()
 
-        const invalidEmail = VerificationTokenEmailMother.invalid()
+        const invalidEmail = EmailAddressMother.invalid()
         const result = await useCase.execute({ ...baseRequest, email: invalidEmail })
 
         expect(result).toMatchObject({
@@ -263,7 +261,7 @@ describe('ResetUserPassword', () => {
 
         const result = await useCase.execute({
           ...baseRequest,
-          email: UserEmailMother.invalid(),
+          email: EmailAddressMother.invalid(),
           password: UserPasswordMother.invalid(),
         })
 
@@ -335,14 +333,11 @@ describe('ResetUserPassword', () => {
       })
 
       it('should return tokenInvalidOwner when token does not belong to user', async () => {
-        const verificationToken = verificationTokenBuilder.build()
+        const anotherEmail = EmailAddressMother.random()
+        const verificationToken = verificationTokenBuilder.withEmail(anotherEmail).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
 
         const domainException = VerificationTokenDomainException.cannotBeUsedByUser(verificationToken.id.value, validEmail.value)
-        jest.spyOn(verificationToken, 'validate').mockReturnValue({
-          success: false,
-          error: domainException,
-        })
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)

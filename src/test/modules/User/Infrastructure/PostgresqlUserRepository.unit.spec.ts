@@ -8,7 +8,7 @@ import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTran
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 
@@ -48,7 +48,7 @@ describe('PostgresqlUserRepository', () => {
 
   describe('findWithLock', () => {
     const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.random()
+    const userEmail = EmailAddressMother.random()
 
     const context: TxContext = { __opaque_tx_context: true }
 
@@ -273,7 +273,7 @@ describe('PostgresqlUserRepository', () => {
   })
 
   describe('findByEmail', () => {
-    const userEmail = UserEmailMother.valid()
+    const userEmail = EmailAddressMother.valid()
     const context: TxContext = { __opaque_tx_context: true }
     let rawUser: UserRawModelWithRelations
 
@@ -390,7 +390,7 @@ describe('PostgresqlUserRepository', () => {
   })
 
   describe('checkEmailExists', () => {
-    const email = UserEmailMother.valid()
+    const email = EmailAddressMother.valid()
     const context: TxContext = { __opaque_tx_context: true }
 
     beforeEach(() => {

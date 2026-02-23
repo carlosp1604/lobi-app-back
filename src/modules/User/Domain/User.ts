@@ -1,14 +1,14 @@
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
-import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
+import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
+import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
+import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 
 export class User {
   public readonly id: UserId
-  public readonly email: UserEmail
+  public readonly email: EmailAddress
   public readonly username: UserUsername
   public readonly name: UserName
   public readonly status: UserStatus
@@ -21,7 +21,7 @@ export class User {
 
   constructor(
     id: UserId,
-    email: UserEmail,
+    email: EmailAddress,
     username: UserUsername,
     name: UserName,
     status: UserStatus,
@@ -45,7 +45,7 @@ export class User {
     this.emailVerifiedAt = emailVerifiedAt
   }
 
-  public static create(userId: UserId, email: UserEmail, username: UserUsername, name: UserName, role: UserRole, now: Date): User {
+  public static create(userId: UserId, email: EmailAddress, username: UserUsername, name: UserName, role: UserRole, now: Date): User {
     const status = UserStatus.active()
 
     return new User(userId, email, username, name, status, role, null, now, now, now, null)

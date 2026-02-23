@@ -4,9 +4,9 @@ import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
@@ -22,8 +22,8 @@ import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
@@ -37,11 +37,9 @@ import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/Veri
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
-import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 
 type ValidatedCreateUserInput = {
-  userEmail: UserEmail
-  verificationTokenEmail: VerificationTokenEmail
+  email: EmailAddress
   tokenValue: VerificationTokenValue
   username: UserUsername
   name: UserName
@@ -73,46 +71,46 @@ export class CreateUser {
       return inputValidationResult
     }
 
-    const { userEmail, verificationTokenEmail, password, username, name, userRole, tokenValue } = inputValidationResult.value
+    const { email, password, username, name, userRole, tokenValue } = inputValidationResult.value
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: userEmail.value,
+      email: email.value,
     })
 
     const passwordHashString = await this.hasherService.hash(password.value)
     const passwordHash = PasswordHash.fromString(passwordHashString)
 
     return this.unitOfWork.runInTransaction(async (context: TxContext) => {
-      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(verificationTokenEmail.value, context)
+      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       if (!verificationToken) {
-        return fail(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(verificationTokenEmail.value)))
+        return fail(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(email.value)))
       }
 
-      const validateTokenResult = verificationToken.validate(now, verificationTokenEmail, VerificationTokenPurpose.createAccount())
+      const validateTokenResult = verificationToken.validate(now, email, VerificationTokenPurpose.createAccount())
 
       if (!validateTokenResult.success) {
-        return this.handleDomainError(validateTokenResult.error, verificationToken, userEmail)
+        return this.handleDomainError(validateTokenResult.error, verificationToken, email)
       }
 
       const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue.value)
 
       if (!isCryptoValid) {
         this.loggerService.warn('Token cryptography verification failed', {
-          email: userEmail.value,
+          email: verificationToken.email.value,
         })
 
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()))
       }
 
       const [emailExists, usernameExists] = await Promise.all([
-        await this.userRepository.checkEmailExists(userEmail, context),
+        await this.userRepository.checkEmailExists(email, context),
         await this.userRepository.checkUsernameExists(username, context),
       ])
 
       if (emailExists || usernameExists) {
         this.loggerService.warn('Signup rejected', {
-          email: userEmail.value,
+          email: email.value,
           username: username.value,
           reason: 'User is already registered',
           emailExists,
@@ -122,7 +120,7 @@ export class CreateUser {
         const errors: Array<CreateUserError> = []
 
         if (emailExists) {
-          errors.push(CreateUserError.duplicatedEmail(userEmail.value))
+          errors.push(CreateUserError.duplicatedEmail(email.value))
         }
         if (usernameExists) {
           errors.push(CreateUserError.duplicatedUsername(username.value))
@@ -132,7 +130,7 @@ export class CreateUser {
       }
 
       const userId = UserId.fromString(this.idGeneratorService.generateId())
-      const user = User.create(userId, userEmail, username, name, userRole, now)
+      const user = User.create(userId, email, username, name, userRole, now)
 
       const userCredential = UserCredential.create(userId, passwordHash, now)
 
@@ -147,7 +145,7 @@ export class CreateUser {
 
       const domainEvent = this.buildSuccessfulSignupDomainEvent(user, deviceLocation, userAgent, ipHash, now)
 
-      verificationToken.markAsUsed(now, verificationTokenEmail, VerificationTokenPurpose.createAccount())
+      verificationToken.markAsUsed(now, email, VerificationTokenPurpose.createAccount())
 
       await this.userRepository.save(user, context)
       await this.credentialRepository.save(userCredential, context)
@@ -167,9 +165,9 @@ export class CreateUser {
   private validateInput(request: CreateUserApplicationRequestDto): Result<ValidatedCreateUserInput, CreateUserApplicationError> {
     const inputErrors: CreateUserError[] = []
 
-    const userEmailResult = UserEmail.safeCreate(request.email)
+    const emailResult = EmailAddress.safeCreate(request.email)
 
-    if (!userEmailResult.success) {
+    if (!emailResult.success) {
       inputErrors.push(CreateUserError.invalidEmail())
     }
 
@@ -199,7 +197,7 @@ export class CreateUser {
     }
 
     if (
-      !userEmailResult.success ||
+      !emailResult.success ||
       !tokenResult.success ||
       !usernameResult.success ||
       !nameResult.success ||
@@ -209,11 +207,8 @@ export class CreateUser {
       return fail(CreateUserApplicationError.invalidInput(inputErrors))
     }
 
-    const verificationTokenEmail = VerificationTokenEmail.fromString(userEmailResult.value.value)
-
     return success({
-      userEmail: userEmailResult.value,
-      verificationTokenEmail: verificationTokenEmail,
+      email: emailResult.value,
       tokenValue: tokenResult.value,
       username: usernameResult.value,
       name: nameResult.value,
@@ -225,7 +220,7 @@ export class CreateUser {
   private handleDomainError(
     exception: VerificationTokenDomainException,
     verificationToken: VerificationToken,
-    userEmail: UserEmail,
+    requestEmail: EmailAddress,
   ): Result<void, CreateUserApplicationError> {
     const tokenState = {
       verificationTokenId: verificationToken.id.value,
@@ -257,7 +252,7 @@ export class CreateUser {
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token belongs to a different email address',
-          requestEmail: userEmail.value,
+          requestEmail: requestEmail.value,
         })
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner()))
       }

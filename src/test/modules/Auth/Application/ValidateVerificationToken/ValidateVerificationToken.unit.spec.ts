@@ -6,7 +6,7 @@ import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceI
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
 import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationRequestDto'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
@@ -19,7 +19,7 @@ import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2026-02-12T11:41:00Z')
-  const email = VerificationTokenEmailMother.random()
+  const email = EmailAddressMother.random()
   const purpose = VerificationTokenPurpose.createAccount()
   const tokenValue = VerificationTokenValueMother.valid().value
   const tokenHash = VerificationTokenTokenHashMother.random()
@@ -88,7 +88,7 @@ describe('ValidateVerificationToken', () => {
   describe('when there are errors', () => {
     describe('when there are input errors', () => {
       it('should return invalidEmail error when email is not valid', async () => {
-        const invalidEmail = VerificationTokenEmailMother.invalid()
+        const invalidEmail = EmailAddressMother.invalid()
         const invalidEmailRequest = { ...requestBase, email: invalidEmail }
         const useCase = buildUseCase()
 
@@ -206,7 +206,7 @@ describe('ValidateVerificationToken', () => {
 
       it('should return invalidOwner error when token email does not match request email', async () => {
         const useCase = buildUseCase()
-        const otherEmail = VerificationTokenEmailMother.random()
+        const otherEmail = EmailAddressMother.random()
         const tokenWithOtherEmail = verificationTokenTestBuilder().withEmail(otherEmail).build()
 
         mockedTokenRepository.findByEmail.mockResolvedValue(tokenWithOtherEmail)

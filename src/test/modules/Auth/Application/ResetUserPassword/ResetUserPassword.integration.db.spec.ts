@@ -1,6 +1,6 @@
 import { mock, mockReset } from 'jest-mock-extended'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
@@ -47,7 +47,7 @@ describe('ResetUserPassword', () => {
 
   const validNewPassword = UserPasswordMother.valid()
   const validOldPassword = UserPasswordMother.random()
-  const validEmail = VerificationTokenEmailMother.valid()
+  const validEmail = EmailAddressMother.valid()
   const validTokenValue = VerificationTokenValueMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper

@@ -3,7 +3,7 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
@@ -14,8 +14,8 @@ import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadI
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('UserModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
@@ -32,7 +32,7 @@ describe('UserModelTranslator', () => {
   describe('toDomain', () => {
     const checkResult = (result: User, raw: UserRawModelWithRelations) => {
       expect(result.id).toBeInstanceOf(UserId)
-      expect(result.email).toBeInstanceOf(UserEmail)
+      expect(result.email).toBeInstanceOf(EmailAddress)
       expect(result.username).toBeInstanceOf(UserUsername)
       expect(result.name).toBeInstanceOf(UserName)
       expect(result.status).toBeInstanceOf(UserStatus)
@@ -79,10 +79,10 @@ describe('UserModelTranslator', () => {
     })
 
     it('should propagate errors from ValueObject', () => {
-      const invalidEmail = UserEmailMother.invalid()
+      const invalidEmail = EmailAddressMother.invalid()
       const rawInvalidEmail = { ...baseRaw, email: invalidEmail }
 
-      expect(() => UserModelTranslator.toDomain(rawInvalidEmail)).toThrow(UserDomainException.invalidUserEmail(invalidEmail))
+      expect(() => UserModelTranslator.toDomain(rawInvalidEmail)).toThrow(SharedDomainException.invalidEmailAddress(invalidEmail))
     })
 
     it('does not mutate the input raw model', () => {
@@ -121,7 +121,7 @@ describe('UserModelTranslator', () => {
     beforeEach(() => {
       userBuilder = new UserTestBuilder()
         .withId(UserIdMother.valid())
-        .withEmail(UserEmailMother.valid())
+        .withEmail(EmailAddressMother.valid())
         .withUsername(UserUsernameMother.valid())
         .withName(UserNameMother.valid())
         .withRoleUser(UserRole.sportsman())

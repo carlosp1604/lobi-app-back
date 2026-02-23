@@ -8,9 +8,9 @@ import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
-import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('VerificationTokenModelTranslator', () => {
   const isoDate = '2025-10-27T15:37:00.000Z'
@@ -18,7 +18,7 @@ describe('VerificationTokenModelTranslator', () => {
   const futureExpiresAt = new Date(now.getTime() + 15 * 60 * 1000)
 
   const baseRaw = makeRawVerificationToken({
-    email: VerificationTokenEmailMother.random().toString(),
+    email: EmailAddressMother.random().toString(),
     purpose: VerificationTokenPurpose.createAccount().value,
     created_at: now,
     expires_at: futureExpiresAt,
@@ -28,7 +28,7 @@ describe('VerificationTokenModelTranslator', () => {
   describe('toDomain', () => {
     const checkResult = (result: VerificationToken, raw: VerificationTokenRawModel) => {
       expect(result.id).toBeInstanceOf(VerificationTokenId)
-      expect(result.email).toBeInstanceOf(VerificationTokenEmail)
+      expect(result.email).toBeInstanceOf(EmailAddress)
       expect(result.tokenHash).toBeInstanceOf(VerificationTokenTokenHash)
       expect(result.purpose).toBeInstanceOf(VerificationTokenPurpose)
 
@@ -68,11 +68,11 @@ describe('VerificationTokenModelTranslator', () => {
     })
 
     it('should propagate errors from ValueObject', () => {
-      const invalidEmail = VerificationTokenEmailMother.invalid()
+      const invalidEmail = EmailAddressMother.invalid()
       const rawInvalidEmail = { ...baseRaw, email: invalidEmail }
 
       expect(() => VerificationTokenModelTranslator.toDomain(rawInvalidEmail)).toThrow(
-        VerificationTokenDomainException.invalidVerificationTokenEmail(invalidEmail),
+        SharedDomainException.invalidEmailAddress(invalidEmail),
       )
     })
   })
@@ -83,7 +83,7 @@ describe('VerificationTokenModelTranslator', () => {
     beforeEach(() => {
       tokenBuilder = new VerificationTokenTestBuilder()
         .withId(VerificationTokenIdMother.valid())
-        .withEmail(VerificationTokenEmailMother.random())
+        .withEmail(EmailAddressMother.random())
         .withTokenHash(VerificationTokenTokenHashMother.random())
         .withPurpose(VerificationTokenPurpose.createAccount())
         .withExpiresAt(futureExpiresAt)

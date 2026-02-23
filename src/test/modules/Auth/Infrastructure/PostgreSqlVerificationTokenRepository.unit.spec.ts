@@ -12,7 +12,7 @@ import {
 } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
 import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
   const fakeContext: TxContext = { __opaque_tx_context: true }
@@ -37,7 +37,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
   describe('findByEmailWithLock', () => {
     const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
     const rawToken = makeRawVerificationToken({ id: testTokenId.value })
-    const email = VerificationTokenEmailMother.random().value
+    const email = EmailAddressMother.random().value
 
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
@@ -133,7 +133,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
   describe('findByEmail', () => {
     const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
     const rawToken = makeRawVerificationToken({ id: testTokenId.value })
-    const email = VerificationTokenEmailMother.random().value
+    const email = EmailAddressMother.random().value
 
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)

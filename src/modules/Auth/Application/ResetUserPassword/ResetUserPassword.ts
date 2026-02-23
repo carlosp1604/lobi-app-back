@@ -1,4 +1,5 @@
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
@@ -12,7 +13,6 @@ import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
@@ -22,12 +22,10 @@ import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 type ValidatedResetPasswordInput = {
-  userEmail: UserEmail
-  verificationTokenEmail: VerificationTokenEmail
+  email: EmailAddress
   password: UserPassword
   tokenValue: VerificationTokenValue
 }
@@ -56,44 +54,44 @@ export class ResetUserPassword {
       return inputValidationResult
     }
 
-    const { userEmail, verificationTokenEmail, password, tokenValue } = inputValidationResult.value
+    const { email, password, tokenValue } = inputValidationResult.value
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: userEmail.value,
+      email: email.value,
     })
 
     const newPasswordHashString = await this.hasherService.hash(password.value)
     const newPasswordHash = PasswordHash.fromString(newPasswordHashString)
 
     return this.unitOfWork.runInTransaction(async (context) => {
-      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(verificationTokenEmail.value, context)
+      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       if (!verificationToken) {
-        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(verificationTokenEmail.value)))
+        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(email.value)))
       }
 
-      const validateTokenResult = verificationToken.validate(now, verificationTokenEmail, VerificationTokenPurpose.resetPassword())
+      const validateTokenResult = verificationToken.validate(now, email, VerificationTokenPurpose.resetPassword())
 
       if (!validateTokenResult.success) {
-        return this.handleDomainError(validateTokenResult.error, verificationToken, userEmail)
+        return this.handleDomainError(validateTokenResult.error, verificationToken, email)
       }
 
       const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue.value)
 
       if (!isCryptoValid) {
-        this.loggerService.warn('Token cryptography verification failed', { email: verificationTokenEmail.value })
+        this.loggerService.warn('Token cryptography verification failed', { email: verificationToken.email.value })
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()))
       }
 
-      const user = await this.userRepository.findByEmail(verificationTokenEmail.value, context)
+      const user = await this.userRepository.findByEmail(email.value, context)
       if (!user || !user.isActive()) {
         this.loggerService.warn('Inconsistent state', {
-          email: userEmail.value,
+          email: email.value,
           reason: user ? 'User is disabled' : 'User not found',
         })
 
-        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(userEmail.value)))
+        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(email.value)))
       }
 
       const userCredential = await this.userCredentialRepository.findByUserId(user.id.value, context)
@@ -117,7 +115,7 @@ export class ResetUserPassword {
       }
 
       userCredential.updatePasswordHash(newPasswordHash, now)
-      verificationToken.markAsUsed(now, verificationTokenEmail, VerificationTokenPurpose.resetPassword())
+      verificationToken.markAsUsed(now, email, VerificationTokenPurpose.resetPassword())
 
       const domainEventId = this.idGeneratorService.generateId()
       const domainEvent = AuthDomainEventFactory.createPasswordResetEvent(
@@ -143,9 +141,9 @@ export class ResetUserPassword {
   ): Result<ValidatedResetPasswordInput, ResetUserPasswordApplicationError> {
     const inputErrors: ResetUserPasswordError[] = []
 
-    const userEmailResult = UserEmail.safeCreate(request.email)
+    const emailResult = EmailAddress.safeCreate(request.email)
 
-    if (!userEmailResult.success) {
+    if (!emailResult.success) {
       inputErrors.push(ResetUserPasswordError.invalidEmail())
     }
 
@@ -159,15 +157,12 @@ export class ResetUserPassword {
       inputErrors.push(ResetUserPasswordError.invalidPassword())
     }
 
-    if (!userEmailResult.success || !tokenResult.success || !passwordResult.success) {
+    if (!emailResult.success || !tokenResult.success || !passwordResult.success) {
       return fail(ResetUserPasswordApplicationError.invalidInput(inputErrors))
     }
 
-    const verificationTokenEmail = VerificationTokenEmail.fromString(userEmailResult.value.value)
-
     return success({
-      userEmail: userEmailResult.value,
-      verificationTokenEmail: verificationTokenEmail,
+      email: emailResult.value,
       tokenValue: tokenResult.value,
       password: passwordResult.value,
     })
@@ -176,7 +171,7 @@ export class ResetUserPassword {
   private handleDomainError(
     exception: VerificationTokenDomainException,
     verificationToken: VerificationToken,
-    userEmail: UserEmail,
+    requestEmail: EmailAddress,
   ): Result<void, ResetUserPasswordApplicationError> {
     const tokenState = {
       verificationTokenId: verificationToken.id.value,
@@ -208,7 +203,7 @@ export class ResetUserPassword {
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token belongs to a different email address',
-          requestEmail: userEmail.value,
+          requestEmail: requestEmail.value,
         })
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()))
       }

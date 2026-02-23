@@ -2,7 +2,7 @@ import { DataSource } from 'typeorm'
 import { Test, TestingModule } from '@nestjs/testing'
 import { AuthModule } from '~/src/modules/Auth/Infrastructure/auth.module'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserCredentialRawWitRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
@@ -67,7 +67,6 @@ import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { expectIsoDate } from '~/src/test/utils/matchers'
 import { HashMother } from '~/src/test/mothers/HashMother'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
@@ -163,7 +162,7 @@ describe('AuthController', () => {
 
   describe('login', () => {
     const userId = UserIdMother.valid().value
-    const userEmail = UserEmailMother.random().value
+    const userEmail = EmailAddressMother.random().value
     const validPassword = UserPasswordMother.valid().value
 
     let userDatabaseHelper: UserDatabaseHelper
@@ -484,7 +483,7 @@ describe('AuthController', () => {
   describe('verify email', () => {
     const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
 
-    const userEmail = VerificationTokenEmailMother.random()
+    const userEmail = EmailAddressMother.random()
     let userDatabaseHelper: UserDatabaseHelper
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
 
@@ -629,7 +628,7 @@ describe('AuthController', () => {
   })
 
   describe('validate token', () => {
-    const email = VerificationTokenEmailMother.random()
+    const email = EmailAddressMother.random()
     const purpose = VerificationTokenPurpose.createAccount()
     const validTokenValue = VerificationTokenValueMother.random().value
 
@@ -825,7 +824,7 @@ describe('AuthController', () => {
         it('should throw NotFoundException when token exists but email does not match', async () => {
           await verificationTokenDatabaseHelper.save(rawVerificationToken)
 
-          await testCase(VerificationTokenEmailMother.random().value, validTokenValue, purpose.value)
+          await testCase(EmailAddressMother.random().value, validTokenValue, purpose.value)
         })
 
         it('should throw NotFoundException when token exists but code is invalid', async () => {
@@ -844,7 +843,7 @@ describe('AuthController', () => {
   })
 
   describe('signup', () => {
-    const validEmail = UserEmailMother.random()
+    const validEmail = EmailAddressMother.random()
     const validUsername = UserUsernameMother.random()
     const validName = UserNameMother.random()
     const validPassword = UserPasswordMother.valid()
@@ -984,7 +983,7 @@ describe('AuthController', () => {
           await userDatabaseHelper.save(
             makeRawUser({
               id: UserIdMother.valid().value,
-              email: UserEmailMother.random().value,
+              email: EmailAddressMother.random().value,
               username: validUsername.value,
               status: UserStatus.active().value,
             }),
@@ -1060,7 +1059,7 @@ describe('AuthController', () => {
   })
 
   describe('reset-password', () => {
-    const validEmail = UserEmailMother.random()
+    const validEmail = EmailAddressMother.random()
     const validTokenValue = VerificationTokenValueMother.valid()
     const validNewPassword = UserPasswordMother.valid()
     const validOldPassword = UserPasswordMother.random()

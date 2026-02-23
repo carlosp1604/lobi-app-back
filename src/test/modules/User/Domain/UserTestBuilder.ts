@@ -5,15 +5,15 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 
 export class UserTestBuilder {
   private _id = UserIdMother.valid()
-  private _email = UserEmailMother.random()
+  private _email = EmailAddressMother.random()
   private _username = UserUsernameMother.random()
   private _name = UserNameMother.valid()
   private _status = UserStatus.active()
@@ -29,7 +29,7 @@ export class UserTestBuilder {
     return this
   }
 
-  withEmail(userEmail: UserEmail) {
+  withEmail(userEmail: EmailAddress) {
     this._email = userEmail
     return this
   }

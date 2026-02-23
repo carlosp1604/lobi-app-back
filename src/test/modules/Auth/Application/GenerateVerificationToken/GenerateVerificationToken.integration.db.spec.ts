@@ -32,13 +32,13 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { HashMother } from '~/src/test/mothers/HashMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
@@ -47,7 +47,7 @@ describe('GenerateVerificationToken', () => {
   const expectedExpiresAt = new Date(now.getTime() + env.VERIFICATION_TOKEN_TTL_MS)
   const expectedExpirationMinutes = env.VERIFICATION_TOKEN_TTL_MS / (60 * 1000)
 
-  const email = VerificationTokenEmail.fromString('test@email.com')
+  const email = EmailAddressMother.valid()
   const expectedUserAgent = UserAgentMother.random()
   const expectedDeviceLocation = DeviceLocationMother.valid()
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()

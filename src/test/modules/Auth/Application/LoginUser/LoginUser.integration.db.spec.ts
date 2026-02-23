@@ -17,7 +17,7 @@ import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/S
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -58,7 +58,7 @@ describe('LoginUser', () => {
   const futureExpiresAt = new Date(now.getTime() + 3600)
 
   const userId = UserIdMother.valid().value
-  const userEmail = UserEmailMother.random().value
+  const userEmail = EmailAddressMother.random().value
   const expectedUserAgent = UserAgentMother.random()
   const domainType = DomainEventAggregateType.user().value
   const validPassword = UserPasswordMother.random().value
@@ -357,7 +357,7 @@ describe('LoginUser', () => {
       }
 
       it('should return error when user is not found', async () => {
-        const anotherUserEmail = UserEmailMother.random()
+        const anotherUserEmail = EmailAddressMother.random()
 
         await testCase({ ...request, email: anotherUserEmail.value })
       })

@@ -6,7 +6,6 @@ export class VerificationTokenDomainException extends DomainException {
   public static invalidVerificationTokenValueId = 'verification_token_invalid_verification_token_value'
   public static invalidVerificationTokenTokenHashId = 'verification_token_invalid_verification_token_token_hash'
   public static invalidVerificationTokenPurposeId = 'verification_token_invalid_verification_token_purpose'
-  public static invalidVerificationTokenEmailId = 'verification_token_invalid_verification_token_email'
   public static verificationTokenAlreadyUsedId = 'verification_token_verification_token_already_used'
   public static verificationTokenAlreadyExpiredId = 'verification_token_verification_token_already_expired'
   public static verificationTokenCannotBeUsedForPurposeId = 'verification_token_verification_token_cannot_be_used_for_purpose'
@@ -39,13 +38,6 @@ export class VerificationTokenDomainException extends DomainException {
     return new VerificationTokenDomainException(
       `${purpose} is not a valid VerificationToken purpose`,
       this.invalidVerificationTokenPurposeId,
-    )
-  }
-
-  public static invalidVerificationTokenEmail(verificationTokenEmail: string) {
-    return new VerificationTokenDomainException(
-      `${verificationTokenEmail} is not a valid VerificationToken email`,
-      this.invalidVerificationTokenEmailId,
     )
   }
 

@@ -26,7 +26,7 @@ import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUn
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
@@ -35,7 +35,6 @@ import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
@@ -46,8 +45,8 @@ describe('CreateUser', () => {
   const validPassword = UserPasswordMother.valid()
   const validUserUsername = UserUsernameMother.valid()
   const validUserName = UserNameMother.valid()
-  const validEmail = VerificationTokenEmailMother.valid()
-  const anotherValidEmail = UserEmailMother.random()
+  const validEmail = EmailAddressMother.valid()
+  const anotherValidEmail = EmailAddressMother.random()
   const validTokenValue = VerificationTokenValueMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper

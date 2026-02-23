@@ -1,13 +1,13 @@
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
-import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 
 export class VerificationToken {
   public readonly id: VerificationTokenId
-  public readonly email: VerificationTokenEmail
+  public readonly email: EmailAddress
   public readonly tokenHash: VerificationTokenTokenHash
   public readonly purpose: VerificationTokenPurpose
   public readonly expiresAt: Date
@@ -16,7 +16,7 @@ export class VerificationToken {
 
   constructor(
     id: VerificationTokenId,
-    email: VerificationTokenEmail,
+    email: EmailAddress,
     tokenHash: VerificationTokenTokenHash,
     purpose: VerificationTokenPurpose,
     expiresAt: Date,
@@ -34,7 +34,7 @@ export class VerificationToken {
 
   public static create(
     id: VerificationTokenId,
-    email: VerificationTokenEmail,
+    email: EmailAddress,
     tokenHash: VerificationTokenTokenHash,
     purpose: VerificationTokenPurpose,
     expiresTtlMs: number,
@@ -57,11 +57,7 @@ export class VerificationToken {
     return this.expiresAt.getTime() <= now.getTime()
   }
 
-  public validate(
-    now: Date,
-    email: VerificationTokenEmail,
-    purpose: VerificationTokenPurpose,
-  ): Result<void, VerificationTokenDomainException> {
+  public validate(now: Date, email: EmailAddress, purpose: VerificationTokenPurpose): Result<void, VerificationTokenDomainException> {
     if (this.isUsed()) {
       return fail(VerificationTokenDomainException.alreadyUsed(this.id.value))
     }
@@ -81,7 +77,7 @@ export class VerificationToken {
     return success(undefined)
   }
 
-  public markAsUsed(now: Date, email: VerificationTokenEmail, purpose: VerificationTokenPurpose): void {
+  public markAsUsed(now: Date, email: EmailAddress, purpose: VerificationTokenPurpose): void {
     const validationResult = this.validate(now, email, purpose)
 
     if (!validationResult.success) {

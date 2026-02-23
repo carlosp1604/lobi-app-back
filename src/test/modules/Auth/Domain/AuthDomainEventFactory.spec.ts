@@ -1,6 +1,6 @@
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
@@ -10,7 +10,7 @@ import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 describe('AuthDomainEventFactory', () => {
   const validEventId = DomainEventIdMother.valid()
   const validUserId = UserIdMother.valid()
-  const validEmail = UserEmailMother.valid()
+  const validEmail = EmailAddressMother.valid()
   const validUserAgent = UserAgentMother.valid()
   const validIpHash = 'some-ip-hash'
   const now = new Date('2026-02-19T16:18:00.000Z')

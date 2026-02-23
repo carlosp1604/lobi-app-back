@@ -27,8 +27,8 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import {
   RequestOriginApplicationService,
   RequestOriginData,
@@ -43,8 +43,8 @@ import { VerificationTokenPurposeMother } from '~/src/test/mothers/VerificationT
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-29T15:35:00Z')
   const fakeContext: TxContext = { __opaque_tx_context: true }
-  const verificationTokenEmail = VerificationTokenEmailMother.random()
-  const userEmail = UserEmail.fromString(verificationTokenEmail.value)
+  const verificationTokenEmail = EmailAddressMother.random()
+  const userEmail = EmailAddress.fromString(verificationTokenEmail.value)
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
 
@@ -364,7 +364,7 @@ describe('GenerateVerificationToken', () => {
 
   describe('when there are errors', () => {
     it('should return error when email is not valid', async () => {
-      const invalidEmail = VerificationTokenEmailMother.invalid()
+      const invalidEmail = EmailAddressMother.invalid()
       const invalidEmailRequest = { ...requestBase, email: invalidEmail }
 
       const useCase = buildUseCase()

@@ -55,7 +55,7 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
@@ -70,7 +70,6 @@ import {
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -133,7 +132,7 @@ describe('AuthController', () => {
   }
 
   describe('login', () => {
-    const validEmail = UserEmailMother.valid().value
+    const validEmail = EmailAddressMother.valid().value
     const validPassword = UserPasswordMother.valid().value
 
     const mockBody = { email: validEmail, password: validPassword }
@@ -834,7 +833,7 @@ describe('AuthController', () => {
 
   describe('validate token', () => {
     const mockBody = {
-      email: VerificationTokenEmailMother.valid().value,
+      email: EmailAddressMother.valid().value,
       purpose: VerificationTokenPurpose.createAccount().value,
       token: VerificationTokenValueMother.valid().value,
     }
@@ -1038,7 +1037,7 @@ describe('AuthController', () => {
 
   describe('signup', () => {
     const mockBody = {
-      email: VerificationTokenEmailMother.valid().value,
+      email: EmailAddressMother.valid().value,
       username: UserUsernameMother.valid().value,
       name: UserNameMother.valid().value,
       password: UserPasswordMother.valid().value,
@@ -1377,7 +1376,7 @@ describe('AuthController', () => {
 
   describe('reset password', () => {
     const mockBody = {
-      email: VerificationTokenEmailMother.valid().value,
+      email: EmailAddressMother.valid().value,
       token: VerificationTokenValueMother.valid().value,
       password: UserPasswordMother.valid().value,
     }

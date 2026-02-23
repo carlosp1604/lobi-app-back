@@ -1,6 +1,6 @@
 import fc from 'fast-check'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { IdentifierMother } from '~/src/test/mothers/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('Identifier', () => {

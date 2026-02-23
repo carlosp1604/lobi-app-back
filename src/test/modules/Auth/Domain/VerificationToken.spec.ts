@@ -1,10 +1,10 @@
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
 
 describe('VerificationToken', () => {
   let validTokenBuilder: VerificationTokenTestBuilder = new VerificationTokenTestBuilder()
@@ -13,7 +13,7 @@ describe('VerificationToken', () => {
   const expiresTtlMs = 10000
   const futureExpiresAt = new Date(now.getTime() + expiresTtlMs)
   const pastExpiresAt = new Date(now.getTime() - 10000)
-  const validEmail = VerificationTokenEmailMother.random()
+  const validEmail = EmailAddressMother.random()
   const validPurpose = VerificationTokenPurpose.createAccount()
 
   beforeEach(() => {
@@ -28,7 +28,7 @@ describe('VerificationToken', () => {
   describe('create', () => {
     it('should create a new token with usedAt as null and correct createdAt', () => {
       const id = VerificationTokenIdMother.valid()
-      const email = VerificationTokenEmailMother.random()
+      const email = EmailAddressMother.random()
       const tokenHash = VerificationTokenTokenHashMother.random()
       const purpose = VerificationTokenPurpose.createAccount()
 
@@ -106,7 +106,7 @@ describe('VerificationToken', () => {
     })
 
     it('should return cannotBeUsedByUser error when the candidate email does not match', () => {
-      const otherEmail = VerificationTokenEmailMother.random()
+      const otherEmail = EmailAddressMother.random()
 
       const validToken = validTokenBuilder.build()
 
@@ -159,7 +159,7 @@ describe('VerificationToken', () => {
     })
 
     it('should throw cannotBeUsedByUser error when candidate email does not match', () => {
-      const otherEmail = VerificationTokenEmailMother.random()
+      const otherEmail = EmailAddressMother.random()
 
       const validToken = validTokenBuilder.build()
 

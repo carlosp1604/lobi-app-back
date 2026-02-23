@@ -3,7 +3,7 @@ import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCr
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
@@ -33,7 +33,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
   describe('save', () => {
     const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.valid()
+    const userEmail = EmailAddressMother.valid()
 
     beforeEach(async () => {
       const rawUser = makeRawUser({ id: userId.value, email: userEmail.value })
@@ -82,7 +82,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
   describe('update', () => {
     const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.valid()
+    const userEmail = EmailAddressMother.valid()
 
     const initialPasswordHash = PasswordHashMother.valid()
     const newPasswordHash = PasswordHashMother.other()
@@ -174,7 +174,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
   describe('findByUserId', () => {
     const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.valid()
+    const userEmail = EmailAddressMother.valid()
     const passwordHash = PasswordHashMother.valid()
 
     beforeEach(async () => {

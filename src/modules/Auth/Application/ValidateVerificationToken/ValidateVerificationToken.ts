@@ -1,15 +1,15 @@
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
+import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { Result, fail, success } from '~/src/modules/Shared/Domain/Result'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationRequestDto'
-import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 
 export class ValidateVerificationToken {
   constructor(
@@ -58,7 +58,7 @@ export class ValidateVerificationToken {
 
     if (!isCryptoValid) {
       this.loggerService.warn('Token cryptography verification failed', {
-        email: email.value,
+        email: verificationToken.email.value,
       })
 
       return fail(ValidateVerificationTokenError.invalidToken())
@@ -114,8 +114,8 @@ export class ValidateVerificationToken {
     }
   }
 
-  private validateEmail(email: string): Result<VerificationTokenEmail, ValidateVerificationTokenError> {
-    const createVerificationTokenEmailResult = VerificationTokenEmail.safeCreate(email)
+  private validateEmail(email: string): Result<EmailAddress, ValidateVerificationTokenError> {
+    const createVerificationTokenEmailResult = EmailAddress.safeCreate(email)
 
     if (!createVerificationTokenEmailResult.success) {
       return fail(ValidateVerificationTokenError.invalidEmail(email))

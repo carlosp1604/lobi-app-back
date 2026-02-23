@@ -2,7 +2,6 @@ import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 
 export class UserDomainException extends DomainException {
   public static invalidUserIdId = 'user_domain_invalid_user_id'
-  public static invalidUserEmailId = 'user_domain_invalid_user_email'
   public static invalidUsernameId = 'user_domain_invalid_user_username'
   public static invalidUserNameId = 'user_domain_invalid_user_user_name'
   public static invalidUserStatusId = 'user_domain_invalid_user_status'
@@ -14,10 +13,6 @@ export class UserDomainException extends DomainException {
 
   public static invalidUserId(userId: string) {
     return new UserDomainException(`${userId} is not a valid User ID`, this.invalidUserIdId)
-  }
-
-  public static invalidUserEmail(userEmail: string) {
-    return new UserDomainException(`${userEmail} is not a valid User email`, this.invalidUserEmailId)
   }
 
   public static invalidUsername(username: string) {

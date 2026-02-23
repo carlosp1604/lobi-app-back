@@ -10,7 +10,6 @@ import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServic
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject/EmailAddressValueObject'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
@@ -24,7 +23,7 @@ import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Ap
 import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 
@@ -177,8 +176,8 @@ export class GenerateVerificationToken {
     })
   }
 
-  private validateEmail(email: string): Result<VerificationTokenEmail, GenerateVerificationTokenApplicationError> {
-    const createVerificationTokenEmailResult = VerificationTokenEmail.safeCreate(email)
+  private validateEmail(email: string): Result<EmailAddress, GenerateVerificationTokenApplicationError> {
+    const createVerificationTokenEmailResult = EmailAddress.safeCreate(email)
 
     if (!createVerificationTokenEmailResult.success) {
       return fail(GenerateVerificationTokenApplicationError.invalidEmail(email))
@@ -200,7 +199,7 @@ export class GenerateVerificationToken {
   }
 
   private async sendEmail(
-    email: EmailAddressValueObject,
+    email: EmailAddress,
     purpose: VerificationTokenPurpose,
     clearRandomCode: string,
     language: string,

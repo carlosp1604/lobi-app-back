@@ -5,7 +5,7 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 
 export class PostgresqlUserRepository implements UserRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
@@ -80,7 +80,7 @@ export class PostgresqlUserRepository implements UserRepositoryInterface {
    * @param context The transactional context
    * @returns True if the user exists, false otherwise
    */
-  public async checkEmailExists(email: UserEmail, context?: TxContext): Promise<boolean> {
+  public async checkEmailExists(email: EmailAddress, context?: TxContext): Promise<boolean> {
     const entityManager = this.entityManagerResolver.resolve(context)
 
     const userRepository = entityManager.getRepository(UserEntity)

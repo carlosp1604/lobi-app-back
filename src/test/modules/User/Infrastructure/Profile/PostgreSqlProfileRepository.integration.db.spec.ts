@@ -3,7 +3,7 @@ import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUni
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { OwnerProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/OwnerProfileTestBuilder'
@@ -18,7 +18,7 @@ import { makeRawSportsmanProfile } from '~/src/test/modules/User/Infrastructure/
 
 describe('PostgreSqlProfileRepository', () => {
   const userId = UserIdMother.valid()
-  const userEmail = UserEmailMother.valid()
+  const userEmail = EmailAddressMother.valid()
   const profileId = UserProfileIdMother.valid()
   const now = new Date('2026-02-16T13:25:00Z')
 
