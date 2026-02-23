@@ -11,15 +11,13 @@ import {
   RequestOriginData,
 } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
-import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
@@ -31,13 +29,13 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 
 describe('ResetUserPassword', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -48,9 +46,10 @@ describe('ResetUserPassword', () => {
   const mockedHasherService = mock<HasherServiceInterface>()
   const mockedRequestOriginService = mock<RequestOriginApplicationService>()
   const mockedClock = mock<ClockServiceInterface>()
-  const mockedIdGenerator = mock<IdGeneratorServiceInterface>()
   const mockedLogger = mock<LoggerServiceInterface>()
   const mockedUnitOfWork = mock<UnitOfWork>()
+  const mockedDomainEventFactory = mock<AuthDomainEventFactory>()
+  const mockedExpectedDomainEvent = mock<DomainEvent>()
 
   const now = new Date('2026-02-19T12:10:00.000Z')
   const pastDate = new Date(now.getTime() - 3600 * 1000)
@@ -60,9 +59,8 @@ describe('ResetUserPassword', () => {
   const validEmail = EmailAddressMother.valid()
   const validNewPassword = UserPasswordMother.valid()
   const validTokenValue = VerificationTokenValueMother.valid()
-  const validUserId = UserIdMother.valid()
-  const expectedDomainEventId = DomainEventIdMother.valid()
-  const validTokenId = VerificationTokenIdMother.valid()
+  const validUserId = IdentifierMother.valid()
+  const validTokenId = IdentifierMother.valid()
 
   const oldPasswordHash = PasswordHashMother.valid()
   const newPasswordHash = PasswordHashMother.other()
@@ -87,7 +85,7 @@ describe('ResetUserPassword', () => {
       mockedClock,
       mockedUnitOfWork,
       mockedLogger,
-      mockedIdGenerator,
+      mockedDomainEventFactory,
     )
   }
 
@@ -101,9 +99,9 @@ describe('ResetUserPassword', () => {
     mockReset(mockedHasherService)
     mockReset(mockedRequestOriginService)
     mockReset(mockedClock)
-    mockReset(mockedIdGenerator)
     mockReset(mockedLogger)
     mockReset(mockedUnitOfWork)
+    mockReset(mockedDomainEventFactory)
 
     baseRequest = {
       email: validEmail.value,
@@ -153,7 +151,7 @@ describe('ResetUserPassword', () => {
     mockedUserRepository.findByEmail.mockResolvedValue(expectedUser)
     mockedCredentialRepository.findByUserId.mockResolvedValue(expectedCredential)
 
-    mockedIdGenerator.generateId.mockReturnValueOnce(expectedDomainEventId.value)
+    mockedDomainEventFactory.createPasswordResetEvent.mockReturnValue(mockedExpectedDomainEvent)
   })
 
   describe('happy path', () => {
@@ -177,6 +175,7 @@ describe('ResetUserPassword', () => {
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledTimes(1)
       expect(mockedCredentialRepository.findByUserId).toHaveBeenCalledTimes(1)
       expect(mockedHasherService.compare).toHaveBeenCalledTimes(1)
+      expect(mockedDomainEventFactory.createPasswordResetEvent).toHaveBeenCalledTimes(1)
       expect(mockedCredentialRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
@@ -202,12 +201,16 @@ describe('ResetUserPassword', () => {
       expect(tokenAfterUpdate.usedAt?.getTime()).toBe(now.getTime())
       expect(tokenCtx).toBe(fakeContext)
 
-      const [domainEvent, eventCtx] = mockedDomainEventRepository.save.mock.calls[0]
-      expect(domainEvent.id.equals(expectedDomainEventId)).toBe(true)
-      expect(domainEvent.name.equals(DomainEventName.successfulResetPassword())).toBe(true)
-      expect(domainEvent.aggregateId.value).toBe(validUserId.value)
-      expect(domainEvent.payload.email).toBe(validEmail.value)
-      expect(eventCtx).toBe(fakeContext)
+      expect(mockedDomainEventFactory.createPasswordResetEvent).toHaveBeenCalledWith(
+        validUserId,
+        validEmail,
+        validDeviceLocation,
+        validUA,
+        validIpHash.value,
+        now,
+      )
+
+      expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(mockedExpectedDomainEvent, fakeContext)
 
       expect(mockedLogger.error).not.toHaveBeenCalled()
       expect(mockedLogger.warn).not.toHaveBeenCalled()

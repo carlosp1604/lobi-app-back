@@ -1,12 +1,11 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { OwnerProfileTaxId } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileTaxId'
 import { OwnerProfileCompanyName } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileCompanyName'
 import { OwnerProfileContactPhone } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileContactPhone'
 
 export class OwnerProfile {
-  public readonly id: UserProfileId
-  public readonly userId: UserId
+  public readonly id: Identifier
+  public readonly userId: Identifier
   private readonly _companyName: OwnerProfileCompanyName | null
   private readonly _taxId: OwnerProfileTaxId | null
   private readonly _contactPhone: OwnerProfileContactPhone | null
@@ -14,8 +13,8 @@ export class OwnerProfile {
   private readonly _updatedAt: Date
 
   constructor(
-    id: UserProfileId,
-    userId: UserId,
+    id: Identifier,
+    userId: Identifier,
     companyName: OwnerProfileCompanyName | null,
     taxId: OwnerProfileTaxId | null,
     contactPhone: OwnerProfileContactPhone | null,
@@ -31,7 +30,7 @@ export class OwnerProfile {
     this._updatedAt = updatedAt
   }
 
-  public static create(id: UserProfileId, userId: UserId, now: Date): OwnerProfile {
+  public static create(id: Identifier, userId: Identifier, now: Date): OwnerProfile {
     return new OwnerProfile(id, userId, null, null, null, now, now)
   }
 

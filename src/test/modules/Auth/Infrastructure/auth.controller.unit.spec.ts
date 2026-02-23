@@ -69,7 +69,7 @@ import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -234,7 +234,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.invalidCredentials(UserIdMother.valid().value),
+          error: LoginUserApplicationError.invalidCredentials(IdentifierMother.valid().value),
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
@@ -1632,7 +1632,7 @@ describe('AuthController', () => {
 
         mockedResetUserPasswordUseCase.execute.mockResolvedValue({
           success: false,
-          error: ResetUserPasswordApplicationError.inconsistentState(UserIdMother.valid().value),
+          error: ResetUserPasswordApplicationError.inconsistentState(IdentifierMother.valid().value),
         })
 
         await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)

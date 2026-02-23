@@ -1,11 +1,11 @@
 import { User } from '~/src/modules/User/Domain/User'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('User', () => {
   describe('isActive', () => {
@@ -37,7 +37,7 @@ describe('User', () => {
   describe('create', () => {
     it('should initialize the User instance correctly', () => {
       const now = new Date('2025-01-02T03:04:05.000Z')
-      const id = UserIdMother.valid()
+      const id = IdentifierMother.valid()
       const email = EmailAddressMother.valid()
       const username = UserUsernameMother.valid()
       const name = UserNameMother.valid()

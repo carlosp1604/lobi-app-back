@@ -14,12 +14,9 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
@@ -30,6 +27,7 @@ import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddre
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 export class LoginUser {
   constructor(
@@ -195,17 +193,17 @@ export class LoginUser {
   }
 
   private buildFailedAttemptDomainEvent(
-    userId: UserId,
+    userId: Identifier,
     deviceLocation: DeviceLocation | null,
     ipHash: UserSessionIpHash | null,
     userAgent: UserAgent,
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      DomainEventId.fromString(this.idGeneratorService.generateId()),
+      Identifier.fromString(this.idGeneratorService.generateId()),
       DomainEventName.failedLoginAttempt(),
       DomainEventAggregateType.user(),
-      DomainEventAggregateId.fromString(userId.value),
+      userId,
       {
         userId: userId.value,
         deviceLocation: deviceLocation
@@ -225,10 +223,10 @@ export class LoginUser {
 
   private buildSuccessfulLoginDomainEvent(session: UserSession, isNewDevice: boolean, now: Date): DomainEvent {
     return DomainEvent.create(
-      DomainEventId.fromString(this.idGeneratorService.generateId()),
+      Identifier.fromString(this.idGeneratorService.generateId()),
       DomainEventName.successfulLogin(),
       DomainEventAggregateType.user(),
-      DomainEventAggregateId.fromString(session.userId.value),
+      session.userId,
       {
         userId: session.userId.value,
         deviceLocation: session.deviceLocation

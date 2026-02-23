@@ -1,15 +1,14 @@
-import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 
 describe('AuthDomainEventFactory', () => {
-  const validEventId = DomainEventIdMother.valid()
-  const validUserId = UserIdMother.valid()
+  const validEventId = IdentifierMother.valid()
+  const validUserId = IdentifierMother.valid()
   const validEmail = EmailAddressMother.valid()
   const validUserAgent = UserAgentMother.valid()
   const validIpHash = 'some-ip-hash'

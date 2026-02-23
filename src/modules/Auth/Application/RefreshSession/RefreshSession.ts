@@ -13,7 +13,7 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -156,7 +156,7 @@ export class RefreshSession {
   private async refreshSession(
     currentSession: UserSession,
     newSession: UserSession,
-    userId: UserId,
+    userId: Identifier,
     now: Date,
     context: TxContext,
   ): Promise<Result<void, RefreshSessionApplicationError>> {

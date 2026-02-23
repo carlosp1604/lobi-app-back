@@ -2,15 +2,15 @@ import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastruct
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
-import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 describe('VerificationTokenModelTranslator', () => {
   const isoDate = '2025-10-27T15:37:00.000Z'
@@ -27,7 +27,7 @@ describe('VerificationTokenModelTranslator', () => {
 
   describe('toDomain', () => {
     const checkResult = (result: VerificationToken, raw: VerificationTokenRawModel) => {
-      expect(result.id).toBeInstanceOf(VerificationTokenId)
+      expect(result.id).toBeInstanceOf(Identifier)
       expect(result.email).toBeInstanceOf(EmailAddress)
       expect(result.tokenHash).toBeInstanceOf(VerificationTokenTokenHash)
       expect(result.purpose).toBeInstanceOf(VerificationTokenPurpose)
@@ -82,7 +82,7 @@ describe('VerificationTokenModelTranslator', () => {
 
     beforeEach(() => {
       tokenBuilder = new VerificationTokenTestBuilder()
-        .withId(VerificationTokenIdMother.valid())
+        .withId(IdentifierMother.valid())
         .withEmail(EmailAddressMother.random())
         .withTokenHash(VerificationTokenTokenHashMother.random())
         .withPurpose(VerificationTokenPurpose.createAccount())

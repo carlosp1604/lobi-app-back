@@ -1,5 +1,5 @@
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { ConfigService } from '@nestjs/config'
@@ -15,7 +15,7 @@ import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigSe
 
 describe('GenerateTokensApplicationService', () => {
   const now = new Date('2025-10-17T15:26:21Z')
-  const userId = UserIdMother.valid()
+  const userId = IdentifierMother.valid()
   const userAgent = UserAgentMother.valid()
   const ipHash = UserSessionIpHashMother.valid()
 

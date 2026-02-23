@@ -16,7 +16,6 @@ import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Serv
 import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
@@ -46,6 +45,7 @@ import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructur
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -57,7 +57,7 @@ describe('LoginUser', () => {
   const now = new Date('2025-10-22T19:00:00Z')
   const futureExpiresAt = new Date(now.getTime() + 3600)
 
-  const userId = UserIdMother.valid().value
+  const userId = IdentifierMother.valid().value
   const userEmail = EmailAddressMother.random().value
   const expectedUserAgent = UserAgentMother.random()
   const domainType = DomainEventAggregateType.user().value

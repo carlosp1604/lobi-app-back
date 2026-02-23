@@ -1,4 +1,4 @@
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { QueryRunner } from 'typeorm'
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { withTransaction } from '~/src/test/utils/withTransaction'
@@ -45,7 +45,7 @@ describe('RefreshSession', () => {
   const futureExpiresAt = new Date(now.getTime() + 3600)
   const pastExpiresAt = new Date(now.getTime() - 3600)
 
-  const userId = UserIdMother.valid()
+  const userId = IdentifierMother.valid()
   const expectedUserAgent = UserAgentMother.random()
 
   let userDatabaseHelper: UserDatabaseHelper

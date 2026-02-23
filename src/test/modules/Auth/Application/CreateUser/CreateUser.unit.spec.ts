@@ -20,9 +20,7 @@ import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
@@ -32,8 +30,6 @@ import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
@@ -48,6 +44,8 @@ import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/Ver
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 describe('CreateUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -76,10 +74,10 @@ describe('CreateUser', () => {
   const validSportsmanRole = UserRoleMother.sportsman()
   const validOwnerRole = UserRoleMother.owner()
 
-  const validUserId = UserIdMother.valid()
-  const validSportsmanProfileId = UserProfileIdMother.valid()
-  const validOwnerProfileId = UserProfileIdMother.valid()
-  const expectedDomainEventId = DomainEventIdMother.valid()
+  const validUserId = IdentifierMother.valid()
+  const validSportsmanProfileId = IdentifierMother.valid()
+  const validOwnerProfileId = IdentifierMother.valid()
+  const expectedDomainEventId = IdentifierMother.valid()
 
   const validPasswordHash = PasswordHashMother.valid()
   const validUA = UserAgentMother.valid()
@@ -224,7 +222,7 @@ describe('CreateUser', () => {
         .withId(expectedDomainEventId)
         .withName(DomainEventName.successfulSignup())
         .withAggregateType(DomainEventAggregateType.user())
-        .withAggregateId(DomainEventAggregateId.fromString(validUserId.value))
+        .withAggregateId(Identifier.fromString(validUserId.value))
         .withOccurredAt(now)
         .withMetadata({
           ipHash: validIpHash.value,
@@ -529,7 +527,7 @@ describe('CreateUser', () => {
 
         const unhandledDomainError = VerificationTokenDomainException.invalidTokenHash()
         jest.spyOn(verificationToken, 'validate').mockImplementation(() => {
-          throw unhandledDomainError
+          return { success: false, error: unhandledDomainError }
         })
 
         const useCase = buildUseCase()

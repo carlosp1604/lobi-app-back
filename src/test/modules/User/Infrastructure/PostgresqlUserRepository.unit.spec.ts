@@ -3,7 +3,7 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { mock, mockReset } from 'jest-mock-extended'
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/UserModelTranslator'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
@@ -47,7 +47,7 @@ describe('PostgresqlUserRepository', () => {
   }
 
   describe('findWithLock', () => {
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const userEmail = EmailAddressMother.random()
 
     const context: TxContext = { __opaque_tx_context: true }

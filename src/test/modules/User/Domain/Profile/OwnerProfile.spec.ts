@@ -1,13 +1,12 @@
 import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('OwnerProfile', () => {
   describe('create', () => {
     it('should initialize the OwnerProfile instance correctly with default values', () => {
       const now = new Date('2026-02-16T20:31:00Z')
-      const id = UserProfileIdMother.valid()
-      const userId = UserIdMother.valid()
+      const id = IdentifierMother.valid()
+      const userId = IdentifierMother.valid()
 
       const profile = OwnerProfile.create(id, userId, now)
 

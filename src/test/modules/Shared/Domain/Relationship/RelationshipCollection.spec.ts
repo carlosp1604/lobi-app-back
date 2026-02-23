@@ -1,36 +1,36 @@
 import { RelationshipDomainException } from '~/src/modules/Shared/Domain/Relationship/RelationshipDomainException'
 import { RelationshipCollection } from '~/src/modules/Shared/Domain/Relationship/RelationshipCollection'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
-import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { User } from '~/src/modules/User/Domain/User'
+import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 
 describe('RelationshipCollection', () => {
-  const key1 = UserIdMother.valid()
+  const key1 = IdentifierMother.valid()
   const user1 = new UserTestBuilder().withId(key1).build()
 
-  const key2 = UserIdMother.valid()
+  const key2 = IdentifierMother.valid()
   const user2 = new UserTestBuilder().withId(key2).build()
 
-  const newName = UserName.fromString('New Name')
+  const newName = UserNameMother.valid()
   const user1Updated = new UserTestBuilder().withId(key1).withName(newName).build()
 
   describe('factories', () => {
     it('loaded should create a loaded and empty collection', () => {
-      const collection = RelationshipCollection.loaded<User, UserId>()
+      const collection = RelationshipCollection.loaded<User, Identifier>()
       expect(collection.isLoaded()).toBe(true)
       expect(collection.count()).toBe(0)
     })
 
     it('create should create a loaded and empty collection', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       expect(collection.isLoaded()).toBe(true)
       expect(collection.count()).toBe(0)
     })
 
     it('notLoaded should create a collection that throws on access', () => {
-      const collection = RelationshipCollection.notLoaded<User, UserId>()
+      const collection = RelationshipCollection.notLoaded<User, Identifier>()
       expect(collection.isLoaded()).toBe(false)
       expect(() => collection.add(key1, user1)).toThrow(RelationshipDomainException.relationNotLoaded())
       expect(() => collection.remove(key1)).toThrow(RelationshipDomainException.relationNotLoaded())
@@ -42,7 +42,7 @@ describe('RelationshipCollection', () => {
 
   describe('add', () => {
     it('should add a new item and return true', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       const result = collection.add(key1, user1)
 
       expect(result).toBe(true)
@@ -52,7 +52,7 @@ describe('RelationshipCollection', () => {
     })
 
     it('should not add an item with an existing key and return false', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       collection.add(key1, user1)
       const result = collection.add(key1, user1Updated)
 
@@ -62,7 +62,7 @@ describe('RelationshipCollection', () => {
     })
 
     it('should mark added items as dirty', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       collection.add(key1, user1)
       collection.add(key2, user2)
 
@@ -74,7 +74,7 @@ describe('RelationshipCollection', () => {
 
   describe('update', () => {
     it('should update an existing item and return true', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       collection.add(key1, user1)
 
       const result = collection.update(key1, user1Updated)
@@ -85,7 +85,7 @@ describe('RelationshipCollection', () => {
     })
 
     it('should not update a non-existing item and return false', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       const result = collection.update(key1, user1)
 
       expect(result).toBe(false)
@@ -93,7 +93,7 @@ describe('RelationshipCollection', () => {
     })
 
     it('should mark updated items as dirty', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       collection.add(key1, user1)
       collection.update(key1, user1Updated)
 
@@ -104,7 +104,7 @@ describe('RelationshipCollection', () => {
 
   describe('remove', () => {
     it('should remove an existing item and return true', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       collection.add(key1, user1)
       const result = collection.remove(key1)
 
@@ -115,13 +115,13 @@ describe('RelationshipCollection', () => {
     })
 
     it('should not remove a non-existing item and return false', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       const result = collection.remove(key1)
       expect(result).toBe(false)
     })
 
     it('should track removed elements correctly', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       collection.add(key1, user1)
       collection.add(key2, user2)
 
@@ -136,14 +136,14 @@ describe('RelationshipCollection', () => {
 
   describe('queries (getItems, find, count)', () => {
     it('should handle an empty collection correctly', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       expect(collection.count()).toBe(0)
       expect(collection.getItems()).toEqual([])
       expect(collection.find(key1)).toBeUndefined()
     })
 
     it('should return all items correctly after several operations', () => {
-      const collection = RelationshipCollection.create<User, UserId>()
+      const collection = RelationshipCollection.create<User, Identifier>()
       collection.add(key1, user1)
       collection.add(key2, user2)
       collection.remove(key1)

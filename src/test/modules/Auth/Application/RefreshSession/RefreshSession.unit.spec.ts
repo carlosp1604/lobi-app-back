@@ -7,9 +7,8 @@ import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSe
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
@@ -49,9 +48,9 @@ describe('RefreshToken', () => {
 
   let request: RefreshSessionApplicationRequestDto
 
-  const userId = UserIdMother.valid()
-  const newUserSessionId = UserSessionIdMother.valid()
-  const currentUserSessionId = UserSessionIdMother.valid()
+  const userId = IdentifierMother.valid()
+  const newUserSessionId = IdentifierMother.valid()
+  const currentUserSessionId = IdentifierMother.valid()
 
   const currentSession = mock<UserSession>({
     id: currentUserSessionId,

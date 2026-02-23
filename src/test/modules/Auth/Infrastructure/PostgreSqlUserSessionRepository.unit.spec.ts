@@ -8,7 +8,7 @@ import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/Mo
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSessionEntity, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 
 describe('PostgreSqlUserSessionRepository', () => {
@@ -26,7 +26,7 @@ describe('PostgreSqlUserSessionRepository', () => {
 
   describe('findUserActiveSessions', () => {
     const context: TxContext = { __opaque_tx_context: true }
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const now = new Date('2025-10-18T09:37:55Z')
 
     const expectedUserSession = new UserSessionTestBuilder().build()
@@ -122,7 +122,7 @@ describe('PostgreSqlUserSessionRepository', () => {
 
   describe('save', () => {
     const context: TxContext = { __opaque_tx_context: true }
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
 
     const userSession = new UserSessionTestBuilder().build()
     const userSession2 = new UserSessionTestBuilder().build()

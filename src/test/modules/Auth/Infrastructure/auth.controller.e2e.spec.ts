@@ -1,7 +1,6 @@
 import { DataSource } from 'typeorm'
 import { Test, TestingModule } from '@nestjs/testing'
 import { AuthModule } from '~/src/modules/Auth/Infrastructure/auth.module'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
@@ -68,13 +67,13 @@ import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { expectIsoDate } from '~/src/test/utils/matchers'
 import { HashMother } from '~/src/test/mothers/HashMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -161,7 +160,7 @@ describe('AuthController', () => {
   }
 
   describe('login', () => {
-    const userId = UserIdMother.valid().value
+    const userId = IdentifierMother.valid().value
     const userEmail = EmailAddressMother.random().value
     const validPassword = UserPasswordMother.valid().value
 
@@ -340,7 +339,7 @@ describe('AuthController', () => {
     const pastExpiresAt = new Date(now.getTime() - 3600 * 1000)
     let refreshCookieName: string
 
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     let userDatabaseHelper: UserDatabaseHelper
     let userSessionDatabaseHelper: UserSessionDatabaseHelper
 
@@ -646,7 +645,7 @@ describe('AuthController', () => {
       const tokenHash = await tokenHasher.hash(validTokenValue)
 
       rawVerificationToken = makeRawVerificationToken({
-        id: VerificationTokenIdMother.valid().value,
+        id: IdentifierMother.valid().value,
         email: email.value,
         purpose: purpose.value,
         token_hash: tokenHash,
@@ -871,7 +870,7 @@ describe('AuthController', () => {
       const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
       const tokenHash = await passwordHasher.hash(validTokenValue.value)
       const rawToken = makeRawVerificationToken({
-        id: VerificationTokenIdMother.valid().value,
+        id: IdentifierMother.valid().value,
         email: validEmail.value,
         purpose: VerificationTokenPurpose.createAccount().value,
         expires_at: new Date(now.getTime() + 3600 * 1000),
@@ -961,7 +960,7 @@ describe('AuthController', () => {
 
           await userDatabaseHelper.save(
             makeRawUser({
-              id: UserIdMother.valid().value,
+              id: IdentifierMother.valid().value,
               email: validEmail.value,
               status: UserStatus.active().value,
             }),
@@ -982,7 +981,7 @@ describe('AuthController', () => {
 
           await userDatabaseHelper.save(
             makeRawUser({
-              id: UserIdMother.valid().value,
+              id: IdentifierMother.valid().value,
               email: EmailAddressMother.random().value,
               username: validUsername.value,
               status: UserStatus.active().value,
@@ -1087,7 +1086,7 @@ describe('AuthController', () => {
       const tokenHash = await passwordHasher.hash(validTokenValue.value)
       const oldPasswordHash = await passwordHasher.hash(validOldPassword.value)
 
-      const userId = UserIdMother.valid().value
+      const userId = IdentifierMother.valid().value
 
       const rawUser = makeRawUser({
         id: userId,
@@ -1101,7 +1100,7 @@ describe('AuthController', () => {
       })
 
       const rawToken = makeRawVerificationToken({
-        id: VerificationTokenIdMother.valid().value,
+        id: IdentifierMother.valid().value,
         email: validEmail.value,
         purpose: VerificationTokenPurpose.resetPassword().value,
         expires_at: new Date(now.getTime() + 3600 * 1000),

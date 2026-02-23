@@ -7,7 +7,7 @@ import {
   VerificationTokenEntity,
   VerificationTokenRawModel,
 } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
@@ -18,7 +18,7 @@ import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/Ver
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
-  const verificationTokenId = VerificationTokenIdMother.valid()
+  const verificationTokenId = IdentifierMother.valid()
   const verificationTokenPurpose = VerificationTokenPurpose.createAccount()
   const verificationTokenTokenHash = VerificationTokenTokenHashMother.valid()
   const email = EmailAddressMother.valid()
@@ -184,7 +184,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     it('should not affect other tokens when the token does not exist', async () => {
       const { context, repository } = buildRepositoryAndContext(runner.manager)
 
-      const existingTokenId = VerificationTokenIdMother.valid()
+      const existingTokenId = IdentifierMother.valid()
       const existingRawToken = makeRawVerificationToken({
         ...baseRawVerificationToken,
         id: existingTokenId.value,
@@ -267,7 +267,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
       const oldDate = new Date(now.getTime() - 10000)
 
-      const oldTokenId = VerificationTokenIdMother.valid()
+      const oldTokenId = IdentifierMother.valid()
       await verificationTokenDatabaseHelper.save({
         ...baseRawVerificationToken,
         token_hash: VerificationTokenTokenHashMother.random().value,
@@ -328,7 +328,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
 
       const oldDate = new Date(now.getTime() - 10000)
 
-      const oldTokenId = VerificationTokenIdMother.valid()
+      const oldTokenId = IdentifierMother.valid()
       await verificationTokenDatabaseHelper.save({
         ...baseRawVerificationToken,
         token_hash: VerificationTokenTokenHashMother.random().value,

@@ -1,11 +1,10 @@
-import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
-import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
-import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
-import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 
 export class UserSessionModelTranslator {
   public static toDomain(raw: UserSessionRawModel): UserSession {
@@ -16,8 +15,8 @@ export class UserSessionModelTranslator {
     }
 
     return new UserSession(
-      UserSessionId.fromString(raw.id),
-      UserId.fromString(raw.user_id),
+      Identifier.fromString(raw.id),
+      Identifier.fromString(raw.user_id),
       UserSessionTokenHash.fromString(raw.token_hash),
       raw.expires_at,
       raw.revoked_at,

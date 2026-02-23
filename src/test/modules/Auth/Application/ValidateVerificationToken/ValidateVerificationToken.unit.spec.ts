@@ -9,7 +9,7 @@ import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/Ver
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
@@ -23,7 +23,7 @@ describe('ValidateVerificationToken', () => {
   const purpose = VerificationTokenPurpose.createAccount()
   const tokenValue = VerificationTokenValueMother.valid().value
   const tokenHash = VerificationTokenTokenHashMother.random()
-  const tokenId = VerificationTokenIdMother.valid()
+  const tokenId = IdentifierMother.valid()
 
   const mockedTokenRepository = mock<VerificationTokenRepositoryInterface>()
   const mockedVerifyTokenService = mock<VerifyTokenService>()

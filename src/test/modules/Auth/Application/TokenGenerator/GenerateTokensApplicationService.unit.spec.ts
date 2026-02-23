@@ -1,19 +1,18 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
-import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
-import { mock, mockReset } from 'jest-mock-extended'
-import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
-import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
-import { ConfigService } from '@nestjs/config'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
-import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
-import { GenerateTokensApplicationResponseDto } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationResponseDto'
+import { ConfigService } from '@nestjs/config'
+import { mock, mockReset } from 'jest-mock-extended'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
+import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
+import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
+import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
+import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
+import { GenerateTokensApplicationResponseDto } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationResponseDto'
+import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 
 describe('GenerateTokensApplicationService', () => {
   const mockedIdGenerator = mock<IdGeneratorServiceInterface>()
@@ -21,8 +20,8 @@ describe('GenerateTokensApplicationService', () => {
   const mockedHasherService = mock<HasherServiceInterface>()
   const mockedConfigService = mock<ConfigService>()
 
-  const sessionId = UserSessionIdMother.valid()
-  const userId = UserIdMother.valid()
+  const sessionId = IdentifierMother.valid()
+  const userId = IdentifierMother.valid()
   const userAgent = UserAgentMother.valid()
   const ipHash = UserSessionIpHashMother.valid()
   const expectedTokenHash = UserSessionTokenHashMother.random()

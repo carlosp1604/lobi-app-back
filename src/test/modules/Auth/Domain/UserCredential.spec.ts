@@ -1,7 +1,7 @@
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { compareExceptModifiedFields } from '~/src/test/utils/snapshot'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 interface UserCredentialSnapshot {
@@ -24,8 +24,8 @@ describe('UserCredential', () => {
 
   const createSnapshot = (userCredential: UserCredential): UserCredentialSnapshot => {
     return {
-      userId: userCredential.userId.toString(),
-      passwordHash: userCredential.passwordHash.toString(),
+      userId: userCredential.userId.value,
+      passwordHash: userCredential.passwordHash.value,
       failedAttempts: userCredential.failedAttempts,
       lockedUntil: userCredential.lockedUntil,
       lastLoginAt: userCredential.lastLoginAt,
@@ -183,7 +183,7 @@ describe('UserCredential', () => {
 
   describe('create', () => {
     it('should initialize the UserCredential instance correctly', () => {
-      const userId = UserIdMother.valid()
+      const userId = IdentifierMother.valid()
       const passwordHash = PasswordHashMother.valid()
 
       const userCredential = UserCredential.create(userId, passwordHash, now)

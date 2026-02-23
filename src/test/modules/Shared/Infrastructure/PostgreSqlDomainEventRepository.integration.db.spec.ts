@@ -2,8 +2,7 @@ import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
@@ -12,11 +11,10 @@ import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObjec
 import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { DomainEventEntity, DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { DomainEventAggregateIdMother } from '~/src/test/mothers/DomainEventAggregateIdMother'
 
 describe('PostgreSqlDomainEventRepository', () => {
-  const userId = UserIdMother.valid()
-  const domainEventId = DomainEventIdMother.valid()
+  const userId = IdentifierMother.valid()
+  const domainEventId = IdentifierMother.valid()
   const now = new Date('2025-10-07T19:31:57Z')
 
   let runner: QueryRunner
@@ -43,7 +41,7 @@ describe('PostgreSqlDomainEventRepository', () => {
     beforeEach(async () => {
       const userRepository = runner.manager.getRepository(UserEntity)
       const rawUser = makeRawUser({
-        id: userId.toString(),
+        id: userId.value,
       })
       await userRepository.save(rawUser)
 
@@ -53,7 +51,7 @@ describe('PostgreSqlDomainEventRepository', () => {
         .withPayload({ payloadProperty: 'value' })
         .withName(DomainEventName.successfulLogin())
         .withAggregateType(DomainEventAggregateType.user())
-        .withAggregateId(DomainEventAggregateIdMother.valid())
+        .withAggregateId(IdentifierMother.valid())
         .withOccurredAt(now)
     })
 
@@ -69,13 +67,13 @@ describe('PostgreSqlDomainEventRepository', () => {
       const domainEventRepository = runner.manager.getRepository(DomainEventEntity)
 
       const foundDomainEvent = await domainEventRepository.findOneBy({
-        id: domainEventId.toString(),
+        id: domainEventId.value,
       })
 
-      expect(foundDomainEvent?.id).toBe(domainEvent.id.toString())
-      expect(foundDomainEvent?.name).toBe(domainEvent.name.toString())
-      expect(foundDomainEvent?.aggregate_type).toBe(domainEvent.aggregateType.toString())
-      expect(foundDomainEvent?.aggregate_id).toBe(domainEvent.aggregateId.toString())
+      expect(foundDomainEvent?.id).toBe(domainEvent.id.value)
+      expect(foundDomainEvent?.name).toBe(domainEvent.name.value)
+      expect(foundDomainEvent?.aggregate_type).toBe(domainEvent.aggregateType.value)
+      expect(foundDomainEvent?.aggregate_id).toBe(domainEvent.aggregateId.value)
       expect(foundDomainEvent?.metadata).toEqual(domainEvent.metadata)
       expect(foundDomainEvent?.payload).toEqual(domainEvent.payload)
       expect(foundDomainEvent?.occurred_at.getTime()).toBe(domainEvent.occurredAt.getTime())
@@ -88,15 +86,16 @@ describe('PostgreSqlDomainEventRepository', () => {
       const domainEvent = domainEventTestBuilder.build()
 
       const rawDomainEvent: DomainEventRawModel = {
-        id: domainEvent.id.toString(),
-        name: domainEvent.name.toString(),
+        id: domainEvent.id.value,
+        name: domainEvent.name.value,
         metadata: domainEvent.metadata,
         payload: domainEvent.payload,
         version: domainEvent.version,
         occurred_at: domainEvent.occurredAt,
-        aggregate_type: domainEvent.aggregateType.toString(),
-        aggregate_id: domainEvent.aggregateId.toString(),
+        aggregate_type: domainEvent.aggregateType.value,
+        aggregate_id: domainEvent.aggregateId.value,
       }
+
       await domainEventRepository.save(rawDomainEvent)
 
       const context = new TypeOrmTxContext(runner.manager)

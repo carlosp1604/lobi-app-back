@@ -1,6 +1,6 @@
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
@@ -8,7 +8,7 @@ import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObjec
 export class VerificationTokenModelTranslator {
   public static toDomain(rawModel: VerificationTokenRawModel): VerificationToken {
     return new VerificationToken(
-      VerificationTokenId.fromString(rawModel.id),
+      Identifier.fromString(rawModel.id),
       EmailAddress.fromString(rawModel.email),
       VerificationTokenTokenHash.fromString(rawModel.token_hash),
       VerificationTokenPurpose.fromString(rawModel.purpose),

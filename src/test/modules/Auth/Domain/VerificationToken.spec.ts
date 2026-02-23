@@ -1,6 +1,6 @@
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
@@ -27,7 +27,7 @@ describe('VerificationToken', () => {
 
   describe('create', () => {
     it('should create a new token with usedAt as null and correct createdAt', () => {
-      const id = VerificationTokenIdMother.valid()
+      const id = IdentifierMother.valid()
       const email = EmailAddressMother.random()
       const tokenHash = VerificationTokenTokenHashMother.random()
       const purpose = VerificationTokenPurpose.createAccount()

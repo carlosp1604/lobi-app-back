@@ -1,5 +1,4 @@
 import { User } from '~/src/modules/User/Domain/User'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
@@ -11,8 +10,6 @@ import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
@@ -21,7 +18,6 @@ import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
@@ -37,6 +33,7 @@ import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/Veri
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 type ValidatedCreateUserInput = {
   email: EmailAddress
@@ -129,17 +126,17 @@ export class CreateUser {
         return fail(CreateUserApplicationError.duplicated(errors))
       }
 
-      const userId = UserId.fromString(this.idGeneratorService.generateId())
+      const userId = Identifier.fromString(this.idGeneratorService.generateId())
       const user = User.create(userId, email, username, name, userRole, now)
 
       const userCredential = UserCredential.create(userId, passwordHash, now)
 
-      const sportsmanProfileId = UserProfileId.fromString(this.idGeneratorService.generateId())
+      const sportsmanProfileId = Identifier.fromString(this.idGeneratorService.generateId())
       const sportsmanProfile = SportsmanProfile.create(sportsmanProfileId, userId, now)
 
       let ownerProfile: OwnerProfile | null = null
       if (userRole.equals(UserRole.owner())) {
-        const ownerProfileId = UserProfileId.fromString(this.idGeneratorService.generateId())
+        const ownerProfileId = Identifier.fromString(this.idGeneratorService.generateId())
         ownerProfile = OwnerProfile.create(ownerProfileId, userId, now)
       }
 
@@ -278,10 +275,10 @@ export class CreateUser {
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      DomainEventId.fromString(this.idGeneratorService.generateId()),
+      Identifier.fromString(this.idGeneratorService.generateId()),
       DomainEventName.successfulSignup(),
       DomainEventAggregateType.user(),
-      DomainEventAggregateId.fromString(user.id.value),
+      user.id,
       {
         userId: user.id.value,
         deviceLocation: deviceLocation

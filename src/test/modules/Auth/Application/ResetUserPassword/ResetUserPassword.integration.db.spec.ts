@@ -41,6 +41,7 @@ import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 describe('ResetUserPassword', () => {
   const now = new Date('2026-02-19T16:46:00Z')
@@ -70,7 +71,7 @@ describe('ResetUserPassword', () => {
   const mockedRequestOriginService = mock<RequestOriginApplicationService>()
 
   const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
-  const idGenerator = new NodeIdGeneratorService()
+  const domainEventFactory = new AuthDomainEventFactory(new NodeIdGeneratorService())
   const loggerService = new LoggerServiceMock()
   const verifyTokenService = new VerifyTokenService(passwordHasher)
 
@@ -141,7 +142,7 @@ describe('ResetUserPassword', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
       loggerService,
-      idGenerator,
+      domainEventFactory,
     )
   }
 

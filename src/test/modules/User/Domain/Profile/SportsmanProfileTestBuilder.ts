@@ -1,25 +1,23 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { SportsmanProfile } from '~/src/modules/User/Domain/Profile/SportsmanProfile'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
 import { SportsmanProfileBio } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBio'
 import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBirthDate'
 
 export class SportsmanProfileTestBuilder {
-  private _id = UserProfileIdMother.valid()
-  private _userId = UserIdMother.valid()
+  private _id = IdentifierMother.valid()
+  private _userId = IdentifierMother.valid()
   private _bio: SportsmanProfileBio | null = null
   private _birthDate: SportsmanProfileBirthDate | null = null
   private _createdAt = new Date()
   private _updatedAt = new Date()
 
-  withId(id: UserProfileId) {
+  withId(id: Identifier) {
     this._id = id
     return this
   }
 
-  withUserId(userId: UserId) {
+  withUserId(userId: Identifier) {
     this._userId = userId
     return this
   }

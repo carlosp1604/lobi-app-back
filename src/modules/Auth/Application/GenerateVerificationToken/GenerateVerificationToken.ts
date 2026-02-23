@@ -12,13 +12,10 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
-import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
@@ -26,6 +23,7 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
@@ -133,7 +131,7 @@ export class GenerateVerificationToken {
       const domainEventId = this.idGeneratorService.generateId()
 
       const newVerificationToken = VerificationToken.create(
-        VerificationTokenId.fromString(verificationTokenId),
+        Identifier.fromString(verificationTokenId),
         email,
         tokenHash,
         verificationTokenPurpose,
@@ -142,10 +140,10 @@ export class GenerateVerificationToken {
       )
 
       const domainEvent = DomainEvent.create(
-        DomainEventId.fromString(domainEventId),
+        Identifier.fromString(domainEventId),
         DomainEventName.emailVerificationRequest(),
         DomainEventAggregateType.verificationToken(),
-        DomainEventAggregateId.fromString(verificationTokenId),
+        Identifier.fromString(verificationTokenId),
         {
           email: email.value,
           purpose: verificationTokenPurpose.value,

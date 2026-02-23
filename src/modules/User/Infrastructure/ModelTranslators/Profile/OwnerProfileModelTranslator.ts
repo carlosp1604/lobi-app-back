@@ -1,6 +1,5 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
 import { OwnerProfileTaxId } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileTaxId'
 import { OwnerProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
 import { OwnerProfileCompanyName } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileCompanyName'
@@ -9,8 +8,8 @@ import { OwnerProfileContactPhone } from '~/src/modules/User/Domain/ValueObject/
 export class OwnerProfileModelTranslator {
   public static toDomain(rawModel: OwnerProfileRawModel): OwnerProfile {
     return new OwnerProfile(
-      UserProfileId.fromString(rawModel.id),
-      UserId.fromString(rawModel.user_id),
+      Identifier.fromString(rawModel.id),
+      Identifier.fromString(rawModel.user_id),
       rawModel.company_name ? OwnerProfileCompanyName.fromString(rawModel.company_name) : null,
       rawModel.tax_id ? OwnerProfileTaxId.fromString(rawModel.tax_id) : null,
       rawModel.contact_phone ? OwnerProfileContactPhone.fromString(rawModel.contact_phone) : null,

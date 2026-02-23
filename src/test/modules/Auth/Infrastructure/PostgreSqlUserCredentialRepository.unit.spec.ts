@@ -2,7 +2,7 @@
 import { mock, mockReset } from 'jest-mock-extended'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { EntityManager, EntitySchema, Repository } from 'typeorm'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
@@ -29,7 +29,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('save', () => {
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const userCredential = new UserCredentialTestBuilder().withUserId(userId).build()
     const context: TxContext = { __opaque_tx_context: true }
 
@@ -109,7 +109,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('saveLoginSuccess', () => {
-    const userId = UserIdMother.valid().value
+    const userId = IdentifierMother.valid().value
     const userCredentialToUpdate = new UserCredentialTestBuilder().build()
 
     const context: TxContext = { __opaque_tx_context: true }
@@ -188,7 +188,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('findByUserId', () => {
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const context: TxContext = { __opaque_tx_context: true }
 
     const rawUserCredential = makeRawUserCredential({

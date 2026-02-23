@@ -1,6 +1,5 @@
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -11,8 +10,7 @@ import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
@@ -22,27 +20,29 @@ describe('UserSessionModelTranslator', () => {
   const now = new Date(isoDate)
   const futureExpiresAt = new Date(now.getTime() + 60 * 60 * 1000)
 
+  const validDeviceLocation = DeviceLocationMother.valid()
+
   const baseRaw = makeRawSession({
-    device_country_code: 'ES',
-    device_city: 'Murcia',
+    device_country_code: validDeviceLocation.countryCode,
+    device_city: validDeviceLocation.city,
     created_at: now,
     updated_at: now,
-    ip_hash: UserSessionIpHashMother.valid().toString(),
+    ip_hash: UserSessionIpHashMother.valid().value,
     revoked_at: null,
     expires_at: futureExpiresAt,
   })
 
   describe('toDomain', () => {
     const checkResult = (result: UserSession, raw: UserSessionRawModel) => {
-      expect(result.id).toBeInstanceOf(UserSessionId)
-      expect(result.userId).toBeInstanceOf(UserId)
+      expect(result.id).toBeInstanceOf(Identifier)
+      expect(result.userId).toBeInstanceOf(Identifier)
       expect(result.tokenHash).toBeInstanceOf(UserSessionTokenHash)
       expect(result.userAgent).toBeInstanceOf(UserAgent)
 
-      expect(result.id.toString()).toBe(raw.id)
-      expect(result.userId.toString()).toBe(raw.user_id)
-      expect(result.tokenHash.toString()).toBe(raw.token_hash)
-      expect(result.userAgent.toString()).toBe(raw.user_agent)
+      expect(result.id.value).toBe(raw.id)
+      expect(result.userId.value).toBe(raw.user_id)
+      expect(result.tokenHash.value).toBe(raw.token_hash)
+      expect(result.userAgent.value).toBe(raw.user_agent)
       expect(result.expiresAt.getTime()).toBe(raw.expires_at.getTime())
       expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
       expect(result.updatedAt.getTime()).toBe(raw.updated_at.getTime())
@@ -52,7 +52,7 @@ describe('UserSessionModelTranslator', () => {
         expect(result.ipHash).toBeNull()
       } else {
         expect(result.ipHash).toBeInstanceOf(UserSessionIpHash)
-        expect(result.ipHash?.toString()).toBe(raw.ip_hash)
+        expect(result.ipHash?.value).toBe(raw.ip_hash)
       }
 
       if (raw.device_city === null && raw.device_country_code === null) {
@@ -127,20 +127,20 @@ describe('UserSessionModelTranslator', () => {
     const validIpHash = UserSessionIpHashMother.valid()
 
     const checkResult = (result: UserSessionRawModel, domain: UserSession) => {
-      expect(result.id).toBe(domain.id.toString())
-      expect(result.user_id).toBe(domain.userId.toString())
-      expect(result.token_hash).toBe(domain.tokenHash.toString())
+      expect(result.id).toBe(domain.id.value)
+      expect(result.user_id).toBe(domain.userId.value)
+      expect(result.token_hash).toBe(domain.tokenHash.value)
       expect(result.expires_at.getTime()).toBe(domain.expiresAt.getTime())
       expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
       expect(result.updated_at.getTime()).toBe(domain.updatedAt.getTime())
-      expect(result.user_agent).toBe(domain.userAgent.toString())
+      expect(result.user_agent).toBe(domain.userAgent.value)
       expect(result.revoked_at).toEqual(domain.revokedAt)
 
       if (domain.ipHash === null) {
         expect(result.ip_hash).toBeNull()
         expect(domain.ipHash).toBeNull()
       } else {
-        expect(result.ip_hash).toBe(domain.ipHash.toString())
+        expect(result.ip_hash).toBe(domain.ipHash.value)
       }
 
       if (domain.deviceLocation === null) {
@@ -155,8 +155,8 @@ describe('UserSessionModelTranslator', () => {
 
     beforeEach(() => {
       sessionBuilder = new UserSessionTestBuilder()
-        .withId(UserSessionIdMother.valid())
-        .withUserId(UserIdMother.valid())
+        .withId(IdentifierMother.valid())
+        .withUserId(IdentifierMother.valid())
         .withTokenHash(UserSessionTokenHashMother.valid())
         .withExpiresAt(futureExpiresAt)
         .withRevokedAt(null)

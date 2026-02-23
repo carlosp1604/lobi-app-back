@@ -1,7 +1,6 @@
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 
 type JsonPrimitive = string | number | boolean | null
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
@@ -13,10 +12,10 @@ export const CurrentDomainEventVersion = 1
 
 export class DomainEvent {
   private constructor(
-    public readonly id: DomainEventId,
+    public readonly id: Identifier,
     public readonly name: DomainEventName,
     public readonly aggregateType: DomainEventAggregateType,
-    public readonly aggregateId: DomainEventAggregateId,
+    public readonly aggregateId: Identifier,
     public readonly payload: EventPayload,
     public readonly metadata: EventMetadata,
     public readonly version: number,
@@ -24,10 +23,10 @@ export class DomainEvent {
   ) {}
 
   static create(
-    id: DomainEventId,
+    id: Identifier,
     name: DomainEventName,
     aggregateType: DomainEventAggregateType,
-    aggregateId: DomainEventAggregateId,
+    aggregateId: Identifier,
     payload: EventPayload,
     metadata: EventMetadata,
     now: Date,

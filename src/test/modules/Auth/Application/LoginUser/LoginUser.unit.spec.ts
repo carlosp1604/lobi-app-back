@@ -11,14 +11,11 @@ import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGener
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
@@ -64,12 +61,12 @@ describe('LoginUser', () => {
   const expectedRefreshExpiresAt = new Date(now.getTime() + 3600)
 
   const validEmail = EmailAddressMother.valid()
-  const validUserId = UserIdMother.valid()
+  const validUserId = IdentifierMother.valid()
   const validPasswordHash = PasswordHashMother.valid()
   const validIpHash = UserSessionIpHashMother.valid()
 
-  const expectedSessionId = UserSessionIdMother.valid()
-  const expectedDomainEventId = DomainEventIdMother.valid()
+  const expectedSessionId = IdentifierMother.valid()
+  const expectedDomainEventId = IdentifierMother.valid()
   const validUA = UserAgentMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
 
@@ -100,7 +97,7 @@ describe('LoginUser', () => {
 
   const expectedSession = userSessionTestBuilder.build()
 
-  const activeSession1 = mock<UserSession>({ id: UserSessionIdMother.valid() })
+  const activeSession1 = mock<UserSession>({ id: IdentifierMother.valid() })
   const activeSession2 = mock<UserSession>()
   const activeSession3 = mock<UserSession>()
 
@@ -218,7 +215,7 @@ describe('LoginUser', () => {
       expect(mockedCredentialsRepository.update).toHaveBeenCalledWith(mockedCredential, fakeContext)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          aggregateId: DomainEventAggregateId.fromString(validUserId.value),
+          aggregateId: validUserId,
           aggregateType: DomainEventAggregateType.user(),
           id: expectedDomainEventId,
           name: DomainEventName.successfulLogin(),
@@ -448,7 +445,7 @@ describe('LoginUser', () => {
       })
 
       const expectedDomainEvent = {
-        aggregateId: DomainEventAggregateId.fromString(validUserId.value),
+        aggregateId: validUserId,
         aggregateType: DomainEventAggregateType.user(),
         id: expectedDomainEventId,
         name: DomainEventName.failedLoginAttempt(),

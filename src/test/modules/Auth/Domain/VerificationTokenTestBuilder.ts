@@ -1,14 +1,14 @@
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 export class VerificationTokenTestBuilder {
-  private _id: VerificationTokenId = VerificationTokenIdMother.valid()
+  private _id: Identifier = IdentifierMother.valid()
   private _email: EmailAddress = EmailAddressMother.random()
   private _tokenHash: VerificationTokenTokenHash = VerificationTokenTokenHashMother.random()
   private _purpose: VerificationTokenPurpose = VerificationTokenPurpose.createAccount()
@@ -16,7 +16,7 @@ export class VerificationTokenTestBuilder {
   private _usedAt: Date | null = null
   private _createdAt: Date = new Date()
 
-  public withId(id: VerificationTokenId): this {
+  public withId(id: Identifier): this {
     this._id = id
     return this
   }

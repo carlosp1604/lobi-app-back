@@ -3,28 +3,27 @@ import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 
 export class UserTestBuilder {
-  private _id = UserIdMother.valid()
+  private _id = IdentifierMother.valid()
   private _email = EmailAddressMother.random()
   private _username = UserUsernameMother.random()
   private _name = UserNameMother.valid()
   private _status = UserStatus.active()
   private _role = UserRole.sportsman()
-  private _uploadId: UserUploadId | null = null
+  private _uploadId: Identifier | null = null
   private _emailVerifiedAt = new Date()
   private _createdAt = new Date()
   private _updatedAt = new Date()
   private _deletedAt: Date | null = null
 
-  withId(userId: UserId) {
+  withId(userId: Identifier) {
     this._id = userId
     return this
   }
@@ -54,7 +53,7 @@ export class UserTestBuilder {
     return this
   }
 
-  withUploadId(userUploadId: UserUploadId | null) {
+  withUploadId(userUploadId: Identifier | null) {
     this._uploadId = userUploadId
     return this
   }

@@ -1,12 +1,12 @@
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UuidValueObject } from '~/src/modules/Shared/Domain/ValueObject/UuidValueObject'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 export class AuthDomainEventFactory {
   static createPasswordResetEvent(
@@ -19,7 +19,7 @@ export class AuthDomainEventFactory {
     occurredAt: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      DomainEventId.fromString(id),
+      Identifier.fromString(id),
       DomainEventName.successfulResetPassword(),
       DomainEventAggregateType.user(),
       DomainEventAggregateId.fromString(userId.value),

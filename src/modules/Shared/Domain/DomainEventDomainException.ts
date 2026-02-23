@@ -1,17 +1,12 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 
 export class DomainEventDomainException extends DomainException {
-  public static invalidDomainEventIdId = 'domain_event_domain_invalid_domain_event_id'
   public static invalidDomainEventAggregateIdId = 'domain_event_domain_invalid_domain_event_aggregate_id'
   public static invalidDomainEventNameId = 'domain_event_domain_invalid_domain_event_name'
   public static invalidDomainEventAggregateTypeId = 'domain_event_domain_invalid_domain_event_aggregate_type'
 
   private constructor(message: string, id: string) {
     super(message, id, DomainEventDomainException.name)
-  }
-
-  public static invalidDomainEventId(userId: string) {
-    return new DomainEventDomainException(`${userId} is not a valid DomainEvent ID`, this.invalidDomainEventIdId)
   }
 
   public static invalidDomainEventAggregateId(aggregateId: string) {

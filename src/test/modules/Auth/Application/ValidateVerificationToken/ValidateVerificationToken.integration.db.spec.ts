@@ -12,7 +12,7 @@ import { withTransaction } from '~/src/test/utils/withTransaction'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
@@ -65,7 +65,7 @@ describe('ValidateVerificationToken', () => {
 
   const createAndSaveToken = async (expiresAt: Date): Promise<void> => {
     const rawToken = makeRawVerificationToken({
-      id: VerificationTokenIdMother.valid().value,
+      id: IdentifierMother.valid().value,
       email: email.value,
       purpose: purpose.value,
       token_hash: validTokenHash,

@@ -1,12 +1,12 @@
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
-import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 export class VerificationToken {
-  public readonly id: VerificationTokenId
+  public readonly id: Identifier
   public readonly email: EmailAddress
   public readonly tokenHash: VerificationTokenTokenHash
   public readonly purpose: VerificationTokenPurpose
@@ -15,7 +15,7 @@ export class VerificationToken {
   public readonly createdAt: Date
 
   constructor(
-    id: VerificationTokenId,
+    id: Identifier,
     email: EmailAddress,
     tokenHash: VerificationTokenTokenHash,
     purpose: VerificationTokenPurpose,
@@ -33,7 +33,7 @@ export class VerificationToken {
   }
 
   public static create(
-    id: VerificationTokenId,
+    id: Identifier,
     email: EmailAddress,
     tokenHash: VerificationTokenTokenHash,
     purpose: VerificationTokenPurpose,

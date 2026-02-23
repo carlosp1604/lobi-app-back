@@ -1,12 +1,12 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
+import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 
 export class UserCredentialModelTranslator {
   public static toDomain(raw: UserCredentialRawModel): UserCredential {
     return new UserCredential(
-      UserId.fromString(raw.user_id),
+      Identifier.fromString(raw.user_id),
       PasswordHash.fromString(raw.password_hash),
       raw.failed_attempts,
       raw.locked_until,

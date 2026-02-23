@@ -3,15 +3,13 @@ import { SportsmanProfileBioMother } from '~/src/test/mothers/SportsmanProfileBi
 import { SportsmanProfileBirthDateMother } from '~/src/test/mothers/SportsmanProfileBirthDateMother'
 import { SportsmanProfile } from '~/src/modules/User/Domain/Profile/SportsmanProfile'
 import { SportsmanProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { SportsmanProfileBio } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBio'
 import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBirthDate'
 import { SportsmanProfileModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/Profile/SportsmanProfileModelTranslator'
 import { ProfileDomainException } from '~/src/modules/User/Domain/Profile/ProfileDomainException'
 import { SportsmanProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/SportsmanProfileTestBuilder'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 
 describe('SportsmanProfileModelTranslator', () => {
   const isoDate = '2026-02-14T19:05:00.000Z'
@@ -35,8 +33,8 @@ describe('SportsmanProfileModelTranslator', () => {
 
   describe('toDomain', () => {
     const checkResult = (result: SportsmanProfile, raw: SportsmanProfileRawModel) => {
-      expect(result.id).toBeInstanceOf(UserProfileId)
-      expect(result.userId).toBeInstanceOf(UserId)
+      expect(result.id).toBeInstanceOf(Identifier)
+      expect(result.userId).toBeInstanceOf(Identifier)
 
       expect(result.id.value).toBe(raw.id)
       expect(result.userId.value).toBe(raw.user_id)
@@ -122,8 +120,8 @@ describe('SportsmanProfileModelTranslator', () => {
 
     beforeEach(() => {
       builder = new SportsmanProfileTestBuilder()
-        .withId(UserProfileIdMother.valid())
-        .withUserId(UserIdMother.valid())
+        .withId(IdentifierMother.valid())
+        .withUserId(IdentifierMother.valid())
         .withBio(SportsmanProfileBioMother.valid())
         .withBirthDate(SportsmanProfileBirthDateMother.valid(now))
         .withCreatedAt(now)

@@ -1,14 +1,14 @@
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 export const makeRawUser = (overrides: Partial<UserRawModelWithRelations> = {}): UserRawModelWithRelations => {
   return {
-    id: overrides.id ?? UserIdMother.valid().value,
+    id: overrides.id ?? IdentifierMother.valid().value,
     email: overrides.email ?? EmailAddressMother.random().value,
     username: overrides.username ?? UserUsernameMother.random().value,
     name: overrides.name ?? UserNameMother.valid().value,

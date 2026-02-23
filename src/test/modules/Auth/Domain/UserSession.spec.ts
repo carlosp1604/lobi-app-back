@@ -1,7 +1,6 @@
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -17,8 +16,8 @@ describe('UserSession', () => {
     const expiresTtlMs = 10000
     const futureExpiresAt = new Date(now.getTime() + expiresTtlMs)
 
-    const id = UserSessionIdMother.valid()
-    const userId = UserIdMother.valid()
+    const id = IdentifierMother.valid()
+    const userId = IdentifierMother.valid()
     const tokenHash = UserSessionTokenHashMother.valid()
     const userAgent = UserAgentMother.valid()
 
@@ -57,8 +56,8 @@ describe('UserSession', () => {
 
     beforeEach(() => {
       userSessionTestBuilder = new UserSessionTestBuilder()
-        .withId(UserSessionIdMother.valid())
-        .withUserId(UserIdMother.valid())
+        .withId(IdentifierMother.valid())
+        .withUserId(IdentifierMother.valid())
         .withTokenHash(UserSessionTokenHashMother.valid())
         .withUserAgent(UserAgentMother.valid())
         .withIpHash(null)
@@ -78,13 +77,13 @@ describe('UserSession', () => {
     it('should throw UserSessionDomainException if the session is already revoked', () => {
       const session = userSessionTestBuilder.withExpiresAt(expiresAt).withRevokedAt(alreadyRevokedAt).build()
 
-      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyRevoked(session.id.toString()))
+      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyRevoked(session.id.value))
     })
 
     it('should throw UserSessionDomainException if the session is already expired', () => {
       const session = userSessionTestBuilder.withExpiresAt(alreadyExpiredAt).withRevokedAt(null).build()
 
-      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyExpired(session.id.toString()))
+      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyExpired(session.id.value))
     })
   })
 

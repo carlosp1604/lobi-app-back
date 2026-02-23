@@ -15,11 +15,9 @@ import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServic
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
@@ -52,8 +50,8 @@ describe('GenerateVerificationToken', () => {
   const expiresAt = new Date(now.getTime() + verificationTokenTtlMs)
   const generatedCode = VerificationTokenValueMother.valid().value
   const verificationTokenTokenHash = VerificationTokenTokenHashMother.random()
-  const verificationTokenId = VerificationTokenIdMother.valid()
-  const domainEventId = DomainEventIdMother.valid()
+  const verificationTokenId = IdentifierMother.valid()
+  const domainEventId = IdentifierMother.valid()
 
   const mockedVerificationTokenRepository = mock<VerificationTokenRepositoryInterface>()
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -180,7 +178,7 @@ describe('GenerateVerificationToken', () => {
 
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
-          aggregateId: DomainEventAggregateId.fromString(verificationTokenId.value),
+          aggregateId: verificationTokenId,
           aggregateType: DomainEventAggregateType.verificationToken(),
           id: domainEventId,
           name: DomainEventName.emailVerificationRequest(),
@@ -242,7 +240,7 @@ describe('GenerateVerificationToken', () => {
 
       const existingToken = verificationTokenTestBuilder
         .withPurpose(purpose)
-        .withId(VerificationTokenIdMother.valid())
+        .withId(IdentifierMother.valid())
         .withTokenHash(VerificationTokenTokenHashMother.random())
         .build()
 
@@ -292,7 +290,7 @@ describe('GenerateVerificationToken', () => {
       const expectedVerificationToken = verificationTokenTestBuilder.withPurpose(purpose).build()
 
       const existingToken = verificationTokenTestBuilder
-        .withId(VerificationTokenIdMother.valid())
+        .withId(IdentifierMother.valid())
         .withPurpose(existingTokenPurpose)
         .withTokenHash(VerificationTokenTokenHashMother.random())
         .withExpiresAt(scenario.isExpired ? pastDate : futureDate)

@@ -1,10 +1,8 @@
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
@@ -14,6 +12,8 @@ import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 describe('PostgreSqlUserCredentialRepository', () => {
   const now = new Date('2025-09-26T14:11:25Z')
@@ -32,7 +32,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('save', () => {
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const userEmail = EmailAddressMother.valid()
 
     beforeEach(async () => {
@@ -81,7 +81,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('update', () => {
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const userEmail = EmailAddressMother.valid()
 
     const initialPasswordHash = PasswordHashMother.valid()
@@ -94,7 +94,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
 
     const updatedAt = new Date(now.getTime() + 500)
 
-    const createUserCredential = (userCredentialUserId: UserId, passwordHash: PasswordHash) => {
+    const createUserCredential = (userCredentialUserId: Identifier, passwordHash: PasswordHash) => {
       return new UserCredentialTestBuilder()
         .withUserId(userCredentialUserId)
         .withPasswordHash(passwordHash)
@@ -146,7 +146,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
       const context = new TypeOrmTxContext(runner.manager)
 
-      const anotherUserId = UserIdMother.valid()
+      const anotherUserId = IdentifierMother.valid()
       const userCredential = createUserCredential(anotherUserId, newPasswordHash)
 
       const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
@@ -173,7 +173,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('findByUserId', () => {
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const userEmail = EmailAddressMother.valid()
     const passwordHash = PasswordHashMother.valid()
 

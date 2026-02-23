@@ -1,14 +1,13 @@
-import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
 export class UserSession {
-  public readonly id: UserSessionId
-  public readonly userId: UserId
+  public readonly id: Identifier
+  public readonly userId: Identifier
   public tokenHash: UserSessionTokenHash
   public expiresAt: Date
   public revokedAt: Date | null
@@ -20,8 +19,8 @@ export class UserSession {
   public updatedAt: Date
 
   public constructor(
-    id: UserSessionId,
-    userId: UserId,
+    id: Identifier,
+    userId: Identifier,
     tokenHash: UserSessionTokenHash,
     expiresAt: Date,
     revokedAt: Date | null,
@@ -44,8 +43,8 @@ export class UserSession {
   }
 
   static create(
-    id: UserSessionId,
-    userId: UserId,
+    id: Identifier,
+    userId: Identifier,
     tokenHash: UserSessionTokenHash,
     userAgent: UserAgent,
     expiresTtlMs: number,

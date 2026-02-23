@@ -1,13 +1,13 @@
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserCredentialModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserCredentialModelTranslator'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserCredentialRawWitRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('UserCredentialModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
@@ -22,7 +22,7 @@ describe('UserCredentialModelTranslator', () => {
 
   describe('toDomain', () => {
     const checkResult = (result: UserCredential, raw: UserCredentialRawWitRelationships) => {
-      expect(result.userId).toBeInstanceOf(UserId)
+      expect(result.userId).toBeInstanceOf(Identifier)
       expect(result.passwordHash).toBeInstanceOf(PasswordHash)
 
       expect(result.userId.value).toBe(raw.user_id)
@@ -48,14 +48,15 @@ describe('UserCredentialModelTranslator', () => {
       const result = UserCredentialModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
-      expect(result.lockedUntil?.toISOString()).toBe(isoDate)
+      expect(result.lockedUntil?.getTime()).toBe(now.getTime())
       expect(result.lastLoginAt).toBeNull()
     })
 
     it('should propagate errors from ValueObject', () => {
-      const rawInvalidUserId = { ...baseRaw, user_id: 'not-an-id' }
+      const invalidId = IdentifierMother.invalid()
+      const rawInvalidUserId = { ...baseRaw, user_id: invalidId }
 
-      expect(() => UserCredentialModelTranslator.toDomain(rawInvalidUserId)).toThrow(UserDomainException.invalidUserId('not-an-id'))
+      expect(() => UserCredentialModelTranslator.toDomain(rawInvalidUserId)).toThrow(SharedDomainException.invalidIdentifier(invalidId))
     })
 
     it('does not mutate input', () => {
@@ -82,7 +83,7 @@ describe('UserCredentialModelTranslator', () => {
 
     beforeEach(() => {
       userCredentialTestBuilder = new UserCredentialTestBuilder()
-        .withUserId(UserIdMother.valid())
+        .withUserId(IdentifierMother.valid())
         .withPasswordHash(PasswordHashMother.valid())
         .withFailedAttempts(0)
         .withLockedUntil(null)
