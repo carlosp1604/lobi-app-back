@@ -28,6 +28,7 @@ import {
   VERIFICATION_TOKEN_REPOSITORY,
   VERIFY_TOKEN_DOMAIN_SERVICE,
   RESET_USER_PASSWORD,
+  AUTH_DOMAIN_EVENT_FACTORY,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -82,6 +83,7 @@ import { SportsmanProfileEntity } from '~/src/modules/User/Infrastructure/Entiti
 import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
 import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 @Module({
   imports: [
@@ -236,6 +238,12 @@ import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactor
         return new VerifyTokenService(hasherService)
       },
       inject: [PASSWORD_HASHER_SERVICE],
+    },
+    {
+      provide: AUTH_DOMAIN_EVENT_FACTORY,
+      useFactory: (idGeneratorService: IdGeneratorServiceInterface) => {
+        return new AuthDomainEventFactory(idGeneratorService)
+      },
     },
     {
       provide: LOGIN_USER,
@@ -440,7 +448,7 @@ import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactor
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
-        idGeneratorService: IdGeneratorServiceInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
       ) =>
         new ResetUserPassword(
           userRepository,
@@ -453,7 +461,7 @@ import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactor
           clockService,
           unitOfWork,
           loggerFactory.createLogger(ResetUserPassword.name),
-          idGeneratorService,
+          authDomainEventFactory,
         ),
       inject: [
         USER_REPOSITORY,
@@ -466,7 +474,7 @@ import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactor
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
-        ID_GENERATOR,
+        AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
   ],

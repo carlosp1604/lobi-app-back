@@ -8,7 +8,6 @@ import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
@@ -42,7 +41,7 @@ export class ResetUserPassword {
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
-    private readonly idGeneratorService: IdGeneratorServiceInterface,
+    private readonly authDomainEventFactory: AuthDomainEventFactory,
   ) {}
 
   public async execute(request: ResetUserPasswordApplicationRequestDto): Promise<Result<void, ResetUserPasswordApplicationError>> {
@@ -117,9 +116,7 @@ export class ResetUserPassword {
       userCredential.updatePasswordHash(newPasswordHash, now)
       verificationToken.markAsUsed(now, email, VerificationTokenPurpose.resetPassword())
 
-      const domainEventId = this.idGeneratorService.generateId()
-      const domainEvent = AuthDomainEventFactory.createPasswordResetEvent(
-        domainEventId,
+      const domainEvent = this.authDomainEventFactory.createPasswordResetEvent(
         user.id,
         user.email,
         deviceLocation,

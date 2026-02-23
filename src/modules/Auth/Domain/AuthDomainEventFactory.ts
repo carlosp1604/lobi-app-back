@@ -1,17 +1,17 @@
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UuidValueObject } from '~/src/modules/Shared/Domain/ValueObject/UuidValueObject'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 
 export class AuthDomainEventFactory {
-  static createPasswordResetEvent(
-    id: string,
-    userId: UuidValueObject,
+  constructor(private readonly idGenerator: IdGeneratorServiceInterface) {}
+
+  public createPasswordResetEvent(
+    userId: Identifier,
     userEmail: EmailAddress,
     deviceLocation: DeviceLocation | null,
     userAgent: UserAgent,
@@ -19,10 +19,10 @@ export class AuthDomainEventFactory {
     occurredAt: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      Identifier.fromString(id),
+      Identifier.fromString(this.idGenerator.generateId()),
       DomainEventName.successfulResetPassword(),
       DomainEventAggregateType.user(),
-      DomainEventAggregateId.fromString(userId.value),
+      userId,
       {
         userId: userId.value,
         email: userEmail.value,
