@@ -163,7 +163,7 @@ describe('RefreshToken', () => {
   }
 
   describe('happy path', () => {
-    it('should call services and entities correctly and return the correct result when current session must to be revoked', async () => {
+    it('should call services and entities correctly and return the correct result when only the current session must be revoked', async () => {
       const useCase = buildUseCase()
 
       const result = await useCase.execute(request)
@@ -182,7 +182,7 @@ describe('RefreshToken', () => {
       })
     })
 
-    it('should call services and entities correctly and return the correct result when current session must to be revoked', async () => {
+    it('should call services and entities correctly and return the correct result when policy requires revoking additional active sessions alongside the current one', async () => {
       const activeSessions = [currentSession, activeSession2, activeSession3]
 
       mockedSessionRepository.findUserActiveSessions.mockResolvedValue(activeSessions)
@@ -222,7 +222,7 @@ describe('RefreshToken', () => {
           error: RefreshSessionApplicationError.invalidTokenFormat(),
         })
 
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       }
 
       it('should return error when token is not valid due to insufficient length', async () => {

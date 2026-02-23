@@ -343,6 +343,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
         configService: ConfigService<Env, true>,
         loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
       ) => {
         return new GenerateVerificationToken(
           verificationTokenRepository,
@@ -357,6 +358,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
           configService,
           loggerFactory.createLogger(GenerateVerificationToken.name),
           idGeneratorService,
+          authDomainEventFactory,
         )
       },
       inject: [
@@ -372,6 +374,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
         ConfigService,
         LOGGER_FACTORY,
         ID_GENERATOR,
+        AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
     {

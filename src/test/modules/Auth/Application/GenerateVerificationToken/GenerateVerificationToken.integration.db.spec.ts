@@ -38,6 +38,7 @@ import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { HashMother } from '~/src/test/mothers/HashMother'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
@@ -99,7 +100,6 @@ describe('GenerateVerificationToken', () => {
       email: email.toString(),
       purpose: purposeCreateAccount.toString(),
       sendNewToken: false,
-      language: 'es',
       ip: '127.0.0.0',
       userAgent: expectedUserAgent.toString(),
     }
@@ -124,7 +124,6 @@ describe('GenerateVerificationToken', () => {
         email: email.value,
         purpose: purposeCreateAccount.value,
         resendCode: false,
-        lang: request.language,
       },
       occurred_at: pastDate,
     })
@@ -132,6 +131,7 @@ describe('GenerateVerificationToken', () => {
 
   const loggerService = new LoggerServiceMock()
   const hasherService = new BCryptHasherService(env.SALT_ROUNDS)
+  const idGenerator = new NodeIdGeneratorService()
 
   const buildUseCase = () => {
     return new GenerateVerificationToken(
@@ -147,7 +147,8 @@ describe('GenerateVerificationToken', () => {
       new NodeRandomService(),
       mockedConfigService,
       loggerService,
-      new NodeIdGeneratorService(),
+      idGenerator,
+      new AuthDomainEventFactory(idGenerator),
     )
   }
 
@@ -211,7 +212,8 @@ describe('GenerateVerificationToken', () => {
         email: email.value,
         purpose: purposeCreateAccount.value,
         resendCode: existingToken ? sendNewToken : false,
-        lang: request.language,
+        // TODO: Use expected language when multi-language emails are supported
+        lang: 'es',
         deviceLocation: {
           city: expectedDeviceLocation.city,
           countryCode: expectedDeviceLocation.countryCode,
@@ -234,7 +236,8 @@ describe('GenerateVerificationToken', () => {
           token: expect.any(String),
           expiration_minutes: expectedExpirationMinutes,
         },
-        request.language,
+        // TODO: Use expected language when multi-language emails are supported
+        'es',
         now,
       )
 

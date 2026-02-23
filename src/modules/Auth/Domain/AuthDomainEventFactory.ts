@@ -7,6 +7,7 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
+import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 
 export class AuthDomainEventFactory {
   constructor(private readonly idGeneratorService: IdGeneratorServiceInterface) {}
@@ -90,6 +91,32 @@ export class AuthDomainEventFactory {
         userId: userId.value,
         deviceLocation: this.mapLocation(deviceLocation),
         email: userEmail.value,
+      },
+      this.mapMetadata(ipHash, userAgent),
+      now,
+    )
+  }
+
+  public createEmailVerificationRequestEvent(
+    verificationToken: VerificationToken,
+    resendCode: boolean,
+    language: string,
+    deviceLocation: DeviceLocation | null,
+    userAgent: UserAgent,
+    ipHash: string | null,
+    now: Date,
+  ): DomainEvent {
+    return DomainEvent.create(
+      Identifier.fromString(this.idGeneratorService.generateId()),
+      DomainEventName.emailVerificationRequest(),
+      DomainEventAggregateType.verificationToken(),
+      verificationToken.id,
+      {
+        email: verificationToken.email.value,
+        purpose: verificationToken.purpose.value,
+        resendCode,
+        lang: language,
+        deviceLocation: this.mapLocation(deviceLocation),
       },
       this.mapMetadata(ipHash, userAgent),
       now,

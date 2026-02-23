@@ -489,7 +489,7 @@ describe('AuthController', () => {
     let rawUser: UserRawModelWithRelations
     let rawCurrentVerificationToken: VerificationTokenRawModel
 
-    const validBody = { email: userEmail.value, sendNewToken: false, language: 'es' }
+    const validBody = { email: userEmail.value, sendNewToken: false }
 
     beforeEach(() => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
@@ -551,7 +551,6 @@ describe('AuthController', () => {
 
               expect(errorMessages).toContain('email')
               expect(errorMessages).toContain('sendNewToken')
-              expect(errorMessages).toContain('language')
               expect(errorMessages).toContain('page')
               expect(errorMessages).toContain('perPage')
             })

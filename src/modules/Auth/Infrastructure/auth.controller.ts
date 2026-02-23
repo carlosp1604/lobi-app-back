@@ -212,7 +212,8 @@ export class AuthController {
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.createAccount().toString(),
       email: body.email,
-      language: body.language,
+      // TODO: Use language from request when multi-language emails are supported
+      // language: body.language,
       sendNewToken: body.sendNewToken,
       ip: userIp,
       userAgent,
@@ -231,7 +232,8 @@ export class AuthController {
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.resetPassword().toString(),
       email: body.email,
-      language: body.language,
+      // TODO: Use language from request when multi-language emails are supported
+      // language: body.language,
       sendNewToken: body.sendNewToken,
       ip: userIp,
       userAgent,

@@ -1,5 +1,4 @@
-import { IsBoolean, IsEmail, IsIn, IsNotEmpty, IsString } from 'class-validator'
-import { i18nConfig } from '~/i18n.config'
+import { IsBoolean, IsEmail, IsNotEmpty } from 'class-validator'
 
 export class VerifyEmailDto {
   @IsNotEmpty()
@@ -9,8 +8,9 @@ export class VerifyEmailDto {
   @IsBoolean()
   sendNewToken: boolean
 
-  @IsNotEmpty()
-  @IsString()
-  @IsIn(i18nConfig.locales)
-  language: string
+  // TODO: Define language when multi-language emails are supported
+  // @IsNotEmpty()
+  // @IsString()
+  // @IsIn(i18nConfig.locales)
+  // language: string
 }

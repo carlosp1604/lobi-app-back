@@ -536,7 +536,8 @@ describe('AuthController', () => {
   })
 
   describe('verify email', () => {
-    const mockBody = { email: 'test@example.com', sendNewToken: false, language: 'es' }
+    const validEmail = EmailAddressMother.valid()
+    const mockBody = { email: validEmail.value, sendNewToken: false }
 
     describe('happy path', () => {
       beforeEach(() => {
@@ -556,7 +557,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: mockedUserAgent,
@@ -573,7 +573,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: undefined,
@@ -592,7 +591,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: mockedUserAgent,
@@ -609,7 +607,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: undefined,
@@ -620,8 +617,9 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      const mockBodyWithInvalidEmail = { email: 'invalid-email', sendNewToken: false, language: 'es' }
-      const mockBody = { email: 'test@example.com', sendNewToken: false, language: 'es' }
+      const invalidEmail = EmailAddressMother.invalid()
+      const mockBodyWithInvalidEmail = { email: invalidEmail, sendNewToken: false }
+      const mockBody = { email: validEmail.value, sendNewToken: false }
 
       describe('signup', () => {
         it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {

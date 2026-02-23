@@ -12,9 +12,6 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
-import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
@@ -24,6 +21,7 @@ import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddre
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
@@ -41,6 +39,7 @@ export class GenerateVerificationToken {
     private readonly configService: ConfigService<Env, true>,
     private readonly loggerService: LoggerServiceInterface,
     private readonly idGeneratorService: IdGeneratorServiceInterface,
+    private readonly authDomainEventFactory: AuthDomainEventFactory,
   ) {
     this.verificationTokenTtlMs = this.configService.get('VERIFICATION_TOKEN_TTL_MS', { infer: true })
   }
@@ -49,6 +48,9 @@ export class GenerateVerificationToken {
     request: GenerateVerificationTokenApplicationRequestDto,
   ): Promise<Result<void, GenerateVerificationTokenApplicationError>> {
     const now = this.clockService.now()
+
+    // TODO: Validate language from request when multi-language emails are supported
+    const language = 'es'
 
     const emailValidationResult = this.validateEmail(request.email)
     const purposeValidationResult = this.validateVerificationTokenPurpose(request.purpose)
@@ -128,7 +130,6 @@ export class GenerateVerificationToken {
       const hashedCode = await this.hasherService.hash(clearRandomCode)
       const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
       const verificationTokenId = this.idGeneratorService.generateId()
-      const domainEventId = this.idGeneratorService.generateId()
 
       const newVerificationToken = VerificationToken.create(
         Identifier.fromString(verificationTokenId),
@@ -139,27 +140,13 @@ export class GenerateVerificationToken {
         now,
       )
 
-      const domainEvent = DomainEvent.create(
-        Identifier.fromString(domainEventId),
-        DomainEventName.emailVerificationRequest(),
-        DomainEventAggregateType.verificationToken(),
-        Identifier.fromString(verificationTokenId),
-        {
-          email: email.value,
-          purpose: verificationTokenPurpose.value,
-          resendCode,
-          lang: request.language,
-          deviceLocation: deviceLocation
-            ? {
-                city: deviceLocation.city,
-                countryCode: deviceLocation.countryCode,
-              }
-            : null,
-        },
-        {
-          ipHash: ipHash ? ipHash : null,
-          ua: userAgent.value,
-        },
+      const domainEvent = this.authDomainEventFactory.createEmailVerificationRequestEvent(
+        newVerificationToken,
+        resendCode,
+        language,
+        deviceLocation,
+        userAgent,
+        ipHash,
         now,
       )
 
@@ -167,8 +154,7 @@ export class GenerateVerificationToken {
       await this.verificationTokenRepository.save(newVerificationToken, context)
 
       // TODO: This use-case should not send the email. Remove this step when domain-event handler worker is ready
-      // TODO: Validate input language when multi-language emails are supported
-      await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, request.language, now)
+      await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, language, now)
 
       return success(undefined)
     })
