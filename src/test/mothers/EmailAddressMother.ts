@@ -1,6 +1,6 @@
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 
-export abstract class EmailAddressMother {
+export class EmailAddressMother {
   public static readonly INVALID_FORMAT_CASES = [
     '',
     'no-at-symbol',
@@ -13,17 +13,25 @@ export abstract class EmailAddressMother {
     `u${'a'.repeat(310)}@example.com`,
   ]
 
-  protected static validString(): string {
-    return UserEmail.fromString('test@example.com').toString()
+  static valid(): EmailAddress {
+    return EmailAddress.fromString('test@example.com')
   }
 
-  protected static randomValidString(): string {
-    const localPart = this.randomString()
+  static random(): EmailAddress {
+    return EmailAddress.fromString(this.randomString())
+  }
+
+  static randomString(): string {
+    const localPart = this.randomLocal()
     const domain = this.randomDomain()
-    return UserEmail.fromString(`${localPart}@${domain}`).toString()
+    return `${localPart}@${domain}`
   }
 
-  private static randomString(length: number = 8): string {
+  static invalid(): string {
+    return 'not-a-valid-email-address'
+  }
+
+  private static randomLocal(length: number = 8): string {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
     return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
   }
@@ -31,9 +39,5 @@ export abstract class EmailAddressMother {
   private static randomDomain(): string {
     const domains = ['example.com', 'mail.com', 'test.org', 'domain.net', 'my-site.io']
     return domains[Math.floor(Math.random() * domains.length)]
-  }
-
-  protected static invalidValue(): string {
-    return 'not-a-valid-email-address'
   }
 }
