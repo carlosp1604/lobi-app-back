@@ -39,6 +39,7 @@ import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Ent
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 describe('CreateUser', () => {
   const now = new Date('2026-02-17T12:00:00Z')
@@ -71,6 +72,7 @@ describe('CreateUser', () => {
 
   const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
   const idGenerator = new NodeIdGeneratorService()
+  const authDomainEventFactory = new AuthDomainEventFactory(idGenerator)
   const loggerService = new LoggerServiceMock()
   const verifyTokenService = new VerifyTokenService(passwordHasher)
 
@@ -139,6 +141,7 @@ describe('CreateUser', () => {
       new TypeOrmUnitOfWork(global.dataSource),
       loggerService,
       idGenerator,
+      authDomainEventFactory,
     )
   }
 

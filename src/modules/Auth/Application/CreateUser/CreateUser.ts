@@ -2,17 +2,13 @@ import { User } from '~/src/modules/User/Domain/User'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
-import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
-import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { SportsmanProfile } from '~/src/modules/User/Domain/Profile/SportsmanProfile'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
@@ -22,7 +18,6 @@ import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceI
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/ProfileRepositoryInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
@@ -34,6 +29,7 @@ import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/Use
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 type ValidatedCreateUserInput = {
   email: EmailAddress
@@ -58,6 +54,7 @@ export class CreateUser {
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
     private readonly idGeneratorService: IdGeneratorServiceInterface,
+    private readonly authDomainEventFactory: AuthDomainEventFactory,
   ) {}
 
   public async execute(request: CreateUserApplicationRequestDto): Promise<Result<void, CreateUserApplicationError>> {
@@ -140,7 +137,14 @@ export class CreateUser {
         ownerProfile = OwnerProfile.create(ownerProfileId, userId, now)
       }
 
-      const domainEvent = this.buildSuccessfulSignupDomainEvent(user, deviceLocation, userAgent, ipHash, now)
+      const domainEvent = this.authDomainEventFactory.createSuccessfulSignupDomainEvent(
+        user.id,
+        user.email,
+        deviceLocation,
+        userAgent,
+        ipHash,
+        now,
+      )
 
       verificationToken.markAsUsed(now, email, VerificationTokenPurpose.createAccount())
 
@@ -265,35 +269,5 @@ export class CreateUser {
       default:
         throw exception
     }
-  }
-
-  private buildSuccessfulSignupDomainEvent(
-    user: User,
-    deviceLocation: DeviceLocation | null,
-    userAgent: UserAgent,
-    ipHash: string | null,
-    now: Date,
-  ): DomainEvent {
-    return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
-      DomainEventName.successfulSignup(),
-      DomainEventAggregateType.user(),
-      user.id,
-      {
-        userId: user.id.value,
-        deviceLocation: deviceLocation
-          ? {
-              city: deviceLocation.city,
-              countryCode: deviceLocation.countryCode,
-            }
-          : null,
-        email: user.email.value,
-      },
-      {
-        ipHash: ipHash,
-        ua: userAgent.value,
-      },
-      now,
-    )
   }
 }

@@ -406,6 +406,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
       ) =>
         new CreateUser(
           userRepository,
@@ -420,6 +421,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
           unitOfWork,
           loggerFactory.createLogger(CreateUser.name),
           idGeneratorService,
+          authDomainEventFactory,
         ),
       inject: [
         USER_REPOSITORY,
@@ -434,6 +436,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
         UNIT_OF_WORK,
         LOGGER_FACTORY,
         ID_GENERATOR,
+        AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
     {

@@ -55,8 +55,8 @@ export class AuthDomainEventFactory {
   public createFailedAttemptEvent(
     userId: Identifier,
     deviceLocation: DeviceLocation | null,
-    ipHash: string | null,
     userAgent: UserAgent,
+    ipHash: string | null,
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
@@ -67,6 +67,29 @@ export class AuthDomainEventFactory {
       {
         userId: userId.value,
         deviceLocation: this.mapLocation(deviceLocation),
+      },
+      this.mapMetadata(ipHash, userAgent),
+      now,
+    )
+  }
+
+  public createSuccessfulSignupDomainEvent(
+    userId: Identifier,
+    userEmail: EmailAddress,
+    deviceLocation: DeviceLocation | null,
+    userAgent: UserAgent,
+    ipHash: string | null,
+    now: Date,
+  ): DomainEvent {
+    return DomainEvent.create(
+      Identifier.fromString(this.idGeneratorService.generateId()),
+      DomainEventName.successfulSignup(),
+      DomainEventAggregateType.user(),
+      userId,
+      {
+        userId: userId.value,
+        deviceLocation: this.mapLocation(deviceLocation),
+        email: userEmail.value,
       },
       this.mapMetadata(ipHash, userAgent),
       now,

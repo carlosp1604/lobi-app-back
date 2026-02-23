@@ -87,7 +87,7 @@ export class LoginUser {
       const passwordMatches = await this.hasherService.compare(userPassword.value, credentials.passwordHash.value)
 
       if (!passwordMatches) {
-        const domainEvent = this.authDomainEventFactory.createFailedAttemptEvent(user.id, deviceLocation, ipHash, userAgent, now)
+        const domainEvent = this.authDomainEventFactory.createFailedAttemptEvent(user.id, deviceLocation, userAgent, ipHash, now)
 
         await this.domainEventRepository.save(domainEvent, context)
 

@@ -179,6 +179,8 @@ describe('ResetUserPassword', () => {
       expect(mockedCredentialRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
+      expect(mockedLogger.warn).not.toHaveBeenCalled()
+      expect(mockedLogger.error).not.toHaveBeenCalled()
 
       expect(mockedRequestOriginService.process).toHaveBeenCalledWith(baseRequest.ip, baseRequest.userAgent, {
         email: validEmail.value,
@@ -228,11 +230,11 @@ describe('ResetUserPassword', () => {
         const invalidEmail = EmailAddressMother.invalid()
         const result = await useCase.execute({ ...baseRequest, email: invalidEmail })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidEmail()]),
         })
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return error when token format is invalid', async () => {
@@ -241,10 +243,11 @@ describe('ResetUserPassword', () => {
         const invalidTokenValue = VerificationTokenValueMother.invalid()
         const result = await useCase.execute({ ...baseRequest, token: invalidTokenValue })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidTokenFormat()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return error when password is invalid', async () => {
@@ -253,10 +256,11 @@ describe('ResetUserPassword', () => {
         const invalidPassword = UserPasswordMother.invalid()
         const result = await useCase.execute({ ...baseRequest, password: invalidPassword })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidPassword()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return multiple errors if multiple inputs are invalid', async () => {
@@ -268,13 +272,14 @@ describe('ResetUserPassword', () => {
           password: UserPasswordMother.invalid(),
         })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([
             ResetUserPasswordError.invalidEmail(),
             ResetUserPasswordError.invalidPassword(),
           ]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
     })
 
@@ -285,10 +290,11 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(validEmail.value)),
         })
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenExpired error when token is already expired', async () => {
@@ -298,7 +304,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()),
         })
@@ -311,6 +317,7 @@ describe('ResetUserPassword', () => {
           purpose: expiredVerificationToken.purpose.value,
           verificationTokenId: expiredVerificationToken.id.value,
         })
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenAlreadyUsed error when token is already used', async () => {
@@ -320,7 +327,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()),
         })
@@ -333,6 +340,7 @@ describe('ResetUserPassword', () => {
           purpose: usedVerificationToken.purpose.value,
           verificationTokenId: usedVerificationToken.id.value,
         })
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenInvalidOwner when token does not belong to user', async () => {
@@ -345,7 +353,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()),
         })
@@ -359,6 +367,7 @@ describe('ResetUserPassword', () => {
           purpose: verificationToken.purpose.value,
           verificationTokenId: verificationToken.id.value,
         })
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenPurposeMismatch when token cannot be used for the current operation', async () => {
@@ -373,7 +382,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()),
         })
@@ -386,6 +395,7 @@ describe('ResetUserPassword', () => {
           purpose: notResetPasswordToken.purpose.value,
           verificationTokenId: notResetPasswordToken.id.value,
         })
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return invalidToken error when cryptographic verification fails', async () => {
@@ -394,13 +404,14 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: validEmail.value,
         })
+        expect(mockedUserRepository.findByEmail).not.toHaveBeenCalled()
       })
 
       it('should throw exception when entity returns a unexpected VerificationTokenDomainException', async () => {
@@ -418,6 +429,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
 
         await expect(useCase.execute(baseRequest)).rejects.toThrow(unhandledDomainError)
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
     })
 
@@ -428,7 +440,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
         })
@@ -436,6 +448,7 @@ describe('ResetUserPassword', () => {
           email: validEmail.value,
           reason: 'User not found',
         })
+        expect(mockedCredentialRepository.findByUserId).not.toHaveBeenCalled()
       })
 
       it('should return userNotFound error when user is inactive', async () => {
@@ -445,7 +458,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
         })
@@ -453,6 +466,7 @@ describe('ResetUserPassword', () => {
           email: validEmail.value,
           reason: 'User is disabled',
         })
+        expect(mockedCredentialRepository.findByUserId).not.toHaveBeenCalled()
       })
 
       it('should return inconsistentState error when active user has no credentials', async () => {
@@ -461,7 +475,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.inconsistentState(validUserId.value),
         })
@@ -469,6 +483,7 @@ describe('ResetUserPassword', () => {
           userId: validUserId.value,
           reason: 'Active user has no credentials',
         })
+        expect(mockedHasherService.compare).not.toHaveBeenCalled()
       })
 
       it('should return cannotResetPassword error when new password is the same as the current one', async () => {
@@ -477,7 +492,7 @@ describe('ResetUserPassword', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.cannotResetPassword(),
         })
@@ -485,6 +500,7 @@ describe('ResetUserPassword', () => {
           reason: 'The new password is the same as the current one',
           userId: validUserId.value,
         })
+        expect(mockedDomainEventFactory.createPasswordResetEvent).not.toHaveBeenCalled()
       })
     })
 
@@ -498,7 +514,7 @@ describe('ResetUserPassword', () => {
 
         const useCase = buildUseCase()
         await expect(useCase.execute(baseRequest)).rejects.toThrow(requestOriginError)
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedHasherService.compare).not.toHaveBeenCalled()
       })
 
       it('should throw error when HasherService fails on hashing', async () => {
@@ -521,6 +537,7 @@ describe('ResetUserPassword', () => {
 
         const useCase = buildUseCase()
         await expect(useCase.execute(baseRequest)).rejects.toThrow(dbError)
+        expect(mockedVerificationTokenRepository.update).not.toHaveBeenCalled()
       })
     })
   })
