@@ -155,7 +155,8 @@ describe('RefreshToken', () => {
     )
     expect(mockedSessionRepository.findUserActiveSessions).toHaveBeenCalledWith(userId.value, now, fakeContext)
     expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh).toHaveBeenCalledWith(
-      currentSession,
+      currentSession.id,
+      userId,
       activeSessions,
       now,
     )

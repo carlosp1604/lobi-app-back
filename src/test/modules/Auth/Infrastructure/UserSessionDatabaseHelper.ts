@@ -14,6 +14,12 @@ export class UserSessionDatabaseHelper {
     })
   }
 
+  public async findAll() {
+    const userSessionRepository = this.entityManager.getRepository(UserSessionEntity)
+
+    return userSessionRepository.find()
+  }
+
   public async findById(sessionId: string) {
     const userSessionRepository = this.entityManager.getRepository(UserSessionEntity)
 
@@ -36,6 +42,18 @@ export class UserSessionDatabaseHelper {
     const userSessionRepository = this.entityManager.getRepository(UserSessionEntity)
 
     await userSessionRepository.update({ id }, dataToUpdate)
+  }
+
+  public async count(): Promise<number> {
+    const userSessionRepository = this.entityManager.getRepository(UserSessionEntity)
+
+    return userSessionRepository.count()
+  }
+
+  public async remove(session: UserSessionRawWithRelationships): Promise<void> {
+    const userSessionRepository = this.entityManager.getRepository(UserSessionEntity)
+
+    await userSessionRepository.remove(session)
   }
 
   public static findSessionByIdInArray(sessions: Array<UserSessionRawWithRelationships>, sessionId: string) {

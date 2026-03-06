@@ -10,9 +10,12 @@ import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessio
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 
 describe('UserSession', () => {
-  describe('create', () => {
-    const now = new Date('2025-01-02T03:04:05.000Z')
+  const now = new Date('2025-01-02T03:04:05.000Z')
+  const futureExpiresAt = new Date(now.getTime() + 3600)
+  const pastExpiredAt = new Date(now.getTime() - 3600)
+  const revokedAt = new Date(now.getTime() - 1000)
 
+  describe('create', () => {
     const expiresTtlMs = 10000
     const futureExpiresAt = new Date(now.getTime() + expiresTtlMs)
 
@@ -49,41 +52,72 @@ describe('UserSession', () => {
 
   describe('revoke', () => {
     let userSessionTestBuilder: UserSessionTestBuilder
-    const now = new Date('2025-10-20T17:30:00Z')
-    const expiresAt = new Date(now.getTime() + 3600)
-    const alreadyExpiredAt = new Date(now.getTime() - 3600)
-    const alreadyRevokedAt = new Date(now.getTime() - 1000)
 
     beforeEach(() => {
       userSessionTestBuilder = new UserSessionTestBuilder()
-        .withId(IdentifierMother.valid())
-        .withUserId(IdentifierMother.valid())
-        .withTokenHash(UserSessionTokenHashMother.valid())
-        .withUserAgent(UserAgentMother.valid())
-        .withIpHash(null)
-        .withDeviceLocation(null)
         .withCreatedAt(now)
         .withUpdatedAt(now)
+        .withRevokedAt(null)
+        .withExpiresAt(futureExpiresAt)
     })
 
-    it('should correctly set the revokedAt date on an active session', () => {
-      const session = userSessionTestBuilder.withExpiresAt(expiresAt).withRevokedAt(null).build()
+    it('should revoke session correctly', () => {
+      const session = userSessionTestBuilder.build()
 
       session.revoke(now)
 
       expect(session.revokedAt).toBe(now)
+      expect(session.updatedAt).toBe(now)
     })
 
-    it('should throw UserSessionDomainException if the session is already revoked', () => {
-      const session = userSessionTestBuilder.withExpiresAt(expiresAt).withRevokedAt(alreadyRevokedAt).build()
+    it('should throw UserSessionDomainException when the session is already revoked', () => {
+      const revokedSession = userSessionTestBuilder.withRevokedAt(revokedAt).build()
 
-      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyRevoked(session.id.value))
+      expect(() => revokedSession.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyRevoked(revokedSession.id.value))
     })
 
-    it('should throw UserSessionDomainException if the session is already expired', () => {
-      const session = userSessionTestBuilder.withExpiresAt(alreadyExpiredAt).withRevokedAt(null).build()
+    it('should throw UserSessionDomainException when the session is already expired', () => {
+      const expiredSession = userSessionTestBuilder.withExpiresAt(pastExpiredAt).build()
 
-      expect(() => session.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyExpired(session.id.value))
+      expect(() => expiredSession.revoke(now)).toThrow(UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value))
+    })
+  })
+
+  describe('canBeRevoked', () => {
+    let userSessionTestBuilder: UserSessionTestBuilder
+
+    beforeEach(() => {
+      userSessionTestBuilder = new UserSessionTestBuilder()
+        .withCreatedAt(now)
+        .withUpdatedAt(now)
+        .withRevokedAt(null)
+        .withExpiresAt(futureExpiresAt)
+    })
+
+    it('should return success when session can be revoked', () => {
+      const session = userSessionTestBuilder.build()
+
+      const result = session.canBeRevoked(now)
+
+      expect(result.success).toBe(true)
+      expect(result['value']).toBeUndefined()
+    })
+
+    it('should return UserSessionDomainException error when session is already revoked', () => {
+      const revokedSession = userSessionTestBuilder.withRevokedAt(revokedAt).build()
+
+      const result = revokedSession.canBeRevoked(now)
+
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(UserSessionDomainException.sessionAlreadyRevoked(revokedSession.id.value))
+    })
+
+    it('should return UserSessionDomainException error when session is already expired', () => {
+      const expiredSession = userSessionTestBuilder.withExpiresAt(pastExpiredAt).build()
+
+      const result = expiredSession.canBeRevoked(now)
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value))
     })
   })
 
@@ -148,11 +182,8 @@ describe('UserSession', () => {
   })
 
   describe('isRevoked', () => {
-    const now = new Date('2025-10-20T22:00:00Z')
-
     it('should return true when revokedAt is not null', () => {
-      const revokedDate = new Date(now.getTime() - 1000)
-      const session = new UserSessionTestBuilder().withRevokedAt(revokedDate).build()
+      const session = new UserSessionTestBuilder().withRevokedAt(revokedAt).build()
 
       expect(session.isRevoked()).toBe(true)
     })
@@ -165,11 +196,8 @@ describe('UserSession', () => {
   })
 
   describe('isExpired', () => {
-    const now = new Date('2025-10-20T22:00:00Z')
-
     it('should return true when expiresAt is in the past', () => {
-      const pastDate = new Date(now.getTime() - 1000)
-      const session = new UserSessionTestBuilder().withExpiresAt(pastDate).build()
+      const session = new UserSessionTestBuilder().withExpiresAt(pastExpiredAt).build()
 
       expect(session.isExpired(now)).toBe(true)
     })
@@ -181,8 +209,7 @@ describe('UserSession', () => {
     })
 
     it('should return false when expiresAt is in the future', () => {
-      const futureDate = new Date(now.getTime() + 1000)
-      const session = new UserSessionTestBuilder().withExpiresAt(futureDate).build()
+      const session = new UserSessionTestBuilder().withExpiresAt(futureExpiresAt).build()
 
       expect(session.isExpired(now)).toBe(false)
     })

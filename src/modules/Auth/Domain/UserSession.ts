@@ -4,6 +4,7 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
 
 export class UserSession {
   public readonly id: Identifier
@@ -57,13 +58,23 @@ export class UserSession {
     return new UserSession(id, userId, tokenHash, expiresAt, null, ipHash, userAgent, deviceLocation, now, now)
   }
 
-  public revoke(now: Date): void {
-    if (this.revokedAt !== null) {
-      throw UserSessionDomainException.sessionAlreadyRevoked(this.id.toString())
+  public canBeRevoked(now: Date): Result<void, UserSessionDomainException> {
+    if (this.isRevoked()) {
+      return fail(UserSessionDomainException.sessionAlreadyRevoked(this.id.value))
     }
 
-    if (this.expiresAt.getTime() <= now.getTime()) {
-      throw UserSessionDomainException.sessionAlreadyExpired(this.id.toString())
+    if (this.isExpired(now)) {
+      return fail(UserSessionDomainException.sessionAlreadyExpired(this.id.value))
+    }
+
+    return success(undefined)
+  }
+
+  public revoke(now: Date): void {
+    const canBeRevokedResult = this.canBeRevoked(now)
+
+    if (!canBeRevokedResult.success) {
+      throw canBeRevokedResult.error
     }
 
     this.revokedAt = now

@@ -1,8 +1,8 @@
-import { QueryRunner, Repository } from 'typeorm'
+import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { mock, mockReset } from 'jest-mock-extended'
-import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
@@ -10,24 +10,54 @@ import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
-import { UserSessionEntity, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
+import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 
 describe('PostgreSqlUserSessionRepository', () => {
-  let runner: QueryRunner
+  const now = new Date('2025-10-20T10:40:00Z')
+  const futureExpiresAt = new Date(now.getTime() + 3600)
+  const expiredDate = new Date(futureExpiresAt.getTime() - 3600)
+  const userId = IdentifierMother.valid()
+  const userEmail = EmailAddressMother.valid()
+  const sessionTokenHash = UserSessionTokenHashMother.valid()
+  const userAgent = UserAgentMother.valid()
 
-  withTransaction((queryRunner) => {
-    runner = queryRunner
-  })
-
-  const mockedResolver = mock<TypeOrmManagerResolver>()
+  let baseRawUserSession: UserSessionRawWithRelationships
+  let rawUser: UserRawModelWithRelations
+  let userSessionTestBuilder: UserSessionTestBuilder
 
   beforeEach(() => {
-    mockReset(mockedResolver)
+    baseRawUserSession = makeRawSession({
+      user_id: userId.value,
+      token_hash: sessionTokenHash.value,
+      expires_at: futureExpiresAt,
+      revoked_at: null,
+      created_at: now,
+      updated_at: now,
+      user_agent: userAgent.value,
+      device_city: null,
+      device_country_code: null,
+      ip_hash: null,
+    })
 
-    mockedResolver.resolve.mockReturnValueOnce(runner.manager)
+    rawUser = makeRawUser({
+      id: userId.value,
+      email: userEmail.value,
+    })
+
+    userSessionTestBuilder = new UserSessionTestBuilder()
+      .withUserAgent(userAgent)
+      .withCreatedAt(now)
+      .withUpdatedAt(now)
+      .withIpHash(null)
+      .withRevokedAt(null)
+      .withExpiresAt(futureExpiresAt)
+      .withDeviceLocation(null)
+      .withUserId(userId)
   })
 
   const checkSession = (userSession: UserSession, rawUserSession: UserSessionRawWithRelationships) => {
@@ -59,25 +89,29 @@ describe('PostgreSqlUserSessionRepository', () => {
   }
 
   describe('findUserActiveSessions', () => {
-    const now = new Date('2025-10-20T10:40:00Z')
-    const expiresAt = new Date(now.getTime() + 3600)
-    const expiredDate = new Date(expiresAt.getTime() - 3600)
-    const userId = IdentifierMother.valid()
-
-    let repository: PostgreSqlUserSessionRepository
+    let runner: QueryRunner
     let context: TypeOrmTxContext
-    let userSessionRepository: Repository<UserSessionRawWithRelationships>
+    let repository: PostgreSqlUserSessionRepository
+
+    let userDatabaseHelper: UserDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
+
+    const mockedResolver = mock<TypeOrmManagerResolver>()
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
 
     const rawActiveSession1 = makeRawSession({
       user_id: userId.value,
       revoked_at: null,
-      expires_at: expiresAt,
+      expires_at: futureExpiresAt,
     })
 
     const rawActiveSession2 = makeRawSession({
       user_id: userId.value,
       revoked_at: null,
-      expires_at: expiresAt,
+      expires_at: futureExpiresAt,
     })
 
     const rawExpiredSession = makeRawSession({
@@ -89,21 +123,21 @@ describe('PostgreSqlUserSessionRepository', () => {
     const rawRevokedSession = makeRawSession({
       user_id: userId.value,
       revoked_at: now,
-      expires_at: expiresAt,
+      expires_at: futureExpiresAt,
     })
 
     beforeEach(async () => {
-      const userRepository = runner.manager.getRepository(UserEntity)
+      mockReset(mockedResolver)
 
-      const rawUser = makeRawUser({
-        id: userId.value,
-      })
+      userDatabaseHelper = new UserDatabaseHelper(runner.manager)
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
 
-      await userRepository.save(rawUser)
+      mockedResolver.resolve.mockReturnValueOnce(runner.manager)
 
-      repository = new PostgreSqlUserSessionRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
+      await userDatabaseHelper.save(rawUser)
+
+      repository = new PostgreSqlUserSessionRepository(mockedResolver)
       context = new TypeOrmTxContext(runner.manager)
-      userSessionRepository = runner.manager.getRepository(UserSessionEntity)
     })
 
     it('should return an empty array when user does not have any active session', async () => {
@@ -113,7 +147,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     })
 
     it('should return only active sessions (not revoked and not expired)', async () => {
-      await userSessionRepository.save([rawActiveSession1, rawExpiredSession, rawRevokedSession])
+      await userSessionDatabaseHelper.save([rawActiveSession1, rawExpiredSession, rawRevokedSession])
 
       const result = await repository.findUserActiveSessions(userId.value, now, context)
 
@@ -129,10 +163,10 @@ describe('PostgreSqlUserSessionRepository', () => {
       const anotherUserActiveSession = makeRawSession({
         user_id: anotherUserId.value,
         revoked_at: null,
-        expires_at: expiresAt,
+        expires_at: futureExpiresAt,
       })
 
-      await userSessionRepository.save(anotherUserActiveSession)
+      await userSessionDatabaseHelper.save(anotherUserActiveSession)
 
       const result = await repository.findUserActiveSessions(userId.value, now, context)
 
@@ -140,7 +174,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     })
 
     it('should return multiple active sessions', async () => {
-      await userSessionRepository.save([rawActiveSession1, rawActiveSession2, rawExpiredSession, rawRevokedSession])
+      await userSessionDatabaseHelper.save([rawActiveSession1, rawActiveSession2, rawExpiredSession, rawRevokedSession])
 
       const result = await repository.findUserActiveSessions(userId.value, now, context)
 
@@ -151,45 +185,42 @@ describe('PostgreSqlUserSessionRepository', () => {
   })
 
   describe('save', () => {
-    const now = new Date('2025-10-17T15:26:21Z')
-    const expiresAt = new Date(now.getTime() + 3600)
-    const userId = IdentifierMother.valid()
-    const userEmail = EmailAddressMother.valid()
+    let runner: QueryRunner
+    let context: TypeOrmTxContext
+    let repository: PostgreSqlUserSessionRepository
 
-    let userSessionTestBuilder = new UserSessionTestBuilder()
+    let userDatabaseHelper: UserDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
+
+    const mockedResolver = mock<TypeOrmManagerResolver>()
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
 
     beforeEach(async () => {
-      const userRepository = runner.manager.getRepository(UserEntity)
+      mockReset(mockedResolver)
 
-      const rawUser = makeRawUser({
-        id: userId.value,
-        email: userEmail.value,
-      })
-      await userRepository.save(rawUser)
+      mockedResolver.resolve.mockReturnValueOnce(runner.manager)
 
-      userSessionTestBuilder = new UserSessionTestBuilder()
-        .withUserAgent(UserAgentMother.random())
-        .withCreatedAt(now)
-        .withUpdatedAt(now)
-        .withIpHash(null)
-        .withRevokedAt(null)
-        .withExpiresAt(expiresAt)
-        .withDeviceLocation(null)
-        .withUserId(userId)
+      userDatabaseHelper = new UserDatabaseHelper(runner.manager)
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
+
+      await userDatabaseHelper.save(rawUser)
+
+      repository = new PostgreSqlUserSessionRepository(mockedResolver)
+      context = new TypeOrmTxContext(runner.manager)
     })
 
     const countSessions = async () => {
-      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
-
-      return await userSessionRepository.count()
+      return await userSessionDatabaseHelper.count()
     }
 
     const getSessions = async () => {
-      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
-      return await userSessionRepository.find()
+      return await userSessionDatabaseHelper.findAll()
     }
 
-    it('should insert new  user sessions correctly', async () => {
+    it('should insert new user sessions correctly', async () => {
       const userSession1 = userSessionTestBuilder
         .withId(IdentifierMother.valid())
         .withTokenHash(UserSessionTokenHashMother.random())
@@ -198,10 +229,6 @@ describe('PostgreSqlUserSessionRepository', () => {
         .withId(IdentifierMother.valid())
         .withTokenHash(UserSessionTokenHashMother.random())
         .build()
-
-      const repository = new PostgreSqlUserSessionRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
-
-      const context = new TypeOrmTxContext(runner.manager)
 
       const sessionsNumberBefore = await countSessions()
       const sessionsBefore = await getSessions()
@@ -219,8 +246,8 @@ describe('PostgreSqlUserSessionRepository', () => {
       const savedSession1 = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === userSession1.id.value)
       const savedSession2 = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === userSession2.id.value)
 
-      expect(savedSession1).toBeTruthy()
-      expect(savedSession2).toBeTruthy()
+      expect(savedSession1).not.toBeNull()
+      expect(savedSession2).not.toBeNull()
       checkSession(userSession1, savedSession1!)
       checkSession(userSession2, savedSession2!)
     })
@@ -235,7 +262,7 @@ describe('PostgreSqlUserSessionRepository', () => {
         user_id: userId.value,
         revoked_at: null,
         ip_hash: null,
-        expires_at: expiresAt,
+        expires_at: futureExpiresAt,
         created_at: now,
         updated_at: now,
         device_city: null,
@@ -243,8 +270,7 @@ describe('PostgreSqlUserSessionRepository', () => {
         token_hash: userSessionHash.value,
       })
 
-      const userSessionRepository = runner.manager.getRepository(UserSessionEntity)
-      await userSessionRepository.save(rawSession)
+      await userSessionDatabaseHelper.save(rawSession)
 
       const newSession = userSessionTestBuilder
         .withId(IdentifierMother.valid())
@@ -279,10 +305,54 @@ describe('PostgreSqlUserSessionRepository', () => {
       const savedSession = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === newSession.id.value)
       const existingSession = sessionsAfter.find((userSessionRaw) => userSessionRaw.id === updatedSession.id.value)
 
-      expect(savedSession).toBeTruthy()
-      expect(existingSession).toBeTruthy()
+      expect(savedSession).not.toBeNull()
+      expect(existingSession).not.toBeNull()
       checkSession(newSession, savedSession!)
       checkSession(updatedSession, existingSession!)
+    })
+  })
+
+  describe('findByHash', () => {
+    let runner: QueryRunner
+    let context: TypeOrmTxContext
+    let repository: PostgreSqlUserSessionRepository
+
+    let userDatabaseHelper: UserDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
+
+    const mockedResolver = mock<TypeOrmManagerResolver>()
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    beforeEach(async () => {
+      mockReset(mockedResolver)
+
+      mockedResolver.resolve.mockReturnValueOnce(runner.manager)
+
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
+      userDatabaseHelper = new UserDatabaseHelper(runner.manager)
+
+      await userDatabaseHelper.save(rawUser)
+
+      repository = new PostgreSqlUserSessionRepository(mockedResolver)
+      context = new TypeOrmTxContext(runner.manager)
+    })
+
+    it('should find user and translate to domain correctly', async () => {
+      await userSessionDatabaseHelper.save(baseRawUserSession)
+
+      const result = await repository.findByHash(sessionTokenHash.value, context)
+
+      expect(result).not.toBeNull()
+      checkSession(result!, baseRawUserSession)
+    })
+
+    it('should return null when user does not exist', async () => {
+      const result = await repository.findByHash(sessionTokenHash.value, context)
+
+      expect(result).toBeNull()
     })
   })
 })

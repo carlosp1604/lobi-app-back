@@ -162,7 +162,7 @@ export class RefreshSession {
   ): Promise<Result<void, RefreshSessionApplicationError>> {
     const activeSessions = await this.sessionRepository.findUserActiveSessions(userId.value, now, context)
 
-    const serviceResult = this.userSessionManagerService.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)
+    const serviceResult = this.userSessionManagerService.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessions, now)
 
     if (!serviceResult.success) {
       if (serviceResult.error.id === UserSessionPolicyManagerApplicationError.sessionsInconsistencyId) {

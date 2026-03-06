@@ -14,26 +14,24 @@ import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 
 describe('PostgresqlUserRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
-  const mockedUserRepository = mock<Repository<typeof UserEntity>>()
+  const mockedUserRepository = mock<Repository<UserRawModelWithRelations>>()
   const mockedEntityManager = mock<EntityManager>({})
   const now = new Date('2025-09-26T14:11:25Z')
 
   let baseRawUser: UserRawModelWithRelations
 
   beforeEach(() => {
+    jest.restoreAllMocks()
+
+    mockReset(mockedResolver)
+    mockReset(mockedUserRepository)
+    mockReset(mockedEntityManager)
+
     baseRawUser = makeRawUser({
       email_verified_at: now,
       created_at: now,
       updated_at: now,
     })
-  })
-
-  afterEach(() => {
-    mockReset(mockedResolver)
-    mockReset(mockedUserRepository)
-    mockReset(mockedEntityManager)
-
-    jest.restoreAllMocks()
   })
 
   const checkExistsByCalls = (context: TxContext, existBy: { [k: string]: string }) => {
@@ -55,8 +53,6 @@ describe('PostgresqlUserRepository', () => {
     const mockedQueryBuilder = mock<SelectQueryBuilder<UserRawModelWithRelations>>()
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
       mockReset(mockedQueryBuilder)
 
       mockedResolver.resolve.mockReturnValue(mockedEntityManager)
@@ -277,15 +273,9 @@ describe('PostgresqlUserRepository', () => {
     const context: TxContext = { __opaque_tx_context: true }
     let rawUser: UserRawModelWithRelations
 
-    const mockedUserRepository = mock<Repository<UserRawModelWithRelations>>()
-
     const expectedUser = new UserTestBuilder().withEmail(userEmail).build()
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
-      mockReset(mockedUserRepository)
-
       rawUser = {
         ...baseRawUser,
         email: userEmail.value,
@@ -394,8 +384,6 @@ describe('PostgresqlUserRepository', () => {
     const context: TxContext = { __opaque_tx_context: true }
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
       mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserRepository)
     })
 
@@ -450,8 +438,6 @@ describe('PostgresqlUserRepository', () => {
     const context: TxContext = { __opaque_tx_context: true }
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
       mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserRepository)
     })
 

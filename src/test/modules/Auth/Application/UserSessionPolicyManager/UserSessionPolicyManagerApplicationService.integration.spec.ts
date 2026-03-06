@@ -74,7 +74,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
       const currentSession = buildUserSession(now)
 
-      const result = service.applyPolicyAndRevokeForRefresh(currentSession, [currentSession], now)
+      const result = service.applyPolicyAndRevokeForRefresh(currentSession.id, userId, [currentSession], now)
 
       expect(result.success).toBe(true)
 
@@ -96,7 +96,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
       const activeSessions = [oldestSession, session2, session3, currentSession]
 
-      const result = service.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)
+      const result = service.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessions, now)
 
       expect(result.success).toBe(true)
 

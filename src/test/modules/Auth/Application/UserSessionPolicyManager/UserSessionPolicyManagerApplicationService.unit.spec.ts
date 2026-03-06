@@ -7,11 +7,13 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('UserSessionPolicyManagerApplicationService', () => {
   const now = new Date('2025-10-21T12:00:00Z')
   const futureDate = new Date(now.getTime() + 3600000)
   const pastDate = new Date(now.getTime() - 3600000)
+  const userId = IdentifierMother.valid()
 
   const mockedMaxSessionRepository = mock<MaxSessionsPolicy>()
   const mockedLoggerService = mock<LoggerServiceInterface>()
@@ -22,17 +24,6 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
   const buildService = () => {
     return new UserSessionPolicyManagerApplicationService(mockedMaxSessionRepository, mockedLoggerService)
-  }
-
-  const assertLoggerErrorCall = (message: string, userSession: UserSession, error: unknown, stack?: unknown) => {
-    expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
-    expect(mockedLoggerService.error).toHaveBeenCalledWith(message, stack, {
-      sessionId: userSession.id.value,
-      userId: userSession.userId.value,
-      revokedAt: userSession.revokedAt,
-      expiresAt: userSession.expiresAt,
-      error,
-    })
   }
 
   const assertLoggerWarnCall = (message: string, userSession: UserSession, error: string) => {
@@ -46,14 +37,12 @@ describe('UserSessionPolicyManagerApplicationService', () => {
   }
 
   beforeEach(() => {
-    jest.restoreAllMocks()
-
     mockReset(mockedLoggerService)
     mockReset(mockedMaxSessionRepository)
 
-    activeSession1 = new UserSessionTestBuilder().withExpiresAt(futureDate).build()
-    activeSession2 = new UserSessionTestBuilder().withExpiresAt(futureDate).build()
-    currentSession = new UserSessionTestBuilder().withExpiresAt(futureDate).build()
+    activeSession1 = new UserSessionTestBuilder().withUserId(userId).withExpiresAt(futureDate).build()
+    activeSession2 = new UserSessionTestBuilder().withUserId(userId).withExpiresAt(futureDate).build()
+    currentSession = new UserSessionTestBuilder().withUserId(userId).withExpiresAt(futureDate).build()
   })
 
   describe('handleLogin', () => {
@@ -87,28 +76,6 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
       assertLoggerWarnCall('Session revocation failed', expiredSession, expectedDomainException.message)
     })
-
-    it('should log and throw error when revocation fails with a non-domain exception', () => {
-      const activeSessions = [activeSession1]
-
-      mockedMaxSessionRepository.sessionsToRevoke.mockReturnValue([activeSession1])
-
-      const unexpectedError = new Error('Unexpected error')
-
-      jest.spyOn(activeSession1, 'revoke').mockImplementation(() => {
-        throw unexpectedError
-      })
-
-      const service = buildService()
-
-      expect(() => service.applyPolicyAndRevokeForLogin(activeSessions, now)).toThrow(
-        `Unexpected error while revoking session ${activeSession1.id.value}`,
-      )
-
-      expect(activeSession1.revokedAt).toBeNull()
-
-      assertLoggerErrorCall('Unexpected error while revoking session', activeSession1, unexpectedError.message, expect.any(String))
-    })
   })
 
   describe('handleRefreshSession', () => {
@@ -117,7 +84,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       mockedMaxSessionRepository.sessionsToRevoke.mockReturnValue([activeSession2])
 
       const service = buildService()
-      const result = service.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)
+      const result = service.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessions, now)
 
       expect(result.success).toBe(true)
       expect(currentSession.revokedAt).toEqual(now)
@@ -129,7 +96,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       const activeSessionsWithoutCurrent = [activeSession1]
       const service = buildService()
 
-      const result = service.applyPolicyAndRevokeForRefresh(currentSession, activeSessionsWithoutCurrent, now)
+      const result = service.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessionsWithoutCurrent, now)
 
       expect(result.success).toBe(false)
       expect(result['error']).toEqual(
@@ -149,7 +116,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value)
 
       const service = buildService()
-      const result = service.applyPolicyAndRevokeForRefresh(expiredSession, [expiredSession], now)
+      const result = service.applyPolicyAndRevokeForRefresh(expiredSession.id, userId, [expiredSession], now)
 
       expect(result.success).toBe(false)
       assertLoggerWarnCall('Session revocation failed', expiredSession, expectedDomainException.message)
@@ -162,32 +129,10 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value)
 
       const service = buildService()
-      const result = service.applyPolicyAndRevokeForRefresh(activeSession1, [activeSession1, expiredSession], now)
+      const result = service.applyPolicyAndRevokeForRefresh(activeSession1.id, userId, [activeSession1, expiredSession], now)
 
       expect(result.success).toBe(false)
       assertLoggerWarnCall('Session revocation failed', expiredSession, expectedDomainException.message)
-    })
-
-    it('should log and throw error when revocation fails with a non-domain exception', () => {
-      const activeSessions = [activeSession1]
-
-      mockedMaxSessionRepository.sessionsToRevoke.mockReturnValue([activeSession1])
-
-      const unexpectedError = new Error('Unexpected error')
-
-      jest.spyOn(activeSession1, 'revoke').mockImplementation(() => {
-        throw unexpectedError
-      })
-
-      const service = buildService()
-
-      expect(() => service.applyPolicyAndRevokeForRefresh(activeSession1, activeSessions, now)).toThrow(
-        `Unexpected error while revoking session ${activeSession1.id.value}`,
-      )
-
-      expect(activeSession1.revokedAt).toBeNull()
-
-      assertLoggerErrorCall('Unexpected error while revoking session', activeSession1, unexpectedError.message, expect.any(String))
     })
   })
 })
