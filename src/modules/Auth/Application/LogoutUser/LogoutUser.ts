@@ -47,6 +47,7 @@ export class LogoutUser {
           sessionId: request.sessionId,
           reason: 'Valid JWT references a non-existent session',
         })
+
         return fail(LogoutUserApplicationError.sessionNotFound(sessionId.value))
       }
 
@@ -57,6 +58,7 @@ export class LogoutUser {
           sessionId: request.sessionId,
           reason: 'Session owner mismatch during logout',
         })
+
         return fail(LogoutUserApplicationError.sessionDoesNotBelongToUser(sessionId.value, userId.value))
       }
 
