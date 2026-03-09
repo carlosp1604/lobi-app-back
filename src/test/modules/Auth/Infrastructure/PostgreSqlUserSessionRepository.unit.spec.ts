@@ -14,15 +14,15 @@ import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenH
 
 describe('PostgreSqlUserSessionRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
-  const mockedUserSessionRepository = mock<Repository<UserSessionRawWithRelationships>>()
   const mockedEntityManager = mock<EntityManager>()
+  const mockedUserSessionRepository = mock<Repository<UserSessionRawWithRelationships>>()
 
   beforeEach(() => {
-    mockReset(mockedResolver)
-    mockReset(mockedUserSessionRepository)
-    mockReset(mockedEntityManager)
-
     jest.restoreAllMocks()
+
+    mockReset(mockedResolver)
+    mockReset(mockedEntityManager)
+    mockReset(mockedUserSessionRepository)
   })
 
   describe('findUserActiveSessions', () => {
@@ -208,7 +208,6 @@ describe('PostgreSqlUserSessionRepository', () => {
 
   describe('findByHash', () => {
     const context: TxContext = { __opaque_tx_context: true }
-    const mockedUserSessionRepository = mock<Repository<UserSessionRawWithRelationships>>()
 
     const tokenHashValue = UserSessionTokenHashMother.valid()
 
@@ -216,8 +215,6 @@ describe('PostgreSqlUserSessionRepository', () => {
     let rawSession: UserSessionRawWithRelationships
 
     beforeEach(() => {
-      mockReset(mockedUserSessionRepository)
-
       rawSession = makeRawSession({
         token_hash: tokenHashValue.value,
       })
@@ -299,6 +296,104 @@ describe('PostgreSqlUserSessionRepository', () => {
         await expect(repository.findByHash(tokenHashValue.value, context)).rejects.toThrow(
           Error('Something went wrong while translating entity to domain'),
         )
+      })
+    })
+  })
+
+  describe('findById', () => {
+    const context: TxContext = { __opaque_tx_context: true }
+
+    const sessionId = IdentifierMother.valid()
+
+    const expectedSession = new UserSessionTestBuilder().withId(sessionId).build()
+    let rawSession: UserSessionRawWithRelationships
+
+    beforeEach(() => {
+      rawSession = makeRawSession({
+        id: sessionId.value,
+      })
+
+      mockedResolver.resolve.mockReturnValue(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValue(mockedUserSessionRepository)
+      mockedUserSessionRepository.findOneBy.mockResolvedValue(rawSession)
+    })
+
+    describe('happy path', () => {
+      const checkCommonCalls = () => {
+        expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+        expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
+        expect(mockedUserSessionRepository.findOneBy).toHaveBeenCalledTimes(1)
+
+        expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
+        expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(UserSessionEntity)
+        expect(mockedUserSessionRepository.findOneBy).toHaveBeenCalledWith({ id: sessionId.value })
+      }
+
+      it('should call services correctly and return the correct data when session is found', async () => {
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        const userSessionModelTranslatorSpy = jest.spyOn(UserSessionModelTranslator, 'toDomain').mockReturnValue(expectedSession)
+
+        const result = await repository.findById(sessionId, context)
+
+        checkCommonCalls()
+
+        expect(userSessionModelTranslatorSpy).toHaveBeenCalledTimes(1)
+        expect(userSessionModelTranslatorSpy).toHaveBeenCalledWith(rawSession)
+        expect(result).toBe(expectedSession)
+      })
+
+      it('should call services correctly and return null when session is not found', async () => {
+        mockedUserSessionRepository.findOneBy.mockResolvedValue(null)
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        const userSessionModelTranslatorSpy = jest.spyOn(UserSessionModelTranslator, 'toDomain').mockReturnValue(expectedSession)
+
+        const result = await repository.findById(sessionId, context)
+
+        checkCommonCalls()
+
+        expect(userSessionModelTranslatorSpy).not.toHaveBeenCalled()
+        expect(result).toBeNull()
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw error when resolver fails', async () => {
+        const resolverError = new Error('Something went wrong')
+
+        mockedResolver.resolve.mockImplementation(() => {
+          throw resolverError
+        })
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        await expect(repository.findById(sessionId, context)).rejects.toThrow(resolverError)
+      })
+
+      it('should throw error when ORM/Database fails', async () => {
+        const databaseError = new Error('Something went wrong')
+
+        mockedUserSessionRepository.findOneBy.mockImplementation(() => {
+          throw databaseError
+        })
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        await expect(repository.findById(sessionId, context)).rejects.toThrow(databaseError)
+      })
+
+      it('should throw error when translator fails', async () => {
+        const translatorError = new Error('Something went wrong while translating entity to domain')
+
+        jest.spyOn(UserSessionModelTranslator, 'toDomain').mockImplementation(() => {
+          throw translatorError
+        })
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        await expect(repository.findById(sessionId, context)).rejects.toThrow(translatorError)
       })
     })
   })

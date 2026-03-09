@@ -2,14 +2,14 @@ export class LoginUserApplicationError extends Error {
   public readonly id: string
   public readonly name: string
 
-  public static userNotFoundId = 'user_login_user_not_found'
-  public static invalidCredentialsId = 'user_login_invalid_credentials'
-  public static userDoesNotHaveCredentialsId = 'user_login_user_does_not_have_credentials'
-  public static invalidUserEmailId = 'user_login_invalid_user_email'
-  public static invalidPasswordFormatId = 'user_login_invalid_password_format'
-  public static cannotRevokeSessionsId = 'user_login_cannot_revoke_session'
-  public static revocationFailedId = 'user_login_revocation_failed'
-  public static internalErrorId = 'user_login_internal_error'
+  public static userNotFoundId = 'login_user_user_not_found'
+  public static invalidCredentialsId = 'login_user_invalid_credentials'
+  public static userDoesNotHaveCredentialsId = 'login_user_user_does_not_have_credentials'
+  public static invalidUserEmailId = 'login_user_invalid_user_email'
+  public static invalidPasswordFormatId = 'login_user_invalid_password_format'
+  public static cannotRevokeSessionsId = 'login_user_cannot_revoke_session'
+  public static revocationFailedId = 'login_user_revocation_failed'
+  public static internalErrorId = 'login_user_internal_error'
 
   private constructor(message: string, id: string) {
     super(message)
