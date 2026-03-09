@@ -1,6 +1,6 @@
 import { User } from '~/src/modules/User/Domain/User'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 
 export interface UserRepositoryInterface {
@@ -34,7 +34,7 @@ export interface UserRepositoryInterface {
    * @param context The transactional context
    * @returns True if the user exists, false otherwise
    */
-  checkEmailExists(email: UserEmail, context?: TxContext): Promise<boolean>
+  checkEmailExists(email: EmailAddress, context?: TxContext): Promise<boolean>
 
   /**
    * Checks if a user exists by username

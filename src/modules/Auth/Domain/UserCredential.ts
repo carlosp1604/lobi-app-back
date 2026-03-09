@@ -1,9 +1,9 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 
 export class UserCredential {
-  public readonly userId: UserId
-  public readonly passwordHash: PasswordHash
+  public readonly userId: Identifier
+  private _passwordHash: PasswordHash
   private _failedAttempts: number
   private _lockedUntil: Date | null
   private _lastLoginAt: Date | null
@@ -11,7 +11,7 @@ export class UserCredential {
   private _updatedAt: Date
 
   constructor(
-    userId: UserId,
+    userId: Identifier,
     passwordHash: PasswordHash,
     failedAttempts: number,
     lockedUntil: Date | null,
@@ -20,7 +20,7 @@ export class UserCredential {
     updatedAt: Date,
   ) {
     this.userId = userId
-    this.passwordHash = passwordHash
+    this._passwordHash = passwordHash
     this._failedAttempts = failedAttempts
     this._lockedUntil = lockedUntil
     this._lastLoginAt = lastLoginAt
@@ -42,6 +42,10 @@ export class UserCredential {
 
   public get updatedAt(): Date {
     return this._updatedAt
+  }
+
+  public get passwordHash(): PasswordHash {
+    return this._passwordHash
   }
 
   public incrementFailedAttempts(now: Date): void {
@@ -71,7 +75,14 @@ export class UserCredential {
     return !!this._lockedUntil && this._lockedUntil > now
   }
 
-  public static create(userId: UserId, passwordHash: PasswordHash, now: Date): UserCredential {
+  public updatePasswordHash(newPasswordHash: PasswordHash, now: Date): void {
+    this._passwordHash = newPasswordHash
+    this._updatedAt = now
+    this._failedAttempts = 0
+    this._lockedUntil = null
+  }
+
+  public static create(userId: Identifier, passwordHash: PasswordHash, now: Date): UserCredential {
     return new UserCredential(userId, passwordHash, 0, null, null, now, now)
   }
 }

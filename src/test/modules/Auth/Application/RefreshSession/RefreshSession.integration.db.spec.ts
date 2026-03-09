@@ -1,4 +1,4 @@
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { QueryRunner } from 'typeorm'
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { withTransaction } from '~/src/test/utils/withTransaction'
@@ -45,8 +45,8 @@ describe('RefreshSession', () => {
   const futureExpiresAt = new Date(now.getTime() + 3600)
   const pastExpiresAt = new Date(now.getTime() - 3600)
 
-  const userId = UserIdMother.valid()
-  const expectedUserAgent = UserAgentMother.random()
+  const userId = IdentifierMother.valid().value
+  const expectedUserAgent = UserAgentMother.random().value
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
@@ -76,26 +76,27 @@ describe('RefreshSession', () => {
     mockReset(mockedConfigService)
 
     mockedConfigService.get.mockImplementation(createConfigServiceMockImplementation({ REFRESH_TTL_MS, ACCESS_TTL_MS }))
-
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
     userDatabaseHelper = new UserDatabaseHelper(runner.manager)
     userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
 
     const rawUser = makeRawUser({
-      id: userId.toString(),
-      status: UserStatus.active().toString(),
+      id: userId,
+      status: UserStatus.active().value,
+      deleted_at: null,
     })
+
     await userDatabaseHelper.save(rawUser)
 
     const refreshToken = await jwtGenerator.generateSessionToken()
     const hashedToken = await hasherService.hash(refreshToken)
 
     currentSession = makeRawSession({
-      user_id: userId.toString(),
+      user_id: userId,
       token_hash: hashedToken,
-      user_agent: UserAgentMother.random().toString(),
-      ip_hash: UserSessionIpHashMother.random().toString(),
+      user_agent: UserAgentMother.random().value,
+      ip_hash: UserSessionIpHashMother.random().value,
       expires_at: futureExpiresAt,
       revoked_at: null,
       created_at: now,
@@ -107,17 +108,17 @@ describe('RefreshSession', () => {
     request = {
       token: refreshToken,
       ip: '8.8.8.8',
-      userAgent: expectedUserAgent.toString(),
+      userAgent: expectedUserAgent,
     }
+
     hashedIp = await hasherService.hash(request.ip)
   })
 
   const buildUseCase = () => {
     return new RefreshSession(
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      new TypeOrmUnitOfWork(global.dataSource),
       new PostgresqlUserRepository(mockedResolver),
       new PostgreSqlUserSessionRepository(mockedResolver),
+      hasherService,
       new GenerateTokensApplicationService(
         new NodeIdGeneratorService(),
         new JWTokenGeneratorApplicationService(env.ACCESS_SECRET, env.ACCESS_ISSUER, env.ACCESS_AUDIENCE),
@@ -131,8 +132,10 @@ describe('RefreshSession', () => {
         new NoopDeviceLocationResolverService(),
         new LoggerServiceMock(),
       ),
-      hasherService,
       new ClockServiceMock(now),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      new TypeOrmUnitOfWork(global.dataSource),
+      new LoggerServiceMock(),
     )
   }
 
@@ -141,9 +144,9 @@ describe('RefreshSession', () => {
     const newestCreatedAt = new Date(now.getTime() - 1000)
     const oldestCreatedAt = new Date(now.getTime() - 3000)
 
-    const session2 = makeRawSession({ user_id: userId.toString(), created_at: middleCreatedAt, expires_at: futureExpiresAt })
-    const session3 = makeRawSession({ user_id: userId.toString(), created_at: newestCreatedAt, expires_at: futureExpiresAt })
-    const oldestSession = makeRawSession({ user_id: userId.toString(), created_at: oldestCreatedAt, expires_at: futureExpiresAt })
+    const session2 = makeRawSession({ user_id: userId, created_at: middleCreatedAt, expires_at: futureExpiresAt })
+    const session3 = makeRawSession({ user_id: userId, created_at: newestCreatedAt, expires_at: futureExpiresAt })
+    const oldestSession = makeRawSession({ user_id: userId, created_at: oldestCreatedAt, expires_at: futureExpiresAt })
 
     await userSessionDatabaseHelper.save([oldestSession, session2, session3])
 
@@ -180,7 +183,7 @@ describe('RefreshSession', () => {
       // @ts-expect-error
       const expectedSessionHash = await hasherService.hash(result.value!.refreshToken as string)
 
-      const currentSessionInDb = await userSessionDatabaseHelper.findById(currentSession.id.toString())
+      const currentSessionInDb = await userSessionDatabaseHelper.findById(currentSession.id)
 
       expect(currentSessionInDb).not.toBe(null)
       expect(currentSessionInDb!.revoked_at).not.toBeNull()
@@ -189,8 +192,8 @@ describe('RefreshSession', () => {
 
       const savedSession = UserSessionDatabaseHelper.findSessionByIdInArray(activeSessions, sessionId)
       expect(savedSession).toBeDefined()
-      expect(savedSession!.user_id).toBe(userId.toString())
-      expect(savedSession!.user_agent).toBe(expectedUserAgent.toString())
+      expect(savedSession!.user_id).toBe(userId)
+      expect(savedSession!.user_agent).toBe(expectedUserAgent)
 
       expect(savedSession!.ip_hash).toBe(hashedIp)
 
@@ -203,11 +206,11 @@ describe('RefreshSession', () => {
     it('should revoke current session and create a new user session correctly (no revoke sessions)', async () => {
       const useCase = buildUseCase()
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       const result = await useCase.execute(request)
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       assertResult(result)
 
@@ -223,11 +226,11 @@ describe('RefreshSession', () => {
 
       const useCase = buildUseCase()
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       const result = await useCase.execute(request)
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       assertResult(result)
 
@@ -243,7 +246,7 @@ describe('RefreshSession', () => {
       expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session2.id))
       expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session3.id))
 
-      const oldestSessionInDb = await userSessionDatabaseHelper.findById(oldestSession.id.toString())
+      const oldestSessionInDb = await userSessionDatabaseHelper.findById(oldestSession.id)
       expect(oldestSessionInDb).not.toBe(null)
       expect(oldestSessionInDb?.revoked_at?.getTime()).toBe(now.getTime())
       expect(oldestSessionInDb?.updated_at.getTime()).toBe(now.getTime())
@@ -254,12 +257,12 @@ describe('RefreshSession', () => {
     it('should return error when session is not found', async () => {
       const useCase = buildUseCase()
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       const anotherRefreshToken = await jwtGenerator.generateSessionToken()
       const result = await useCase.execute({ ...request, token: anotherRefreshToken })
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       expect(result).toEqual({
         success: false,
@@ -270,57 +273,57 @@ describe('RefreshSession', () => {
     })
 
     it('should return error when session is already expired', async () => {
-      await userSessionDatabaseHelper.update(currentSession.id.toString(), { expires_at: pastExpiresAt })
+      await userSessionDatabaseHelper.update(currentSession.id, { expires_at: pastExpiresAt })
 
       const useCase = buildUseCase()
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       const result = await useCase.execute(request)
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       expect(result).toEqual({
         success: false,
-        error: RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id.toString()),
+        error: RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id),
       })
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)
     })
 
     it('should return error when session is already expired', async () => {
-      await userSessionDatabaseHelper.update(currentSession.id.toString(), { revoked_at: now })
+      await userSessionDatabaseHelper.update(currentSession.id, { revoked_at: now })
 
       const useCase = buildUseCase()
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       const result = await useCase.execute(request)
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       expect(result).toEqual({
         success: false,
-        error: RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id.toString()),
+        error: RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id),
       })
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)
     })
 
     it('should return error when session is not found', async () => {
-      await userDatabaseHelper.update(userId.toString(), { status: UserStatus.deactivated().toString() })
+      await userDatabaseHelper.update(userId, { status: UserStatus.deactivated().value })
 
       const useCase = buildUseCase()
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       const result = await useCase.execute(request)
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId.toString(), now)
+      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
       expect(result).toEqual({
         success: false,
-        error: RefreshSessionApplicationError.userNotFound(userId.toString()),
+        error: RefreshSessionApplicationError.userNotFound(userId),
       })
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)

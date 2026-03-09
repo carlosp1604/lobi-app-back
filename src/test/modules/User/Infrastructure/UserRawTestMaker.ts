@@ -1,19 +1,19 @@
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
-import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
-import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
+import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
+import { UserNameMother } from '~/src/test/mothers/UserNameMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
+import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 export const makeRawUser = (overrides: Partial<UserRawModelWithRelations> = {}): UserRawModelWithRelations => {
   return {
-    id: overrides.id ?? UserIdMother.valid().toString(),
-    email: overrides.email ?? UserEmailMother.random().toString(),
-    username: overrides.username ?? UserUsernameMother.random().toString(),
-    name: overrides.name ?? UserNameMother.valid().toString(),
-    status: overrides.status ?? UserStatus.active().toString(),
-    role: overrides.role ?? UserRole.sportsman().toString(),
+    id: overrides.id ?? IdentifierMother.valid().value,
+    email: overrides.email ?? EmailAddressMother.random().value,
+    username: overrides.username ?? UserUsernameMother.random().value,
+    name: overrides.name ?? UserNameMother.valid().value,
+    status: overrides.status ?? UserStatus.active().value,
+    role: overrides.role ?? UserRole.sportsman().value,
     user_upload_id: overrides.user_upload_id ?? null,
     email_verified_at: overrides.email_verified_at ?? new Date(),
     created_at: overrides.created_at ?? new Date(),

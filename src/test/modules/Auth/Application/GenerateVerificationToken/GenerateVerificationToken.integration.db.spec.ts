@@ -18,13 +18,12 @@ import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenDatabaseHelper'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { DomainEventDatabaseHelper } from '~/src/test/modules/Shared/Infrastructure/DomainEventDatabaseHelper'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 import { makeRawDomainEvent } from '~/src/test/modules/Shared/Infrastructure/DomainEventRawTestMaker'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
@@ -32,13 +31,14 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { HashMother } from '~/src/test/mothers/HashMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
@@ -47,7 +47,7 @@ describe('GenerateVerificationToken', () => {
   const expectedExpiresAt = new Date(now.getTime() + env.VERIFICATION_TOKEN_TTL_MS)
   const expectedExpirationMinutes = env.VERIFICATION_TOKEN_TTL_MS / (60 * 1000)
 
-  const email = VerificationTokenEmail.fromString('test@email.com')
+  const email = EmailAddressMother.valid()
   const expectedUserAgent = UserAgentMother.random()
   const expectedDeviceLocation = DeviceLocationMother.valid()
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
@@ -100,13 +100,12 @@ describe('GenerateVerificationToken', () => {
       email: email.toString(),
       purpose: purposeCreateAccount.toString(),
       sendNewToken: false,
-      language: 'es',
       ip: '127.0.0.0',
       userAgent: expectedUserAgent.toString(),
     }
 
     currentVerificationToken = makeRawVerificationToken({
-      id: VerificationTokenIdMother.valid().toString(),
+      id: IdentifierMother.valid().toString(),
       purpose: purposeCreateAccount.toString(),
       token_hash: VerificationTokenTokenHashMother.random().toString(),
       email: email.toString(),
@@ -116,16 +115,15 @@ describe('GenerateVerificationToken', () => {
     })
 
     currentDomainEvent = makeRawDomainEvent({
-      id: DomainEventIdMother.valid().toString(),
+      id: IdentifierMother.valid().value,
       metadata: {},
       aggregate_id: currentVerificationToken.id,
-      aggregate_type: DomainEventAggregateType.verificationToken().toString(),
-      name: DomainEventName.emailVerificationRequest().toString(),
+      aggregate_type: DomainEventAggregateType.verificationToken().value,
+      name: DomainEventName.emailVerificationRequest().value,
       payload: {
-        email: email.toString(),
-        purpose: purposeCreateAccount.toString(),
+        email: email.value,
+        purpose: purposeCreateAccount.value,
         resendCode: false,
-        lang: request.language,
       },
       occurred_at: pastDate,
     })
@@ -133,6 +131,7 @@ describe('GenerateVerificationToken', () => {
 
   const loggerService = new LoggerServiceMock()
   const hasherService = new BCryptHasherService(env.SALT_ROUNDS)
+  const idGenerator = new NodeIdGeneratorService()
 
   const buildUseCase = () => {
     return new GenerateVerificationToken(
@@ -148,24 +147,21 @@ describe('GenerateVerificationToken', () => {
       new NodeRandomService(),
       mockedConfigService,
       loggerService,
-      new NodeIdGeneratorService(),
+      idGenerator,
+      new AuthDomainEventFactory(idGenerator),
     )
   }
 
   const runTestAndGetResults = async (request: GenerateVerificationTokenApplicationRequestDto) => {
     const useCase = buildUseCase()
 
-    const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmail(email.toString())
-    const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateType(
-      DomainEventAggregateType.verificationToken().toString(),
-    )
+    const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmail(email.value)
+    const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateType(DomainEventAggregateType.verificationToken().value)
 
     const result = await useCase.execute(request)
 
-    const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmail(email.toString())
-    const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateType(
-      DomainEventAggregateType.verificationToken().toString(),
-    )
+    const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmail(email.value)
+    const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateType(DomainEventAggregateType.verificationToken().value)
 
     return { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter }
   }
@@ -201,22 +197,23 @@ describe('GenerateVerificationToken', () => {
         ? verificationTokensAfter.find((t) => t.id !== existingToken.id)
         : verificationTokensAfter[0]
       expect(savedVerificationToken).toBeDefined()
-      expect(savedVerificationToken!.email).toBe(email.toString())
-      expect(savedVerificationToken!.purpose).toBe(purposeCreateAccount.toString())
+      expect(savedVerificationToken!.email).toBe(email.value)
+      expect(savedVerificationToken!.purpose).toBe(purposeCreateAccount.value)
       expect(savedVerificationToken!.expires_at.getTime()).toBe(expectedExpiresAt.getTime())
       expect(savedVerificationToken!.used_at).toBeNull()
 
       const savedDomainEvent = domainEventsAfter.find((domainEvent) => domainEvent.aggregate_id === savedVerificationToken!.id)
       expect(savedDomainEvent).toBeDefined()
       expect(savedDomainEvent!.aggregate_id).toEqual(savedVerificationToken!.id)
-      expect(savedDomainEvent!.name).toEqual(DomainEventName.emailVerificationRequest().toString())
-      expect(savedDomainEvent!.aggregate_type).toEqual(DomainEventAggregateType.verificationToken().toString())
+      expect(savedDomainEvent!.name).toEqual(DomainEventName.emailVerificationRequest().value)
+      expect(savedDomainEvent!.aggregate_type).toEqual(DomainEventAggregateType.verificationToken().value)
 
       expect(savedDomainEvent!.payload).toEqual({
-        email: email.toString(),
-        purpose: purposeCreateAccount.toString(),
+        email: email.value,
+        purpose: purposeCreateAccount.value,
         resendCode: existingToken ? sendNewToken : false,
-        lang: request.language,
+        // TODO: Use expected language when multi-language emails are supported
+        lang: 'es',
         deviceLocation: {
           city: expectedDeviceLocation.city,
           countryCode: expectedDeviceLocation.countryCode,
@@ -225,21 +222,22 @@ describe('GenerateVerificationToken', () => {
 
       expect(savedDomainEvent!.metadata).toEqual({
         ipHash: expectedIpHash,
-        ua: expectedUserAgent.toString(),
+        ua: expectedUserAgent.value,
       })
 
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledTimes(1)
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledWith(
-        email.toString(),
+        email.value,
         'verify-email-template-create-account',
         {
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           token: expect.any(String),
           expiration_minutes: expectedExpirationMinutes,
         },
-        request.language,
+        // TODO: Use expected language when multi-language emails are supported
+        'es',
         now,
       )
 
@@ -286,9 +284,9 @@ describe('GenerateVerificationToken', () => {
 
     beforeEach(() => {
       rawUser = makeRawUser({
-        email: email.toString(),
+        email: email.value,
         deleted_at: null,
-        status: UserStatus.active().toString(),
+        status: UserStatus.active().value,
       })
 
       userDatabaseHelper = new UserDatabaseHelper(runner.manager)
@@ -302,7 +300,7 @@ describe('GenerateVerificationToken', () => {
 
       expect(result).toEqual({
         success: false,
-        error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.toString()),
+        error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value),
       })
       expect(verificationTokensBefore.length).toBe(0)
       expect(verificationTokensAfter.length).toBe(0)
@@ -313,7 +311,7 @@ describe('GenerateVerificationToken', () => {
     describe('when purpose is resetPassword and user does not exist, is deleted or is not active', () => {
       const testCase = async () => {
         const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
-          await runTestAndGetResults({ ...request, purpose: purposeResetPassword.toString() })
+          await runTestAndGetResults({ ...request, purpose: purposeResetPassword.value })
 
         expect(result).toEqual({
           success: true,
@@ -336,7 +334,7 @@ describe('GenerateVerificationToken', () => {
       })
 
       it('should return success when user is not active', async () => {
-        await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().toString() })
+        await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
         await testCase()
       })
     })
@@ -350,7 +348,7 @@ describe('GenerateVerificationToken', () => {
 
       expect(result).toEqual({
         success: false,
-        error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.toString(), purposeCreateAccount.toString()),
+        error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, purposeCreateAccount.value),
       })
 
       expect(verificationTokensBefore.length).toBe(1)

@@ -8,8 +8,9 @@ import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/Mo
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSessionEntity, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 
 describe('PostgreSqlUserSessionRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
@@ -26,7 +27,7 @@ describe('PostgreSqlUserSessionRepository', () => {
 
   describe('findUserActiveSessions', () => {
     const context: TxContext = { __opaque_tx_context: true }
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
     const now = new Date('2025-10-18T09:37:55Z')
 
     const expectedUserSession = new UserSessionTestBuilder().build()
@@ -122,7 +123,7 @@ describe('PostgreSqlUserSessionRepository', () => {
 
   describe('save', () => {
     const context: TxContext = { __opaque_tx_context: true }
-    const userId = UserIdMother.valid()
+    const userId = IdentifierMother.valid()
 
     const userSession = new UserSessionTestBuilder().build()
     const userSession2 = new UserSessionTestBuilder().build()
@@ -202,6 +203,103 @@ describe('PostgreSqlUserSessionRepository', () => {
       await expect(repository.save([userSession], context)).rejects.toThrow(
         Error('Something went wrong while translating entity to database'),
       )
+    })
+  })
+
+  describe('findByHash', () => {
+    const context: TxContext = { __opaque_tx_context: true }
+    const mockedUserSessionRepository = mock<Repository<UserSessionRawWithRelationships>>()
+
+    const tokenHashValue = UserSessionTokenHashMother.valid()
+
+    const expectedSession = new UserSessionTestBuilder().withTokenHash(tokenHashValue).build()
+    let rawSession: UserSessionRawWithRelationships
+
+    beforeEach(() => {
+      mockReset(mockedUserSessionRepository)
+
+      rawSession = makeRawSession({
+        token_hash: tokenHashValue.value,
+      })
+
+      mockedResolver.resolve.mockReturnValue(mockedEntityManager)
+      mockedEntityManager.getRepository.mockReturnValue(mockedUserSessionRepository)
+      mockedUserSessionRepository.findOneBy.mockResolvedValue(rawSession)
+    })
+
+    describe('happy path', () => {
+      const checkCommonCalls = () => {
+        expect(mockedResolver.resolve).toHaveBeenCalledTimes(1)
+        expect(mockedEntityManager.getRepository).toHaveBeenCalledTimes(1)
+        expect(mockedUserSessionRepository.findOneBy).toHaveBeenCalledTimes(1)
+
+        expect(mockedResolver.resolve).toHaveBeenCalledWith(context)
+        expect(mockedEntityManager.getRepository).toHaveBeenCalledWith(UserSessionEntity)
+        expect(mockedUserSessionRepository.findOneBy).toHaveBeenCalledWith({ token_hash: tokenHashValue.value })
+      }
+
+      it('should call services correctly and return the correct data when user is found', async () => {
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        const userSessionModelTranslatorSpy = jest.spyOn(UserSessionModelTranslator, 'toDomain').mockReturnValue(expectedSession)
+
+        const result = await repository.findByHash(tokenHashValue.value, context)
+
+        checkCommonCalls()
+
+        expect(userSessionModelTranslatorSpy).toHaveBeenCalledTimes(1)
+        expect(userSessionModelTranslatorSpy).toHaveBeenCalledWith(rawSession)
+        expect(result).toBe(expectedSession)
+      })
+
+      it('should call services correctly and return null when user is not found', async () => {
+        mockedUserSessionRepository.findOneBy.mockResolvedValue(null)
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        const userSessionModelTranslatorSpy = jest.spyOn(UserSessionModelTranslator, 'toDomain').mockReturnValue(expectedSession)
+
+        const result = await repository.findByHash(tokenHashValue.value, context)
+
+        checkCommonCalls()
+
+        expect(userSessionModelTranslatorSpy).not.toHaveBeenCalled()
+        expect(result).toBeNull()
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw error when resolver fails', async () => {
+        mockedResolver.resolve.mockImplementation(() => {
+          throw new Error('Something went wrong')
+        })
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        await expect(repository.findByHash(tokenHashValue.value, context)).rejects.toThrow(Error('Something went wrong'))
+      })
+
+      it('should throw error when ORM/Database fails', async () => {
+        mockedUserSessionRepository.findOneBy.mockImplementation(() => {
+          throw new Error('Something went wrong')
+        })
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        await expect(repository.findByHash(tokenHashValue.value, context)).rejects.toThrow(Error('Something went wrong'))
+      })
+
+      it('should throw error when translator fails', async () => {
+        jest.spyOn(UserSessionModelTranslator, 'toDomain').mockImplementation(() => {
+          throw new Error('Something went wrong while translating entity to domain')
+        })
+
+        const repository = new PostgreSqlUserSessionRepository(mockedResolver)
+
+        await expect(repository.findByHash(tokenHashValue.value, context)).rejects.toThrow(
+          Error('Something went wrong while translating entity to domain'),
+        )
+      })
     })
   })
 })

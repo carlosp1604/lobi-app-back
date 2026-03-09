@@ -18,5 +18,11 @@ export interface UserSessionRepositoryInterface {
    */
   findUserActiveSessions(userId: string, now: Date, context: TxContext): Promise<Array<UserSession>>
 
+  /**
+   * Finds a UserSession by its token hash
+   * @param hash The unique hash of the session token
+   * @param context The transactional context
+   * @returns The UserSession if found, otherwise null
+   */
   findByHash(hash: string, context: TxContext): Promise<UserSession | null>
 }

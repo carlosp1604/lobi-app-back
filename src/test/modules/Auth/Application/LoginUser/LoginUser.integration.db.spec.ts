@@ -16,8 +16,7 @@ import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Serv
 import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -46,6 +45,8 @@ import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructur
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 interface BuildAndSaveSessionsResponse {
   oldestSession: UserSessionRawWithRelationships
@@ -57,8 +58,8 @@ describe('LoginUser', () => {
   const now = new Date('2025-10-22T19:00:00Z')
   const futureExpiresAt = new Date(now.getTime() + 3600)
 
-  const userId = UserIdMother.valid().value
-  const userEmail = UserEmailMother.random().value
+  const userId = IdentifierMother.valid().value
+  const userEmail = EmailAddressMother.random().value
   const expectedUserAgent = UserAgentMother.random()
   const domainType = DomainEventAggregateType.user().value
   const validPassword = UserPasswordMother.random().value
@@ -114,6 +115,7 @@ describe('LoginUser', () => {
   const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
   const hasherService = new HmacHasherService(env.HASH_SECRET)
   const idGenerator = new NodeIdGeneratorService()
+  const domainEventFactory = new AuthDomainEventFactory(idGenerator)
   const loggerService = new LoggerServiceMock()
   const maxSessions = env.USER_MAX_SESSIONS
 
@@ -148,7 +150,7 @@ describe('LoginUser', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
       loggerService,
-      idGenerator,
+      domainEventFactory,
     )
   }
 
@@ -357,7 +359,7 @@ describe('LoginUser', () => {
       }
 
       it('should return error when user is not found', async () => {
-        const anotherUserEmail = UserEmailMother.random()
+        const anotherUserEmail = EmailAddressMother.random()
 
         await testCase({ ...request, email: anotherUserEmail.value })
       })

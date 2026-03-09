@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
-import { LOGGER_SERVICE } from '~/src/modules/Shared/Infrastructure/logger.module'
+import { LOGGER_FACTORY } from '~/src/modules/Shared/Infrastructure/logger.module'
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import {
@@ -14,7 +14,7 @@ import {
   IP_VALIDATOR,
   LOGIN_USER,
   MAX_SESSIONS_POLICY,
-  PASSWORD_HASHER,
+  PASSWORD_HASHER_SERVICE,
   USER_PROFILE_REPOSITORY,
   RANDOM_SERVICE,
   REFRESH_SESSION,
@@ -27,6 +27,8 @@ import {
   VALIDATE_VERIFICATION_TOKEN,
   VERIFICATION_TOKEN_REPOSITORY,
   VERIFY_TOKEN_DOMAIN_SERVICE,
+  RESET_USER_PASSWORD,
+  AUTH_DOMAIN_EVENT_FACTORY,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -41,13 +43,11 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { NodeClockService } from '~/src/modules/Shared/Infrastructure/Services/NodeClockService'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
-import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
@@ -81,6 +81,9 @@ import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/Pr
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { SportsmanProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
 import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
+import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
+import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 @Module({
   imports: [
@@ -140,7 +143,7 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
       inject: [TYPEORM_MANAGER_RESOLVER],
     },
     {
-      provide: PASSWORD_HASHER,
+      provide: PASSWORD_HASHER_SERVICE,
       useFactory: (configService: ConfigService<Env, true>) => {
         return new BCryptHasherService(configService.get('SALT_ROUNDS', { infer: true }))
       },
@@ -187,10 +190,13 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
     },
     {
       provide: USER_SESSION_POLICY_MANAGER_SERVICE,
-      useFactory: (maxSessionsPolicy: MaxSessionsPolicy, loggerService: LoggerServiceInterface) => {
-        return new UserSessionPolicyManagerApplicationService(maxSessionsPolicy, loggerService)
+      useFactory: (maxSessionsPolicy: MaxSessionsPolicy, loggerFactory: LoggerFactoryInterface) => {
+        return new UserSessionPolicyManagerApplicationService(
+          maxSessionsPolicy,
+          loggerFactory.createLogger(UserSessionPolicyManagerApplicationService.name),
+        )
       },
-      inject: [MAX_SESSIONS_POLICY, LOGGER_SERVICE],
+      inject: [MAX_SESSIONS_POLICY, LOGGER_FACTORY],
     },
     {
       provide: RANDOM_SERVICE,
@@ -198,16 +204,16 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
     },
     {
       provide: EMAIL_SENDER_SERVICE,
-      useFactory: (configService: ConfigService<Env, true>, loggerService: LoggerServiceInterface) => {
+      useFactory: (configService: ConfigService<Env, true>, loggerFactory: LoggerFactoryInterface) => {
         return new PostmarkEmailSenderService(
           new ServerClient(configService.get('EMAIL_API_TOKEN', { infer: true })),
           configService.get('EMAIL_FROM_ADDRESS', { infer: true }),
           configService.get('EMAIL_COMPANY_NAME', { infer: true }),
           configService.get('EMAIL_APP_NAME', { infer: true }),
-          loggerService,
+          loggerFactory.createLogger(PostmarkEmailSenderService.name),
         )
       },
-      inject: [ConfigService, LOGGER_SERVICE],
+      inject: [ConfigService, LOGGER_FACTORY],
     },
     {
       provide: REQUEST_ORIGIN_SERVICE,
@@ -215,18 +221,30 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         ipValidator: IpValidatorServiceInterface,
         hasherService: HasherServiceInterface,
         deviceLocationResolver: DeviceLocationResolverServiceInterface,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
       ) => {
-        return new RequestOriginApplicationService(ipValidator, hasherService, deviceLocationResolver, loggerService)
+        return new RequestOriginApplicationService(
+          ipValidator,
+          hasherService,
+          deviceLocationResolver,
+          loggerFactory.createLogger(RequestOriginApplicationService.name),
+        )
       },
-      inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_SERVICE],
+      inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_FACTORY],
     },
     {
       provide: VERIFY_TOKEN_DOMAIN_SERVICE,
       useFactory: (hasherService: HasherServiceInterface) => {
         return new VerifyTokenService(hasherService)
       },
-      inject: [PASSWORD_HASHER],
+      inject: [PASSWORD_HASHER_SERVICE],
+    },
+    {
+      provide: AUTH_DOMAIN_EVENT_FACTORY,
+      useFactory: (idGeneratorService: IdGeneratorServiceInterface) => {
+        return new AuthDomainEventFactory(idGeneratorService)
+      },
+      inject: [ID_GENERATOR],
     },
     {
       provide: LOGIN_USER,
@@ -235,76 +253,79 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         credentialRepository: UserCredentialRepositoryInterface,
         sessionRepository: UserSessionRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
-        passwordHasher: PasswordHasherServiceInterface,
+        hasherService: HasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
         requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
-        loggerService: LoggerServiceInterface,
-        idGeneratorService: IdGeneratorServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
       ) =>
         new LoginUser(
           userRepository,
           credentialRepository,
           sessionRepository,
           domainEventRepository,
-          passwordHasher,
+          hasherService,
           generateTokensService,
           userSessionManagerService,
           requestOriginApplicationService,
           clockService,
           unitOfWork,
-          loggerService,
-          idGeneratorService,
+          loggerFactory.createLogger(LoginUser.name),
+          authDomainEventFactory,
         ),
       inject: [
         USER_REPOSITORY,
         USER_CREDENTIAL_REPOSITORY,
         USER_SESSION_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
-        PASSWORD_HASHER,
+        PASSWORD_HASHER_SERVICE,
         GENERATE_TOKENS_SERVICE,
         USER_SESSION_POLICY_MANAGER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
-        LOGGER_SERVICE,
-        ID_GENERATOR,
+        LOGGER_FACTORY,
+        AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
     {
       provide: REFRESH_SESSION,
       useFactory: (
-        unitOfWork: UnitOfWork,
         userRepository: UserRepositoryInterface,
         sessionRepository: UserSessionRepositoryInterface,
+        hasherService: HasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
         requestOriginApplicationService: RequestOriginApplicationService,
-        hasherService: HasherServiceInterface,
         clockService: NodeClockService,
+        unitOfWork: UnitOfWork,
+        loggerFactory: LoggerFactoryInterface,
       ) => {
         return new RefreshSession(
-          unitOfWork,
           userRepository,
           sessionRepository,
+          hasherService,
           generateTokensService,
           userSessionManagerService,
           requestOriginApplicationService,
-          hasherService,
           clockService,
+          unitOfWork,
+          loggerFactory.createLogger(RefreshSession.name),
         )
       },
       inject: [
-        UNIT_OF_WORK,
         USER_REPOSITORY,
         USER_SESSION_REPOSITORY,
+        HASHER_SERVICE,
         GENERATE_TOKENS_SERVICE,
         USER_SESSION_POLICY_MANAGER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
-        HASHER_SERVICE,
         CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_FACTORY,
       ],
     },
     {
@@ -320,8 +341,9 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         clockService: ClockServiceInterface,
         randomService: RandomServiceInterface,
         configService: ConfigService<Env, true>,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
       ) => {
         return new GenerateVerificationToken(
           verificationTokenRepository,
@@ -334,8 +356,9 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
           clockService,
           randomService,
           configService,
-          loggerService,
+          loggerFactory.createLogger(GenerateVerificationToken.name),
           idGeneratorService,
+          authDomainEventFactory,
         )
       },
       inject: [
@@ -344,13 +367,14 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         DOMAIN_EVENT_REPOSITORY,
         EMAIL_SENDER_SERVICE,
         UNIT_OF_WORK,
-        PASSWORD_HASHER,
+        PASSWORD_HASHER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         RANDOM_SERVICE,
         ConfigService,
-        LOGGER_SERVICE,
+        LOGGER_FACTORY,
         ID_GENERATOR,
+        AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
     {
@@ -359,10 +383,16 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         verificationTokenRepository: VerificationTokenRepositoryInterface,
         verifyTokenService: VerifyTokenService,
         clockService: ClockServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
       ) => {
-        return new ValidateVerificationToken(verificationTokenRepository, verifyTokenService, clockService)
+        return new ValidateVerificationToken(
+          verificationTokenRepository,
+          verifyTokenService,
+          clockService,
+          loggerFactory.createLogger(ValidateVerificationToken.name),
+        )
       },
-      inject: [VERIFICATION_TOKEN_REPOSITORY, VERIFY_TOKEN_DOMAIN_SERVICE, CLOCK_SERVICE],
+      inject: [VERIFICATION_TOKEN_REPOSITORY, VERIFY_TOKEN_DOMAIN_SERVICE, CLOCK_SERVICE, LOGGER_FACTORY],
     },
     {
       provide: CREATE_USER,
@@ -373,12 +403,13 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         verificationTokenRepository: VerificationTokenRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
         verifyTokenService: VerifyTokenService,
-        passwordHasher: PasswordHasherServiceInterface,
+        hasherService: HasherServiceInterface,
         requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
-        loggerService: LoggerServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
         idGeneratorService: IdGeneratorServiceInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
       ) =>
         new CreateUser(
           userRepository,
@@ -387,12 +418,13 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
           verificationTokenRepository,
           domainEventRepository,
           verifyTokenService,
-          passwordHasher,
+          hasherService,
           requestOriginApplicationService,
           clockService,
           unitOfWork,
-          loggerService,
+          loggerFactory.createLogger(CreateUser.name),
           idGeneratorService,
+          authDomainEventFactory,
         ),
       inject: [
         USER_REPOSITORY,
@@ -401,15 +433,66 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
         VERIFICATION_TOKEN_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
         VERIFY_TOKEN_DOMAIN_SERVICE,
-        PASSWORD_HASHER,
+        PASSWORD_HASHER_SERVICE,
         REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
-        LOGGER_SERVICE,
+        LOGGER_FACTORY,
         ID_GENERATOR,
+        AUTH_DOMAIN_EVENT_FACTORY,
+      ],
+    },
+    {
+      provide: RESET_USER_PASSWORD,
+      useFactory: (
+        userRepository: UserRepositoryInterface,
+        credentialRepository: UserCredentialRepositoryInterface,
+        verificationTokenRepository: VerificationTokenRepositoryInterface,
+        domainEventRepository: DomainEventRepositoryInterface,
+        verifyTokenService: VerifyTokenService,
+        hasherService: HasherServiceInterface,
+        requestOriginApplicationService: RequestOriginApplicationService,
+        clockService: NodeClockService,
+        unitOfWork: UnitOfWork,
+        loggerFactory: LoggerFactoryInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
+      ) =>
+        new ResetUserPassword(
+          userRepository,
+          credentialRepository,
+          verificationTokenRepository,
+          domainEventRepository,
+          verifyTokenService,
+          hasherService,
+          requestOriginApplicationService,
+          clockService,
+          unitOfWork,
+          loggerFactory.createLogger(ResetUserPassword.name),
+          authDomainEventFactory,
+        ),
+      inject: [
+        USER_REPOSITORY,
+        USER_CREDENTIAL_REPOSITORY,
+        VERIFICATION_TOKEN_REPOSITORY,
+        DOMAIN_EVENT_REPOSITORY,
+        VERIFY_TOKEN_DOMAIN_SERVICE,
+        PASSWORD_HASHER_SERVICE,
+        REQUEST_ORIGIN_SERVICE,
+        CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_FACTORY,
+        AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
   ],
-  exports: [LOGIN_USER, REFRESH_SESSION, GENERATE_VERIFICATION_TOKEN, VALIDATE_VERIFICATION_TOKEN, CREATE_USER, TypeOrmModule],
+  exports: [
+    LOGIN_USER,
+    REFRESH_SESSION,
+    GENERATE_VERIFICATION_TOKEN,
+    VALIDATE_VERIFICATION_TOKEN,
+    CREATE_USER,
+    RESET_USER_PASSWORD,
+    TypeOrmModule,
+  ],
 })
 export class AuthModule {}

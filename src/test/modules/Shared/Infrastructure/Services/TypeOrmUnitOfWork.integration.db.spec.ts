@@ -1,12 +1,12 @@
 import 'reflect-metadata'
 import { DataSource, EntityManager } from 'typeorm'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('TypeOrmUnitOfWork', () => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -22,7 +22,7 @@ describe('TypeOrmUnitOfWork', () => {
 
   const findUser = async () => {
     const foundUser = await dataSource.getRepository(UserEntity).findOneBy({
-      id: userId.toString(),
+      id: userId.value,
     })
 
     return foundUser !== null
@@ -30,19 +30,19 @@ describe('TypeOrmUnitOfWork', () => {
 
   const findCredential = async () => {
     const foundUserCredential = await dataSource.getRepository(UserEntity).findOneBy({
-      id: userId.toString(),
+      id: userId.value,
     })
 
     return foundUserCredential !== null
   }
 
-  const userId = UserIdMother.valid()
+  const userId = IdentifierMother.valid()
   const rawUser = makeRawUser({
-    id: userId.toString(),
+    id: userId.value,
   })
 
   const rawUserCredential = makeRawUserCredential({
-    user_id: userId.toString(),
+    user_id: userId.value,
   })
 
   it('should insert a new user and its credential in the same transaction', async () => {

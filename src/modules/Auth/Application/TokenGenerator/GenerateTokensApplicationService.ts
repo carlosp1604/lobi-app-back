@@ -1,16 +1,15 @@
-import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
-import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
-import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
-import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
+import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
+import { ConfigService } from '@nestjs/config'
+import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { GenerateTokensApplicationResponseDto } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationResponseDto'
-import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
+import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
 
 export class GenerateTokensApplicationService {
   private readonly refreshTokenTtlMs: number
@@ -27,13 +26,13 @@ export class GenerateTokensApplicationService {
   }
 
   public async generate(
-    userId: UserId,
+    userId: Identifier,
     now: Date,
     userAgent: UserAgent,
     ipHash: UserSessionIpHash | null,
     deviceLocation: DeviceLocation | null,
   ): Promise<GenerateTokensApplicationResponseDto> {
-    const sessionId = UserSessionId.fromString(this.idGeneratorService.generateId())
+    const sessionId = Identifier.fromString(this.idGeneratorService.generateId())
     const clearSessionToken = await this.tokenGenerator.generateSessionToken()
     const newSessionHashedToken = await this.hasherService.hash(clearSessionToken)
     const sessionHash = UserSessionTokenHash.fromString(newSessionHashedToken)
@@ -41,7 +40,7 @@ export class GenerateTokensApplicationService {
     const session = UserSession.create(sessionId, userId, sessionHash, userAgent, this.refreshTokenTtlMs, now, ipHash, deviceLocation)
 
     const accessExpiresAt = new Date(now.getTime() + this.accessTokenTtlMs)
-    const accessToken = await this.tokenGenerator.generateAccessToken(userId.toString(), sessionId.toString(), accessExpiresAt, now)
+    const accessToken = await this.tokenGenerator.generateAccessToken(userId.value, sessionId.value, accessExpiresAt, now)
 
     return {
       session,

@@ -2,22 +2,16 @@ import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 export class ProfileDomainException extends DomainException {
-  public static invalidUserProfileIdId = 'user_profile_domain_invalid_user_profile_id'
   public static invalidSportsmanBioId = 'user_profile_domain_invalid_sportsman_bio'
   public static invalidSportsmanBirthDateId = 'user_profile_domain_invalid_sportsman_birth_date'
   public static sportsmanBirthDateInFutureId = 'user_profile_domain_sportsman_birth_date_in_future'
   public static sportsmanBirthDateTooOldId = 'user_profile_domain_sportsman_birth_date_too_old'
-  public static invalidOwnerTaxIdId = 'user_profile_owner_invalid_tax_id'
-  public static invalidOwnerCompanyNameId = 'user_profile_owner_invalid_company_name'
-  public static invalidOwnerContactPhoneId = 'user_profile_owner_invalid_contact_phone'
+  public static invalidOwnerTaxIdId = 'user_profile_domain_owner_invalid_tax_id'
+  public static invalidOwnerCompanyNameId = 'user_profile_domain_owner_invalid_company_name'
+  public static invalidOwnerContactPhoneId = 'user_profile_domain_owner_invalid_contact_phone'
 
   private constructor(message: string, id: string) {
     super(message, id, ProfileDomainException.name)
-  }
-
-  public static invalidUserProfileId(profileId: string) {
-    const safeProfileIdSample = StringFormatter.formatSafe(profileId, 60)
-    return new ProfileDomainException(`${safeProfileIdSample} is not a valid User Profile ID`, this.invalidUserProfileIdId)
   }
 
   public static invalidSportsmanBio(bio: string) {

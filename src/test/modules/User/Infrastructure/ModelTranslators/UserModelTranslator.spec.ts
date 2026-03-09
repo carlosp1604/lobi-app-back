@@ -2,20 +2,18 @@ import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTran
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { UserUploadIdMother } from '~/src/test/mothers/UserUploadIdMother'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { User } from '~/src/modules/User/Domain/User'
-import { UserUploadId } from '~/src/modules/Media/Domain/ValueObject/UserUploadId'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('UserModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'
@@ -25,14 +23,14 @@ describe('UserModelTranslator', () => {
     email_verified_at: now,
     created_at: now,
     updated_at: now,
-    user_upload_id: UserUploadIdMother.valid().value,
+    user_upload_id: IdentifierMother.valid().value,
     deleted_at: null,
   })
 
   describe('toDomain', () => {
     const checkResult = (result: User, raw: UserRawModelWithRelations) => {
-      expect(result.id).toBeInstanceOf(UserId)
-      expect(result.email).toBeInstanceOf(UserEmail)
+      expect(result.id).toBeInstanceOf(Identifier)
+      expect(result.email).toBeInstanceOf(EmailAddress)
       expect(result.username).toBeInstanceOf(UserUsername)
       expect(result.name).toBeInstanceOf(UserName)
       expect(result.status).toBeInstanceOf(UserStatus)
@@ -48,7 +46,7 @@ describe('UserModelTranslator', () => {
       if (raw.user_upload_id === null) {
         expect(result.userUploadId).toBeNull()
       } else {
-        expect(result.userUploadId).toBeInstanceOf(UserUploadId)
+        expect(result.userUploadId).toBeInstanceOf(Identifier)
         expect(result.userUploadId?.value).toBe(raw.user_upload_id)
       }
 
@@ -79,10 +77,10 @@ describe('UserModelTranslator', () => {
     })
 
     it('should propagate errors from ValueObject', () => {
-      const invalidEmail = UserEmailMother.invalid()
+      const invalidEmail = EmailAddressMother.invalid()
       const rawInvalidEmail = { ...baseRaw, email: invalidEmail }
 
-      expect(() => UserModelTranslator.toDomain(rawInvalidEmail)).toThrow(UserDomainException.invalidUserEmail(invalidEmail))
+      expect(() => UserModelTranslator.toDomain(rawInvalidEmail)).toThrow(SharedDomainException.invalidEmailAddress(invalidEmail))
     })
 
     it('does not mutate the input raw model', () => {
@@ -120,13 +118,13 @@ describe('UserModelTranslator', () => {
 
     beforeEach(() => {
       userBuilder = new UserTestBuilder()
-        .withId(UserIdMother.valid())
-        .withEmail(UserEmailMother.valid())
+        .withId(IdentifierMother.valid())
+        .withEmail(EmailAddressMother.valid())
         .withUsername(UserUsernameMother.valid())
         .withName(UserNameMother.valid())
         .withRoleUser(UserRole.sportsman())
         .withStatus(UserStatus.active())
-        .withUploadId(UserUploadIdMother.valid())
+        .withUploadId(IdentifierMother.valid())
         .withCreatedAt(now)
         .withUpdatedAt(now)
         .withEmailVerifiedAt(now)

@@ -7,7 +7,6 @@ import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/Use
 import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/ProfileRepositoryInterface'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { PasswordHasherServiceInterface } from '~/src/modules/Auth/Domain/PasswordHasherServiceInterface'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import {
   RequestOriginApplicationService,
@@ -19,13 +18,7 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
-import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
-import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
@@ -35,12 +28,8 @@ import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { Result } from '~/src/modules/Shared/Domain/Result'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
@@ -48,8 +37,13 @@ import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCr
 import { SportsmanProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/SportsmanProfileTestBuilder'
 import { OwnerProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/OwnerProfileTestBuilder'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
-import { UserEmail } from '~/src/modules/User/Domain/ValueObject/UserEmail'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
+import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
+import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 
 describe('CreateUser', () => {
@@ -58,18 +52,21 @@ describe('CreateUser', () => {
   const mockedProfileRepository = mock<ProfileRepositoryInterface>()
   const mockedVerificationTokenRepository = mock<VerificationTokenRepositoryInterface>()
   const mockedDomainEventRepository = mock<DomainEventRepositoryInterface>()
+  const mockedHasherService = mock<HasherServiceInterface>()
   const mockedVerifyTokenService = mock<VerifyTokenService>()
-  const mockedPasswordHasher = mock<PasswordHasherServiceInterface>()
   const mockedRequestOriginService = mock<RequestOriginApplicationService>()
   const mockedClock = mock<ClockServiceInterface>()
   const mockedIdGenerator = mock<IdGeneratorServiceInterface>()
   const mockedLogger = mock<LoggerServiceInterface>()
   const mockedUnitOfWork = mock<UnitOfWork>()
+  const mockedDomainEventFactory = mock<AuthDomainEventFactory>()
 
   const now = new Date('2026-02-16T20:43:00.000Z')
+  const pastDate = new Date(now.getTime() - 3600 * 1000)
+  const futureDate = new Date(now.getTime() + 3600 * 1000)
   const fakeContext: TxContext = { __opaque_tx_context: true }
 
-  const validEmail = UserEmailMother.valid()
+  const validEmail = EmailAddressMother.valid()
   const validUsername = UserUsernameMother.valid()
   const validName = UserNameMother.valid()
   const validPassword = UserPasswordMother.valid()
@@ -77,31 +74,19 @@ describe('CreateUser', () => {
   const validSportsmanRole = UserRoleMother.sportsman()
   const validOwnerRole = UserRoleMother.owner()
 
-  const validUserId = UserIdMother.valid()
-  const validSportsmanProfileId = UserProfileIdMother.valid()
-  const validOwnerProfileId = UserProfileIdMother.valid()
-  const expectedDomainEventId = DomainEventIdMother.valid()
+  const validUserId = IdentifierMother.valid()
+  const validSportsmanProfileId = IdentifierMother.valid()
+  const validOwnerProfileId = IdentifierMother.valid()
 
   const validPasswordHash = PasswordHashMother.valid()
   const validUA = UserAgentMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
   const validIpHash = UserSessionIpHashMother.valid()
 
-  const expectedRequestOriginData: RequestOriginData = {
-    userAgent: validUA,
-    ipHash: validIpHash.value,
-    normalizedIp: 'normalized-ip',
-    deviceLocation: validDeviceLocation,
-  }
-
   let baseRequest: CreateUserApplicationRequestDto
-
-  const mockedVerificationToken = mock<VerificationToken>({
-    id: VerificationTokenIdMother.valid(),
-    email: UserEmail.fromString(validEmail.value),
-    expiresAt: new Date(now.getTime() + 1000),
-    purpose: VerificationTokenPurpose.createAccount(),
-  })
+  let verificationTokenBuilder: VerificationTokenTestBuilder
+  let requestOriginData: RequestOriginData
+  let successfulSignupEvent: DomainEvent
 
   const buildUseCase = () => {
     return new CreateUser(
@@ -111,12 +96,13 @@ describe('CreateUser', () => {
       mockedVerificationTokenRepository,
       mockedDomainEventRepository,
       mockedVerifyTokenService,
-      mockedPasswordHasher,
+      mockedHasherService,
       mockedRequestOriginService,
       mockedClock,
       mockedUnitOfWork,
       mockedLogger,
       mockedIdGenerator,
+      mockedDomainEventFactory,
     )
   }
 
@@ -129,13 +115,15 @@ describe('CreateUser', () => {
     mockReset(mockedVerificationTokenRepository)
     mockReset(mockedDomainEventRepository)
     mockReset(mockedVerifyTokenService)
-    mockReset(mockedPasswordHasher)
+    mockReset(mockedHasherService)
     mockReset(mockedRequestOriginService)
     mockReset(mockedClock)
-    mockReset(mockedIdGenerator)
     mockReset(mockedLogger)
     mockReset(mockedUnitOfWork)
-    mockReset(mockedVerificationToken)
+    mockReset(mockedIdGenerator)
+    mockReset(mockedDomainEventFactory)
+
+    successfulSignupEvent = new DomainEventTestBuilder().build()
 
     baseRequest = {
       email: validEmail.value,
@@ -148,23 +136,35 @@ describe('CreateUser', () => {
       userAgent: validUA.value,
     }
 
+    verificationTokenBuilder = new VerificationTokenTestBuilder()
+      .withEmail(validEmail)
+      .withPurpose(VerificationTokenPurpose.createAccount())
+      .withExpiresAt(futureDate)
+      .withUsedAt(null)
+
+    requestOriginData = {
+      userAgent: validUA,
+      ipHash: validIpHash.value,
+      normalizedIp: 'normalized-ip',
+      deviceLocation: validDeviceLocation,
+    }
+
     mockedClock.now.mockReturnValue(now)
-    mockedRequestOriginService.process.mockResolvedValue(expectedRequestOriginData)
-    mockedPasswordHasher.hash.mockResolvedValue(validPasswordHash.value)
+    mockedRequestOriginService.process.mockResolvedValue(requestOriginData)
+    mockedHasherService.hash.mockResolvedValue(validPasswordHash.value)
 
     mockedUnitOfWork.runInTransaction.mockImplementation(async (work) => {
       return work(fakeContext)
     })
 
-    mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(mockedVerificationToken)
+    const expectedVerificationToken = verificationTokenBuilder.build()
+    mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(expectedVerificationToken)
     mockedVerifyTokenService.verify.mockResolvedValue(true)
     mockedUserRepository.checkEmailExists.mockResolvedValue(false)
     mockedUserRepository.checkUsernameExists.mockResolvedValue(false)
+    mockedDomainEventFactory.createSuccessfulSignupDomainEvent.mockReturnValue(successfulSignupEvent)
 
-    mockedIdGenerator.generateId
-      .mockReturnValueOnce(validUserId.value)
-      .mockReturnValueOnce(validSportsmanProfileId.value)
-      .mockReturnValueOnce(expectedDomainEventId.value)
+    mockedIdGenerator.generateId.mockReturnValueOnce(validUserId.value).mockReturnValueOnce(validSportsmanProfileId.value)
   })
 
   describe('happy path', () => {
@@ -219,30 +219,6 @@ describe('CreateUser', () => {
         .build()
     }
 
-    const buildExpectedDomainEvent = (deviceLocation: DeviceLocation | null) => {
-      return new DomainEventTestBuilder()
-        .withId(expectedDomainEventId)
-        .withName(DomainEventName.successfulSignup())
-        .withAggregateType(DomainEventAggregateType.user())
-        .withAggregateId(DomainEventAggregateId.fromString(validUserId.value))
-        .withOccurredAt(now)
-        .withMetadata({
-          ipHash: validIpHash.value,
-          ua: validUA.value,
-        })
-        .withPayload({
-          userId: validUserId.value,
-          email: validEmail.value,
-          deviceLocation: deviceLocation
-            ? {
-                city: deviceLocation.city,
-                countryCode: deviceLocation.countryCode,
-              }
-            : null,
-        })
-        .build()
-    }
-
     const assertCommonCallsAndResult = (
       result: Result<void, CreateUserApplicationError>,
       expectedRole: UserRole,
@@ -251,59 +227,69 @@ describe('CreateUser', () => {
     ) => {
       const expectedUser = buildExpectedUser(expectedRole)
       const expectedUserCredential = buildExpectedUserCredential()
-      const expectedDomainEvent = buildExpectedDomainEvent(expectedDeviceLocation)
       const expectedSportsmanProfile = buildExpectedSportsmanProfile()
+      const expectedInitialVerificationToken = verificationTokenBuilder.build()
+      const usedVerificationToken = verificationTokenBuilder.withUsedAt(now).build()
 
+      expect(expectedInitialVerificationToken.usedAt).toBeNull()
       expect(mockedRequestOriginService.process).toHaveBeenCalledTimes(1)
-      expect(mockedPasswordHasher.hash).toHaveBeenCalledTimes(1)
+      expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)
-      expect(mockedVerificationToken.validate).toHaveBeenCalledTimes(1)
       expect(mockedVerifyTokenService.verify).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.checkUsernameExists).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.checkEmailExists).toHaveBeenCalledTimes(1)
       expect(mockedIdGenerator.generateId).toHaveBeenCalledTimes(idGeneratorExpectedCalls)
-      expect(mockedVerificationToken.markAsUsed).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedProfileRepository.saveSportsmanProfile).toHaveBeenCalledTimes(1)
+      expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).toHaveBeenCalledTimes(1)
       expect(mockedCredentialRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
+      expect(mockedLogger.warn).not.toHaveBeenCalled()
+      expect(mockedLogger.error).not.toHaveBeenCalled()
 
       expect(result).toStrictEqual({ success: true, value: undefined })
 
       expect(mockedRequestOriginService.process).toHaveBeenCalledWith(baseRequest.ip, baseRequest.userAgent, {
         email: validEmail.value,
       })
-      expect(mockedPasswordHasher.hash).toHaveBeenCalledWith(baseRequest.password)
+      expect(mockedHasherService.hash).toHaveBeenCalledWith(baseRequest.password)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledWith(validEmail.value, fakeContext)
-      expect(mockedVerificationToken.validate).toHaveBeenCalledWith(
-        now,
-        VerificationTokenEmail.fromString(validEmail.value),
-        VerificationTokenPurpose.createAccount(),
+      expect(mockedVerifyTokenService.verify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: expectedInitialVerificationToken.id,
+        }),
+        validTokenValue.value,
       )
-      expect(mockedVerifyTokenService.verify).toHaveBeenCalledWith(mockedVerificationToken, validTokenValue.value)
       expect(mockedUserRepository.checkEmailExists).toHaveBeenCalledWith(expect.anything(), fakeContext)
       expect(mockedUserRepository.checkUsernameExists).toHaveBeenCalledWith(expect.anything(), fakeContext)
-      expect(mockedVerificationToken.markAsUsed).toHaveBeenCalledWith(now, expect.anything(), VerificationTokenPurpose.createAccount())
+      expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).toHaveBeenCalledWith(
+        validUserId,
+        validEmail,
+        expectedDeviceLocation,
+        validUA,
+        validIpHash.value,
+        now,
+      )
       expect(mockedUserRepository.save).toHaveBeenCalledWith(expectedUser, fakeContext)
       expect(mockedCredentialRepository.save).toHaveBeenCalledWith(expectedUserCredential, fakeContext)
       expect(mockedProfileRepository.saveSportsmanProfile).toHaveBeenCalledWith(expectedSportsmanProfile, fakeContext)
-      expect(mockedVerificationTokenRepository.update).toHaveBeenCalledWith(mockedVerificationToken, fakeContext)
-      expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(expectedDomainEvent, fakeContext)
+      expect(mockedVerificationTokenRepository.update).toHaveBeenCalledWith(usedVerificationToken, fakeContext)
+      expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(successfulSignupEvent, fakeContext)
     }
 
     it('should call services, repositories and entities correctly and return the correct result when requested role is sportsman', async () => {
       const useCase = buildUseCase()
       const result = await useCase.execute(baseRequest)
 
-      assertCommonCallsAndResult(result, validSportsmanRole, 3, expectedRequestOriginData.deviceLocation)
+      assertCommonCallsAndResult(result, validSportsmanRole, 2, validDeviceLocation)
       expect(mockedProfileRepository.saveOwnerProfile).not.toHaveBeenCalled()
     })
 
     it('should call services, repositories and entities correctly and return the correct result when requested role is owner', async () => {
       mockedRequestOriginService.process.mockResolvedValue({
-        ...expectedRequestOriginData,
+        ...requestOriginData,
         deviceLocation: null,
       })
       mockedIdGenerator.generateId.mockReset()
@@ -311,7 +297,6 @@ describe('CreateUser', () => {
         .mockReturnValueOnce(validUserId.value)
         .mockReturnValueOnce(validSportsmanProfileId.value)
         .mockReturnValueOnce(validOwnerProfileId.value)
-        .mockReturnValueOnce(expectedDomainEventId.value)
 
       baseRequest = { ...baseRequest, requestedRole: validOwnerRole.value }
 
@@ -320,7 +305,7 @@ describe('CreateUser', () => {
 
       const expectedOwnerProfile = buildExpectedOwnerProfile()
 
-      assertCommonCallsAndResult(result, validOwnerRole, 4, null)
+      assertCommonCallsAndResult(result, validOwnerRole, 3, null)
       expect(mockedProfileRepository.saveOwnerProfile).toHaveBeenCalledTimes(1)
       expect(mockedProfileRepository.saveOwnerProfile).toHaveBeenCalledWith(expectedOwnerProfile, fakeContext)
     })
@@ -330,200 +315,193 @@ describe('CreateUser', () => {
     describe('when input data is not valid', () => {
       it('should return error when email is invalid', async () => {
         const useCase = buildUseCase()
-        const result = await useCase.execute({ ...baseRequest, email: VerificationTokenEmailMother.invalid() })
+        const result = await useCase.execute({ ...baseRequest, email: EmailAddressMother.invalid() })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidInput([CreateUserError.invalidEmail()]),
         })
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return error when token format is invalid', async () => {
         const useCase = buildUseCase()
         const result = await useCase.execute({ ...baseRequest, token: VerificationTokenValueMother.invalid() })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidInput([CreateUserError.invalidTokenFormat()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return error when username is invalid', async () => {
         const useCase = buildUseCase()
         const result = await useCase.execute({ ...baseRequest, username: UserUsernameMother.invalid() })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidInput([CreateUserError.invalidUsername()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return error when name is invalid', async () => {
         const useCase = buildUseCase()
         const result = await useCase.execute({ ...baseRequest, name: UserNameMother.invalid() })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidInput([CreateUserError.invalidName()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return error when password is invalid', async () => {
         const useCase = buildUseCase()
         const result = await useCase.execute({ ...baseRequest, password: UserPasswordMother.invalid() })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidInput([CreateUserError.invalidPassword()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return error when user role is invalid', async () => {
         const useCase = buildUseCase()
         const result = await useCase.execute({ ...baseRequest, requestedRole: UserRoleMother.invalid() })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidInput([CreateUserError.invalidRole()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
 
       it('should return multiple errors if multiple inputs are invalid', async () => {
         const useCase = buildUseCase()
         const result = await useCase.execute({
           ...baseRequest,
-          email: UserEmailMother.invalid(),
+          email: EmailAddressMother.invalid(),
           password: UserPasswordMother.invalid(),
         })
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidInput([CreateUserError.invalidEmail(), CreateUserError.invalidPassword()]),
         })
+        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       })
     })
 
     describe('when token is not valid (not found, expired, used, incorrect code, incorrect user, incorrect purpose)', () => {
+      const asserLoggerCall = (
+        expectedErrorMessage: string,
+        expectedReason: string,
+        expectedToken: VerificationToken,
+        extraData?: Record<string, unknown>,
+      ) => {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
+          error: expectedErrorMessage,
+          reason: expectedReason,
+          email: expectedToken.email.value,
+          expiresAt: expectedToken.expiresAt,
+          usedAt: expectedToken.usedAt,
+          purpose: expectedToken.purpose.value,
+          verificationTokenId: expectedToken.id.value,
+          ...(extraData ? extraData : {}),
+        })
+      }
+
       it('should return notFound error when token does not exist', async () => {
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(null)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(validEmail.value)),
         })
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenExpired error when token is already expired', async () => {
-        const domainException = VerificationTokenDomainException.alreadyExpired(mockedVerificationToken.id.value)
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
-        })
+        const expiredVerificationToken = verificationTokenBuilder.withExpiresAt(pastDate).build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(expiredVerificationToken)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenExpired', {
-          message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
-          email: validEmail.value,
-          expiresAt: mockedVerificationToken.expiresAt,
-        })
+        asserLoggerCall(
+          VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
+          'Token has already expired',
+          expiredVerificationToken,
+        )
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenAlreadyUsed error when token is already used', async () => {
-        const domainException = VerificationTokenDomainException.alreadyUsed(mockedVerificationToken.id.value)
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
-        })
+        const usedVerificationToken = verificationTokenBuilder.withUsedAt(pastDate).build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(usedVerificationToken)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenAlreadyUsed', {
-          message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
-          email: validEmail.value,
-          usedAt: mockedVerificationToken.usedAt,
-        })
+        asserLoggerCall(
+          VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
+          'Token was already used',
+          usedVerificationToken,
+        )
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenInvalidOwner when token does not belong to user', async () => {
-        const domainException = VerificationTokenDomainException.cannotBeUsedByUser(mockedVerificationToken.id.value, validEmail.value)
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
-        })
+        const anotherEmail = EmailAddressMother.random()
+        const verificationToken = verificationTokenBuilder.withEmail(anotherEmail).build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
+
+        const domainException = VerificationTokenDomainException.cannotBeUsedByUser(verificationToken.id.value, validEmail.value)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenInvalidOwner', {
-          message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
-          email: validEmail.value,
-          ownerEmail: mockedVerificationToken.email.value,
+        asserLoggerCall(domainException.message, 'Token belongs to a different email address', verificationToken, {
+          requestEmail: validEmail.value,
         })
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return tokenPurposeMismatch when token cannot be used for the current operation', async () => {
+        const notAccountCreateVerificationToken = verificationTokenBuilder.withPurpose(VerificationTokenPurpose.resetPassword()).build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(notAccountCreateVerificationToken)
         const domainException = VerificationTokenDomainException.cannotBeUsedForPurpose(
-          mockedVerificationToken.id.value,
-          VerificationTokenPurpose.resetPassword().value,
+          notAccountCreateVerificationToken.id.value,
+          VerificationTokenPurpose.createAccount().value,
         )
-
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw domainException
-        })
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed: tokenPurposeMismatch', {
-          message: domainException.message,
-          verificationTokenId: mockedVerificationToken.id.value,
-          email: validEmail.value,
-          verificationTokenPurpose: mockedVerificationToken.purpose,
-        })
-      })
-
-      it('should re-throw exception when VerificationToken throws a non-domain exception', async () => {
-        const unexpectedError = new Error('Unexpected error')
-
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw unexpectedError
-        })
-
-        const useCase = buildUseCase()
-        await expect(useCase.execute(baseRequest)).rejects.toThrow(unexpectedError)
-      })
-
-      it('should re-throw exception when VerificationToken throws a unexpected domain exception', async () => {
-        const unexpectedError = VerificationTokenDomainException.invalidTokenHash()
-
-        mockedVerificationToken.validate.mockImplementation(() => {
-          throw unexpectedError
-        })
-        const useCase = buildUseCase()
-        await expect(useCase.execute(baseRequest)).rejects.toThrow(unexpectedError)
+        asserLoggerCall(domainException.message, 'Token was not generated for signup', notAccountCreateVerificationToken)
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
       it('should return invalidToken error when cryptographic verification fails', async () => {
@@ -532,28 +510,56 @@ describe('CreateUser', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token cryptography verification failed', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: validEmail.value,
         })
+        expect(mockedUserRepository.checkEmailExists).not.toHaveBeenCalled()
+        expect(mockedUserRepository.checkUsernameExists).not.toHaveBeenCalled()
+      })
+
+      it('should throw exception when entity returns a unexpected VerificationTokenDomainException', async () => {
+        const verificationToken = verificationTokenBuilder.build()
+        mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
+
+        const unhandledDomainError = VerificationTokenDomainException.invalidTokenHash()
+        jest.spyOn(verificationToken, 'validate').mockImplementation(() => {
+          return { success: false, error: unhandledDomainError }
+        })
+
+        const useCase = buildUseCase()
+
+        await expect(useCase.execute(baseRequest)).rejects.toThrow(unhandledDomainError)
+        expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
     })
 
     describe('when data is duplicated', () => {
+      const assertLoggerCall = (emailExists: boolean, usernameExists: boolean) => {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Signup rejected', {
+          username: validUsername.value,
+          email: validEmail.value,
+          reason: 'User is already registered',
+          emailExists,
+          usernameExists,
+        })
+      }
+
       it('should return error when email is duplicated', async () => {
         mockedUserRepository.checkEmailExists.mockResolvedValue(true)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail(validEmail.value)]),
         })
-        expect(mockedUserRepository.save).not.toHaveBeenCalled()
+        assertLoggerCall(true, false)
+        expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).not.toHaveBeenCalled()
       })
 
       it('should return error when username is duplicated', async () => {
@@ -562,10 +568,12 @@ describe('CreateUser', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername(validUsername.value)]),
         })
+        assertLoggerCall(false, true)
+        expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).not.toHaveBeenCalled()
       })
 
       it('should return multiple duplicated errors when both exist', async () => {
@@ -575,13 +583,15 @@ describe('CreateUser', () => {
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
-        expect(result).toMatchObject({
+        expect(result).toEqual({
           success: false,
           error: CreateUserApplicationError.duplicated([
             CreateUserError.duplicatedEmail(validEmail.value),
             CreateUserError.duplicatedUsername(validUsername.value),
           ]),
         })
+        assertLoggerCall(true, true)
+        expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).not.toHaveBeenCalled()
       })
     })
 
@@ -600,7 +610,7 @@ describe('CreateUser', () => {
 
       it('should throw error when PasswordHasher fails', async () => {
         const hashingError = new Error('Unexpected hashing failed')
-        mockedPasswordHasher.hash.mockImplementation(() => {
+        mockedHasherService.hash.mockImplementation(() => {
           throw hashingError
         })
 
@@ -618,6 +628,7 @@ describe('CreateUser', () => {
 
         const useCase = buildUseCase()
         await expect(useCase.execute(baseRequest)).rejects.toThrow(dbError)
+        expect(mockedCredentialRepository.save).not.toHaveBeenCalled()
       })
     })
   })

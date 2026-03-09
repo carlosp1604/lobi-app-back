@@ -1,9 +1,7 @@
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
-import { UserSessionId } from '~/src/modules/Auth/Domain/ValueObject/UserSessionId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -11,8 +9,8 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 
 export class UserSessionTestBuilder {
-  private _id = UserSessionIdMother.valid()
-  private _userId = UserIdMother.valid()
+  private _id = IdentifierMother.valid()
+  private _userId = IdentifierMother.valid()
   private _tokenHash = UserSessionTokenHashMother.random()
   private _ipHash: UserSessionIpHash | null = null
   private _userAgent: UserAgent = UserAgentMother.valid()
@@ -22,12 +20,12 @@ export class UserSessionTestBuilder {
   private _createdAt = new Date()
   private _updatedAt = new Date()
 
-  withId(id: UserSessionId) {
+  withId(id: Identifier) {
     this._id = id
     return this
   }
 
-  withUserId(userId: UserId) {
+  withUserId(userId: Identifier) {
     this._userId = userId
     return this
   }

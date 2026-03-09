@@ -1,10 +1,8 @@
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
@@ -13,6 +11,9 @@ import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
+import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 describe('PostgreSqlUserCredentialRepository', () => {
   const now = new Date('2025-09-26T14:11:25Z')
@@ -31,8 +32,8 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('save', () => {
-    const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.valid()
+    const userId = IdentifierMother.valid()
+    const userEmail = EmailAddressMother.valid()
 
     beforeEach(async () => {
       const rawUser = makeRawUser({ id: userId.value, email: userEmail.value })
@@ -79,19 +80,24 @@ describe('PostgreSqlUserCredentialRepository', () => {
     })
   })
 
-  describe('saveLoginSuccess', () => {
-    const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.valid()
+  describe('update', () => {
+    const userId = IdentifierMother.valid()
+    const userEmail = EmailAddressMother.valid()
+
+    const initialPasswordHash = PasswordHashMother.valid()
+    const newPasswordHash = PasswordHashMother.other()
 
     const rawUserCredential = makeRawUserCredential({
       user_id: userId.value,
+      password_hash: initialPasswordHash.value,
     })
 
     const updatedAt = new Date(now.getTime() + 500)
 
-    const createUserCredential = (userCredentialUserId: UserId) => {
+    const createUserCredential = (userCredentialUserId: Identifier, passwordHash: PasswordHash) => {
       return new UserCredentialTestBuilder()
         .withUserId(userCredentialUserId)
+        .withPasswordHash(passwordHash)
         .withFailedAttempts(0)
         .withLastLoginAt(updatedAt)
         .withLockedUntil(null)
@@ -107,19 +113,19 @@ describe('PostgreSqlUserCredentialRepository', () => {
       await userDatabaseHelper.save(rawUser)
     })
 
-    it('should update entity correctly', async () => {
+    it('should update entity correctly including password hash', async () => {
       await userCredentialDatabaseHelper.save(rawUserCredential)
 
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
       const context = new TypeOrmTxContext(runner.manager)
-      const userCredential = createUserCredential(userId)
+
+      const userCredential = createUserCredential(userId, newPasswordHash)
 
       const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
 
-      await repository.saveLoginSuccess(userCredential, context)
+      await repository.update(userCredential, context)
 
       const userCredentialsCountAfter = await userCredentialDatabaseHelper.count()
-
       const updatedRow = await userCredentialDatabaseHelper.findUserCredential(rawUserCredential.user_id)
 
       expect(userCredentialsCountBefore).toBe(1)
@@ -130,6 +136,8 @@ describe('PostgreSqlUserCredentialRepository', () => {
       expect(updatedRow!.locked_until).toBeNull()
       expect(updatedRow!.last_login_at?.getTime()).toBe(updatedAt.getTime())
       expect(updatedRow!.updated_at.getTime()).toBe(updatedAt.getTime())
+      expect(updatedRow!.password_hash).toBe(newPasswordHash.value)
+      expect(updatedRow!.password_hash).not.toBe(initialPasswordHash.value)
     })
 
     it('should not update entity when it is not found', async () => {
@@ -138,12 +146,12 @@ describe('PostgreSqlUserCredentialRepository', () => {
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
       const context = new TypeOrmTxContext(runner.manager)
 
-      const anotherUserId = UserIdMother.valid()
-      const userCredential = createUserCredential(anotherUserId)
+      const anotherUserId = IdentifierMother.valid()
+      const userCredential = createUserCredential(anotherUserId, newPasswordHash)
 
       const userCredentialsCountBefore = await userCredentialDatabaseHelper.count()
 
-      await repository.saveLoginSuccess(userCredential, context)
+      await repository.update(userCredential, context)
 
       const userCredentialsCountAfter = await userCredentialDatabaseHelper.count()
 
@@ -156,6 +164,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
       expect(expectedToUpdateRow).toBeNull()
 
       expect(originalRow).not.toBeNull()
+      expect(originalRow!.password_hash).toBe(initialPasswordHash.value)
       expect(originalRow!.failed_attempts).toBe(rawUserCredential.failed_attempts)
       expect(originalRow!.locked_until?.getTime()).toBe(rawUserCredential.locked_until?.getTime())
       expect(originalRow!.last_login_at).toBe(rawUserCredential.last_login_at)
@@ -164,8 +173,8 @@ describe('PostgreSqlUserCredentialRepository', () => {
   })
 
   describe('findByUserId', () => {
-    const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.valid()
+    const userId = IdentifierMother.valid()
+    const userEmail = EmailAddressMother.valid()
     const passwordHash = PasswordHashMother.valid()
 
     beforeEach(async () => {

@@ -3,37 +3,35 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { mock, mockReset } from 'jest-mock-extended'
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/UserModelTranslator'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 
 describe('PostgresqlUserRepository', () => {
   const mockedResolver = mock<TypeOrmManagerResolver>()
-  const mockedUserRepository = mock<Repository<typeof UserEntity>>()
+  const mockedUserRepository = mock<Repository<UserRawModelWithRelations>>()
   const mockedEntityManager = mock<EntityManager>({})
   const now = new Date('2025-09-26T14:11:25Z')
 
   let baseRawUser: UserRawModelWithRelations
 
   beforeEach(() => {
+    jest.restoreAllMocks()
+
+    mockReset(mockedResolver)
+    mockReset(mockedUserRepository)
+    mockReset(mockedEntityManager)
+
     baseRawUser = makeRawUser({
       email_verified_at: now,
       created_at: now,
       updated_at: now,
     })
-  })
-
-  afterEach(() => {
-    mockReset(mockedResolver)
-    mockReset(mockedUserRepository)
-    mockReset(mockedEntityManager)
-
-    jest.restoreAllMocks()
   })
 
   const checkExistsByCalls = (context: TxContext, existBy: { [k: string]: string }) => {
@@ -47,16 +45,14 @@ describe('PostgresqlUserRepository', () => {
   }
 
   describe('findWithLock', () => {
-    const userId = UserIdMother.valid()
-    const userEmail = UserEmailMother.random()
+    const userId = IdentifierMother.valid()
+    const userEmail = EmailAddressMother.random()
 
     const context: TxContext = { __opaque_tx_context: true }
 
     const mockedQueryBuilder = mock<SelectQueryBuilder<UserRawModelWithRelations>>()
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
       mockReset(mockedQueryBuilder)
 
       mockedResolver.resolve.mockReturnValue(mockedEntityManager)
@@ -273,19 +269,13 @@ describe('PostgresqlUserRepository', () => {
   })
 
   describe('findByEmail', () => {
-    const userEmail = UserEmailMother.valid()
+    const userEmail = EmailAddressMother.valid()
     const context: TxContext = { __opaque_tx_context: true }
     let rawUser: UserRawModelWithRelations
-
-    const mockedUserRepository = mock<Repository<UserRawModelWithRelations>>()
 
     const expectedUser = new UserTestBuilder().withEmail(userEmail).build()
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
-      mockReset(mockedUserRepository)
-
       rawUser = {
         ...baseRawUser,
         email: userEmail.value,
@@ -390,12 +380,10 @@ describe('PostgresqlUserRepository', () => {
   })
 
   describe('checkEmailExists', () => {
-    const email = UserEmailMother.valid()
+    const email = EmailAddressMother.valid()
     const context: TxContext = { __opaque_tx_context: true }
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
       mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserRepository)
     })
 
@@ -450,8 +438,6 @@ describe('PostgresqlUserRepository', () => {
     const context: TxContext = { __opaque_tx_context: true }
 
     beforeEach(() => {
-      mockReset(mockedResolver)
-      mockReset(mockedEntityManager)
       mockedEntityManager.getRepository.mockReturnValueOnce(mockedUserRepository)
     })
 

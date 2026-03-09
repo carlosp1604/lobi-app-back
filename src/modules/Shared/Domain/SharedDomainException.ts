@@ -1,0 +1,21 @@
+import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
+import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
+
+export class SharedDomainException extends DomainException {
+  public static invalidIdentifierId = 'shared_domain_invalid_identifier'
+  public static invalidEmailAddressId = 'shared_domain_invalid_email_address'
+
+  private constructor(message: string, id: string) {
+    super(message, id, SharedDomainException.name)
+  }
+
+  public static invalidIdentifier(identifier: string) {
+    const safeIdentifierSample = StringFormatter.formatSafe(identifier, 36)
+    return new SharedDomainException(`${safeIdentifierSample} is not a valid Identifier`, this.invalidIdentifierId)
+  }
+
+  public static invalidEmailAddress(emailAddress: string) {
+    const safeEmailAddressSample = StringFormatter.formatSafe(emailAddress, 255)
+    return new SharedDomainException(`${safeEmailAddressSample} is not a valid Email Address`, this.invalidEmailAddressId)
+  }
+}

@@ -1,7 +1,7 @@
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { compareExceptModifiedFields } from '~/src/test/utils/snapshot'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 interface UserCredentialSnapshot {
@@ -24,8 +24,8 @@ describe('UserCredential', () => {
 
   const createSnapshot = (userCredential: UserCredential): UserCredentialSnapshot => {
     return {
-      userId: userCredential.userId.toString(),
-      passwordHash: userCredential.passwordHash.toString(),
+      userId: userCredential.userId.value,
+      passwordHash: userCredential.passwordHash.value,
       failedAttempts: userCredential.failedAttempts,
       lockedUntil: userCredential.lockedUntil,
       lastLoginAt: userCredential.lastLoginAt,
@@ -156,9 +156,34 @@ describe('UserCredential', () => {
     })
   })
 
+  describe('updatePasswordHash', () => {
+    const updatedAt = new Date(now.getTime() + 50)
+
+    it('should update password hash, updatedAt and reset security counters', () => {
+      const lockedUntil = new Date(now.getTime() + 10000)
+      const userCredential = new UserCredentialTestBuilder().withFailedAttempts(5).withLockedUntil(lockedUntil).build()
+
+      const newPasswordHash = PasswordHashMother.other()
+
+      const beforeSnapshot = createSnapshot(userCredential)
+
+      userCredential.updatePasswordHash(newPasswordHash, updatedAt)
+
+      const afterSnapshot = createSnapshot(userCredential)
+
+      expect(userCredential.passwordHash.equals(newPasswordHash)).toBe(true)
+      expect(userCredential.updatedAt).toBe(updatedAt)
+
+      expect(userCredential.failedAttempts).toBe(0)
+      expect(userCredential.lockedUntil).toBeNull()
+
+      compareExceptModifiedFields(beforeSnapshot, afterSnapshot, ['passwordHash', 'updatedAt', 'failedAttempts', 'lockedUntil'])
+    })
+  })
+
   describe('create', () => {
     it('should initialize the UserCredential instance correctly', () => {
-      const userId = UserIdMother.valid()
+      const userId = IdentifierMother.valid()
       const passwordHash = PasswordHashMother.valid()
 
       const userCredential = UserCredential.create(userId, passwordHash, now)

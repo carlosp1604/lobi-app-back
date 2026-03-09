@@ -2,8 +2,8 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 export class UserSessionPolicyManagerApplicationService {
   constructor(
@@ -19,21 +19,21 @@ export class UserSessionPolicyManagerApplicationService {
   }
 
   public applyPolicyAndRevokeForRefresh(
-    currentSession: UserSession,
+    currentSessionId: Identifier,
+    userId: Identifier,
     activeSessions: Array<UserSession>,
     now: Date,
   ): Result<Array<UserSession>, UserSessionPolicyManagerApplicationError> {
-    const isCurrentInList = activeSessions.some((session) => session.id.equals(currentSession.id))
+    const currentSession = activeSessions.find((session) => session.id.equals(currentSessionId))
 
-    if (!isCurrentInList) {
-      this.loggerService.error('Session refresh logic inconsistency. Current session not found in active sessions list', undefined, {
-        sessionId: currentSession.id.toString(),
-        userId: currentSession.userId.toString(),
+    if (!currentSession) {
+      this.loggerService.error('Inconsistent state', undefined, {
+        sessionId: currentSessionId.value,
+        userId: userId.value,
+        reason: 'Current session not found in active sessions list',
       })
 
-      return fail(
-        UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSession.id.toString(), currentSession.userId.toString()),
-      )
+      return fail(UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSessionId.value, userId.value))
     }
 
     const revokeCurrentResult = this.handleRevocation(currentSession, now)
@@ -49,6 +49,7 @@ export class UserSessionPolicyManagerApplicationService {
     if (!maxSessionsPolicyResult.success) {
       return maxSessionsPolicyResult
     }
+
     const revokedByPolicy = maxSessionsPolicyResult.value
 
     return success([currentSession, ...revokedByPolicy])
@@ -59,6 +60,7 @@ export class UserSessionPolicyManagerApplicationService {
     now: Date,
   ): Result<Array<UserSession>, UserSessionPolicyManagerApplicationError> {
     const sessionsToRevoke = this.maxSessionsPolicy.sessionsToRevoke(activeSessions)
+
     const successfullyRevoked: Array<UserSession> = []
     for (const session of sessionsToRevoke) {
       const revokeResult = this.handleRevocation(session, now)
@@ -74,34 +76,21 @@ export class UserSessionPolicyManagerApplicationService {
   }
 
   private handleRevocation(session: UserSession, now: Date): Result<void, UserSessionPolicyManagerApplicationError> {
-    try {
-      session.revoke(now)
+    const canBeRevokedResult = session.canBeRevoked(now)
 
-      return success(undefined)
-    } catch (exception: unknown) {
-      if (!(exception instanceof UserSessionDomainException)) {
-        const stack = exception instanceof Error ? exception.stack : undefined
-
-        this.loggerService.error('Unexpected error while revoking session', stack, {
-          sessionId: session.id.toString(),
-          userId: session.userId.toString(),
-          revokedAt: session.revokedAt,
-          expiresAt: session.expiresAt,
-          error: exception,
-        })
-
-        throw new Error(`Unexpected error while revoking session ${session.id.toString()}`)
-      }
-
-      this.loggerService.warn('Cannot revoke session', {
-        sessionId: session.id.toString(),
-        userId: session.userId.toString(),
+    if (!canBeRevokedResult.success) {
+      this.loggerService.warn('Session revocation failed', {
+        sessionId: session.id.value,
+        userId: session.userId.value,
         revokedAt: session.revokedAt,
         expiresAt: session.expiresAt,
-        error: exception.message,
+        error: canBeRevokedResult.error.message,
       })
 
-      return fail(UserSessionPolicyManagerApplicationError.revocationFailed(exception.message))
+      return fail(UserSessionPolicyManagerApplicationError.revocationFailed(canBeRevokedResult.error.message))
     }
+
+    session.revoke(now)
+    return success(undefined)
   }
 }

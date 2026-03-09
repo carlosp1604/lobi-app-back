@@ -28,27 +28,23 @@ describe('UserRole', () => {
     })
   })
 
-  describe('get value', () => {
-    it('should store the correct value', () => {
-      const userRoleValueObject = UserRoleMother.owner()
-
-      expect(userRoleValueObject.value).toEqual(ValidUserRoles.OWNER)
-    })
-  })
-
-  describe('sportsman', () => {
+  describe('factories', () => {
     it('factory should return sportsman', () => {
       const userRoleValueObject = UserRole.sportsman()
 
       expect(userRoleValueObject.value).toEqual(ValidUserRoles.SPORTSMAN)
     })
-  })
 
-  describe('owner', () => {
     it('factory should return owner', () => {
       const userRoleValueObject = UserRole.owner()
 
       expect(userRoleValueObject.value).toEqual(ValidUserRoles.OWNER)
     })
+  })
+
+  it('should store the correct value', () => {
+    const userRoleValueObject = UserRole.fromString(ValidUserRoles.OWNER)
+
+    expect(userRoleValueObject.value).toEqual(ValidUserRoles.OWNER)
   })
 })

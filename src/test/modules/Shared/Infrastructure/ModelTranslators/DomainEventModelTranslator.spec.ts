@@ -1,11 +1,10 @@
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { DomainEventAggregateIdMother } from '~/src/test/mothers/DomainEventAggregateIdMother'
-import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
-import { DomainEventModelTranslator } from '~/src/modules/Shared/Infrastructure/ModelTranslators/DomainEventModelTranslator'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
+import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
+import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
+import { DomainEventModelTranslator } from '~/src/modules/Shared/Infrastructure/ModelTranslators/DomainEventModelTranslator'
 
 describe('DomainEventModelTranslator', () => {
   const isoDate = '2025-10-07T14:37:43Z'
@@ -27,12 +26,12 @@ describe('DomainEventModelTranslator', () => {
 
     beforeEach(() => {
       domainEventBuilder = new DomainEventTestBuilder()
-        .withId(DomainEventIdMother.valid())
+        .withId(IdentifierMother.valid())
         .withName(DomainEventName.successfulLogin())
         .withPayload({ userId: 'test-user-id', sessionId: 'test-session-id' })
         .withMetadata({ ipHash: 'test-hash-ip', ua: 'test-user-agent' })
         .withOccurredAt(now)
-        .withAggregateId(DomainEventAggregateIdMother.valid())
+        .withAggregateId(IdentifierMother.valid())
         .withAggregateType(DomainEventAggregateType.user())
     })
 

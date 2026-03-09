@@ -57,11 +57,16 @@ describe('PostmarkEmailSenderService', () => {
     expect(mockedLoggerService.error).not.toHaveBeenCalled()
     expect(mockedPostmarkServerClient.sendEmailWithTemplate).toHaveBeenCalledTimes(1)
 
-    expect(mockedLoggerService.log).toHaveBeenCalledWith(`Attempting to send email with template [${templateAlias}] to [${toAddress}]`)
+    expect(mockedLoggerService.log).toHaveBeenCalledWith('Attempting to send email with template', {
+      templateAlias,
+      recipient: toAddress,
+    })
     expect(mockedPostmarkServerClient.sendEmailWithTemplate).toHaveBeenCalledWith(expectedMessage)
-    expect(mockedLoggerService.log).toHaveBeenCalledWith(
-      `Email sent successfully via Postmark to [${toAddress}], MessageID: ${successResponse.MessageID}`,
-    )
+    expect(mockedLoggerService.log).toHaveBeenCalledWith('Email sent successfully', {
+      recipient: toAddress,
+      messageId: successResponse.MessageID,
+      provider: 'Postmark',
+    })
   })
 
   it('should throw error when postmark fails with a PostmarkError', async () => {
@@ -75,17 +80,19 @@ describe('PostmarkEmailSenderService', () => {
     expect(mockedLoggerService.log).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
 
-    expect(mockedLoggerService.log).toHaveBeenCalledWith(`Attempting to send email with template [${templateAlias}] to [${toAddress}]`)
-    expect(mockedLoggerService.error).toHaveBeenCalledWith(
-      `Postmark API error: ${postmarkError.statusCode} - ${postmarkError.message}`,
-      postmarkError.stack,
-      expect.objectContaining({
-        recipient: toAddress,
-        templateAlias: templateAlias,
-        statusCode: postmarkError.statusCode,
-        postmarkErrorCode: postmarkError.code,
-      }),
-    )
+    expect(mockedLoggerService.log).toHaveBeenCalledWith('Attempting to send email with template', {
+      templateAlias,
+      recipient: toAddress,
+    })
+    expect(mockedLoggerService.error).toHaveBeenCalledWith('Failed to send email', postmarkError.stack, {
+      recipient: toAddress,
+      templateAlias: templateAlias,
+      statusCode: postmarkError.statusCode,
+      postmarkErrorCode: postmarkError.code,
+      type: 'PostmarkAPIError',
+      provider: 'Postmark',
+      error: postmarkError.message,
+    })
   })
 
   it('should throw error when postmark fails with a generic Error', async () => {
@@ -99,38 +106,15 @@ describe('PostmarkEmailSenderService', () => {
     expect(mockedLoggerService.log).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
 
-    expect(mockedLoggerService.log).toHaveBeenCalledWith(`Attempting to send email with template [${templateAlias}] to [${toAddress}]`)
-    expect(mockedLoggerService.error).toHaveBeenCalledWith(
-      `Unexpected error sending email: ${genericError.message}`,
-      genericError.stack,
-      expect.objectContaining({
-        recipient: toAddress,
-        templateAlias: templateAlias,
-        error: genericError.message,
-      }),
-    )
-  })
-
-  it('should throw error when postmark fails with a non-Error', async () => {
-    const service = buildService()
-
-    const unknownError = 'Unexpected error'
-    mockedPostmarkServerClient.sendEmailWithTemplate.mockRejectedValue(unknownError)
-
-    await expect(service.sendWithTemplate(toAddress, templateAlias, emailContext, language, now)).rejects.toEqual(unknownError)
-
-    expect(mockedLoggerService.log).toHaveBeenCalledTimes(1)
-    expect(mockedLoggerService.error).toHaveBeenCalledTimes(1)
-
-    expect(mockedLoggerService.log).toHaveBeenCalledWith(`Attempting to send email with template [${templateAlias}] to [${toAddress}]`)
-    expect(mockedLoggerService.error).toHaveBeenCalledWith(
-      'Failed to send email via Postmark',
-      undefined,
-      expect.objectContaining({
-        recipient: toAddress,
-        templateAlias: templateAlias,
-        error: unknownError,
-      }),
-    )
+    expect(mockedLoggerService.log).toHaveBeenCalledWith('Attempting to send email with template', {
+      templateAlias,
+      recipient: toAddress,
+    })
+    expect(mockedLoggerService.error).toHaveBeenCalledWith('Failed to send email', genericError.stack, {
+      recipient: toAddress,
+      templateAlias: templateAlias,
+      provider: 'Postmark',
+      error: genericError.message,
+    })
   })
 })

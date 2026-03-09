@@ -10,25 +10,18 @@ import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServic
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { EmailAddressValueObject } from '~/src/modules/Shared/Domain/ValueObject/EmailAddressValueObject'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenTokenHash'
-import { VerificationTokenId } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenId'
-import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
-import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Domain/EmailTemplates'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { VerificationTokenEmail } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenEmail'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
-import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 export class GenerateVerificationToken {
   private readonly verificationTokenTtlMs: number
@@ -46,6 +39,7 @@ export class GenerateVerificationToken {
     private readonly configService: ConfigService<Env, true>,
     private readonly loggerService: LoggerServiceInterface,
     private readonly idGeneratorService: IdGeneratorServiceInterface,
+    private readonly authDomainEventFactory: AuthDomainEventFactory,
   ) {
     this.verificationTokenTtlMs = this.configService.get('VERIFICATION_TOKEN_TTL_MS', { infer: true })
   }
@@ -54,6 +48,9 @@ export class GenerateVerificationToken {
     request: GenerateVerificationTokenApplicationRequestDto,
   ): Promise<Result<void, GenerateVerificationTokenApplicationError>> {
     const now = this.clockService.now()
+
+    // TODO: Validate language from request when multi-language emails are supported
+    const language = 'es'
 
     const emailValidationResult = this.validateEmail(request.email)
     const purposeValidationResult = this.validateVerificationTokenPurpose(request.purpose)
@@ -69,29 +66,29 @@ export class GenerateVerificationToken {
     const email = emailValidationResult.value
     const verificationTokenPurpose = purposeValidationResult.value
 
-    const user = await this.userRepository.findByEmail(email.toString())
+    const user = await this.userRepository.findByEmail(email.value)
 
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.createAccount())) {
       if (user) {
-        this.loggerService.warn('Create account requested for an already taken email', {
-          email: email.toString(),
+        this.loggerService.warn('Verification token generation rejected', {
+          email: email.value,
+          reason: 'Email is already registered and purpose is create account',
         })
 
-        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.toString()))
+        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
       }
     }
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: email.toString(),
+      email: email.value,
     })
 
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.resetPassword())) {
-      if (!user || user.deletedAt || !user.status.equals(UserStatus.active())) {
-        this.loggerService.warn('Password reset requested for non-existent or inactive email', {
-          email: email.toString(),
-          reason: user ? 'Inactive' : 'NotFound',
-          ip: request.ip.slice(0, 39),
-          userAgent: userAgent.toString(),
+      if (!user || !user.isActive()) {
+        this.loggerService.warn('Verification token generation rejected', {
+          email: email.value,
+          reason: user ? 'User is disabled' : 'User not found',
+          purpose: verificationTokenPurpose.value,
         })
 
         return success(undefined)
@@ -99,39 +96,29 @@ export class GenerateVerificationToken {
     }
 
     return this.unitOfWork.runInTransaction(async (context) => {
-      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.toString(), context)
+      const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       let resendCode = false
 
       if (verificationToken) {
-        let isVerificationTokenUsable: boolean
-        try {
-          verificationToken.validate(now, email, verificationTokenPurpose)
+        const validateTokenResult = verificationToken.validate(now, email, verificationTokenPurpose)
 
-          isVerificationTokenUsable = true
-        } catch (exception: unknown) {
-          if (!(exception instanceof VerificationTokenDomainException)) {
-            throw exception
-          }
-
-          isVerificationTokenUsable = false
-        }
+        const isVerificationTokenUsable = validateTokenResult.success
 
         if (isVerificationTokenUsable && !request.sendNewToken) {
-          this.loggerService.warn('Email has already an active token for purpose', {
-            email: email.toString(),
-            purpose: verificationTokenPurpose.toString(),
-            tokenId: verificationToken.id,
-            tokenExpiresAt: verificationToken.expiresAt.toISOString(),
+          this.loggerService.warn('Verification token generation rejected', {
+            email: email.value,
+            purpose: verificationTokenPurpose.value,
+            tokenId: verificationToken.id.value,
+            tokenExpiresAt: verificationToken.expiresAt,
+            reason: 'An active token has already been issued for this purpose',
           })
 
-          return fail(
-            GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.toString(), verificationTokenPurpose.toString()),
-          )
+          return fail(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, verificationTokenPurpose.value))
         }
 
         if (!verificationToken.isUsed()) {
-          await this.verificationTokenRepository.delete(verificationToken.id.toString(), context)
+          await this.verificationTokenRepository.delete(verificationToken.id.value, context)
         }
 
         if (request.sendNewToken) {
@@ -143,10 +130,9 @@ export class GenerateVerificationToken {
       const hashedCode = await this.hasherService.hash(clearRandomCode)
       const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
       const verificationTokenId = this.idGeneratorService.generateId()
-      const domainEventId = this.idGeneratorService.generateId()
 
       const newVerificationToken = VerificationToken.create(
-        VerificationTokenId.fromString(verificationTokenId),
+        Identifier.fromString(verificationTokenId),
         email,
         tokenHash,
         verificationTokenPurpose,
@@ -154,27 +140,13 @@ export class GenerateVerificationToken {
         now,
       )
 
-      const domainEvent = DomainEvent.create(
-        DomainEventId.fromString(domainEventId),
-        DomainEventName.emailVerificationRequest(),
-        DomainEventAggregateType.verificationToken(),
-        DomainEventAggregateId.fromString(verificationTokenId),
-        {
-          email: email.toString(),
-          purpose: verificationTokenPurpose.toString(),
-          resendCode,
-          lang: request.language,
-          deviceLocation: deviceLocation
-            ? {
-                city: deviceLocation.city,
-                countryCode: deviceLocation.countryCode,
-              }
-            : null,
-        },
-        {
-          ipHash: ipHash ? ipHash.toString() : null,
-          ua: userAgent.toString(),
-        },
+      const domainEvent = this.authDomainEventFactory.createEmailVerificationRequestEvent(
+        newVerificationToken,
+        resendCode,
+        language,
+        deviceLocation,
+        userAgent,
+        ipHash,
         now,
       )
 
@@ -182,33 +154,36 @@ export class GenerateVerificationToken {
       await this.verificationTokenRepository.save(newVerificationToken, context)
 
       // TODO: This use-case should not send the email. Remove this step when domain-event handler worker is ready
-      // TODO: Validate input language when multi-language emails are supported
-      await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, request.language, now)
+      await this.sendEmail(email, verificationTokenPurpose, clearRandomCode, language, now)
 
       return success(undefined)
     })
   }
 
-  private validateEmail(email: string): Result<VerificationTokenEmail, GenerateVerificationTokenApplicationError> {
-    try {
-      return success(VerificationTokenEmail.fromString(email))
-    } catch {
+  private validateEmail(email: string): Result<EmailAddress, GenerateVerificationTokenApplicationError> {
+    const createVerificationTokenEmailResult = EmailAddress.safeCreate(email)
+
+    if (!createVerificationTokenEmailResult.success) {
       return fail(GenerateVerificationTokenApplicationError.invalidEmail(email))
     }
+
+    return success(createVerificationTokenEmailResult.value)
   }
 
   private validateVerificationTokenPurpose(
     purpose: string,
   ): Result<VerificationTokenPurpose, GenerateVerificationTokenApplicationError> {
-    try {
-      return success(VerificationTokenPurpose.fromString(purpose))
-    } catch {
+    const createVerificationTokenPurposeResult = VerificationTokenPurpose.safeCreate(purpose)
+
+    if (!createVerificationTokenPurposeResult.success) {
       return fail(GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose(purpose))
     }
+
+    return success(createVerificationTokenPurposeResult.value)
   }
 
   private async sendEmail(
-    email: EmailAddressValueObject,
+    email: EmailAddress,
     purpose: VerificationTokenPurpose,
     clearRandomCode: string,
     language: string,
@@ -225,6 +200,6 @@ export class GenerateVerificationToken {
       expiration_minutes: expirationMinutes,
     }
 
-    await this.emailSenderService.sendWithTemplate(email.toString(), templateAlias, context, language, now)
+    await this.emailSenderService.sendWithTemplate(email.value, templateAlias, context, language, now)
   }
 }

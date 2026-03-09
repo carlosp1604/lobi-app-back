@@ -1,11 +1,11 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 export class UserCredentialTestBuilder {
-  private _userId = UserIdMother.valid()
+  private _userId = IdentifierMother.valid()
   private _passwordHash = PasswordHashMother.valid()
   private _failedAttempts = 0
   private _lockedUntil: Date | null = null
@@ -13,7 +13,7 @@ export class UserCredentialTestBuilder {
   private _createdAt = new Date()
   private _updatedAt = new Date()
 
-  withUserId(userId: UserId) {
+  withUserId(userId: Identifier) {
     this._userId = userId
     return this
   }

@@ -36,6 +36,12 @@ describe('DomainEventName', () => {
       expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_SIGNUP)
     })
 
+    it('factory should return successfulResetPassword', () => {
+      const domainEventNameValueObject = DomainEventName.successfulResetPassword()
+
+      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_RESET_PASSWORD)
+    })
+
     it('factory should return failedLoginAttempt', () => {
       const domainEventNameValueObject = DomainEventName.failedLoginAttempt()
 

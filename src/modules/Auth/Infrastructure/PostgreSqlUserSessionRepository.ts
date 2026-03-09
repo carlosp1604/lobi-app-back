@@ -45,19 +45,23 @@ export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInt
     return activeSessions.map((userSessionRawModel) => UserSessionModelTranslator.toDomain(userSessionRawModel))
   }
 
+  /**
+   * Finds a UserSession by its token hash
+   * @param hash The unique hash of the session token
+   * @param context The transactional context
+   * @returns The UserSession if found, otherwise null
+   */
   public async findByHash(hash: string, context: TxContext): Promise<UserSession | null> {
     const entityManager = this.entityManagerResolver.resolve(context)
 
     const userSessionRepository = entityManager.getRepository(UserSessionEntity)
 
-    const userSession = await userSessionRepository.findOneBy({
-      token_hash: hash,
-    })
+    const userSessionEntity = await userSessionRepository.findOneBy({ token_hash: hash })
 
-    if (!userSession) {
+    if (!userSessionEntity) {
       return null
     }
 
-    return UserSessionModelTranslator.toDomain(userSession)
+    return UserSessionModelTranslator.toDomain(userSessionEntity)
   }
 }

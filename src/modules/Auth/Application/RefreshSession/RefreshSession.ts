@@ -6,7 +6,6 @@ import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Applicat
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { success, fail, Result } from '~/src/modules/Shared/Domain/Result'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
-import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { User } from '~/src/modules/User/Domain/User'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
@@ -14,20 +13,22 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 
 export class RefreshSession {
   constructor(
-    private readonly unitOfWork: UnitOfWork,
     private readonly userRepository: UserRepositoryInterface,
     private readonly sessionRepository: UserSessionRepositoryInterface,
+    private readonly hasherService: HasherServiceInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
     private readonly requestOriginApplicationService: RequestOriginApplicationService,
-    private readonly hasherService: HasherServiceInterface,
     private readonly clockService: ClockServiceInterface,
+    private readonly unitOfWork: UnitOfWork,
+    private readonly loggerService: LoggerServiceInterface,
   ) {}
 
   public async execute(
@@ -80,7 +81,7 @@ export class RefreshSession {
       return success({
         accessToken,
         refreshToken,
-        sessionId: session.id.toString(),
+        sessionId: session.id.value,
         accessTokenExpiresAt,
         refreshTokenExpiresAt,
       })
@@ -113,11 +114,21 @@ export class RefreshSession {
     }
 
     if (sessionFound.isRevoked()) {
-      return fail(RefreshSessionApplicationError.sessionAlreadyRevoked(sessionFound.id.toString()))
+      this.loggerService.warn('Session refresh rejected', {
+        sessionId: sessionFound.id.value,
+        userId: sessionFound.userId.value,
+        reason: 'Session has been revoked',
+      })
+      return fail(RefreshSessionApplicationError.sessionAlreadyRevoked(sessionFound.id.value))
     }
 
     if (sessionFound.isExpired(now)) {
-      return fail(RefreshSessionApplicationError.sessionAlreadyExpired(sessionFound.id.toString()))
+      this.loggerService.warn('Session refresh rejected', {
+        sessionId: sessionFound.id.value,
+        userId: sessionFound.userId.value,
+        reason: 'Session has expired',
+      })
+      return fail(RefreshSessionApplicationError.sessionAlreadyExpired(sessionFound.id.value))
     }
 
     return success(sessionFound)
@@ -127,14 +138,16 @@ export class RefreshSession {
     userSession: UserSession,
     context: TxContext,
   ): Promise<Result<User, RefreshSessionApplicationError>> {
-    const user = await this.userRepository.findByIdWithLock(userSession.userId.toString(), context)
+    const user = await this.userRepository.findByIdWithLock(userSession.userId.value, context)
 
-    if (!user) {
-      return fail(RefreshSessionApplicationError.userNotFound(userSession.userId.toString()))
-    }
+    if (!user || !user.isActive()) {
+      this.loggerService.error('Inconsistent state', undefined, {
+        userId: userSession.userId.value,
+        sessionId: userSession.id.value,
+        reason: user ? 'User is disabled' : 'User not found',
+      })
 
-    if (user.deletedAt || !user.status.equals(UserStatus.active())) {
-      return fail(RefreshSessionApplicationError.userNotFound(userSession.userId.toString()))
+      return fail(RefreshSessionApplicationError.userNotFound(userSession.userId.value))
     }
 
     return success(user)
@@ -143,13 +156,13 @@ export class RefreshSession {
   private async refreshSession(
     currentSession: UserSession,
     newSession: UserSession,
-    userId: UserId,
+    userId: Identifier,
     now: Date,
     context: TxContext,
   ): Promise<Result<void, RefreshSessionApplicationError>> {
-    const activeSessions = await this.sessionRepository.findUserActiveSessions(userId.toString(), now, context)
+    const activeSessions = await this.sessionRepository.findUserActiveSessions(userId.value, now, context)
 
-    const serviceResult = this.userSessionManagerService.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)
+    const serviceResult = this.userSessionManagerService.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessions, now)
 
     if (!serviceResult.success) {
       if (serviceResult.error.id === UserSessionPolicyManagerApplicationError.sessionsInconsistencyId) {

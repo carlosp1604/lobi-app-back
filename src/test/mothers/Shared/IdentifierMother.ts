@@ -1,4 +1,6 @@
-export abstract class UuidMother {
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+
+export class IdentifierMother {
   public static readonly INVALID_FORMAT_CASES = [
     '',
     '123',
@@ -13,11 +15,15 @@ export abstract class UuidMother {
     'g2345678-1234-1234-1234-1234567890ab',
   ]
 
-  protected static validUuidString() {
+  static valid(): Identifier {
+    return Identifier.fromString(this.validString())
+  }
+
+  static validString() {
     return crypto.randomUUID()
   }
 
-  protected static invalidString() {
-    return 'invalid-uuid'
+  static invalid() {
+    return 'invalid-identifier'
   }
 }

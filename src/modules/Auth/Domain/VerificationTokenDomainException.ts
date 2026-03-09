@@ -2,25 +2,16 @@ import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 export class VerificationTokenDomainException extends DomainException {
-  public static invalidVerificationTokenIdId = 'verification_token_invalid_verification_token_id'
-  public static invalidVerificationTokenValueId = 'verification_token_invalid_verification_token_value'
-  public static invalidVerificationTokenTokenHashId = 'verification_token_invalid_verification_token_token_hash'
-  public static invalidVerificationTokenPurposeId = 'verification_token_invalid_verification_token_purpose'
-  public static invalidVerificationTokenEmailId = 'verification_token_invalid_verification_token_email'
-  public static verificationTokenAlreadyUsedId = 'verification_token_verification_token_already_used'
-  public static verificationTokenAlreadyExpiredId = 'verification_token_verification_token_already_expired'
-  public static verificationTokenCannotBeUsedForPurposeId = 'verification_token_verification_token_cannot_be_used_for_purpose'
-  public static verificationTokenCannotBeUsedByUserId = 'verification_token_verification_token_cannot_be_used_by_user'
+  public static invalidVerificationTokenValueId = 'verification_token_domain_invalid_verification_token_value'
+  public static invalidVerificationTokenTokenHashId = 'verification_token_domain_invalid_verification_token_token_hash'
+  public static invalidVerificationTokenPurposeId = 'verification_token_domain_invalid_verification_token_purpose'
+  public static verificationTokenAlreadyUsedId = 'verification_token_domain_verification_token_already_used'
+  public static verificationTokenAlreadyExpiredId = 'verification_token_domain_verification_token_already_expired'
+  public static verificationTokenCannotBeUsedForPurposeId = 'verification_token_domain_verification_token_cannot_be_used_for_purpose'
+  public static verificationTokenCannotBeUsedByUserId = 'verification_token_domain_verification_token_cannot_be_used_by_user'
 
   private constructor(message: string, id: string) {
     super(message, id, VerificationTokenDomainException.name)
-  }
-
-  public static invalidVerificationTokenId(verificationTokenId: string) {
-    return new VerificationTokenDomainException(
-      `${verificationTokenId} is not a valid VerificationToken ID`,
-      this.invalidVerificationTokenIdId,
-    )
   }
 
   public static invalidVerificationTokenValue(value: string) {
@@ -39,13 +30,6 @@ export class VerificationTokenDomainException extends DomainException {
     return new VerificationTokenDomainException(
       `${purpose} is not a valid VerificationToken purpose`,
       this.invalidVerificationTokenPurposeId,
-    )
-  }
-
-  public static invalidVerificationTokenEmail(verificationTokenEmail: string) {
-    return new VerificationTokenDomainException(
-      `${verificationTokenEmail} is not a valid VerificationToken email`,
-      this.invalidVerificationTokenEmailId,
     )
   }
 

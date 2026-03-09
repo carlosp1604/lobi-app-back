@@ -11,7 +11,7 @@ import {
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
@@ -28,9 +28,9 @@ describe('RequestOriginApplicationService', () => {
   }
   const validIpHash = UserSessionIpHashMother.valid()
   const validUA = UserAgentMother.valid()
-  const validEmail = UserEmailMother.valid().toString()
+  const validEmail = EmailAddressMother.valid()
   const validIp = 'valid-ip'
-  const purposeCreateAccount = VerificationTokenPurpose.createAccount().toString()
+  const purposeCreateAccount = VerificationTokenPurpose.createAccount().value
 
   beforeEach(() => {
     mockReset(mockedIpValidator)
@@ -43,7 +43,7 @@ describe('RequestOriginApplicationService', () => {
     mockedIpValidator.isPublic.mockReturnValue(true)
     mockedIpValidator.normalize.mockReturnValueOnce('normalized-ip')
 
-    mockedHasher.hash.mockResolvedValue(validIpHash.toString())
+    mockedHasher.hash.mockResolvedValue(validIpHash.value)
     mockedDeviceLocationResolver.resolve.mockResolvedValue(expectedResolvedDeviceLocation)
   })
 
@@ -66,51 +66,70 @@ describe('RequestOriginApplicationService', () => {
   }
 
   describe('happy path', () => {
-    it('should call services correctly', async () => {
+    it('should call with correct arguments and return the correct data', async () => {
       const service = buildService()
 
-      await service.process(validIp, validUA.toString())
+      const result = await service.process(validIp, validUA.value)
 
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
+      expect(mockedLogger.debug).not.toHaveBeenCalled()
+
+      expect(result.ipHash).toBe(validIpHash.value)
+      expect(result.userAgent.equals(validUA)).toBe(true)
+      expect(result.normalizedIp).toBe('normalized-ip')
+      expect(result.deviceLocation).toEqual(validDeviceLocation)
 
       checkCommonAsserts()
     })
 
-    it('should return the correct data', async () => {
+    it('should call with correct arguments and return the correct data when deviceLocationResolver returns null', async () => {
+      mockedDeviceLocationResolver.resolve.mockResolvedValue(null)
+
       const service = buildService()
 
-      const result = await service.process(validIp, validUA.toString())
+      const result = await service.process(validIp, validUA.value)
 
-      expect(result.ipHash).toBe(validIpHash.toString())
+      expect(mockedLogger.warn).not.toHaveBeenCalled()
+      expect(mockedLogger.error).not.toHaveBeenCalled()
+      expect(mockedLogger.debug).toHaveBeenCalledWith('No location found for the given IP', {
+        normalizedIp: 'normalized-ip',
+        reason: 'IP not found in provider database',
+      })
+
+      expect(result.ipHash).toBe(validIpHash.value)
       expect(result.userAgent.equals(validUA)).toBe(true)
       expect(result.normalizedIp).toBe('normalized-ip')
-      expect(result.deviceLocation).toEqual(validDeviceLocation)
+      expect(result.deviceLocation).toEqual(null)
+
+      checkCommonAsserts()
     })
   })
 
   describe('when IP or UA are not valid or deviceLocationResolver fails', () => {
-    it('should call services correctly and return the correct data services when IP is not valid', async () => {
+    it('should call services with correct arguments and return the correct data when IP is not valid', async () => {
       const invalidIp = 'invalid-ip-with-an-excessive-length-to-validate-proper-slice'
 
       mockedIpValidator.isValid.mockReturnValue(false)
 
       const service = buildService()
 
-      const result = await service.process(invalidIp, validUA.toString(), { email: validEmail })
+      const result = await service.process(invalidIp, validUA.value, { email: validEmail.value })
 
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isValid).toHaveBeenCalledTimes(1)
 
       expect(mockedLogger.error).not.toHaveBeenCalled()
+      expect(mockedLogger.debug).not.toHaveBeenCalled()
       expect(mockedIpValidator.isPublic).not.toHaveBeenCalled()
       expect(mockedIpValidator.normalize).not.toHaveBeenCalled()
       expect(mockedHasher.hash).not.toHaveBeenCalled()
       expect(mockedDeviceLocationResolver.resolve).not.toHaveBeenCalled()
 
       expect(mockedIpValidator.isValid).toHaveBeenCalledWith(invalidIp)
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Invalid or private IP address', {
-        email: validEmail.toString(),
+      expect(mockedLogger.warn).toHaveBeenCalledWith('IP address validation failed', {
+        reason: 'IP is either invalid, private or local',
+        email: validEmail.value,
         ipSample: invalidIp.slice(0, 39),
         ipLength: invalidIp.length,
       })
@@ -121,7 +140,7 @@ describe('RequestOriginApplicationService', () => {
       expect(result.deviceLocation).toBeNull()
     })
 
-    it('should call services correctly and return the correct data when IP is valid but it is not public', async () => {
+    it('should call services with correct arguments and return the correct data when IP is valid but it is not public', async () => {
       const privateIp = 'private-ip'
 
       mockedIpValidator.isValid.mockReturnValue(true)
@@ -129,19 +148,21 @@ describe('RequestOriginApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.process(privateIp, validUA.toString())
+      const result = await service.process(privateIp, validUA.value)
 
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isValid).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isPublic).toHaveBeenCalledTimes(1)
 
       expect(mockedLogger.error).not.toHaveBeenCalled()
+      expect(mockedLogger.debug).not.toHaveBeenCalled()
       expect(mockedIpValidator.normalize).not.toHaveBeenCalled()
       expect(mockedHasher.hash).not.toHaveBeenCalled()
       expect(mockedDeviceLocationResolver.resolve).not.toHaveBeenCalled()
 
       expect(mockedIpValidator.isValid).toHaveBeenCalledWith(privateIp)
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Invalid or private IP address', {
+      expect(mockedLogger.warn).toHaveBeenCalledWith('IP address validation failed', {
+        reason: 'IP is either invalid, private or local',
         ipSample: privateIp.slice(0, 39),
         ipLength: privateIp.length,
       })
@@ -152,59 +173,30 @@ describe('RequestOriginApplicationService', () => {
       expect(result.deviceLocation).toBeNull()
     })
 
-    describe('when device location resolver fails', () => {
-      const testCase = async () => {
-        const service = buildService()
-
-        const result = await service.process(validIp, validUA.toString(), { email: validEmail })
-
-        checkCommonAsserts()
-
-        expect(result.ipHash).toBe(validIpHash.toString())
-        expect(result.userAgent.equals(validUA)).toBe(true)
-        expect(result.normalizedIp).toBe('normalized-ip')
-        expect(result.deviceLocation).toBeNull()
-      }
-
-      it('should call services correctly and return the correct data when device location resolver fails', async () => {
-        mockedDeviceLocationResolver.resolve.mockImplementation(() => {
-          throw Error('Service Error')
-        })
-
-        await testCase()
-
-        expect(mockedLogger.warn).not.toHaveBeenCalled()
-        expect(mockedLogger.error).toHaveBeenCalledTimes(1)
-        expect(mockedLogger.error).toHaveBeenCalledWith(
-          'Failed to resolve device location. Session will be created without location data',
-          expect.any(String),
-          {
-            email: validEmail,
-            normalizedIp: 'normalized-ip',
-            error: Error('Service Error'),
-          },
-        )
+    it('should call services with correct arguments and return the correct data when device location resolver fails', async () => {
+      const serviceError = new Error('Service Error')
+      mockedDeviceLocationResolver.resolve.mockImplementation(() => {
+        throw serviceError
       })
 
-      it('should call services correctly and return the correct data when device location resolver fails without an error', async () => {
-        mockedDeviceLocationResolver.resolve.mockImplementation(() => {
-          // eslint-disable-next-line @typescript-eslint/only-throw-error
-          throw 'Service Error'
-        })
+      const service = buildService()
 
-        await testCase()
+      const result = await service.process(validIp, validUA.value, { email: validEmail })
 
-        expect(mockedLogger.warn).not.toHaveBeenCalled()
-        expect(mockedLogger.error).toHaveBeenCalledTimes(1)
-        expect(mockedLogger.error).toHaveBeenCalledWith(
-          'Failed to resolve device location. Session will be created without location data',
-          undefined,
-          {
-            email: validEmail,
-            normalizedIp: 'normalized-ip',
-            error: 'Service Error',
-          },
-        )
+      checkCommonAsserts()
+
+      expect(result.ipHash).toBe(validIpHash.value)
+      expect(result.userAgent.equals(validUA)).toBe(true)
+      expect(result.normalizedIp).toBe('normalized-ip')
+      expect(result.deviceLocation).toBeNull()
+
+      expect(mockedLogger.warn).not.toHaveBeenCalled()
+      expect(mockedLogger.debug).not.toHaveBeenCalled()
+      expect(mockedLogger.error).toHaveBeenCalledTimes(1)
+      expect(mockedLogger.error).toHaveBeenCalledWith('Device location resolution failed', expect.any(String), {
+        email: validEmail,
+        normalizedIp: 'normalized-ip',
+        error: serviceError.message,
       })
     })
 
@@ -213,47 +205,52 @@ describe('RequestOriginApplicationService', () => {
         const service = buildService()
 
         const result = await service.process(validIp, userAgent, {
-          email: validEmail,
+          email: validEmail.value,
           purpose: purposeCreateAccount,
         })
 
         checkCommonAsserts()
 
-        expect(result.ipHash).toBe(validIpHash.toString())
+        expect(result.ipHash).toBe(validIpHash.value)
         expect(result.userAgent.equals(UserAgent.unknown())).toBe(true)
         expect(result.normalizedIp).toBe('normalized-ip')
         expect(result.deviceLocation).toEqual(validDeviceLocation)
 
         expect(mockedLogger.error).not.toHaveBeenCalled()
         expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Unparseable UserAgent, falling back to UNKNOWN', {
-          email: validEmail.toString(),
+        expect(mockedLogger.warn).toHaveBeenCalledWith('UserAgent parsing failed', {
+          reason: 'Invalid or missing UserAgent, falling back to UNKNOWN',
+          email: validEmail.value,
           purpose: purposeCreateAccount,
           uaSample: userAgent ? userAgent.slice(0, 512) : undefined,
           uaLength: userAgent ? userAgent.length : 0,
         })
       }
-      it('should call services correctly and return the correct data when user-agent is not valid', async () => {
+      it('should call services with correct arguments and return the correct data when user-agent is not valid', async () => {
         const invalidUA = 'a'.repeat(513)
 
         await testCase(invalidUA)
       })
 
-      it('should call services correctly and return the correct data when user-agent is undefined', async () => {
+      it('should call services with correct arguments and return the correct data when user-agent is undefined', async () => {
         const undefinedUA = undefined
 
         await testCase(undefinedUA)
       })
     })
 
-    it('should throw error if user agent validation fails with an unexpected error', async () => {
+    it('should throw error if user agent validation fails with a non-domain exception', async () => {
+      const unexpectedError = new Error('Unexpected error')
       const service = buildService()
 
       jest.spyOn(UserAgent, 'fromString').mockImplementationOnce(() => {
-        throw Error('Unexpected Error')
+        throw unexpectedError
       })
 
-      await expect(service.process(validIp, validUA.toString())).rejects.toThrow(Error('Unexpected Error'))
+      await expect(service.process(validIp, validUA.value)).rejects.toThrow(unexpectedError)
+      expect(mockedLogger.error).not.toHaveBeenCalled()
+      expect(mockedLogger.debug).not.toHaveBeenCalled()
+      expect(mockedLogger.warn).not.toHaveBeenCalled()
     })
   })
 })

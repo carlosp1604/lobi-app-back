@@ -63,125 +63,6 @@ describe('AccessTokenGuard', () => {
     return [loggerWarnSpy, loggerErrorSpy]
   }
 
-  it('should throw UnauthorizedException if cookie is missing', () => {
-    mockedRequest.cookies = {}
-
-    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
-
-    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
-    expect(loggerWarnSpy).not.toHaveBeenCalled()
-    expect(loggerErrorSpy).not.toHaveBeenCalled()
-  })
-
-  it('should throw UnauthorizedException if jwt verification fails due to invalid signature', () => {
-    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
-    const verifyError = new jwt.JsonWebTokenError('invalid signature')
-
-    jest.spyOn(jwt, 'verify').mockImplementation(() => {
-      throw verifyError
-    })
-
-    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
-
-    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
-    expect(loggerWarnSpy).toHaveBeenCalledWith('JWT verification failed: invalid signature', {
-      requestId: 'test-request-id',
-      path: 'test-request-url',
-      tokenPrefix: FAKE_TOKEN.substring(0, 10),
-    })
-    expect(loggerErrorSpy).not.toHaveBeenCalled()
-  })
-
-  it('should throw UnauthorizedException if jwt verification fails due to expired token', () => {
-    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
-    const verifyError = new jwt.TokenExpiredError('jwt expired', new Date())
-
-    jest.spyOn(jwt, 'verify').mockImplementation(() => {
-      throw verifyError
-    })
-
-    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
-
-    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
-    expect(loggerWarnSpy).toHaveBeenCalledWith('JWT verification failed: Token expired', {
-      requestId: 'test-request-id',
-      path: 'test-request-url',
-      tokenPrefix: FAKE_TOKEN.substring(0, 10),
-    })
-    expect(loggerErrorSpy).not.toHaveBeenCalled()
-  })
-
-  it('should throw UnauthorizedException and log error for unexpected jwt verification errors', () => {
-    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
-    const unexpectedError = new Error('Unexpected error')
-
-    jest.spyOn(jwt, 'verify').mockImplementation(() => {
-      throw unexpectedError
-    })
-
-    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
-
-    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
-    expect(loggerErrorSpy).toHaveBeenCalledWith('Unexpected error during JWT verification', expect.any(String), {
-      requestId: 'test-request-id',
-      path: 'test-request-url',
-      tokenPrefix: FAKE_TOKEN.substring(0, 10),
-      error: String(unexpectedError),
-    })
-    expect(loggerWarnSpy).not.toHaveBeenCalled()
-  })
-
-  it('should throw UnauthorizedException and log error for unexpected jwt verification errors (no error)', () => {
-    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
-    const unexpectedError = 'Unexpected error'
-
-    jest.spyOn(jwt, 'verify').mockImplementation(() => {
-      // eslint-disable-next-line @typescript-eslint/only-throw-error
-      throw unexpectedError
-    })
-
-    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
-
-    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
-    expect(loggerErrorSpy).toHaveBeenCalledWith('Unexpected error during JWT verification', undefined, {
-      requestId: 'test-request-id',
-      path: 'test-request-url',
-      tokenPrefix: FAKE_TOKEN.substring(0, 10),
-      error: String(unexpectedError),
-    })
-    expect(loggerWarnSpy).not.toHaveBeenCalled()
-  })
-
-  it('should throw UnauthorizedException if Zod payload validation fails', () => {
-    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
-    const invalidPayload = { sub: 'not-a-uuid', iat: 123, exp: 456 }
-
-    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
-
-    jest.spyOn(jwt, 'verify').mockImplementation(() => {
-      return invalidPayload
-    })
-
-    jest.spyOn(JwtPayloadSchema, 'safeParse').mockReturnValue({
-      success: false,
-      error: {} as ZodError<JwtPayload>,
-    })
-
-    const treeifyErrorSpy = jest.spyOn(z, 'treeifyError').mockReturnValue({ errors: ['some-formatted-errors'] })
-
-    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
-    expect(loggerWarnSpy).toHaveBeenCalledWith('Invalid JWT payload structure', {
-      requestId: 'test-request-id',
-      path: 'test-request-url',
-      tokenPrefix: FAKE_TOKEN.substring(0, 10),
-      validationErrors: ['some-formatted-errors'],
-      payload: invalidPayload,
-    })
-    expect(loggerErrorSpy).not.toHaveBeenCalled()
-    expect(treeifyErrorSpy).toHaveBeenCalledTimes(1)
-    expect(treeifyErrorSpy).toHaveBeenCalledWith({})
-  })
-
   it('should return true and attach user payload if token and payload are valid', () => {
     mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
 
@@ -211,5 +92,104 @@ describe('AccessTokenGuard', () => {
     expect(loggerWarnSpy).not.toHaveBeenCalled()
 
     expect(result).toBe(true)
+  })
+
+  it('should throw UnauthorizedException if cookie is missing', () => {
+    mockedRequest.cookies = {}
+
+    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
+
+    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
+    expect(loggerWarnSpy).not.toHaveBeenCalled()
+    expect(loggerErrorSpy).not.toHaveBeenCalled()
+  })
+
+  it('should throw UnauthorizedException if jwt verification fails due to invalid signature', () => {
+    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
+    const verifyError = new jwt.JsonWebTokenError('invalid signature')
+
+    jest.spyOn(jwt, 'verify').mockImplementation(() => {
+      throw verifyError
+    })
+
+    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
+
+    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
+    expect(loggerWarnSpy).toHaveBeenCalledWith('JWT verification failed', {
+      reason: verifyError.message,
+      error: verifyError.message,
+      path: 'test-request-url',
+      tokenPrefix: FAKE_TOKEN.substring(0, 10),
+    })
+    expect(loggerErrorSpy).not.toHaveBeenCalled()
+  })
+
+  it('should throw UnauthorizedException if jwt verification fails due to expired token', () => {
+    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
+    const verifyError = new jwt.TokenExpiredError('jwt expired', new Date())
+
+    jest.spyOn(jwt, 'verify').mockImplementation(() => {
+      throw verifyError
+    })
+
+    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
+
+    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
+    expect(loggerWarnSpy).toHaveBeenCalledWith('JWT verification failed', {
+      reason: 'Token expired',
+      error: verifyError.message,
+      path: 'test-request-url',
+      tokenPrefix: FAKE_TOKEN.substring(0, 10),
+    })
+    expect(loggerErrorSpy).not.toHaveBeenCalled()
+  })
+
+  it('should throw UnauthorizedException and log error for unexpected jwt verification errors', () => {
+    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
+    const unexpectedError = new Error('Unexpected error')
+
+    jest.spyOn(jwt, 'verify').mockImplementation(() => {
+      throw unexpectedError
+    })
+
+    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
+
+    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
+    expect(loggerErrorSpy).toHaveBeenCalledWith('Unexpected error during JWT verification', expect.any(String), {
+      path: 'test-request-url',
+      tokenPrefix: FAKE_TOKEN.substring(0, 10),
+      error: unexpectedError.message,
+    })
+    expect(loggerWarnSpy).not.toHaveBeenCalled()
+  })
+
+  it('should throw UnauthorizedException if Zod payload validation fails', () => {
+    mockedRequest.cookies = { [ACCESS_COOKIE_NAME]: FAKE_TOKEN }
+    const invalidPayload = { sub: 'not-a-uuid', iat: 123, exp: 456 }
+
+    const [loggerWarnSpy, loggerErrorSpy] = mockLogger()
+
+    jest.spyOn(jwt, 'verify').mockImplementation(() => {
+      return invalidPayload
+    })
+
+    jest.spyOn(JwtPayloadSchema, 'safeParse').mockReturnValue({
+      success: false,
+      error: {} as ZodError<JwtPayload>,
+    })
+
+    const treeifyErrorSpy = jest.spyOn(z, 'treeifyError').mockReturnValue({ errors: ['some-formatted-errors'] })
+
+    expect(() => guard.canActivate(mockedExecutionContext)).toThrow(new UnauthorizedException(GENERIC_UNAUTHORIZED_RESPONSE))
+    expect(loggerWarnSpy).toHaveBeenCalledWith('Invalid JWT payload structure', {
+      path: 'test-request-url',
+      reason: 'Payload schema validation failed',
+      tokenPrefix: FAKE_TOKEN.substring(0, 10),
+      validationErrors: { errors: ['some-formatted-errors'] },
+      payload: invalidPayload,
+    })
+    expect(loggerErrorSpy).not.toHaveBeenCalled()
+    expect(treeifyErrorSpy).toHaveBeenCalledTimes(1)
+    expect(treeifyErrorSpy).toHaveBeenCalledWith({})
   })
 })

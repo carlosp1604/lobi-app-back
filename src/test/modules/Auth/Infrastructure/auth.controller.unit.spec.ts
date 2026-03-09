@@ -25,6 +25,13 @@ import {
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_TOKEN,
+  AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
+  AUTH_RESET_PASSWORD_SAME_PASSWORD,
+  AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
+  AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
   AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
   AUTH_VALIDATE_TOKEN_ALREADY_USED,
   AUTH_VALIDATE_TOKEN_INVALID_EMAIL,
@@ -48,7 +55,7 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
@@ -57,6 +64,12 @@ import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
+import {
+  ResetUserPasswordApplicationError,
+  ResetUserPasswordError,
+} from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -66,6 +79,7 @@ describe('AuthController', () => {
   const mockedRefreshSessionUseCase = mock<RefreshSession>()
   const mockedValidateVerificationTokenUseCase = mock<ValidateVerificationToken>()
   const mockedCreateUserUseCase = mock<CreateUser>()
+  const mockedResetUserPasswordUseCase = mock<ResetUserPassword>()
 
   const mockedIp = '127.0.0.1'
   const mockedUserAgent = UserAgentMother.forTesting().value
@@ -80,6 +94,7 @@ describe('AuthController', () => {
     mockReset(mockedGenerateVerificationTokenUseCase)
     mockReset(mockedValidateVerificationTokenUseCase)
     mockReset(mockedCreateUserUseCase)
+    mockReset(mockedResetUserPasswordUseCase)
   })
 
   const buildController = () => {
@@ -89,6 +104,7 @@ describe('AuthController', () => {
       mockedGenerateVerificationTokenUseCase,
       mockedValidateVerificationTokenUseCase,
       mockedCreateUserUseCase,
+      mockedResetUserPasswordUseCase,
       mockedConfigService,
     )
   }
@@ -116,7 +132,10 @@ describe('AuthController', () => {
   }
 
   describe('login', () => {
-    const mockBody = { email: 'test@example.com', password: 'password123' }
+    const validEmail = EmailAddressMother.valid().value
+    const validPassword = UserPasswordMother.valid().value
+
+    const mockBody = { email: validEmail, password: validPassword }
 
     beforeEach(() => {
       mockedConfigService.get.mockImplementation(
@@ -180,15 +199,14 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: LoginUserApplicationError.invalidUserEmail('test@example.com'),
-        })
+        const useCaseError = LoginUserApplicationError.invalidUserEmail(validEmail)
+
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_EMAIL,
-            message: LoginUserApplicationError.invalidUserEmail('test@example.com').message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -196,15 +214,17 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when use-case returns invalidPasswordFormat error', async () => {
         const controller = buildController()
 
+        const useCaseError = LoginUserApplicationError.invalidPasswordFormat()
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.invalidPasswordFormat(),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
-            message: LoginUserApplicationError.invalidPasswordFormat().message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -214,7 +234,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.invalidCredentials('test-user-id'),
+          error: LoginUserApplicationError.invalidCredentials(IdentifierMother.valid().value),
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
@@ -230,7 +250,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.userNotFound('test@example.com'),
+          error: LoginUserApplicationError.userNotFound(validEmail),
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
@@ -241,106 +261,80 @@ describe('AuthController', () => {
         )
       })
 
-      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
+      it('should throw InternalServerErrorException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
+
+        const useCaseError = LoginUserApplicationError.userDoesNotHaveCredentials(validEmail)
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new UnauthorizedException({
-            code: UNAUTHORIZED_ACCESS,
-            message: 'Unauthorized access',
-          }),
-        )
-      })
-
-      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
-        const controller = buildController()
-
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
-        })
-
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new UnauthorizedException({
-            code: UNAUTHORIZED_ACCESS,
-            message: 'Unauthorized access',
-          }),
-        )
-      })
-
-      it('should throw UnauthorizedException when use-case returns userDoesNotHaveCredentials error', async () => {
-        const controller = buildController()
-
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: LoginUserApplicationError.userDoesNotHaveCredentials('test@example.com'),
-        })
-
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new UnauthorizedException({
-            code: UNAUTHORIZED_ACCESS,
-            message: 'Unauthorized access',
-          }),
+          new InternalServerErrorException(useCaseError),
         )
       })
 
       it('should throw InternalServerErrorException when use-case returns internalError', async () => {
         const controller = buildController()
 
+        const useCaseError = LoginUserApplicationError.internalError('Unexpected error')
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.internalError('An unexpected error'),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(LoginUserApplicationError.internalError('An unexpected error')),
+          new InternalServerErrorException(useCaseError),
         )
       })
 
       it('should throw InternalServerErrorException when use-case returns revocationFailed', async () => {
         const controller = buildController()
 
+        const useCaseError = LoginUserApplicationError.revocationFailed('Cannot revoke a session')
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.revocationFailed('Cannot revoke a session'),
+          error: useCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(LoginUserApplicationError.revocationFailed('Cannot revoke a session')),
+          new InternalServerErrorException(useCaseError),
         )
       })
 
-      it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
+      it('should throw InternalServerErrorException when use-case returns a unknown error', async () => {
         const controller = buildController()
 
-        const unexpectedError: LoginUserApplicationError = {
+        const unexpectedUseCaseError: LoginUserApplicationError = {
           id: 'UNKNOWN-ERROR',
           message: 'Unknown error',
           name: LoginUserApplicationError.name,
         }
+
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: unexpectedError,
+          error: unexpectedUseCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(unexpectedError),
+          new InternalServerErrorException(unexpectedUseCaseError),
         )
       })
 
-      it('should throw error when use-case fails with an unexpected error', async () => {
+      it('should throw error when use-case fails with a unexpected error', async () => {
         const controller = buildController()
 
+        const unexpectedError = new Error('Unexpected error')
+
         mockedLoginUseCase.execute.mockImplementation(() => {
-          throw new Error('Unexpected error')
+          throw unexpectedError
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(Error('Unexpected error'))
+        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(unexpectedError)
       })
     })
   })
@@ -542,7 +536,8 @@ describe('AuthController', () => {
   })
 
   describe('verify email', () => {
-    const mockBody = { email: 'test@example.com', sendNewToken: false, language: 'es' }
+    const validEmail = EmailAddressMother.valid()
+    const mockBody = { email: validEmail.value, sendNewToken: false }
 
     describe('happy path', () => {
       beforeEach(() => {
@@ -562,7 +557,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: mockedUserAgent,
@@ -579,7 +573,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: undefined,
@@ -598,7 +591,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: mockedUserAgent,
@@ -615,7 +607,6 @@ describe('AuthController', () => {
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
-            language: mockBody.language,
             sendNewToken: mockBody.sendNewToken,
             ip: mockedIp,
             userAgent: undefined,
@@ -626,8 +617,9 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      const mockBodyWithInvalidEmail = { email: 'invalid-email', sendNewToken: false, language: 'es' }
-      const mockBody = { email: 'test@example.com', sendNewToken: false, language: 'es' }
+      const invalidEmail = EmailAddressMother.invalid()
+      const mockBodyWithInvalidEmail = { email: invalidEmail, sendNewToken: false }
+      const mockBody = { email: validEmail.value, sendNewToken: false }
 
       describe('signup', () => {
         it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
@@ -839,7 +831,7 @@ describe('AuthController', () => {
 
   describe('validate token', () => {
     const mockBody = {
-      email: VerificationTokenEmailMother.valid().value,
+      email: EmailAddressMother.valid().value,
       purpose: VerificationTokenPurpose.createAccount().value,
       token: VerificationTokenValueMother.valid().value,
     }
@@ -1043,7 +1035,7 @@ describe('AuthController', () => {
 
   describe('signup', () => {
     const mockBody = {
-      email: VerificationTokenEmailMother.valid().value,
+      email: EmailAddressMother.valid().value,
       username: UserUsernameMother.valid().value,
       name: UserNameMother.valid().value,
       password: UserPasswordMother.valid().value,
@@ -1073,7 +1065,7 @@ describe('AuthController', () => {
         expect(result).toBeUndefined()
       })
 
-      it('should call use-case correctly when UserAgent is undefined', async () => {
+      it('should call use-case correctly when UserAgent is undefined and return nothing', async () => {
         const controller = buildController()
 
         const result = await controller.signup(mockBody, mockedIp, undefined)
@@ -1153,38 +1145,38 @@ describe('AuthController', () => {
       }
 
       describe('when input data is invalid', () => {
-        it('should throw UnprocessableEntityException mapped for invalid username', async () => {
+        it('should throw UnprocessableEntityException for invalid username', async () => {
           await testInvalidInputMapping({ error: CreateUserError.invalidUsername(), apiCode: AUTH_CREATE_USER_INVALID_USERNAME_FORMAT })
         })
 
-        it('should throw UnprocessableEntityException mapped for invalid email', async () => {
+        it('should throw UnprocessableEntityException for invalid email', async () => {
           await testInvalidInputMapping({ error: CreateUserError.invalidEmail(), apiCode: AUTH_CREATE_USER_INVALID_EMAIL_FORMAT })
         })
 
-        it('should throw UnprocessableEntityException mapped for invalid password', async () => {
+        it('should throw UnprocessableEntityException for invalid password', async () => {
           await testInvalidInputMapping({ error: CreateUserError.invalidPassword(), apiCode: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT })
         })
 
-        it('should throw UnprocessableEntityException mapped for invalid token format', async () => {
+        it('should throw UnprocessableEntityException for invalid token format', async () => {
           await testInvalidInputMapping({ error: CreateUserError.invalidTokenFormat(), apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT })
         })
 
-        it('should throw UnprocessableEntityException mapped for invalid name', async () => {
+        it('should throw UnprocessableEntityException for invalid name', async () => {
           await testInvalidInputMapping({ error: CreateUserError.invalidName(), apiCode: AUTH_CREATE_USER_INVALID_NAME_FORMAT })
         })
 
-        it('should throw UnprocessableEntityException mapped for invalid role', async () => {
+        it('should throw UnprocessableEntityException for invalid role', async () => {
           await testInvalidInputMapping({ error: CreateUserError.invalidRole(), apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE })
         })
 
-        it('should throw UnprocessableEntityException mapped for multiple input errors', async () => {
+        it('should throw UnprocessableEntityException for multiple input errors', async () => {
           await testInvalidInputMapping([
             { error: CreateUserError.invalidRole(), apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE },
             { error: CreateUserError.invalidTokenFormat(), apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT },
           ])
         })
 
-        it('should throw InternalServerErrorException when an unexpected invalidInput error is returned', async () => {
+        it('should throw InternalServerErrorException when use-case returns an unknown CreateUserError error in invalidInput', async () => {
           const controller = buildController()
           const unknownError = { id: 'unknown-id', message: 'Unknown', name: 'Unknown' } as CreateUserError
 
@@ -1219,7 +1211,7 @@ describe('AuthController', () => {
           ])
         })
 
-        it('should throw InternalServerErrorException when an unknown duplicated error is returned', async () => {
+        it('should throw InternalServerErrorException when use-case returns an unknown CreateUserError error in duplicated', async () => {
           const controller = buildController()
           const unknownError = { id: 'unknown-id', message: 'Unknown', name: 'Unknown' } as CreateUserError
 
@@ -1331,7 +1323,7 @@ describe('AuthController', () => {
           )
         })
 
-        it('should throw InternalServerErrorException when use-case returns an unknown CreateUserError error', async () => {
+        it('should throw InternalServerErrorException when use-case returns an unknown CreateUserError error in invalidToken', async () => {
           const controller = buildController()
 
           const useCaseError: CreateUserError = {
@@ -1366,7 +1358,7 @@ describe('AuthController', () => {
         await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
       })
 
-      it('should throw InternalServerErrorException when use-case fails with a unexpected error', async () => {
+      it('should throw original error when use-case fails with a unexpected error', async () => {
         const controller = buildController()
 
         const unexpectedError = new Error('Unexpected error')
@@ -1376,6 +1368,300 @@ describe('AuthController', () => {
         })
 
         await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(unexpectedError)
+      })
+    })
+  })
+
+  describe('reset password', () => {
+    const mockBody = {
+      email: EmailAddressMother.valid().value,
+      token: VerificationTokenValueMother.valid().value,
+      password: UserPasswordMother.valid().value,
+    }
+
+    beforeEach(() => {
+      mockReset(mockedResetUserPasswordUseCase)
+    })
+
+    describe('happy path', () => {
+      beforeEach(() => {
+        mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+          success: true,
+          value: undefined,
+        })
+      })
+
+      it('should call use-case correctly passing IP and UserAgent and return nothing', async () => {
+        const controller = buildController()
+
+        const result = await controller.resetPassword(mockBody, mockedIp, mockedUserAgent)
+
+        expect(mockedResetUserPasswordUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedResetUserPasswordUseCase.execute).toHaveBeenCalledWith({
+          ...mockBody,
+          ip: mockedIp,
+          userAgent: mockedUserAgent,
+        })
+        expect(result).toBeUndefined()
+      })
+
+      it('should call use-case correctly when UserAgent is undefined and return nothing', async () => {
+        const controller = buildController()
+
+        const result = await controller.resetPassword(mockBody, mockedIp, undefined)
+
+        expect(mockedResetUserPasswordUseCase.execute).toHaveBeenCalledWith({
+          ...mockBody,
+          ip: mockedIp,
+          userAgent: undefined,
+        })
+        expect(result).toBeUndefined()
+      })
+    })
+
+    describe('when there are errors', () => {
+      type ErrorWithApiCode = {
+        error: ResetUserPasswordError
+        apiCode: string
+      }
+
+      const testInvalidInputMapping = async (errorsWithApiCode: ErrorWithApiCode | Array<ErrorWithApiCode>) => {
+        const controller = buildController()
+
+        mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ResetUserPasswordApplicationError.invalidInput(
+            Array.isArray(errorsWithApiCode)
+              ? errorsWithApiCode.map((errorWithApiCode) => errorWithApiCode.error)
+              : [errorsWithApiCode.error],
+          ),
+        })
+
+        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          new UnprocessableEntityException({
+            message: 'One or more fields have invalid formats',
+            errors: Array.isArray(errorsWithApiCode)
+              ? errorsWithApiCode.map((errorWithCode) => ({
+                  code: errorWithCode.apiCode,
+                  message: errorWithCode.error.message,
+                }))
+              : [
+                  {
+                    code: errorsWithApiCode.apiCode,
+                    message: errorsWithApiCode.error.message,
+                  },
+                ],
+          }),
+        )
+      }
+
+      describe('when input data is invalid', () => {
+        it('should throw UnprocessableEntityException for invalid email', async () => {
+          await testInvalidInputMapping({
+            error: ResetUserPasswordError.invalidEmail(),
+            apiCode: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
+          })
+        })
+
+        it('should throw UnprocessableEntityException for invalid password', async () => {
+          await testInvalidInputMapping({
+            error: ResetUserPasswordError.invalidPassword(),
+            apiCode: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+          })
+        })
+
+        it('should throw UnprocessableEntityException for invalid token format', async () => {
+          await testInvalidInputMapping({
+            error: ResetUserPasswordError.invalidTokenFormat(),
+            apiCode: AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
+          })
+        })
+
+        it('should throw UnprocessableEntityException for multiple input errors', async () => {
+          await testInvalidInputMapping([
+            { error: ResetUserPasswordError.invalidEmail(), apiCode: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT },
+            { error: ResetUserPasswordError.invalidPassword(), apiCode: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT },
+          ])
+        })
+
+        it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordError in invalidInput', async () => {
+          const controller = buildController()
+          const unknownError = { id: 'unknown-id', message: 'Unknown', name: 'Unknown' } as ResetUserPasswordError
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.invalidInput([unknownError]),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        })
+      })
+
+      describe('when token is invalid or user not found', () => {
+        it('should throw NotFoundException when use-case returns notFound error', async () => {
+          const controller = buildController()
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(mockBody.email)),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw GoneException when use-case returns tokenExpired error', async () => {
+          const controller = buildController()
+          const specificError = ResetUserPasswordError.tokenExpired()
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.invalidToken(specificError),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new GoneException({
+              code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
+              message: specificError.message,
+            }),
+          )
+        })
+
+        it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
+          const controller = buildController()
+          const specificError = ResetUserPasswordError.tokenAlreadyUsed()
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.invalidToken(specificError),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new ConflictException({
+              code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
+              message: specificError.message,
+            }),
+          )
+        })
+
+        it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
+          const controller = buildController()
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw NotFoundException when use-case returns tokenInvalidOwner error', async () => {
+          const controller = buildController()
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw NotFoundException when use-case return invalidToken error', async () => {
+          const controller = buildController()
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+        })
+
+        it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordError in invalidToken', async () => {
+          const controller = buildController()
+          const unknownError = { id: 'unknown_token_error', name: 'Unknown', message: 'Unknown' } as ResetUserPasswordError
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: ResetUserPasswordApplicationError.invalidToken(unknownError),
+          })
+
+          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        })
+      })
+
+      it('should throw ConflictException for cannotResetPassword error', async () => {
+        const controller = buildController()
+
+        mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ResetUserPasswordApplicationError.cannotResetPassword(),
+        })
+
+        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          new ConflictException({
+            code: AUTH_RESET_PASSWORD_SAME_PASSWORD,
+            message: 'New password cannot be the same as the current password',
+          }),
+        )
+      })
+
+      it('should throw InternalServerErrorException for inconsistentState error', async () => {
+        const controller = buildController()
+
+        mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+          success: false,
+          error: ResetUserPasswordApplicationError.inconsistentState(IdentifierMother.valid().value),
+        })
+
+        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+      })
+
+      it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordApplicationError', async () => {
+        const controller = buildController()
+
+        const useCaseApplicationError: ResetUserPasswordApplicationError = {
+          id: 'reset_password_application_unknown_error',
+          name: ResetUserPasswordApplicationError.name,
+          errors: [],
+        } as unknown as ResetUserPasswordApplicationError
+
+        mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseApplicationError,
+        })
+
+        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+      })
+
+      it('should throw original error when use-case fails with an unexpected exception', async () => {
+        const controller = buildController()
+        const unexpectedError = new Error('Unexpected error')
+
+        mockedResetUserPasswordUseCase.execute.mockImplementation(() => {
+          throw unexpectedError
+        })
+
+        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(unexpectedError)
       })
     })
   })

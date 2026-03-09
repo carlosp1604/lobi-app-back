@@ -57,5 +57,5 @@ const fastifyApplication = new FastifyAdapter({
 })
 
 export async function buildFastifyApplication(): Promise<NestFastifyApplication> {
-  return NestFactory.create<NestFastifyApplication>(AppModule, fastifyApplication, { cors: corsOptions })
+  return NestFactory.create<NestFastifyApplication>(AppModule, fastifyApplication, { cors: corsOptions, bufferLogs: true })
 }

@@ -1,5 +1,4 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { SportsmanProfile } from '~/src/modules/User/Domain/Profile/SportsmanProfile'
 import { SportsmanProfileBio } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBio'
 import { SportsmanProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
@@ -8,8 +7,8 @@ import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject
 export class SportsmanProfileModelTranslator {
   public static toDomain(rawModel: SportsmanProfileRawModel, now: Date): SportsmanProfile {
     return new SportsmanProfile(
-      UserProfileId.fromString(rawModel.id),
-      UserId.fromString(rawModel.user_id),
+      Identifier.fromString(rawModel.id),
+      Identifier.fromString(rawModel.user_id),
       rawModel.birth_date ? SportsmanProfileBirthDate.fromString(rawModel.birth_date, now) : null,
       rawModel.bio ? SportsmanProfileBio.fromString(rawModel.bio) : null,
       rawModel.created_at,

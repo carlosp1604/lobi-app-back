@@ -1,5 +1,6 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
 
 export enum ValidVerificationTokenPurposes {
   CREATE_ACCOUNT = 'createAccount',
@@ -11,10 +12,6 @@ export class VerificationTokenPurpose extends ValueObject<ValidVerificationToken
 
   private constructor(value: ValidVerificationTokenPurposes) {
     super(value)
-
-    if (!this.isValidVerificationTokenPurpose(value)) {
-      throw VerificationTokenDomainException.invalidVerificationTokenPurpose(value)
-    }
   }
 
   static createAccount(): VerificationTokenPurpose {
@@ -26,10 +23,24 @@ export class VerificationTokenPurpose extends ValueObject<ValidVerificationToken
   }
 
   static fromString(value: string): VerificationTokenPurpose {
-    return new VerificationTokenPurpose(value as ValidVerificationTokenPurposes)
+    const result = this.safeCreate(value)
+
+    if (!result.success) {
+      throw result.error
+    }
+
+    return result.value
   }
 
-  private isValidVerificationTokenPurpose(value: string): boolean {
+  static safeCreate(value: string): Result<VerificationTokenPurpose, VerificationTokenDomainException> {
+    if (!VerificationTokenPurpose.isValidVerificationTokenPurpose(value)) {
+      return fail(VerificationTokenDomainException.invalidVerificationTokenPurpose(value))
+    }
+
+    return success(new VerificationTokenPurpose(value as ValidVerificationTokenPurposes))
+  }
+
+  private static isValidVerificationTokenPurpose(value: string): boolean {
     return Object.values(ValidVerificationTokenPurposes).includes(value as ValidVerificationTokenPurposes)
   }
 }

@@ -49,6 +49,7 @@
     "dotenv": "^17.2.2",
     "ipaddr.js": "^2.2.0",
     "jsonwebtoken": "^9.0.2",
+    "nestjs-cls": "^6.2.0",
     "pg": "^8.16.3",
     "pino": "^9.9.4",
     "postmark": "^4.0.5",

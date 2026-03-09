@@ -1,11 +1,8 @@
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { DomainEventId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventId'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { DomainEventAggregateId } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateId'
-
-import { DomainEventIdMother } from '~/src/test/mothers/DomainEventIdMother'
-import { DomainEventAggregateIdMother } from '~/src/test/mothers/DomainEventAggregateIdMother'
 
 type JsonPrimitive = string | number | boolean | null
 type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue }
@@ -14,15 +11,15 @@ export type EventPayload = Record<string, JsonValue>
 export type EventMetadata = Record<string, JsonValue>
 
 export class DomainEventTestBuilder {
-  private _id: DomainEventId = DomainEventIdMother.valid()
+  private _id: Identifier = IdentifierMother.valid()
   private _name: DomainEventName = DomainEventName.successfulLogin()
   private _aggregateType: DomainEventAggregateType = DomainEventAggregateType.user()
-  private _aggregateId: DomainEventAggregateId = DomainEventAggregateIdMother.valid()
+  private _aggregateId: Identifier = IdentifierMother.valid()
   private _payload: EventPayload = {}
   private _metadata: EventMetadata = {}
   private _occurredAt: Date = new Date()
 
-  withId(id: DomainEventId) {
+  withId(id: Identifier) {
     this._id = id
     return this
   }
@@ -37,7 +34,7 @@ export class DomainEventTestBuilder {
     return this
   }
 
-  withAggregateId(aggregateId: DomainEventAggregateId) {
+  withAggregateId(aggregateId: Identifier) {
     this._aggregateId = aggregateId
     return this
   }

@@ -1,6 +1,7 @@
 import * as jwt from 'jsonwebtoken'
 import { z } from 'zod'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
+import { ErrorUtils } from '~/src/modules/Shared/Domain/ErrorUtils'
 import { ConfigService } from '@nestjs/config'
 import { FastifyRequest } from 'fastify'
 import { JwtPayloadSchema } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
@@ -43,26 +44,23 @@ export class AccessTokenGuard implements CanActivate {
         audience: this.jwtAudience,
       }) as Record<string, unknown>
     } catch (exception: unknown) {
+      const normalized = ErrorUtils.normalize(exception)
+
+      const logContext = {
+        path: request.url,
+        tokenPrefix: token.substring(0, 10),
+      }
+
       if (exception instanceof JsonWebTokenError) {
-        let message = `JWT verification failed: ${exception.message}`
-
-        if (exception instanceof TokenExpiredError) {
-          message = 'JWT verification failed: Token expired'
-        }
-
-        this.logger.warn(message, {
-          requestId: request.id,
-          path: request.url,
-          tokenPrefix: token.substring(0, 10),
+        this.logger.warn('JWT verification failed', {
+          ...logContext,
+          reason: exception instanceof TokenExpiredError ? 'Token expired' : exception.message,
+          error: normalized.message,
         })
       } else {
-        const errorStack = exception instanceof Error ? exception.stack : undefined
-
-        this.logger.error('Unexpected error during JWT verification', errorStack, {
-          requestId: request.id,
-          path: request.url,
-          tokenPrefix: token.substring(0, 10),
-          error: String(exception),
+        this.logger.error('Unexpected error during JWT verification', normalized.stack, {
+          ...logContext,
+          error: normalized.message,
         })
       }
 
@@ -76,10 +74,10 @@ export class AccessTokenGuard implements CanActivate {
 
     if (!validationResult.success) {
       this.logger.warn('Invalid JWT payload structure', {
-        requestId: request.id,
         path: request.url,
+        reason: 'Payload schema validation failed',
         tokenPrefix: token.substring(0, 10),
-        validationErrors: z.treeifyError(validationResult.error).errors,
+        validationErrors: z.treeifyError(validationResult.error),
         payload,
       })
 

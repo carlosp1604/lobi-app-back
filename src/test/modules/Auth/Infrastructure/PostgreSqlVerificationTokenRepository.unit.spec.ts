@@ -3,7 +3,7 @@ import { mock, mockReset } from 'jest-mock-extended'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
-import { VerificationTokenIdMother } from '~/src/test/mothers/VerificationTokenIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm'
 import {
@@ -12,11 +12,11 @@ import {
 } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
 import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
-import { VerificationTokenEmailMother } from '~/src/test/mothers/VerificationTokenEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
   const fakeContext: TxContext = { __opaque_tx_context: true }
-  const testTokenId = VerificationTokenIdMother.valid()
+  const testTokenId = IdentifierMother.valid()
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
   const mockedEntityManager = mock<EntityManager>()
@@ -37,7 +37,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
   describe('findByEmailWithLock', () => {
     const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
     const rawToken = makeRawVerificationToken({ id: testTokenId.value })
-    const email = VerificationTokenEmailMother.random().value
+    const email = EmailAddressMother.random().value
 
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
@@ -133,7 +133,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
   describe('findByEmail', () => {
     const expectedVerificationToken = new VerificationTokenTestBuilder().withId(testTokenId).build()
     const rawToken = makeRawVerificationToken({ id: testTokenId.value })
-    const email = VerificationTokenEmailMother.random().value
+    const email = EmailAddressMother.random().value
 
     beforeEach(() => {
       mockedEntityManager.createQueryBuilder.mockReturnValue(mockedQueryBuilder)
@@ -342,7 +342,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
   })
 
   describe('delete', () => {
-    const verificationTokenId = VerificationTokenIdMother.valid().value
+    const verificationTokenId = IdentifierMother.valid().value
 
     beforeEach(() => {
       mockedEntityManager.getRepository.mockReturnValue(mockedVerificationTokenRepository)

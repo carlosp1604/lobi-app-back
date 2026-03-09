@@ -1,17 +1,16 @@
-import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
-import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
-import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
-import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserSessionIdMother } from '~/src/test/mothers/UserSessionIdMother'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
+import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
+import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
+import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
+import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 
 describe('UserSessionPolicyManagerApplicationService', () => {
   const now = new Date('2025-10-21T14:00:00Z')
   const maxSessions = env.USER_MAX_SESSIONS
 
-  const userId = UserIdMother.valid()
+  const userId = IdentifierMother.valid()
 
   const buildService = () => {
     return new UserSessionPolicyManagerApplicationService(new MaxSessionsPolicy(maxSessions), new LoggerServiceMock())
@@ -19,7 +18,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
   const buildUserSession = (createdAt: Date) => {
     return new UserSessionTestBuilder()
-      .withId(UserSessionIdMother.valid())
+      .withId(IdentifierMother.valid())
       .withUserId(userId)
       .withCreatedAt(createdAt)
       .withUpdatedAt(now)
@@ -75,7 +74,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
       const currentSession = buildUserSession(now)
 
-      const result = service.applyPolicyAndRevokeForRefresh(currentSession, [currentSession], now)
+      const result = service.applyPolicyAndRevokeForRefresh(currentSession.id, userId, [currentSession], now)
 
       expect(result.success).toBe(true)
 
@@ -97,7 +96,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
       const activeSessions = [oldestSession, session2, session3, currentSession]
 
-      const result = service.applyPolicyAndRevokeForRefresh(currentSession, activeSessions, now)
+      const result = service.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessions, now)
 
       expect(result.success).toBe(true)
 

@@ -2,9 +2,8 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { OwnerProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/OwnerProfileTestBuilder'
 import { SportsmanProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/SportsmanProfileTestBuilder'
@@ -17,9 +16,9 @@ import { SportsmanProfileDatabaseHelper } from '~/src/test/modules/User/Infrastr
 import { makeRawSportsmanProfile } from '~/src/test/modules/User/Infrastructure/Profile/SportsmanProfileRawTestMaker'
 
 describe('PostgreSqlProfileRepository', () => {
-  const userId = UserIdMother.valid()
-  const userEmail = UserEmailMother.valid()
-  const profileId = UserProfileIdMother.valid()
+  const userId = IdentifierMother.valid()
+  const profileId = IdentifierMother.valid()
+  const userEmail = EmailAddressMother.valid()
   const now = new Date('2026-02-16T13:25:00Z')
 
   describe('saveOwnerProfile', () => {

@@ -1,15 +1,13 @@
 import { OwnerProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/OwnerProfileTestBuilder'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { OwnerProfileCompanyNameMother } from '~/src/test/mothers/OwnerProfileCompanyNameMother'
 import { OwnerProfileTaxIdMother } from '~/src/test/mothers/OwnerProfileTaxIdMother'
 import { OwnerProfileContactPhoneMother } from '~/src/test/mothers/OwnerProfileContactPhoneMother'
 import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { ProfileDomainException } from '~/src/modules/User/Domain/Profile/ProfileDomainException'
 import { makeRawOwnerProfile } from '~/src/test/modules/User/Infrastructure/Profile/OwnerProfileRawTestMaker'
 import { OwnerProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
 import { OwnerProfileCompanyName } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileCompanyName'
 import { OwnerProfileTaxId } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileTaxId'
 import { OwnerProfileContactPhone } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileContactPhone'
@@ -29,8 +27,8 @@ describe('OwnerProfileModelTranslator', () => {
 
   describe('toDomain', () => {
     const checkResult = (result: OwnerProfile, raw: OwnerProfileRawModel) => {
-      expect(result.id).toBeInstanceOf(UserProfileId)
-      expect(result.userId).toBeInstanceOf(UserId)
+      expect(result.id).toBeInstanceOf(Identifier)
+      expect(result.userId).toBeInstanceOf(Identifier)
 
       expect(result.id.value).toBe(raw.id)
       expect(result.userId.value).toBe(raw.user_id)
@@ -131,8 +129,8 @@ describe('OwnerProfileModelTranslator', () => {
 
     beforeEach(() => {
       builder = new OwnerProfileTestBuilder()
-        .withId(UserProfileIdMother.valid())
-        .withUserId(UserIdMother.valid())
+        .withId(IdentifierMother.valid())
+        .withUserId(IdentifierMother.valid())
         .withCompanyName(OwnerProfileCompanyNameMother.valid())
         .withTaxId(OwnerProfileTaxIdMother.valid())
         .withContactPhone(OwnerProfileContactPhoneMother.valid())

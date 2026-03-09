@@ -5,11 +5,11 @@ import fastifyCookie from '@fastify/cookie'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { NestFastifyApplication } from '@nestjs/platform-fastify'
 import { buildFastifyApplication } from '~/src/modules/Shared/Infrastructure/FastifyApplication'
-import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
-import { LOGGER_SERVICE } from '~/src/modules/Shared/Infrastructure/logger.module'
+import { LOGGER_FACTORY } from '~/src/modules/Shared/Infrastructure/logger.module'
 import { validationPipe } from '~/src/modules/Shared/Infrastructure/global-validation.pipe'
 import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentry-exception.filter'
+import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 
 /**
  * This project provides only an API | CSP = off
@@ -51,7 +51,9 @@ async function bootstrap() {
 
   const app = await buildFastifyApplication()
 
-  const logger = await app.resolve<LoggerServiceInterface>(LOGGER_SERVICE)
+  const loggerFactory = await app.resolve<LoggerFactoryInterface>(LOGGER_FACTORY)
+
+  const logger = loggerFactory.createLogger('NestApplication')
 
   app.useLogger(logger)
   app.useGlobalFilters(app.get(SentryExceptionFilter))

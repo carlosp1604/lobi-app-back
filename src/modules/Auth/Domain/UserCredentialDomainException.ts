@@ -1,8 +1,8 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 
 export class UserCredentialDomainException extends DomainException {
-  public static invalidPasswordHashFormatId = 'user_credential_invalid_password_hash_format'
-  public static invalidPasswordFormatId = 'user_credential_invalid_password_format'
+  public static invalidPasswordHashFormatId = 'user_credential_domain_invalid_password_hash_format'
+  public static invalidPasswordFormatId = 'user_credential_domain_invalid_password_format'
 
   private constructor(message: string, id: string) {
     super(message, id, UserCredentialDomainException.name)

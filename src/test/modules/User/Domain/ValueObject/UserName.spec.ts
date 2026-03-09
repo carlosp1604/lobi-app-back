@@ -4,12 +4,10 @@ import { UserDomainException } from '~/src/modules/User/Domain/UserDomainExcepti
 
 describe('UserName', () => {
   describe('fromString', () => {
-    it('should not throw error when user name is valid', () => {
-      const validUserNames = Array.from({ length: 100 }, () => UserNameMother.randomString())
+    const validUserNames = Array.from({ length: 100 }, () => UserNameMother.randomString())
 
-      validUserNames.forEach((validUserName) => {
-        expect(() => UserName.fromString(validUserName)).not.toThrow()
-      })
+    it.each(validUserNames)('should not throw error when user name is valid: %s', (validUserName) => {
+      expect(() => UserName.fromString(validUserName)).not.toThrow()
     })
 
     it.each(UserNameMother.INVALID_FORMAT_CASES)('should throw error when user name is not valid: %s', (userName) => {
@@ -18,16 +16,17 @@ describe('UserName', () => {
   })
 
   describe('safeCreate', () => {
-    it('should return success when user name is valid', () => {
-      const validUserNames = Array.from({ length: 100 }, () => UserNameMother.randomString())
+    const validUserNames = Array.from({ length: 100 }, () => UserNameMother.randomString())
 
-      validUserNames.forEach((validUserName) => {
-        expect(() => UserName.fromString(validUserName)).not.toThrow()
-      })
+    it.each(validUserNames)('should return success when user name is valid: %s', (validUserName) => {
+      const result = UserName.safeCreate(validUserName)
+
+      expect(result.success).toEqual(true)
     })
 
     it.each(UserNameMother.INVALID_FORMAT_CASES)('should return error when user name is not valid: %s', (userName) => {
       const result = UserName.safeCreate(userName)
+
       expect(result.success).toBe(false)
       expect(result['error']).toEqual(UserDomainException.invalidUserName(userName))
     })

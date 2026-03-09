@@ -1,5 +1,4 @@
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
-import { UserEmailMother } from '~/src/test/mothers/UserEmailMother'
+import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { User } from '~/src/modules/User/Domain/User'
@@ -16,10 +15,11 @@ import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserD
 import { runPessimisticLockTest, Tx1Logic, Tx2Logic } from '~/src/test/utils/concurrencyHelper'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { mock, mockReset } from 'jest-mock-extended'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 
 describe('PostgresqlUserRepository', () => {
-  const userId = UserIdMother.valid()
-  const userEmail = UserEmailMother.valid()
+  const userId = IdentifierMother.valid()
+  const userEmail = EmailAddressMother.valid()
   const userName = UserNameMother.valid()
   const username = UserUsernameMother.random()
   const now = new Date('2025-09-26T14:11:25Z')
@@ -190,7 +190,7 @@ describe('PostgresqlUserRepository', () => {
     })
 
     it('should return false when no user with the email exists', async () => {
-      const nonExistentEmail = UserEmailMother.random()
+      const nonExistentEmail = EmailAddressMother.random()
 
       const context = new TypeOrmTxContext(runner.manager)
       const repository = new PostgresqlUserRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)

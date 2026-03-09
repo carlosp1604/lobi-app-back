@@ -5,6 +5,7 @@ import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidat
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
+import { ErrorUtils } from '~/src/modules/Shared/Domain/ErrorUtils'
 
 interface NormalizedIpWithHash {
   normalizedIp: string
@@ -47,8 +48,9 @@ export class RequestOriginApplicationService {
 
   private validateUserAgent(userAgent: string | undefined, context: RequestOriginContext): UserAgent {
     const logAndReturnFallback = () => {
-      this.loggerService.warn('Unparseable UserAgent, falling back to UNKNOWN', {
+      this.loggerService.warn('UserAgent parsing failed', {
         ...context,
+        reason: 'Invalid or missing UserAgent, falling back to UNKNOWN',
         uaSample: userAgent ? userAgent.slice(0, 512) : undefined,
         uaLength: userAgent ? userAgent.length : 0,
       })
@@ -85,8 +87,9 @@ export class RequestOriginApplicationService {
       }
     }
 
-    this.loggerService.warn('Invalid or private IP address', {
+    this.loggerService.warn('IP address validation failed', {
       ...context,
+      reason: 'IP is either invalid, private or local',
       ipSample: ip.slice(0, 39),
       ipLength: ip.length,
     })
@@ -99,6 +102,12 @@ export class RequestOriginApplicationService {
       const resolvedDeviceLocation = await this.deviceLocationResolver.resolve(normalizedIp)
 
       if (!resolvedDeviceLocation) {
+        this.loggerService.debug('No location found for the given IP', {
+          ...context,
+          normalizedIp: normalizedIp,
+          reason: 'IP not found in provider database',
+        })
+
         return null
       }
 
@@ -107,12 +116,12 @@ export class RequestOriginApplicationService {
         countryCode: resolvedDeviceLocation.countryCode,
       })
     } catch (exception: unknown) {
-      const stack = exception instanceof Error ? exception.stack : undefined
+      const normalizedException = ErrorUtils.normalize(exception)
 
-      this.loggerService.error('Failed to resolve device location. Session will be created without location data', stack, {
+      this.loggerService.error('Device location resolution failed', normalizedException.stack, {
         ...context,
         normalizedIp: normalizedIp,
-        error: exception,
+        error: normalizedException.message,
       })
 
       return null

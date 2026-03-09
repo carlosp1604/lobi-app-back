@@ -1,27 +1,25 @@
-import { UserId } from '~/src/modules/User/Domain/ValueObject/UserId'
-import { UserIdMother } from '~/src/test/mothers/UserIdMother'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
-import { UserProfileId } from '~/src/modules/User/Domain/ValueObject/Profile/UserProfileId'
+import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { OwnerProfileTaxId } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileTaxId'
-import { UserProfileIdMother } from '~/src/test/mothers/UserProfileIdMother'
 import { OwnerProfileCompanyName } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileCompanyName'
 import { OwnerProfileContactPhone } from '~/src/modules/User/Domain/ValueObject/Profile/OwnerProfileContactPhone'
 
 export class OwnerProfileTestBuilder {
-  private _id = UserProfileIdMother.valid()
-  private _userId = UserIdMother.valid()
+  private _id = IdentifierMother.valid()
+  private _userId = IdentifierMother.valid()
   private _companyName: OwnerProfileCompanyName | null = null
   private _taxId: OwnerProfileTaxId | null = null
   private _contactPhone: OwnerProfileContactPhone | null = null
   private _createdAt = new Date()
   private _updatedAt = new Date()
 
-  withId(id: UserProfileId) {
+  withId(id: Identifier) {
     this._id = id
     return this
   }
 
-  withUserId(userId: UserId) {
+  withUserId(userId: Identifier) {
     this._userId = userId
     return this
   }

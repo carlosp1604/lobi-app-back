@@ -24,24 +24,18 @@ export class PostgreSqlUserCredentialRepository implements UserCredentialReposit
   }
 
   /**
-   * Persists the last successful login access for the given UserCredential
-   * @param userCredential UserCredential to update
-   * @param context the transactional context
+   * Updates an existing UserCredential in the database
+   * @param userCredential The UserCredential domain entity to update
+   * @param context The transactional context
    */
-  public async saveLoginSuccess(userCredential: UserCredential, context: TxContext): Promise<void> {
+  public async update(userCredential: UserCredential, context: TxContext): Promise<void> {
     const entityManager = this.entityManagerResolver.resolve(context)
 
     const userCredentialRepository = entityManager.getRepository(UserCredentialEntity)
 
-    const { user_id, locked_until, failed_attempts, last_login_at, updated_at } =
-      UserCredentialModelTranslator.toDatabase(userCredential)
+    const userCredentialRawModel = UserCredentialModelTranslator.toDatabase(userCredential)
 
-    await userCredentialRepository.update(user_id, {
-      locked_until,
-      failed_attempts,
-      last_login_at,
-      updated_at,
-    })
+    await userCredentialRepository.update(userCredentialRawModel.user_id, userCredentialRawModel)
   }
 
   /**
