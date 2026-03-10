@@ -32,7 +32,7 @@ export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInt
    * @param context The transactional context
    * @returns Array of active UserSession
    */
-  public async findUserActiveSessions(userId: string, now: Date, context: TxContext): Promise<Array<UserSession>> {
+  public async findUserActiveSessions(userId: string, now: Date, context?: TxContext): Promise<Array<UserSession>> {
     const entityManager = this.entityManagerResolver.resolve(context)
 
     const userSessionRepository = entityManager.getRepository(UserSessionEntity)

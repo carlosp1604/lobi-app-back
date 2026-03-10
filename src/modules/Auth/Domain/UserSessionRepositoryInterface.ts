@@ -17,7 +17,7 @@ export interface UserSessionRepositoryInterface {
    * @param context The transactional context
    * @returns Array of active UserSession
    */
-  findUserActiveSessions(userId: string, now: Date, context: TxContext): Promise<Array<UserSession>>
+  findUserActiveSessions(userId: string, now: Date, context?: TxContext): Promise<Array<UserSession>>
 
   /**
    * Finds a UserSession by its token hash
