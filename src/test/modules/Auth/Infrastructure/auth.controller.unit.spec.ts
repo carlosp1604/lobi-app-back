@@ -73,6 +73,9 @@ import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
+import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
+import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
+import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -84,11 +87,12 @@ describe('AuthController', () => {
   const mockedCreateUserUseCase = mock<CreateUser>()
   const mockedResetUserPasswordUseCase = mock<ResetUserPassword>()
   const mockedLogoutUserUseCase = mock<LogoutUser>()
+  const mockedGetActiveSessionsUseCase = mock<GetActiveSessions>()
 
   const mockedIp = '127.0.0.1'
   const mockedUserAgent = UserAgentMother.forTesting().value
 
-  const base = new Date('2025-10-13T14:00:00.014Z')
+  const baseDate = new Date('2025-10-13T14:00:00.014Z')
 
   beforeEach(() => {
     mockReset(mockedResponse)
@@ -100,6 +104,7 @@ describe('AuthController', () => {
     mockReset(mockedCreateUserUseCase)
     mockReset(mockedResetUserPasswordUseCase)
     mockReset(mockedLogoutUserUseCase)
+    mockReset(mockedGetActiveSessionsUseCase)
   })
 
   const buildController = () => {
@@ -111,6 +116,7 @@ describe('AuthController', () => {
       mockedCreateUserUseCase,
       mockedResetUserPasswordUseCase,
       mockedLogoutUserUseCase,
+      mockedGetActiveSessionsUseCase,
       mockedConfigService,
     )
   }
@@ -126,14 +132,14 @@ describe('AuthController', () => {
       sameSite: 'strict',
       secure: false,
       httpOnly: true,
-      expires: new Date(base.getTime() + 10000),
+      expires: new Date(baseDate.getTime() + 10000),
     })
     expect(mockedResponse.setCookie).toHaveBeenCalledWith('x-access-token', accessCookieValue, {
       path: '/',
       sameSite: 'strict',
       secure: false,
       httpOnly: true,
-      expires: new Date(base.getTime() + 1000),
+      expires: new Date(baseDate.getTime() + 1000),
     })
   }
 
@@ -157,8 +163,8 @@ describe('AuthController', () => {
       const expectedResponse = {
         accessToken: 'expected-access-token',
         refreshToken: 'expected-refresh-token',
-        accessTokenExpiresAt: new Date(base.getTime() + 1000),
-        refreshTokenExpiresAt: new Date(base.getTime() + 10000),
+        accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
+        refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
         sessionId: 'expected-session-id',
         isNewDevice: true,
       }
@@ -360,8 +366,8 @@ describe('AuthController', () => {
       const expectedResponse = {
         accessToken: 'expected-access-token',
         refreshToken: 'expected-new-refresh-token',
-        accessTokenExpiresAt: new Date(base.getTime() + 1000),
-        refreshTokenExpiresAt: new Date(base.getTime() + 10000),
+        accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
+        refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
         sessionId: 'expected-session-id',
       }
 
@@ -1839,6 +1845,73 @@ describe('AuthController', () => {
         await expect(controller.logout(mockedAccessToken, mockedResponse)).rejects.toThrow(unexpectedError)
         expect(mockedConfigService.get).not.toHaveBeenCalled()
         expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('activeSessions', () => {
+    const userId = IdentifierMother.valid()
+    const sessionId = IdentifierMother.valid()
+
+    const mockedAccessToken = {
+      sub: userId.value,
+      sid: sessionId.value,
+    } as JwtPayload
+
+    beforeEach(() => {
+      mockReset(mockedGetActiveSessionsUseCase)
+    })
+
+    describe('happy path', () => {
+      it('should call use-case correctly and return the sessions when successful', async () => {
+        const controller = buildController()
+
+        const expectedSessionsResponse = mock<GetActiveSessionsApplicationResponseDto>()
+
+        mockedGetActiveSessionsUseCase.execute.mockResolvedValue({
+          success: true,
+          value: expectedSessionsResponse,
+        })
+
+        const result = await controller.activeSessions(mockedAccessToken)
+
+        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledWith({
+          userId: mockedAccessToken.sub,
+          currentSessionId: mockedAccessToken.sid,
+        })
+
+        expect(result).toBe(expectedSessionsResponse)
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw InternalServerErrorException when use-case returns an application error', async () => {
+        const controller = buildController()
+
+        const useCaseError = GetActiveSessionsApplicationError.invalidInput()
+
+        mockedGetActiveSessionsUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseError,
+        })
+
+        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(new InternalServerErrorException(useCaseError))
+
+        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
+      })
+
+      it('should throw original error when use-case fails with an unexpected exception', async () => {
+        const controller = buildController()
+        const unexpectedError = new Error('Database connection failed')
+
+        mockedGetActiveSessionsUseCase.execute.mockImplementation(() => {
+          throw unexpectedError
+        })
+
+        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(unexpectedError)
+
+        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
       })
     })
   })

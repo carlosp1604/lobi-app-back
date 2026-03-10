@@ -160,7 +160,7 @@ export class RefreshSession {
     now: Date,
     context: TxContext,
   ): Promise<Result<void, RefreshSessionApplicationError>> {
-    const activeSessions = await this.sessionRepository.findUserActiveSessions(userId.value, now, context)
+    const activeSessions = await this.sessionRepository.findUserActiveSessions(userId, now, context)
 
     const serviceResult = this.userSessionManagerService.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessions, now)
 

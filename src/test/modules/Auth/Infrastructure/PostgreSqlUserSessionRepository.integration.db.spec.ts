@@ -103,16 +103,21 @@ describe('PostgreSqlUserSessionRepository', () => {
       runner = queryRunner
     })
 
+    const olderDate = new Date(now.getTime() - 1000 * 3000)
+    const newerDate = new Date(now.getTime() - 1000 * 2000)
+
     const rawActiveSession1 = makeRawSession({
       user_id: userId.value,
       revoked_at: null,
       expires_at: futureExpiresAt,
+      created_at: olderDate,
     })
 
     const rawActiveSession2 = makeRawSession({
       user_id: userId.value,
       revoked_at: null,
       expires_at: futureExpiresAt,
+      created_at: newerDate,
     })
 
     const rawExpiredSession = makeRawSession({
@@ -142,7 +147,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     })
 
     it('should return an empty array when user does not have any active session', async () => {
-      const result = await repository.findUserActiveSessions(userId.value, now, context)
+      const result = await repository.findUserActiveSessions(userId, now, context)
 
       expect(result).toEqual([])
     })
@@ -150,7 +155,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     it('should return only active sessions (not revoked and not expired)', async () => {
       await userSessionDatabaseHelper.save([rawActiveSession1, rawExpiredSession, rawRevokedSession])
 
-      const result = await repository.findUserActiveSessions(userId.value, now, context)
+      const result = await repository.findUserActiveSessions(userId, now, context)
 
       expect(result).toHaveLength(1)
       checkSession(result[0], rawActiveSession1)
@@ -169,19 +174,20 @@ describe('PostgreSqlUserSessionRepository', () => {
 
       await userSessionDatabaseHelper.save(anotherUserActiveSession)
 
-      const result = await repository.findUserActiveSessions(userId.value, now, context)
+      const result = await repository.findUserActiveSessions(userId, now, context)
 
       expect(result).toEqual([])
     })
 
-    it('should return multiple active sessions', async () => {
-      await userSessionDatabaseHelper.save([rawActiveSession1, rawActiveSession2, rawExpiredSession, rawRevokedSession])
+    it('should return multiple active sessions correctly sorted', async () => {
+      await userSessionDatabaseHelper.save([rawActiveSession1, rawExpiredSession, rawActiveSession2, rawRevokedSession])
 
-      const result = await repository.findUserActiveSessions(userId.value, now, context)
+      const result = await repository.findUserActiveSessions(userId, now, context)
 
       expect(result).toHaveLength(2)
-      expect(result.some((session) => session.id.value === rawActiveSession1.id)).toBe(true)
-      expect(result.some((session) => session.id.value === rawActiveSession2.id)).toBe(true)
+
+      expect(result[0].id.value).toBe(rawActiveSession2.id)
+      expect(result[1].id.value).toBe(rawActiveSession1.id)
     })
   })
 

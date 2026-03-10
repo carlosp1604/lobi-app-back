@@ -3,6 +3,7 @@ import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import {
   CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
+  GET_ACTIVE_SESSIONS,
   LOGIN_USER,
   LOGOUT_USER,
   REFRESH_SESSION,
@@ -60,6 +61,7 @@ import {
   ConflictException,
   GoneException,
   NotFoundException,
+  Get,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
@@ -98,6 +100,8 @@ import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access
 import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
+import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
+import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
 
 @Controller('auth')
 export class AuthController {
@@ -109,6 +113,7 @@ export class AuthController {
     @Inject(CREATE_USER) private readonly createUser: CreateUser,
     @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
     @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
+    @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
@@ -578,6 +583,24 @@ export class AuthController {
 
     this.clearCookies(response)
     return
+  }
+
+  @Get('sessions')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
+  async activeSessions(@AccessToken() accessToken: JwtPayload) {
+    const requestDto: GetActiveSessionsApplicationRequestDto = {
+      userId: accessToken.sub,
+      currentSessionId: accessToken.sid,
+    }
+
+    const result = await this.getActiveSessions.execute(requestDto)
+
+    if (!result.success) {
+      throw new InternalServerErrorException(result.error)
+    }
+
+    return result.value
   }
 
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {

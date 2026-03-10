@@ -153,7 +153,7 @@ describe('RefreshToken', () => {
       validIpHash,
       expectedRequestOriginData.deviceLocation,
     )
-    expect(mockedSessionRepository.findUserActiveSessions).toHaveBeenCalledWith(userId.value, now, fakeContext)
+    expect(mockedSessionRepository.findUserActiveSessions).toHaveBeenCalledWith(userId, now, fakeContext)
     expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh).toHaveBeenCalledWith(
       currentSession.id,
       userId,
