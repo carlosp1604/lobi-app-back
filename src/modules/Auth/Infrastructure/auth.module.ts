@@ -30,6 +30,7 @@ import {
   VERIFY_TOKEN_DOMAIN_SERVICE,
   RESET_USER_PASSWORD,
   AUTH_DOMAIN_EVENT_FACTORY,
+  GET_ACTIVE_SESSIONS,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -86,6 +87,7 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
 import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
+import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 
 @Module({
   imports: [
@@ -499,6 +501,13 @@ import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser
       },
       inject: [USER_REPOSITORY, USER_SESSION_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, LOGGER_FACTORY],
     },
+    {
+      provide: GET_ACTIVE_SESSIONS,
+      useFactory: (sessionRepository: UserSessionRepositoryInterface, clockService: ClockServiceInterface) => {
+        return new GetActiveSessions(sessionRepository, clockService)
+      },
+      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE],
+    },
   ],
   exports: [
     LOGIN_USER,
@@ -508,6 +517,7 @@ import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser
     CREATE_USER,
     RESET_USER_PASSWORD,
     LOGOUT_USER,
+    GET_ACTIVE_SESSIONS,
     TypeOrmModule,
   ],
 })

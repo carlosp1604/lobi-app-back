@@ -74,9 +74,12 @@ import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 
 describe('AuthController', () => {
   const now = new Date()
+  const futureDate = new Date(now.getTime() + 3600 * 1000)
+  const pastDate = new Date(now.getTime() - 3600 * 1000)
 
   let app: NestFastifyApplication
   let dataSource: DataSource
@@ -338,8 +341,6 @@ describe('AuthController', () => {
   })
 
   describe('refresh', () => {
-    const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
-    const pastExpiresAt = new Date(now.getTime() - 3600 * 1000)
     let refreshCookieName: string
 
     const userId = IdentifierMother.valid()
@@ -372,7 +373,7 @@ describe('AuthController', () => {
       rawCurrentSession = makeRawSession({
         user_id: userId.value,
         revoked_at: null,
-        expires_at: futureExpiresAt,
+        expires_at: futureDate,
         token_hash: hashedToken,
       })
     })
@@ -448,14 +449,14 @@ describe('AuthController', () => {
 
         it('should throw UnauthorizedException when session is already expired', async () => {
           await userDatabaseHelper.save(rawUser)
-          await userSessionDatabaseHelper.save({ ...rawCurrentSession, expires_at: pastExpiresAt, revoked_at: null })
+          await userSessionDatabaseHelper.save({ ...rawCurrentSession, expires_at: pastDate, revoked_at: null })
 
           await testCase(`${refreshCookieName}=${inputToken}`)
         })
 
         it('should throw UnauthorizedException when session is already revoked', async () => {
           await userDatabaseHelper.save(rawUser)
-          await userSessionDatabaseHelper.save({ ...rawCurrentSession, expires_at: futureExpiresAt, revoked_at: now })
+          await userSessionDatabaseHelper.save({ ...rawCurrentSession, expires_at: futureDate, revoked_at: now })
 
           await testCase(`${refreshCookieName}=${inputToken}`)
         })
@@ -483,8 +484,6 @@ describe('AuthController', () => {
   })
 
   describe('verify email', () => {
-    const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
-
     const userEmail = EmailAddressMother.random()
     let userDatabaseHelper: UserDatabaseHelper
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
@@ -507,7 +506,7 @@ describe('AuthController', () => {
       rawCurrentVerificationToken = makeRawVerificationToken({
         email: userEmail.value,
         purpose: VerificationTokenPurpose.createAccount().value,
-        expires_at: futureExpiresAt,
+        expires_at: futureDate,
         used_at: null,
         token_hash: VerificationTokenTokenHashMother.random().value,
       })
@@ -635,10 +634,6 @@ describe('AuthController', () => {
 
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
     let rawVerificationToken: VerificationTokenRawModel
-
-    const now = new Date()
-    const futureDate = new Date(now.getTime() + 10000)
-    const pastDate = new Date(now.getTime() - 10000)
 
     beforeEach(async () => {
       verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(dataSource.manager)
@@ -875,7 +870,7 @@ describe('AuthController', () => {
         id: IdentifierMother.valid().value,
         email: validEmail.value,
         purpose: VerificationTokenPurpose.createAccount().value,
-        expires_at: new Date(now.getTime() + 3600 * 1000),
+        expires_at: futureDate,
         used_at: null,
         token_hash: tokenHash,
         ...overrides,
@@ -1015,7 +1010,7 @@ describe('AuthController', () => {
 
         it('should throw GoneException when token is already expired', async () => {
           await saveTokenInDatabase({
-            expires_at: new Date(now.getTime() - 1000),
+            expires_at: pastDate,
           })
 
           return request(app.getHttpServer())
@@ -1030,7 +1025,7 @@ describe('AuthController', () => {
 
         it('should throw ConflictException when token is already used', async () => {
           await saveTokenInDatabase({
-            used_at: new Date(now.getTime() - 5000),
+            used_at: pastDate,
           })
 
           return request(app.getHttpServer())
@@ -1064,8 +1059,6 @@ describe('AuthController', () => {
     const validTokenValue = VerificationTokenValueMother.valid()
     const validNewPassword = UserPasswordMother.valid()
     const validOldPassword = UserPasswordMother.random()
-
-    const now = new Date()
 
     let userDatabaseHelper: UserDatabaseHelper
     let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
@@ -1105,7 +1098,7 @@ describe('AuthController', () => {
         id: IdentifierMother.valid().value,
         email: validEmail.value,
         purpose: VerificationTokenPurpose.resetPassword().value,
-        expires_at: new Date(now.getTime() + 3600 * 1000),
+        expires_at: futureDate,
         used_at: null,
         token_hash: tokenHash,
         ...overrides,
@@ -1222,9 +1215,6 @@ describe('AuthController', () => {
   })
 
   describe('logout', () => {
-    const now = new Date()
-    const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
-
     let userDatabaseHelper: UserDatabaseHelper
     let userSessionDatabaseHelper: UserSessionDatabaseHelper
     let tokenService: TokenGeneratorApplicationServiceInterface
@@ -1244,7 +1234,7 @@ describe('AuthController', () => {
         id: sessionId,
         user_id: userId,
         revoked_at: null,
-        expires_at: futureExpiresAt,
+        expires_at: futureDate,
       })
 
       await userDatabaseHelper.save(rawUser)
@@ -1303,7 +1293,7 @@ describe('AuthController', () => {
       it('should return 204 and clear cookies when session does not exist', async () => {
         const userId = IdentifierMother.valid().value
         const sessionId = IdentifierMother.valid().value
-        const accessToken = await tokenService.generateAccessToken(userId, sessionId, futureExpiresAt, now)
+        const accessToken = await tokenService.generateAccessToken(userId, sessionId, futureDate, now)
 
         await userDatabaseHelper.save(makeRawUser({ id: userId }))
 
@@ -1318,6 +1308,111 @@ describe('AuthController', () => {
 
             checkClearedCookies(cookies)
           })
+      })
+    })
+  })
+
+  describe('activeSessions', () => {
+    const olderDate = new Date(now.getTime() - 5000)
+    const newerDate = now
+
+    const userId = IdentifierMother.valid()
+    const currentSessionId = IdentifierMother.valid()
+    const otherSessionId = IdentifierMother.valid()
+
+    let userDatabaseHelper: UserDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
+    let tokenService: TokenGeneratorApplicationServiceInterface
+
+    beforeEach(() => {
+      userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(dataSource.manager)
+      tokenService = app.get<TokenGeneratorApplicationServiceInterface>(TOKEN_GENERATOR)
+    })
+
+    describe('happy path', () => {
+      it('should return 200 OK and the list of active sessions', async () => {
+        const rawUser = makeRawUser({ id: userId.value })
+
+        const rawCurrentSession = makeRawSession({
+          id: currentSessionId.value,
+          user_id: userId.value,
+          revoked_at: null,
+          expires_at: futureDate,
+          created_at: olderDate,
+        })
+
+        const rawOtherSession = makeRawSession({
+          id: otherSessionId.value,
+          user_id: userId.value,
+          revoked_at: null,
+          expires_at: futureDate,
+          created_at: newerDate,
+        })
+
+        await userDatabaseHelper.save(rawUser)
+        await userSessionDatabaseHelper.save([rawCurrentSession, rawOtherSession])
+
+        const accessToken = await tokenService.generateAccessToken(userId.value, currentSessionId.value, futureDate, now)
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .get('/auth/sessions')
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(200)
+          .expect((response) => {
+            const body = response.body as GetActiveSessionsApplicationResponseDto
+
+            expect(body.sessions).toBeDefined()
+            expect(body.sessions).toHaveLength(2)
+
+            expect(body.sessions[0]).toEqual(
+              expect.objectContaining({
+                id: expect.any(String),
+                userAgent: expect.any(String),
+                isCurrent: expect.any(Boolean),
+                activeSince: expectIsoDate,
+                expiresAt: expectIsoDate,
+              } as Record<string, unknown>),
+            )
+
+            expect(body.sessions[0]).toHaveProperty('deviceCountryCode')
+            expect(body.sessions[0]).toHaveProperty('deviceCity')
+          })
+      })
+
+      it('should return 200 OK and an empty array when user has no active sessions', async () => {
+        await userDatabaseHelper.save(makeRawUser({ id: userId.value }))
+
+        const accessToken = await tokenService.generateAccessToken(userId.value, currentSessionId.value, futureDate, now)
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .get('/auth/sessions')
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(200)
+          .expect((response) => {
+            const body = response.body as GetActiveSessionsApplicationResponseDto
+
+            expect(body.sessions).toBeDefined()
+            expect(body.sessions).toEqual([])
+          })
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should return 401 Unauthorized when access token cookie is missing', async () => {
+        return request(app.getHttpServer()).get('/auth/sessions').expect(401)
+      })
+
+      it('should return 401 Unauthorized when access token is invalid', async () => {
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .get('/auth/sessions')
+          .set('Cookie', [`${accessCookieName}=invalid.jwt.token`])
+          .expect(401)
       })
     })
   })
