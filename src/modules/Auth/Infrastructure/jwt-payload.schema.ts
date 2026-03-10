@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 export const JwtPayloadSchema = z.object({
-  sub: z.string().nonempty().nonoptional(),
-  sid: z.string().nonempty().nonoptional(),
+  sub: z.uuid(),
+  sid: z.uuid(),
   iat: z.coerce.number().int().nonnegative().nonoptional(),
   exp: z.coerce.number().int().nonnegative().nonoptional(),
 })

@@ -13,7 +13,7 @@ import {
   HASHER_SERVICE,
   IP_VALIDATOR,
   LOGIN_USER,
-  LOGOUT_USER,
+  REVOKE_SESSION,
   MAX_SESSIONS_POLICY,
   PASSWORD_HASHER_SERVICE,
   USER_PROFILE_REPOSITORY,
@@ -86,7 +86,7 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
 import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
-import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
+import { RevokeSession } from '~/src/modules/Auth/Application/RevokeSession/RevokeSession'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 
 @Module({
@@ -489,7 +489,7 @@ import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessi
       ],
     },
     {
-      provide: LOGOUT_USER,
+      provide: REVOKE_SESSION,
       useFactory: (
         userRepository: UserRepositoryInterface,
         sessionRepository: UserSessionRepositoryInterface,
@@ -497,7 +497,13 @@ import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessi
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
       ) => {
-        return new LogoutUser(userRepository, sessionRepository, clockService, unitOfWork, loggerFactory.createLogger(LogoutUser.name))
+        return new RevokeSession(
+          userRepository,
+          sessionRepository,
+          clockService,
+          unitOfWork,
+          loggerFactory.createLogger(RevokeSession.name),
+        )
       },
       inject: [USER_REPOSITORY, USER_SESSION_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, LOGGER_FACTORY],
     },
@@ -516,7 +522,7 @@ import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessi
     VALIDATE_VERIFICATION_TOKEN,
     CREATE_USER,
     RESET_USER_PASSWORD,
-    LOGOUT_USER,
+    REVOKE_SESSION,
     GET_ACTIVE_SESSIONS,
     TypeOrmModule,
   ],

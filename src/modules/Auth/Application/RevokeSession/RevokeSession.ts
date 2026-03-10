@@ -4,11 +4,11 @@ import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
+import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
-import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
+import { RevokeSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationRequestDto'
 
-export class LogoutUser {
+export class RevokeSession {
   constructor(
     private readonly userRepository: UserRepositoryInterface,
     private readonly sessionRepository: UserSessionRepositoryInterface,
@@ -17,7 +17,7 @@ export class LogoutUser {
     private readonly loggerService: LoggerServiceInterface,
   ) {}
 
-  public async execute(request: LogoutUserApplicationRequestDto): Promise<Result<void, LogoutUserApplicationError>> {
+  public async execute(request: RevokeSessionApplicationRequestDto): Promise<Result<void, RevokeSessionApplicationError>> {
     const now = this.clockService.now()
 
     const inputValidationResult = this.validateInput(request)
@@ -42,30 +42,30 @@ export class LogoutUser {
       const session = await this.sessionRepository.findById(sessionId, context)
 
       if (!session) {
-        this.loggerService.error('Inconsistent state', undefined, {
+        this.loggerService.warn('Session revocation failed', {
           userId: request.userId,
           sessionId: request.sessionId,
-          reason: 'Valid JWT references a non-existent session',
+          reason: 'Session not found',
         })
 
-        return fail(LogoutUserApplicationError.sessionNotFound(sessionId.value))
+        return fail(RevokeSessionApplicationError.sessionNotFound(sessionId.value))
       }
 
       if (session.userId.value !== request.userId) {
-        this.loggerService.error('Inconsistent state', undefined, {
+        this.loggerService.warn('Session revocation rejected', {
           requestedUserId: request.userId,
           actualSessionOwner: session.userId.value,
           sessionId: request.sessionId,
-          reason: 'Session owner mismatch during logout',
+          reason: 'Session owner mismatch',
         })
 
-        return fail(LogoutUserApplicationError.sessionDoesNotBelongToUser(sessionId.value, userId.value))
+        return fail(RevokeSessionApplicationError.sessionDoesNotBelongToUser(sessionId.value, userId.value))
       }
 
       const canRevokeResult = session.canBeRevoked(now)
 
       if (!canRevokeResult.success) {
-        this.loggerService.warn('Logout rejected', {
+        this.loggerService.warn('Session revocation rejected', {
           userId: request.userId,
           sessionId: request.sessionId,
           reason: canRevokeResult.error.message,
@@ -83,29 +83,13 @@ export class LogoutUser {
   }
 
   private validateInput(
-    request: LogoutUserApplicationRequestDto,
-  ): Result<{ userId: Identifier; sessionId: Identifier }, LogoutUserApplicationError> {
+    request: RevokeSessionApplicationRequestDto,
+  ): Result<{ userId: Identifier; sessionId: Identifier }, RevokeSessionApplicationError> {
     const userIdResult = Identifier.safeCreate(request.userId)
     const sessionIdResult = Identifier.safeCreate(request.sessionId)
 
-    if (!userIdResult.success) {
-      this.loggerService.error('Inconsistent state', userIdResult.error.stack, {
-        rawUserId: request.userId.slice(0, 60),
-        reason: 'Valid JWT contains malformed identifiers',
-        message: userIdResult.error.message,
-      })
-    }
-
-    if (!sessionIdResult.success) {
-      this.loggerService.error('Inconsistent state', sessionIdResult.error.stack, {
-        rawSessionId: request.sessionId.slice(0, 60),
-        reason: 'Valid JWT contains malformed identifiers',
-        message: sessionIdResult.error.message,
-      })
-    }
-
     if (!userIdResult.success || !sessionIdResult.success) {
-      return fail(LogoutUserApplicationError.invalidInput())
+      return fail(RevokeSessionApplicationError.invalidInput())
     }
 
     return success({

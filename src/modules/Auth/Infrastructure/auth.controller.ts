@@ -5,7 +5,7 @@ import {
   GENERATE_VERIFICATION_TOKEN,
   GET_ACTIVE_SESSIONS,
   LOGIN_USER,
-  LOGOUT_USER,
+  REVOKE_SESSION,
   REFRESH_SESSION,
   RESET_USER_PASSWORD,
   VALIDATE_VERIFICATION_TOKEN,
@@ -94,11 +94,11 @@ import {
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
-import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
-import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
+import { RevokeSession } from '~/src/modules/Auth/Application/RevokeSession/RevokeSession'
+import { RevokeSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationRequestDto'
 import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access-token.decorator'
 import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
-import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
+import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
@@ -112,7 +112,7 @@ export class AuthController {
     @Inject(VALIDATE_VERIFICATION_TOKEN) private readonly validateVerificationToken: ValidateVerificationToken,
     @Inject(CREATE_USER) private readonly createUser: CreateUser,
     @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
-    @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
+    @Inject(REVOKE_SESSION) private readonly revokeSession: RevokeSession,
     @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
     private readonly configService: ConfigService<Env, true>,
   ) {}
@@ -559,20 +559,19 @@ export class AuthController {
       return
     }
 
-    const requestDto: LogoutUserApplicationRequestDto = {
+    const requestDto: RevokeSessionApplicationRequestDto = {
       userId: accessToken.sub,
       sessionId: accessToken.sid,
     }
 
-    const result = await this.logoutUser.execute(requestDto)
+    const result = await this.revokeSession.execute(requestDto)
 
     if (!result.success) {
       const errorId = result.error.id
 
       if (
-        errorId === LogoutUserApplicationError.sessionNotFoundId ||
-        errorId === LogoutUserApplicationError.sessionDoesNotBelongToUserId ||
-        errorId === LogoutUserApplicationError.invalidInputId
+        errorId === RevokeSessionApplicationError.sessionNotFoundId ||
+        errorId === RevokeSessionApplicationError.sessionDoesNotBelongToUserId
       ) {
         this.clearCookies(response)
         return
