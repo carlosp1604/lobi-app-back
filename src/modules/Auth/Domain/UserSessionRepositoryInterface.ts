@@ -1,5 +1,6 @@
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 export interface UserSessionRepositoryInterface {
   /**
@@ -25,4 +26,12 @@ export interface UserSessionRepositoryInterface {
    * @returns The UserSession if found, otherwise null
    */
   findByHash(hash: string, context: TxContext): Promise<UserSession | null>
+
+  /**
+   * Finds a UserSession by ID
+   * @param id UserSession ID
+   * @param context The transactional context
+   * @returns The UserSession if found, otherwise null
+   */
+  findById(id: Identifier, context: TxContext): Promise<UserSession | null>
 }

@@ -4,6 +4,7 @@ import {
   CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
   LOGIN_USER,
+  LOGOUT_USER,
   REFRESH_SESSION,
   RESET_USER_PASSWORD,
   VALIDATE_VERIFICATION_TOKEN,
@@ -90,6 +91,13 @@ import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
+import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
+import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
+import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
+import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access-token.decorator'
+import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
+import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
+import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
 
 @Controller('auth')
 export class AuthController {
@@ -100,6 +108,7 @@ export class AuthController {
     @Inject(VALIDATE_VERIFICATION_TOKEN) private readonly validateVerificationToken: ValidateVerificationToken,
     @Inject(CREATE_USER) private readonly createUser: CreateUser,
     @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
+    @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
@@ -534,6 +543,43 @@ export class AuthController {
     return
   }
 
+  @Post('logout')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @OptionalAuth()
+  @UseGuards(AccessTokenGuard)
+  async logout(@AccessToken() accessToken: JwtPayload | undefined, @Res({ passthrough: true }) response: FastifyReply) {
+    if (!accessToken) {
+      this.clearCookies(response)
+
+      return
+    }
+
+    const requestDto: LogoutUserApplicationRequestDto = {
+      userId: accessToken.sub,
+      sessionId: accessToken.sid,
+    }
+
+    const result = await this.logoutUser.execute(requestDto)
+
+    if (!result.success) {
+      const errorId = result.error.id
+
+      if (
+        errorId === LogoutUserApplicationError.sessionNotFoundId ||
+        errorId === LogoutUserApplicationError.sessionDoesNotBelongToUserId ||
+        errorId === LogoutUserApplicationError.invalidInputId
+      ) {
+        this.clearCookies(response)
+        return
+      }
+
+      throw new InternalServerErrorException(result.error)
+    }
+
+    this.clearCookies(response)
+    return
+  }
+
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {
     if (error.id === GenerateVerificationTokenApplicationError.invalidEmailId) {
       throw new UnprocessableEntityException({
@@ -590,6 +636,26 @@ export class AuthController {
     response.setCookie(accessTokenCookieName, accessToken, {
       ...cookieBase,
       expires: accessTokenExpiresAt,
+    })
+  }
+
+  private clearCookies(response: FastifyReply) {
+    const cookieBase = {
+      path: '/',
+      sameSite: 'strict' as const,
+      httpOnly: true,
+      secure: this.configService.get('isProduction', { infer: true }),
+    }
+
+    const refreshTokenCookieName = this.configService.get('REFRESH_COOKIE_NAME', { infer: true })
+    const accessTokenCookieName = this.configService.get('ACCESS_COOKIE_NAME', { infer: true })
+
+    response.clearCookie(refreshTokenCookieName, {
+      ...cookieBase,
+    })
+
+    response.clearCookie(accessTokenCookieName, {
+      ...cookieBase,
     })
   }
 }

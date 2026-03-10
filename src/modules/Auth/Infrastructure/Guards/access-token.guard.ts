@@ -8,6 +8,8 @@ import { JwtPayloadSchema } from '~/src/modules/Auth/Infrastructure/jwt-payload.
 import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken'
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common'
+import { IS_OPTIONAL_AUTH_KEY } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
+import { Reflector } from '@nestjs/core'
 
 @Injectable()
 export class AccessTokenGuard implements CanActivate {
@@ -17,7 +19,10 @@ export class AccessTokenGuard implements CanActivate {
   private readonly jwtAudience: string
   private readonly accessTokenCookieName: string
 
-  constructor(private readonly configService: ConfigService<Env, true>) {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly configService: ConfigService<Env, true>,
+  ) {
     this.jwtAccessSecret = this.configService.get('ACCESS_SECRET', { infer: true })
     this.jwtIssuer = this.configService.get('ACCESS_ISSUER', { infer: true })
     this.jwtAudience = this.configService.get('ACCESS_AUDIENCE', { infer: true })
@@ -26,10 +31,15 @@ export class AccessTokenGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<FastifyRequest>()
+    const isOptional = this.reflector.getAllAndOverride<boolean>(IS_OPTIONAL_AUTH_KEY, [context.getHandler(), context.getClass()])
 
     const token = request.cookies?.[this.accessTokenCookieName]
 
     if (!token) {
+      if (isOptional) {
+        return true
+      }
+
       throw new UnauthorizedException({
         code: UNAUTHORIZED_ACCESS,
         message: 'Unauthorized access',
@@ -64,6 +74,10 @@ export class AccessTokenGuard implements CanActivate {
         })
       }
 
+      if (isOptional) {
+        return true
+      }
+
       throw new UnauthorizedException({
         code: UNAUTHORIZED_ACCESS,
         message: 'Unauthorized access',
@@ -80,6 +94,10 @@ export class AccessTokenGuard implements CanActivate {
         validationErrors: z.treeifyError(validationResult.error),
         payload,
       })
+
+      if (isOptional) {
+        return true
+      }
 
       throw new UnauthorizedException({
         code: UNAUTHORIZED_ACCESS,

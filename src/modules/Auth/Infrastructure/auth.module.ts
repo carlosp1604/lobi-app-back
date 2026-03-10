@@ -13,6 +13,7 @@ import {
   HASHER_SERVICE,
   IP_VALIDATOR,
   LOGIN_USER,
+  LOGOUT_USER,
   MAX_SESSIONS_POLICY,
   PASSWORD_HASHER_SERVICE,
   USER_PROFILE_REPOSITORY,
@@ -84,6 +85,7 @@ import { OwnerProfileEntity } from '~/src/modules/User/Infrastructure/Entities/P
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
 import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 
 @Module({
   imports: [
@@ -484,6 +486,19 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
         AUTH_DOMAIN_EVENT_FACTORY,
       ],
     },
+    {
+      provide: LOGOUT_USER,
+      useFactory: (
+        userRepository: UserRepositoryInterface,
+        sessionRepository: UserSessionRepositoryInterface,
+        clockService: ClockServiceInterface,
+        unitOfWork: UnitOfWork,
+        loggerFactory: LoggerFactoryInterface,
+      ) => {
+        return new LogoutUser(userRepository, sessionRepository, clockService, unitOfWork, loggerFactory.createLogger(LogoutUser.name))
+      },
+      inject: [USER_REPOSITORY, USER_SESSION_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, LOGGER_FACTORY],
+    },
   ],
   exports: [
     LOGIN_USER,
@@ -492,6 +507,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
     VALIDATE_VERIFICATION_TOKEN,
     CREATE_USER,
     RESET_USER_PASSWORD,
+    LOGOUT_USER,
     TypeOrmModule,
   ],
 })

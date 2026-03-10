@@ -5,6 +5,7 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
 import { UserSessionEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { IsNull, MoreThan } from 'typeorm'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
@@ -57,6 +58,26 @@ export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInt
     const userSessionRepository = entityManager.getRepository(UserSessionEntity)
 
     const userSessionEntity = await userSessionRepository.findOneBy({ token_hash: hash })
+
+    if (!userSessionEntity) {
+      return null
+    }
+
+    return UserSessionModelTranslator.toDomain(userSessionEntity)
+  }
+
+  /**
+   * Finds a UserSession by ID
+   * @param id UserSession ID
+   * @param context The transactional context
+   * @returns The UserSession if found, otherwise null
+   */
+  public async findById(id: Identifier, context: TxContext): Promise<UserSession | null> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userSessionRepository = entityManager.getRepository(UserSessionEntity)
+
+    const userSessionEntity = await userSessionRepository.findOneBy({ id: id.value })
 
     if (!userSessionEntity) {
       return null

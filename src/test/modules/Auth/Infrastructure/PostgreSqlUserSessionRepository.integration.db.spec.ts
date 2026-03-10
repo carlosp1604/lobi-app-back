@@ -21,6 +21,7 @@ describe('PostgreSqlUserSessionRepository', () => {
   const now = new Date('2025-10-20T10:40:00Z')
   const futureExpiresAt = new Date(now.getTime() + 3600)
   const expiredDate = new Date(futureExpiresAt.getTime() - 3600)
+
   const userId = IdentifierMother.valid()
   const userEmail = EmailAddressMother.valid()
   const sessionTokenHash = UserSessionTokenHashMother.valid()
@@ -351,6 +352,55 @@ describe('PostgreSqlUserSessionRepository', () => {
 
     it('should return null when user does not exist', async () => {
       const result = await repository.findByHash(sessionTokenHash.value, context)
+
+      expect(result).toBeNull()
+    })
+  })
+
+  describe('findById', () => {
+    let runner: QueryRunner
+    let context: TypeOrmTxContext
+    let repository: PostgreSqlUserSessionRepository
+
+    let userDatabaseHelper: UserDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
+
+    const mockedResolver = mock<TypeOrmManagerResolver>()
+
+    withTransaction((queryRunner) => {
+      runner = queryRunner
+    })
+
+    beforeEach(async () => {
+      mockReset(mockedResolver)
+
+      mockedResolver.resolve.mockReturnValueOnce(runner.manager)
+
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
+      userDatabaseHelper = new UserDatabaseHelper(runner.manager)
+
+      await userDatabaseHelper.save(rawUser)
+
+      repository = new PostgreSqlUserSessionRepository(mockedResolver)
+      context = new TypeOrmTxContext(runner.manager)
+    })
+
+    it('should find session and translate to domain correctly', async () => {
+      const sessionId = IdentifierMother.valid()
+      const rawUserSession = makeRawSession({ ...baseRawUserSession, id: sessionId.value })
+
+      await userSessionDatabaseHelper.save(rawUserSession)
+
+      const result = await repository.findById(sessionId, context)
+
+      expect(result).not.toBeNull()
+      checkSession(result!, baseRawUserSession)
+    })
+
+    it('should return null when session does not exist', async () => {
+      const sessionId = IdentifierMother.valid()
+
+      const result = await repository.findById(sessionId, context)
 
       expect(result).toBeNull()
     })

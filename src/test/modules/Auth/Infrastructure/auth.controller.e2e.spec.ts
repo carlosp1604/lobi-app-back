@@ -149,7 +149,7 @@ describe('AuthController', () => {
     await app.close()
   })
 
-  const checkAuthCookies = (cookies: string) => {
+  const checkAuthCookies = (cookies: Array<string>) => {
     const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
     const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
 
@@ -157,6 +157,9 @@ describe('AuthController', () => {
     expect(cookies).toEqual(
       expect.arrayContaining([expect.stringContaining(`${accessCookieName}=`), expect.stringContaining(`${refreshCookieName}=`)]),
     )
+
+    const isBeingCleared = cookies.some((cookie) => cookie.includes('Max-Age=0'))
+    expect(isBeingCleared).toBe(false)
   }
 
   describe('login', () => {
@@ -210,7 +213,7 @@ describe('AuthController', () => {
               isNewDevice: expect.any(Boolean),
             } as Record<string, unknown>)
 
-            const cookies = response.headers['set-cookie']
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
             checkAuthCookies(cookies)
           })
       })
@@ -392,7 +395,7 @@ describe('AuthController', () => {
               refreshTokenExpiresAt: expectIsoDate,
             } as Record<string, unknown>)
 
-            const cookies = response.headers['set-cookie']
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
             checkAuthCookies(cookies)
           })
       })
@@ -1214,6 +1217,107 @@ describe('AuthController', () => {
               expect(response.body.response.message).toEqual('Invalid verification token')
             })
         })
+      })
+    })
+  })
+
+  describe('logout', () => {
+    const now = new Date()
+    const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
+
+    let userDatabaseHelper: UserDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
+    let tokenService: TokenGeneratorApplicationServiceInterface
+
+    beforeEach(() => {
+      userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(dataSource.manager)
+      tokenService = app.get<TokenGeneratorApplicationServiceInterface>(TOKEN_GENERATOR)
+    })
+
+    const saveSetupInDatabase = async () => {
+      const userId = IdentifierMother.valid().value
+      const sessionId = IdentifierMother.valid().value
+
+      const rawUser = makeRawUser({ id: userId })
+      const rawSession = makeRawSession({
+        id: sessionId,
+        user_id: userId,
+        revoked_at: null,
+        expires_at: futureExpiresAt,
+      })
+
+      await userDatabaseHelper.save(rawUser)
+      await userSessionDatabaseHelper.save(rawSession)
+
+      const accessToken = await tokenService.generateAccessToken(rawSession.user_id, rawSession.id, rawSession.expires_at, now)
+
+      return { userId, sessionId, accessToken }
+    }
+
+    const checkClearedCookies = (cookies: Array<string>) => {
+      const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+      const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
+
+      expect(cookies).toBeDefined()
+
+      const isAccessCookieCleared = cookies.some((cookie) => cookie.includes(`${accessCookieName}=;`) && cookie.includes('Max-Age=0'))
+      const isRefreshCookieCleared = cookies.some((cookie) => cookie.includes(`${refreshCookieName}=;`) && cookie.includes('Max-Age=0'))
+
+      expect(isAccessCookieCleared).toBe(true)
+      expect(isRefreshCookieCleared).toBe(true)
+    }
+
+    describe('happy path', () => {
+      it('should return 204 No Content and clear cookies when logging out', async () => {
+        const { accessToken } = await saveSetupInDatabase()
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .post('/auth/logout')
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            expect(response.body).toEqual({})
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkClearedCookies(cookies)
+          })
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should return 204 and clear cookies when access token is not present', async () => {
+        return request(app.getHttpServer())
+          .post('/auth/logout')
+          .expect(204)
+          .expect((response) => {
+            expect(response.body).toEqual({})
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkClearedCookies(cookies)
+          })
+      })
+
+      it('should return 204 and clear cookies when session does not exist', async () => {
+        const userId = IdentifierMother.valid().value
+        const sessionId = IdentifierMother.valid().value
+        const accessToken = await tokenService.generateAccessToken(userId, sessionId, futureExpiresAt, now)
+
+        await userDatabaseHelper.save(makeRawUser({ id: userId }))
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .post('/auth/logout')
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkClearedCookies(cookies)
+          })
       })
     })
   })
