@@ -32,15 +32,20 @@ export class PostgreSqlUserSessionRepository implements UserSessionRepositoryInt
    * @param context The transactional context
    * @returns Array of active UserSession
    */
-  public async findUserActiveSessions(userId: string, now: Date, context?: TxContext): Promise<Array<UserSession>> {
+  public async findUserActiveSessions(userId: Identifier, now: Date, context?: TxContext): Promise<Array<UserSession>> {
     const entityManager = this.entityManagerResolver.resolve(context)
 
     const userSessionRepository = entityManager.getRepository(UserSessionEntity)
 
-    const activeSessions = await userSessionRepository.findBy({
-      user_id: userId,
-      revoked_at: IsNull(),
-      expires_at: MoreThan(now),
+    const activeSessions = await userSessionRepository.find({
+      where: {
+        user_id: userId.value,
+        revoked_at: IsNull(),
+        expires_at: MoreThan(now),
+      },
+      order: {
+        created_at: 'DESC',
+      },
     })
 
     return activeSessions.map((userSessionRawModel) => UserSessionModelTranslator.toDomain(userSessionRawModel))

@@ -99,7 +99,7 @@ export class LoginUser {
       const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
         await this.generateTokensService.generate(user.id, now, userAgent, sessionIpHash, deviceLocation)
 
-      const activeSessions = await this.sessionRepository.findUserActiveSessions(user.id.value, now, context)
+      const activeSessions = await this.sessionRepository.findUserActiveSessions(user.id, now, context)
 
       const isNewDevice = !activeSessions.find((activeSession) => activeSession.isSameDeviceAs(session))
 

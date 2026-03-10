@@ -211,7 +211,7 @@ describe('LoginUser', () => {
       expect(mockedHasherService.compare).toHaveBeenCalledWith(request.password, validPasswordHash.value)
 
       expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(validUserId, now, validUA, ipHash, deviceLocation)
-      expect(mockedSessionsRepository.findUserActiveSessions).toHaveBeenCalledWith(validUserId.value, now, fakeContext)
+      expect(mockedSessionsRepository.findUserActiveSessions).toHaveBeenCalledWith(validUserId, now, fakeContext)
       expect(activeSession1.isSameDeviceAs).toHaveBeenCalledWith(expectedSession)
       expect(activeSession2.isSameDeviceAs).toHaveBeenCalledWith(expectedSession)
       expect(activeSession3.isSameDeviceAs).toHaveBeenCalledWith(expectedSession)

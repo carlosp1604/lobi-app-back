@@ -24,7 +24,7 @@ export class GetActiveSessions {
 
     const now = this.clockService.now()
 
-    const activeSessions = await this.sessionRepository.findUserActiveSessions(userId.value, now)
+    const activeSessions = await this.sessionRepository.findUserActiveSessions(userId, now)
 
     const sessionsDto = activeSessions.map((activeSession) =>
       GetActiveSessionsUserSessionApplicationDtoTranslator.fromDomain(activeSession, currentSessionId),
