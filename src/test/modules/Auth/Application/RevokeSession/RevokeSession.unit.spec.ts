@@ -14,6 +14,8 @@ import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessi
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
+import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 describe('RevokeSession', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -70,34 +72,25 @@ describe('RevokeSession', () => {
   })
 
   describe('happy path', () => {
-    const checkCommonCalls = () => {
-      expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
-      expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledTimes(1)
-      expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledWith(validUserId.value, fakeContext)
-
-      expect(mockedSessionRepository.findById).toHaveBeenCalledTimes(1)
-      expect(mockedSessionRepository.findById).toHaveBeenCalledWith(validSessionId, fakeContext)
-    }
-
     it('should revoke session and return success when session is active', async () => {
       const useCase = buildUseCase()
 
       const session = sessionBuilder.build()
       mockedSessionRepository.findById.mockResolvedValue(session)
 
-      const revokeSpy = jest.spyOn(session, 'revoke')
-
       const result = await useCase.execute(baseRequest)
 
-      checkCommonCalls()
+      expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
+      expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledTimes(1)
+      expect(mockedSessionRepository.findById).toHaveBeenCalledTimes(1)
+      expect(mockedSessionRepository.save).toHaveBeenCalledTimes(1)
 
-      expect(revokeSpy).toHaveBeenCalledTimes(1)
-      expect(revokeSpy).toHaveBeenCalledWith(now)
+      expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledWith(validUserId.value, fakeContext)
+      expect(mockedSessionRepository.findById).toHaveBeenCalledWith(validSessionId, fakeContext)
 
       expect(session.revokedAt?.getTime()).toEqual(now.getTime())
       expect(session.updatedAt?.getTime()).toEqual(now.getTime())
 
-      expect(mockedSessionRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedSessionRepository.save).toHaveBeenCalledWith([session], fakeContext)
 
       expect(mockedLogger.warn).not.toHaveBeenCalled()
@@ -106,60 +99,57 @@ describe('RevokeSession', () => {
       expect(result.success).toBe(true)
       expect(result['value']).toBeUndefined()
     })
-
-    it('should return success when session cannot be revoked', async () => {
-      const useCase = buildUseCase()
-
-      const expiredSession = sessionBuilder.withExpiresAt(pastDate).build()
-      mockedSessionRepository.findById.mockResolvedValue(expiredSession)
-
-      const result = await useCase.execute(baseRequest)
-
-      checkCommonCalls()
-
-      expect(mockedSessionRepository.save).not.toHaveBeenCalled()
-
-      expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Session revocation rejected', {
-        userId: baseRequest.userId,
-        sessionId: baseRequest.sessionId,
-        reason: UserSessionDomainException.sessionAlreadyExpired(validSessionId.value).message,
-      })
-
-      expect(result.success).toBe(true)
-      expect(result['value']).toBeUndefined()
-    })
   })
 
   describe('when there are errors', () => {
-    it('should fail when userId is invalid', async () => {
+    it('should log error and return fail when userId is invalid', async () => {
       const invalidUserId = IdentifierMother.invalid()
+      const expectedSafeSample = StringFormatter.formatSafe(invalidUserId, 60)
 
       const useCase = buildUseCase()
       const requestWithInvalidUserId = { ...baseRequest, userId: invalidUserId }
 
+      const expectedUserIdValidationError = SharedDomainException.invalidIdentifier(invalidUserId)
+
       const result = await useCase.execute(requestWithInvalidUserId)
 
+      expect(mockedLogger.error).toHaveBeenCalledWith('Input validation failed', expect.any(String), {
+        failedField: 'userId',
+        inputValue: expectedSafeSample,
+        reason: expectedUserIdValidationError.message,
+      })
+
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.invalidInput())
+      expect(result['error']).toEqual(RevokeSessionApplicationError.invalidInput('userId', expectedUserIdValidationError.message))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
-    it('should fail when sessionId is invalid', async () => {
+    it('should log error and return fail when sessionId is invalid', async () => {
       const invalidSessionId = IdentifierMother.invalid()
+      const expectedSafeSample = StringFormatter.formatSafe(invalidSessionId, 60)
 
       const useCase = buildUseCase()
       const requestWithInvalidSessionId = { ...baseRequest, sessionId: invalidSessionId }
 
+      const expectedSessionIdValidationError = SharedDomainException.invalidIdentifier(invalidSessionId)
+
       const result = await useCase.execute(requestWithInvalidSessionId)
 
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+      expect(mockedLogger.error).toHaveBeenCalledWith('Input validation failed', expect.any(String), {
+        failedField: 'sessionId',
+        inputValue: expectedSafeSample,
+        userId: validUserId.value,
+        reason: expectedSessionIdValidationError.message,
+      })
+
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.invalidInput())
+      expect(result['error']).toEqual(RevokeSessionApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message))
+
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
-    it('should log warn and return success when user is not found', async () => {
+    it('should log warn and return fail when user is not found', async () => {
       const useCase = buildUseCase()
 
       mockedUserRepository.findByIdWithLock.mockResolvedValue(null)
@@ -167,17 +157,17 @@ describe('RevokeSession', () => {
       const result = await useCase.execute(baseRequest)
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
-        userId: baseRequest.userId,
+        userId: validUserId.value,
         reason: 'User not found',
       })
 
-      expect(result.success).toBe(true)
-      expect(result['value']).toBeUndefined()
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(RevokeSessionApplicationError.userNotFound(validUserId.value))
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
 
-    it('should log warn and return success when user is disabled', async () => {
+    it('should log warn and and return fail success when user is disabled', async () => {
       const useCase = buildUseCase()
 
       const disabledUser = userBuilder.withStatus(UserStatus.deactivated()).build()
@@ -186,12 +176,12 @@ describe('RevokeSession', () => {
       const result = await useCase.execute(baseRequest)
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
-        userId: baseRequest.userId,
+        userId: validUserId.value,
         reason: 'User is disabled',
       })
 
-      expect(result.success).toBe(true)
-      expect(result['value']).toBeUndefined()
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(RevokeSessionApplicationError.userDisabled(validUserId.value))
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -204,8 +194,8 @@ describe('RevokeSession', () => {
       const result = await useCase.execute(baseRequest)
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('Session revocation failed', {
-        userId: baseRequest.userId,
-        sessionId: baseRequest.sessionId,
+        userId: validUserId.value,
+        sessionId: validSessionId.value,
         reason: 'Session not found',
       })
 
@@ -215,7 +205,7 @@ describe('RevokeSession', () => {
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
 
-    it('should log error ands return fail when session does not belong to user', async () => {
+    it('should log error and return fail when session does not belong to user', async () => {
       const useCase = buildUseCase()
 
       const anotherUserId = IdentifierMother.valid()
@@ -226,14 +216,37 @@ describe('RevokeSession', () => {
       const result = await useCase.execute(baseRequest)
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('Session revocation rejected', {
-        requestedUserId: baseRequest.userId,
+        requestedUserId: validUserId.value,
         actualSessionOwner: anotherUserId.value,
-        sessionId: baseRequest.sessionId,
+        sessionId: validSessionId.value,
         reason: 'Session owner mismatch',
       })
 
       expect(result.success).toBe(false)
       expect(result['error']).toEqual(RevokeSessionApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value))
+
+      expect(mockedSessionRepository.save).not.toHaveBeenCalled()
+    })
+
+    it('should log warn and return fail when session cannot be revoked', async () => {
+      const useCase = buildUseCase()
+
+      const expiredSession = sessionBuilder.withExpiresAt(pastDate).build()
+      mockedSessionRepository.findById.mockResolvedValue(expiredSession)
+
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyExpired(validSessionId.value)
+
+      const result = await useCase.execute(baseRequest)
+
+      expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
+      expect(mockedLogger.warn).toHaveBeenCalledWith('Session revocation rejected', {
+        userId: validUserId.value,
+        sessionId: validSessionId.value,
+        reason: expectedRevocationError.message,
+      })
+
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })

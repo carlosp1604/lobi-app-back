@@ -1,5 +1,6 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
+import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -30,32 +31,41 @@ export class RevokeSession {
     return this.unitOfWork.runInTransaction(async (context) => {
       const user = await this.userRepository.findByIdWithLock(userId.value, context)
 
-      if (!user || !user.isActive()) {
+      if (!user) {
         this.loggerService.warn('Inconsistent state', {
-          userId: request.userId,
-          reason: user ? 'User is disabled' : 'User not found',
+          userId: userId.value,
+          reason: 'User not found',
         })
 
-        return success(undefined)
+        return fail(RevokeSessionApplicationError.userNotFound(userId.value))
+      }
+
+      if (!user.isActive()) {
+        this.loggerService.warn('Inconsistent state', {
+          userId: userId.value,
+          reason: 'User is disabled',
+        })
+
+        return fail(RevokeSessionApplicationError.userDisabled(userId.value))
       }
 
       const session = await this.sessionRepository.findById(sessionId, context)
 
       if (!session) {
         this.loggerService.warn('Session revocation failed', {
-          userId: request.userId,
-          sessionId: request.sessionId,
+          userId: userId.value,
+          sessionId: sessionId.value,
           reason: 'Session not found',
         })
 
         return fail(RevokeSessionApplicationError.sessionNotFound(sessionId.value))
       }
 
-      if (session.userId.value !== request.userId) {
+      if (!session.userId.equals(user.id)) {
         this.loggerService.warn('Session revocation rejected', {
-          requestedUserId: request.userId,
+          requestedUserId: userId.value,
           actualSessionOwner: session.userId.value,
-          sessionId: request.sessionId,
+          sessionId: sessionId.value,
           reason: 'Session owner mismatch',
         })
 
@@ -66,12 +76,12 @@ export class RevokeSession {
 
       if (!canRevokeResult.success) {
         this.loggerService.warn('Session revocation rejected', {
-          userId: request.userId,
-          sessionId: request.sessionId,
+          userId: userId.value,
+          sessionId: sessionId.value,
           reason: canRevokeResult.error.message,
         })
 
-        return success(undefined)
+        return fail(RevokeSessionApplicationError.cannotRevokeSession(canRevokeResult.error.message))
       }
 
       session.revoke(now)
@@ -86,10 +96,34 @@ export class RevokeSession {
     request: RevokeSessionApplicationRequestDto,
   ): Result<{ userId: Identifier; sessionId: Identifier }, RevokeSessionApplicationError> {
     const userIdResult = Identifier.safeCreate(request.userId)
+
+    if (!userIdResult.success) {
+      const safeUserIdSample = StringFormatter.formatSafe(request.userId, 60)
+
+      this.loggerService.error('Input validation failed', userIdResult.error.stack, {
+        failedField: 'userId',
+        inputValue: safeUserIdSample,
+        reason: userIdResult.error.message,
+      })
+
+      return fail(RevokeSessionApplicationError.invalidInput('userId', userIdResult.error.message))
+    }
+
+    const userId = userIdResult.value
+
     const sessionIdResult = Identifier.safeCreate(request.sessionId)
 
-    if (!userIdResult.success || !sessionIdResult.success) {
-      return fail(RevokeSessionApplicationError.invalidInput())
+    if (!sessionIdResult.success) {
+      const safeSessionIdSample = StringFormatter.formatSafe(request.sessionId, 60)
+
+      this.loggerService.error('Input validation failed', sessionIdResult.error.stack, {
+        failedField: 'sessionId',
+        inputValue: safeSessionIdSample,
+        userId: userId.value,
+        reason: sessionIdResult.error.message,
+      })
+
+      return fail(RevokeSessionApplicationError.invalidInput('sessionId', sessionIdResult.error.message))
     }
 
     return success({
