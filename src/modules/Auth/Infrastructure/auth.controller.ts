@@ -62,6 +62,9 @@ import {
   GoneException,
   NotFoundException,
   Get,
+  Delete,
+  Param,
+  ParseUUIDPipe,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
@@ -567,20 +570,11 @@ export class AuthController {
     const result = await this.revokeSession.execute(requestDto)
 
     if (!result.success) {
-      const errorId = result.error.id
-
-      if (
-        errorId === RevokeSessionApplicationError.sessionNotFoundId ||
-        errorId === RevokeSessionApplicationError.sessionDoesNotBelongToUserId
-      ) {
-        this.clearCookies(response)
-        return
-      }
-
-      throw new InternalServerErrorException(result.error)
+      this.checkAndThrowRevokeError(result.error)
     }
 
     this.clearCookies(response)
+
     return
   }
 
@@ -600,6 +594,32 @@ export class AuthController {
     }
 
     return result.value
+  }
+
+  @Delete('sessions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async closeSession(
+    @AccessToken() accessToken: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res({ passthrough: true }) response: FastifyReply,
+  ) {
+    const requestDto: RevokeSessionApplicationRequestDto = {
+      sessionId: id,
+      userId: accessToken.sub,
+    }
+
+    const result = await this.revokeSession.execute(requestDto)
+
+    if (!result.success) {
+      this.checkAndThrowRevokeError(result.error)
+    }
+
+    if (id === accessToken.sid) {
+      this.clearCookies(response)
+    }
+
+    return
   }
 
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {
@@ -679,5 +699,27 @@ export class AuthController {
     response.clearCookie(accessTokenCookieName, {
       ...cookieBase,
     })
+  }
+
+  private checkAndThrowRevokeError(error: RevokeSessionApplicationError): void {
+    const errorId = error.id
+
+    const obfuscatedErrors = [
+      RevokeSessionApplicationError.userNotFoundId,
+      RevokeSessionApplicationError.userDisabledId,
+      RevokeSessionApplicationError.cannotRevokeSessionId,
+      RevokeSessionApplicationError.sessionNotFoundId,
+      RevokeSessionApplicationError.sessionDoesNotBelongToUserId,
+    ]
+
+    if (obfuscatedErrors.includes(errorId)) {
+      return
+    }
+
+    if (errorId === RevokeSessionApplicationError.invalidInputId) {
+      throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', { cause: error })
+    }
+
+    throw new InternalServerErrorException(error)
   }
 }

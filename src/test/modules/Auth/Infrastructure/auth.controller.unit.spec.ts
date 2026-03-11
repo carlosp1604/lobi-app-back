@@ -76,6 +76,8 @@ import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/Re
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
 import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -140,6 +142,26 @@ describe('AuthController', () => {
       secure: false,
       httpOnly: true,
       expires: new Date(baseDate.getTime() + 1000),
+    })
+  }
+
+  const expectCookiesCleared = () => {
+    expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
+    expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledWith('ACCESS_COOKIE_NAME', { infer: true })
+    expect(mockedResponse.clearCookie).toHaveBeenCalledTimes(2)
+    expect(mockedResponse.clearCookie).toHaveBeenCalledWith('x-refresh-token', {
+      path: '/',
+      sameSite: 'strict',
+      secure: false,
+      httpOnly: true,
+    })
+    expect(mockedResponse.clearCookie).toHaveBeenCalledWith('x-access-token', {
+      path: '/',
+      sameSite: 'strict',
+      secure: false,
+      httpOnly: true,
     })
   }
 
@@ -1679,8 +1701,6 @@ describe('AuthController', () => {
   })
 
   describe('logout', () => {
-    const mockedResponse = mock<FastifyReply>()
-
     const userId = IdentifierMother.valid()
     const sessionId = IdentifierMother.valid()
 
@@ -1690,8 +1710,6 @@ describe('AuthController', () => {
     } as JwtPayload
 
     beforeEach(() => {
-      mockReset(mockedResponse)
-
       mockedResponse.clearCookie.mockReturnThis()
 
       mockedConfigService.get.mockImplementation(
@@ -1703,26 +1721,6 @@ describe('AuthController', () => {
       )
     })
 
-    const expectCookiesCleared = () => {
-      expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
-      expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
-      expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
-      expect(mockedConfigService.get).toHaveBeenCalledWith('ACCESS_COOKIE_NAME', { infer: true })
-      expect(mockedResponse.clearCookie).toHaveBeenCalledTimes(2)
-      expect(mockedResponse.clearCookie).toHaveBeenCalledWith('x-refresh-token', {
-        path: '/',
-        sameSite: 'strict',
-        secure: false,
-        httpOnly: true,
-      })
-      expect(mockedResponse.clearCookie).toHaveBeenCalledWith('x-access-token', {
-        path: '/',
-        sameSite: 'strict',
-        secure: false,
-        httpOnly: true,
-      })
-    }
-
     describe('happy path', () => {
       beforeEach(() => {
         mockedRevokeSessionUseCase.execute.mockResolvedValue({
@@ -1731,7 +1729,7 @@ describe('AuthController', () => {
         })
       })
 
-      it('should call use-case correctly, clear cookies and return nothing when access token is not undefined', async () => {
+      it('should call use-case correctly and clear cookies when logout user correctly', async () => {
         const controller = buildController()
 
         const result = await controller.logout(mockedAccessToken, mockedResponse)
@@ -1747,7 +1745,7 @@ describe('AuthController', () => {
         expect(result).toBeUndefined()
       })
 
-      it('should clear cookies and return nothing when access token is undefined', async () => {
+      it('should not call use-case and clear cookies when access token is undefined', async () => {
         const controller = buildController()
 
         const result = await controller.logout(undefined, mockedResponse)
@@ -1762,13 +1760,10 @@ describe('AuthController', () => {
 
     describe('when there are errors', () => {
       describe('when errors should be obfuscated', () => {
-        it('should clear cookies and return nothing when use-case returns sessionNotFound error', async () => {
+        const testObfuscatedErrorAndClearCookiesCase = async (error: RevokeSessionApplicationError) => {
           const controller = buildController()
 
-          mockedRevokeSessionUseCase.execute.mockResolvedValue({
-            success: false,
-            error: RevokeSessionApplicationError.sessionNotFound(mockedAccessToken.sid),
-          })
+          mockedRevokeSessionUseCase.execute.mockResolvedValue({ success: false, error })
 
           const result = await controller.logout(mockedAccessToken, mockedResponse)
 
@@ -1776,40 +1771,55 @@ describe('AuthController', () => {
           expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
 
           expect(result).toBeUndefined()
+        }
+
+        it('should clear cookies when use-case returns userNotFound error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(RevokeSessionApplicationError.userNotFound(mockedAccessToken.sub))
         })
 
-        it('should clear cookies and return nothing when use-case returns sessionDoesNotBelongToUser error', async () => {
-          const controller = buildController()
-
-          mockedRevokeSessionUseCase.execute.mockResolvedValue({
-            success: false,
-            error: RevokeSessionApplicationError.sessionDoesNotBelongToUser(mockedAccessToken.sid, mockedAccessToken.sub),
-          })
-
-          const result = await controller.logout(mockedAccessToken, mockedResponse)
-
-          expectCookiesCleared()
-          expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
-
-          expect(result).toBeUndefined()
+        it('should clear cookies when use-case returns userDisabled error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(RevokeSessionApplicationError.userDisabled(mockedAccessToken.sub))
         })
 
-        it('should throw InternalServerErrorException and do not clean cookies when use-case returns invalidInput error', async () => {
-          const controller = buildController()
+        it('should clear cookies when use-case returns sessionNotFound error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(RevokeSessionApplicationError.sessionNotFound(mockedAccessToken.sid))
+        })
 
-          mockedRevokeSessionUseCase.execute.mockResolvedValue({
-            success: false,
-            error: RevokeSessionApplicationError.invalidInput(),
-          })
-
-          await expect(controller.logout(mockedAccessToken, mockedResponse)).rejects.toThrow(
-            new InternalServerErrorException(RevokeSessionApplicationError.invalidInput()),
+        it('should clear cookies when use-case returns sessionDoesNotBelongToUser error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(
+            RevokeSessionApplicationError.sessionDoesNotBelongToUser(mockedAccessToken.sid, mockedAccessToken.sub),
           )
-
-          expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
-          expect(mockedConfigService.get).not.toHaveBeenCalled()
-          expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
         })
+
+        it('should clear cookies when use-case returns cannotRevokeSession error', async () => {
+          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(mockedAccessToken.sid)
+
+          await testObfuscatedErrorAndClearCookiesCase(
+            RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message),
+          )
+        })
+      })
+
+      it('should throw InternalServerErrorException and do not clean cookies when use-case returns invalidInput error', async () => {
+        const controller = buildController()
+
+        const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
+        const expectedInputError = RevokeSessionApplicationError.invalidInput('sessionId', expectedInvalidIdentifierException.message)
+
+        mockedRevokeSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: expectedInputError,
+        })
+
+        await expect(controller.logout(mockedAccessToken, mockedResponse)).rejects.toThrow(
+          new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+            cause: expectedInputError,
+          }),
+        )
+
+        expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
       })
 
       it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown RevokeSessionApplicationError', async () => {
@@ -1844,6 +1854,212 @@ describe('AuthController', () => {
         })
 
         await expect(controller.logout(mockedAccessToken, mockedResponse)).rejects.toThrow(unexpectedError)
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('closeSession', () => {
+    const userId = IdentifierMother.valid()
+    const currentSessionId = IdentifierMother.valid()
+    const anotherActiveSessionId = IdentifierMother.valid()
+
+    const mockedAccessToken = {
+      sub: userId.value,
+      sid: currentSessionId.value,
+    } as JwtPayload
+
+    beforeEach(() => {
+      mockedResponse.clearCookie.mockReturnThis()
+
+      mockedConfigService.get.mockImplementation(
+        createConfigServiceMockImplementation({
+          REFRESH_COOKIE_NAME: 'x-refresh-token',
+          ACCESS_COOKIE_NAME: 'x-access-token',
+          isProduction: false,
+        }),
+      )
+    })
+
+    describe('happy path', () => {
+      beforeEach(() => {
+        mockedRevokeSessionUseCase.execute.mockResolvedValue({
+          success: true,
+          value: undefined,
+        })
+      })
+
+      it('should call use-case correctly and clear cookies when closing the current session', async () => {
+        const controller = buildController()
+
+        const result = await controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)
+
+        expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledWith({
+          userId: mockedAccessToken.sub,
+          sessionId: currentSessionId.value,
+        })
+
+        expectCookiesCleared()
+
+        expect(result).toBeUndefined()
+      })
+
+      it('should call use-case correctly and not clear cookies when closing a different session', async () => {
+        const controller = buildController()
+
+        const result = await controller.closeSession(mockedAccessToken, anotherActiveSessionId.value, mockedResponse)
+
+        expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledWith({
+          userId: mockedAccessToken.sub,
+          sessionId: anotherActiveSessionId.value,
+        })
+
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+
+        expect(result).toBeUndefined()
+      })
+    })
+
+    describe('when there are errors', () => {
+      describe('when errors should be obfuscated', () => {
+        const testObfuscatedErrorAndClearCookiesCase = async (error: RevokeSessionApplicationError) => {
+          const controller = buildController()
+
+          mockedRevokeSessionUseCase.execute.mockResolvedValue({ success: false, error })
+
+          const result = await controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)
+
+          expectCookiesCleared()
+
+          expect(result).toBeUndefined()
+        }
+
+        const testObfuscatedErrorAndNotClearCookiesCase = async (error: RevokeSessionApplicationError) => {
+          const controller = buildController()
+
+          mockedRevokeSessionUseCase.execute.mockResolvedValue({ success: false, error })
+
+          const result = await controller.closeSession(mockedAccessToken, anotherActiveSessionId.value, mockedResponse)
+
+          expect(mockedConfigService.get).not.toHaveBeenCalled()
+          expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+
+          expect(result).toBeUndefined()
+        }
+
+        it('should clear cookies when closing current session and use-case returns userNotFound error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(RevokeSessionApplicationError.userNotFound(currentSessionId.value))
+        })
+
+        it('should not clear cookies when closing a different session and use-case returns userNotFound error', async () => {
+          await testObfuscatedErrorAndNotClearCookiesCase(RevokeSessionApplicationError.userNotFound(anotherActiveSessionId.value))
+        })
+
+        it('should clear cookies when closing current session and use-case returns userDisabled error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(RevokeSessionApplicationError.userDisabled(currentSessionId.value))
+        })
+
+        it('should not clear cookies when closing a different session and use-case returns userDisabled error', async () => {
+          await testObfuscatedErrorAndNotClearCookiesCase(RevokeSessionApplicationError.userDisabled(anotherActiveSessionId.value))
+        })
+
+        it('should clear cookies when closing current session and use-case returns sessionNotFound error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(RevokeSessionApplicationError.sessionNotFound(currentSessionId.value))
+        })
+
+        it('should not clear cookies when closing a different session and use-case returns sessionNotFound error', async () => {
+          await testObfuscatedErrorAndNotClearCookiesCase(RevokeSessionApplicationError.sessionNotFound(anotherActiveSessionId.value))
+        })
+
+        it('should clear cookies when closing current session and use-case returns sessionDoesNotBelongToUser error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(
+            RevokeSessionApplicationError.sessionDoesNotBelongToUser(currentSessionId.value, mockedAccessToken.sub),
+          )
+        })
+
+        it('should not clear cookies when closing a different session and use-case returns sessionDoesNotBelongToUser error', async () => {
+          await testObfuscatedErrorAndNotClearCookiesCase(
+            RevokeSessionApplicationError.sessionDoesNotBelongToUser(anotherActiveSessionId.value, mockedAccessToken.sub),
+          )
+        })
+
+        it('should clear cookies when closing current session and use-case returns cannotRevokeSession error', async () => {
+          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(currentSessionId.value)
+
+          await testObfuscatedErrorAndClearCookiesCase(
+            RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message),
+          )
+        })
+
+        it('should not clear cookies when closing a different session and use-case returns cannotRevokeSession error', async () => {
+          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(anotherActiveSessionId.value)
+
+          await testObfuscatedErrorAndNotClearCookiesCase(
+            RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message),
+          )
+        })
+      })
+
+      it('should throw InternalServerErrorException and do not clean cookies when use-case returns invalidInput error', async () => {
+        const controller = buildController()
+
+        const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
+        const expectedInputError = RevokeSessionApplicationError.invalidInput('sessionId', expectedInvalidIdentifierException.message)
+
+        mockedRevokeSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: expectedInputError,
+        })
+
+        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)).rejects.toThrow(
+          new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+            cause: expectedInputError,
+          }),
+        )
+
+        expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+      })
+
+      it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown RevokeSessionApplicationError', async () => {
+        const controller = buildController()
+
+        const useCaseError: RevokeSessionApplicationError = {
+          id: 'revoke_session_unknown_error',
+          name: RevokeSessionApplicationError.name,
+          message: 'Unknown error',
+        }
+
+        mockedRevokeSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: useCaseError,
+        })
+
+        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)).rejects.toThrow(
+          new InternalServerErrorException(useCaseError),
+        )
+
+        expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+      })
+
+      it('should throw original error when use-case fails with an unexpected exception', async () => {
+        const controller = buildController()
+        const unexpectedError = new Error('Unexpected error')
+
+        mockedRevokeSessionUseCase.execute.mockImplementation(() => {
+          throw unexpectedError
+        })
+
+        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)).rejects.toThrow(
+          unexpectedError,
+        )
         expect(mockedConfigService.get).not.toHaveBeenCalled()
         expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
       })
