@@ -17,6 +17,7 @@ import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
+import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
 describe('RevokeSession', () => {
   const now = new Date('2026-03-09T11:45:00.000Z')
@@ -130,36 +131,16 @@ describe('RevokeSession', () => {
       expect(secondarySession!.revoked_at).toBeNull()
       expect(secondarySession!.updated_at.getTime()).toBe(pastDate.getTime())
     })
-
-    it('should return success and do nothing when session is already revoked', async () => {
-      const alreadyRevokedSession = makeRawSession({
-        ...activeRawSession,
-        revoked_at: pastDate,
-      })
-
-      await userSessionDatabaseHelper.save(alreadyRevokedSession)
-
-      const result = await runTestWithCount({
-        sessions: { before: 1, after: 1 },
-      })
-
-      expect(result.success).toBe(true)
-      expect(result['value']).toBeUndefined()
-
-      const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
-      expect(sessionAfter!.revoked_at?.getTime()).toBe(pastDate.getTime())
-      expect(sessionAfter!.updated_at.getTime()).toBe(pastDate.getTime())
-    })
   })
 
   describe('when there are errors', () => {
-    it('should return success when user does not exist', async () => {
+    it('should return error when user does not exist', async () => {
       const result = await runTestWithCount({
         sessions: { before: 0, after: 0 },
       })
 
-      expect(result.success).toBe(true)
-      expect(result['value']).toBeUndefined()
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.userNotFound(validUserId.value))
     })
 
     it('should return error when session does not exist', async () => {
@@ -170,7 +151,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.sessionNotFound(validSessionId1.value))
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.sessionNotFound(validSessionId1.value))
     })
 
     it('should return error when session does not belong to user', async () => {
@@ -191,12 +172,36 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(
+      expect(result['error']).toStrictEqual(
         RevokeSessionApplicationError.sessionDoesNotBelongToUser(validSessionId1.value, validUserId.value),
       )
 
       const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
       expect(sessionAfter!.revoked_at).toBeNull()
+      expect(sessionAfter!.updated_at.getTime()).toBe(pastDate.getTime())
+    })
+
+    it('should return error when session is already revoked', async () => {
+      await userDatabaseHelper.save(existingRawUser)
+
+      const alreadyRevokedSession = makeRawSession({
+        ...activeRawSession,
+        revoked_at: pastDate,
+      })
+
+      await userSessionDatabaseHelper.save(alreadyRevokedSession)
+
+      const result = await runTestWithCount({
+        sessions: { before: 1, after: 1 },
+      })
+
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(validSessionId1.value)
+
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
+
+      const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
+      expect(sessionAfter!.revoked_at?.getTime()).toBe(pastDate.getTime())
       expect(sessionAfter!.updated_at.getTime()).toBe(pastDate.getTime())
     })
   })

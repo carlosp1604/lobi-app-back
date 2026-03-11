@@ -120,7 +120,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.invalidInput('userId', expectedUserIdValidationError.message))
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.invalidInput('userId', expectedUserIdValidationError.message))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -144,7 +144,9 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message))
+      expect(result['error']).toStrictEqual(
+        RevokeSessionApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message),
+      )
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -162,7 +164,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.userNotFound(validUserId.value))
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -181,7 +183,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.userDisabled(validUserId.value))
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.userDisabled(validUserId.value))
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -200,7 +202,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.sessionNotFound(validSessionId.value))
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.sessionNotFound(validSessionId.value))
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
@@ -223,7 +225,9 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value))
+      expect(result['error']).toStrictEqual(
+        RevokeSessionApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value),
+      )
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
@@ -246,7 +250,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
+      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
