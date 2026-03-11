@@ -33,13 +33,13 @@ describe('UserSession', () => {
       expect(session.id.equals(id)).toBe(true)
       expect(session.userId.equals(userId)).toBe(true)
       expect(session.tokenHash.equals(tokenHash)).toBe(true)
-      expect(session.expiresAt.getTime()).toBe(futureExpiresAt.getTime())
+      expect(session.expiresAt).toEqual(futureExpiresAt)
       expect(session.revokedAt).toBeNull()
       expect(session.ipHash?.equals(userSessionIpHash)).toBe(true)
       expect(session.userAgent?.equals(userAgent)).toBe(true)
-      expect(session.deviceLocation).toBe(deviceLocation)
-      expect(session.createdAt.getTime()).toBe(now.getTime())
-      expect(session.updatedAt.getTime()).toBe(now.getTime())
+      expect(session.deviceLocation?.equals(deviceLocation)).toBe(true)
+      expect(session.createdAt).toEqual(now)
+      expect(session.updatedAt).toBe(now)
     })
 
     it('should set to NULL when optional params are not given', () => {
@@ -109,15 +109,16 @@ describe('UserSession', () => {
       const result = revokedSession.canBeRevoked(now)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(UserSessionDomainException.sessionAlreadyRevoked(revokedSession.id.value))
+      expect(result['error']).toStrictEqual(UserSessionDomainException.sessionAlreadyRevoked(revokedSession.id.value))
     })
 
     it('should return UserSessionDomainException error when session is already expired', () => {
       const expiredSession = userSessionTestBuilder.withExpiresAt(pastExpiredAt).build()
 
       const result = expiredSession.canBeRevoked(now)
+
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value))
+      expect(result['error']).toStrictEqual(UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value))
     })
   })
 

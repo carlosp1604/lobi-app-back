@@ -1,6 +1,8 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 
 export class UserDomainException extends DomainException {
+  public readonly __brand = 'UserDomainException' as const
+
   public static invalidUsernameId = 'user_domain_invalid_user_username'
   public static invalidUserNameId = 'user_domain_invalid_user_user_name'
   public static invalidUserStatusId = 'user_domain_invalid_user_status'

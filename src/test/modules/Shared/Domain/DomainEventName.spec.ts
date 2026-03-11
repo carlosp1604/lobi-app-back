@@ -19,7 +19,7 @@ describe('DomainEventName', () => {
     it('should store the correct value', () => {
       const domainEventNameValueObject = DomainEventName.fromString(ValidDomainEventNames.SUCCESSFUL_LOGIN)
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_LOGIN)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_LOGIN)
     })
   })
 
@@ -27,31 +27,31 @@ describe('DomainEventName', () => {
     it('factory should return successfulLogin', () => {
       const domainEventNameValueObject = DomainEventName.successfulLogin()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_LOGIN)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_LOGIN)
     })
 
     it('factory should return successfulSignup', () => {
       const domainEventNameValueObject = DomainEventName.successfulSignup()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_SIGNUP)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_SIGNUP)
     })
 
     it('factory should return successfulResetPassword', () => {
       const domainEventNameValueObject = DomainEventName.successfulResetPassword()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_RESET_PASSWORD)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_RESET_PASSWORD)
     })
 
     it('factory should return failedLoginAttempt', () => {
       const domainEventNameValueObject = DomainEventName.failedLoginAttempt()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
     })
 
     it('factory should return emailVerificationRequest', () => {
       const domainEventNameValueObject = DomainEventName.emailVerificationRequest()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.EMAIL_VERIFICATION_REQUEST)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.EMAIL_VERIFICATION_REQUEST)
     })
   })
 })

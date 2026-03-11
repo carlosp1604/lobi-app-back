@@ -2,6 +2,8 @@ import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 export class VerificationTokenDomainException extends DomainException {
+  public readonly __brand = 'VerificationTokenDomainException' as const
+
   public static invalidVerificationTokenValueId = 'verification_token_domain_invalid_verification_token_value'
   public static invalidVerificationTokenTokenHashId = 'verification_token_domain_invalid_verification_token_token_hash'
   public static invalidVerificationTokenPurposeId = 'verification_token_domain_invalid_verification_token_purpose'

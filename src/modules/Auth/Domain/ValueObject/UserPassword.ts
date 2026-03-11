@@ -1,7 +1,6 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
 export class UserPassword extends ValueObject<string> {
   private __userPasswordBrand: void
@@ -26,7 +25,7 @@ export class UserPassword extends ValueObject<string> {
     return result.value
   }
 
-  static safeCreate(value: string): Result<UserPassword, UserDomainException> {
+  static safeCreate(value: string): Result<UserPassword, UserCredentialDomainException> {
     if (!UserPassword.isValid(value)) {
       return fail(UserCredentialDomainException.invalidPasswordFormat())
     }

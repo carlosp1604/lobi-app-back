@@ -123,13 +123,13 @@ describe('RevokeSession', () => {
 
       const targetSession = await userSessionDatabaseHelper.findById(validSessionId1.value)
       expect(targetSession).not.toBeNull()
-      expect(targetSession!.revoked_at?.getTime()).toBe(now.getTime())
-      expect(targetSession!.updated_at.getTime()).toBe(now.getTime())
+      expect(targetSession!.revoked_at).toEqual(now)
+      expect(targetSession!.updated_at).toEqual(now)
 
       const secondarySession = await userSessionDatabaseHelper.findById(validSessionId2.value)
       expect(secondarySession).not.toBeNull()
       expect(secondarySession!.revoked_at).toBeNull()
-      expect(secondarySession!.updated_at.getTime()).toBe(pastDate.getTime())
+      expect(secondarySession!.updated_at).toEqual(pastDate)
     })
   })
 
@@ -178,7 +178,7 @@ describe('RevokeSession', () => {
 
       const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
       expect(sessionAfter!.revoked_at).toBeNull()
-      expect(sessionAfter!.updated_at.getTime()).toBe(pastDate.getTime())
+      expect(sessionAfter!.updated_at).toEqual(pastDate)
     })
 
     it('should return error when session is already revoked', async () => {
@@ -201,8 +201,8 @@ describe('RevokeSession', () => {
       expect(result['error']).toStrictEqual(RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
 
       const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
-      expect(sessionAfter!.revoked_at?.getTime()).toBe(pastDate.getTime())
-      expect(sessionAfter!.updated_at.getTime()).toBe(pastDate.getTime())
+      expect(sessionAfter!.revoked_at).toEqual(pastDate)
+      expect(sessionAfter!.updated_at).toEqual(pastDate)
     })
   })
 })

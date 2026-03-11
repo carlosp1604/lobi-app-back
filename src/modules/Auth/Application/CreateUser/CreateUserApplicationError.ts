@@ -32,6 +32,8 @@ export class CreateUserApplicationError {
 }
 
 export class CreateUserError extends Error {
+  public readonly __brand = 'CreateUserError' as const
+
   public readonly id: string
   public readonly name: string
 

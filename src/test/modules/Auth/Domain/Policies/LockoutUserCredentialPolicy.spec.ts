@@ -17,28 +17,28 @@ describe('LockoutUserCredentialPolicy', () => {
     const userCredential = new UserCredentialTestBuilder().withFailedAttempts(5).build()
     const lockedUntil = policy.evaluateLock(userCredential, now)
 
-    expect(lockedUntil).toStrictEqual(new Date(now.getTime() + 1 * 60 * 1000))
+    expect(lockedUntil).toEqual(new Date(now.getTime() + 60 * 1000))
   })
 
   it('should return 5 min lock if there are 10-14 failed attempts', () => {
     const userCredential = new UserCredentialTestBuilder().withFailedAttempts(10).build()
     const lockedUntil = policy.evaluateLock(userCredential, now)
 
-    expect(lockedUntil).toStrictEqual(new Date(now.getTime() + 5 * 60 * 1000))
+    expect(lockedUntil).toEqual(new Date(now.getTime() + 5 * 60 * 1000))
   })
 
   it('should return 30 min lock if there are 15-19 failed attempts', () => {
     const userCredential = new UserCredentialTestBuilder().withFailedAttempts(15).build()
     const lockedUntil = policy.evaluateLock(userCredential, now)
 
-    expect(lockedUntil).toStrictEqual(new Date(now.getTime() + 30 * 60 * 1000))
+    expect(lockedUntil).toEqual(new Date(now.getTime() + 30 * 60 * 1000))
   })
 
   it('should return 24h lock if there are more than 19 failed attempts', () => {
     const userCredential = new UserCredentialTestBuilder().withFailedAttempts(20).build()
     const lockedUntil = policy.evaluateLock(userCredential, now)
 
-    expect(lockedUntil).toStrictEqual(new Date(now.getTime() + 24 * 60 * 60 * 1000))
+    expect(lockedUntil).toEqual(new Date(now.getTime() + 24 * 60 * 60 * 1000))
   })
 
   it('should keep the highest lock (24h) there are more 20 o more failed attempts', () => {
@@ -46,7 +46,7 @@ describe('LockoutUserCredentialPolicy', () => {
       const userCredential = new UserCredentialTestBuilder().withFailedAttempts(failedAttempts).build()
       const lockedUntil = policy.evaluateLock(userCredential, now)
 
-      expect(lockedUntil).toStrictEqual(new Date(now.getTime() + 24 * 60 * 60 * 1000))
+      expect(lockedUntil).toEqual(new Date(now.getTime() + 24 * 60 * 60 * 1000))
     }
   })
 

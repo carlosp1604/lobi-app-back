@@ -185,10 +185,10 @@ describe('RefreshSession', () => {
 
       const currentSessionInDb = await userSessionDatabaseHelper.findById(currentSession.id)
 
-      expect(currentSessionInDb).not.toBe(null)
+      expect(currentSessionInDb).not.toBeNull()
       expect(currentSessionInDb!.revoked_at).not.toBeNull()
-      expect(currentSessionInDb!.revoked_at?.getTime()).toBe(now.getTime())
-      expect(currentSessionInDb!.updated_at?.getTime()).toBe(now.getTime())
+      expect(currentSessionInDb!.revoked_at).toEqual(now)
+      expect(currentSessionInDb!.updated_at).toEqual(now)
 
       const savedSession = UserSessionDatabaseHelper.findSessionByIdInArray(activeSessions, sessionId)
       expect(savedSession).toBeDefined()
@@ -200,7 +200,7 @@ describe('RefreshSession', () => {
       expect(savedSession!.device_country_code).toBeNull()
       expect(savedSession!.device_city).toBeNull()
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
-      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + REFRESH_TTL_MS)
+      expect(savedSession!.expires_at).toEqual(new Date(now.getTime() + REFRESH_TTL_MS))
     }
 
     it('should revoke current session and create a new user session correctly (no revoke sessions)', async () => {
@@ -247,9 +247,9 @@ describe('RefreshSession', () => {
       expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session3.id))
 
       const oldestSessionInDb = await userSessionDatabaseHelper.findById(oldestSession.id)
-      expect(oldestSessionInDb).not.toBe(null)
-      expect(oldestSessionInDb?.revoked_at?.getTime()).toBe(now.getTime())
-      expect(oldestSessionInDb?.updated_at.getTime()).toBe(now.getTime())
+      expect(oldestSessionInDb).not.toBeNull()
+      expect(oldestSessionInDb?.revoked_at).toEqual(now)
+      expect(oldestSessionInDb?.updated_at).toEqual(now)
     })
   })
 
@@ -264,10 +264,8 @@ describe('RefreshSession', () => {
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.sessionNotFound(),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionNotFound())
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)
     })
@@ -283,10 +281,8 @@ describe('RefreshSession', () => {
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id))
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)
     })
@@ -302,10 +298,8 @@ describe('RefreshSession', () => {
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id))
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)
     })
@@ -321,10 +315,8 @@ describe('RefreshSession', () => {
 
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.userNotFound(userId),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userNotFound(userId))
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)
     })

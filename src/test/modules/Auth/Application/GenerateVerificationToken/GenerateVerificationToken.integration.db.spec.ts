@@ -199,7 +199,7 @@ describe('GenerateVerificationToken', () => {
       expect(savedVerificationToken).toBeDefined()
       expect(savedVerificationToken!.email).toBe(email.value)
       expect(savedVerificationToken!.purpose).toBe(purposeCreateAccount.value)
-      expect(savedVerificationToken!.expires_at.getTime()).toBe(expectedExpiresAt.getTime())
+      expect(savedVerificationToken!.expires_at).toEqual(expectedExpiresAt)
       expect(savedVerificationToken!.used_at).toBeNull()
 
       const savedDomainEvent = domainEventsAfter.find((domainEvent) => domainEvent.aggregate_id === savedVerificationToken!.id)
@@ -298,10 +298,9 @@ describe('GenerateVerificationToken', () => {
       const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
         await runTestAndGetResults(request)
 
-      expect(result).toEqual({
-        success: false,
-        error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
+
       expect(verificationTokensBefore.length).toBe(0)
       expect(verificationTokensAfter.length).toBe(0)
       expect(domainEventsBefore.length).toBe(0)

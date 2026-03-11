@@ -1,4 +1,6 @@
 export class GetActiveSessionsApplicationError extends Error {
+  public readonly __brand = 'GetActiveSessionsApplicationError' as const
+
   public readonly id: string
   public readonly name: string
 

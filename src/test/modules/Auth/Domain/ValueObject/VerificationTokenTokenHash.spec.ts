@@ -31,9 +31,9 @@ describe('VerificationTokenTokenHash', () => {
   })
 
   it('should store the correct value', () => {
-    const validValue = VerificationTokenTokenHashMother.valid().toString()
+    const validValue = VerificationTokenTokenHashMother.valid().value
     const verificationTokenTokenHashValueObject = VerificationTokenTokenHash.fromString(validValue)
 
-    expect(verificationTokenTokenHashValueObject.value).toEqual(validValue)
+    expect(verificationTokenTokenHashValueObject.value).toBe(validValue)
   })
 })

@@ -42,8 +42,8 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     expect(result?.email.equals(email)).toBe(true)
     expect(result?.purpose.equals(verificationTokenPurpose)).toBe(true)
     expect(result?.tokenHash.equals(verificationTokenTokenHash)).toBe(true)
-    expect(result?.expiresAt.getTime()).toBe(baseRawVerificationToken.expires_at.getTime())
-    expect(result?.createdAt.getTime()).toBe(baseRawVerificationToken.created_at.getTime())
+    expect(result?.expiresAt).toEqual(baseRawVerificationToken.expires_at)
+    expect(result?.createdAt).toEqual(baseRawVerificationToken.created_at)
     expect(result?.usedAt).toEqual(baseRawVerificationToken.used_at)
   }
 
@@ -56,7 +56,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
     expect(foundVerificationToken!.email).toBe(expectedVerificationToken.email.value)
     expect(foundVerificationToken!.token_hash).toBe(expectedVerificationToken.tokenHash.value)
     expect(foundVerificationToken!.purpose).toBe(expectedVerificationToken.purpose.value)
-    expect(foundVerificationToken!.expires_at.getTime()).toBe(expectedVerificationToken.expiresAt.getTime())
+    expect(foundVerificationToken!.expires_at).toEqual(expectedVerificationToken.expiresAt)
     expect(foundVerificationToken!.used_at).toEqual(expectedVerificationToken.usedAt)
   }
 
@@ -178,7 +178,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
       expect(totalTokensAfter).toBe(1)
 
       assertFoundVerificationToken(foundVerificationToken, updatedVerificationToken)
-      expect(foundVerificationToken!.used_at?.getTime()).toBe(now.getTime())
+      expect(foundVerificationToken!.used_at).toEqual(now)
     })
 
     it('should not affect other tokens when the token does not exist', async () => {
@@ -422,7 +422,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         })
 
         expect(updatedVerificationToken).not.toBeNull()
-        expect(updatedVerificationToken?.usedAt?.getTime()).toBe(updateNow.getTime())
+        expect(updatedVerificationToken?.usedAt).toEqual(updateNow)
       })
     })
   })

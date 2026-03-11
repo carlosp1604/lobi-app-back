@@ -249,7 +249,7 @@ describe('CreateUser', () => {
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
 
-      expect(result).toStrictEqual({ success: true, value: undefined })
+      expect(result).toEqual({ success: true, value: undefined })
 
       expect(mockedRequestOriginService.process).toHaveBeenCalledWith(baseRequest.ip, baseRequest.userAgent, {
         email: validEmail.value,

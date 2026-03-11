@@ -343,19 +343,18 @@ describe('AuthController', () => {
       it('should throw InternalServerErrorException when use-case returns a unknown error', async () => {
         const controller = buildController()
 
-        const unexpectedUseCaseError: LoginUserApplicationError = {
-          id: 'UNKNOWN-ERROR',
+        const unknownUseCaseError = {
+          id: 'login_user_unknown_error',
           message: 'Unknown error',
-          name: LoginUserApplicationError.name,
-        }
+        } as unknown as LoginUserApplicationError
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: unexpectedUseCaseError,
+          error: unknownUseCaseError,
         })
 
         await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(unexpectedUseCaseError),
+          new InternalServerErrorException(unknownUseCaseError),
         )
       })
 
@@ -729,19 +728,18 @@ describe('AuthController', () => {
         it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
           const controller = buildController()
 
-          const useCaseError: GenerateVerificationTokenApplicationError = {
+          const unknownUseCaseError = {
             message: 'Unknown error',
             id: 'generate_verification_token_unknown_error',
-            name: GenerateVerificationTokenApplicationError.name,
-          }
+          } as unknown as GenerateVerificationTokenApplicationError
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: useCaseError,
+            error: unknownUseCaseError,
           })
 
           await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            new InternalServerErrorException(useCaseError),
+            new InternalServerErrorException(unknownUseCaseError),
           )
         })
 
@@ -832,19 +830,18 @@ describe('AuthController', () => {
         it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
           const controller = buildController()
 
-          const useCaseError: GenerateVerificationTokenApplicationError = {
+          const unknownUseCaseError = {
             message: 'Unknown error',
             id: 'generate_verification_token_unknown_error',
-            name: GenerateVerificationTokenApplicationError.name,
-          }
+          } as unknown as GenerateVerificationTokenApplicationError
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: useCaseError,
+            error: unknownUseCaseError,
           })
 
           await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            new InternalServerErrorException(useCaseError),
+            new InternalServerErrorException(unknownUseCaseError),
           )
         })
 
@@ -1041,18 +1038,17 @@ describe('AuthController', () => {
       it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
         const controller = buildController()
 
-        const useCaseError: ValidateVerificationTokenError = {
+        const unknownUseCaseError = {
           message: 'Unknown error',
           id: 'validate_verification_token_unknown_error',
-          name: ValidateVerificationTokenError.name,
-        }
+        } as unknown as ValidateVerificationTokenError
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
           success: false,
-          error: useCaseError,
+          error: unknownUseCaseError,
         })
 
-        await expect(controller.verifyToken(mockBody)).rejects.toThrow(new InternalServerErrorException(useCaseError))
+        await expect(controller.verifyToken(mockBody)).rejects.toThrow(new InternalServerErrorException(unknownUseCaseError))
       })
 
       it('should throw InternalServerErrorException when use-case fails with a unexpected error', async () => {
@@ -1360,18 +1356,19 @@ describe('AuthController', () => {
         it('should throw InternalServerErrorException when use-case returns an unknown CreateUserError error in invalidToken', async () => {
           const controller = buildController()
 
-          const useCaseError: CreateUserError = {
+          const unknownUseCaseError = {
             id: 'create_user_unknown_error',
-            name: CreateUserError.name,
             message: 'Unknown error',
-          }
+          } as unknown as CreateUserError
 
           mockedCreateUserUseCase.execute.mockResolvedValue({
             success: false,
-            error: CreateUserApplicationError.invalidToken(useCaseError),
+            error: CreateUserApplicationError.invalidToken(unknownUseCaseError),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+            new InternalServerErrorException(CreateUserApplicationError.invalidToken(unknownUseCaseError)),
+          )
         })
       })
 
@@ -1825,19 +1822,18 @@ describe('AuthController', () => {
       it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown RevokeSessionApplicationError', async () => {
         const controller = buildController()
 
-        const useCaseError: RevokeSessionApplicationError = {
+        const unknownUseCaseError = {
           id: 'revoke_session_unknown_error',
-          name: RevokeSessionApplicationError.name,
           message: 'Unknown error',
-        }
+        } as unknown as RevokeSessionApplicationError
 
         mockedRevokeSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: useCaseError,
+          error: unknownUseCaseError,
         })
 
         await expect(controller.logout(mockedAccessToken, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(useCaseError),
+          new InternalServerErrorException(unknownUseCaseError),
         )
 
         expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
@@ -2029,19 +2025,18 @@ describe('AuthController', () => {
       it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown RevokeSessionApplicationError', async () => {
         const controller = buildController()
 
-        const useCaseError: RevokeSessionApplicationError = {
+        const unknownUseCaseError = {
           id: 'revoke_session_unknown_error',
-          name: RevokeSessionApplicationError.name,
           message: 'Unknown error',
-        }
+        } as unknown as RevokeSessionApplicationError
 
         mockedRevokeSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: useCaseError,
+          error: unknownUseCaseError,
         })
 
         await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(useCaseError),
+          new InternalServerErrorException(unknownUseCaseError),
         )
 
         expect(mockedRevokeSessionUseCase.execute).toHaveBeenCalledTimes(1)
@@ -2121,6 +2116,26 @@ describe('AuthController', () => {
           new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
             cause: expectedInputError,
           }),
+        )
+
+        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
+      })
+
+      it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
+        const controller = buildController()
+
+        const unknownUseCaseError = {
+          message: 'Unknown error',
+          id: 'validate_verification_token_unknown_error',
+        } as unknown as GetActiveSessionsApplicationError
+
+        mockedGetActiveSessionsUseCase.execute.mockResolvedValue({
+          success: false,
+          error: unknownUseCaseError,
+        })
+
+        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(
+          new InternalServerErrorException(unknownUseCaseError),
         )
 
         expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)

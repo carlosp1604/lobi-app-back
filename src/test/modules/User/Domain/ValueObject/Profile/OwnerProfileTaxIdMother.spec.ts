@@ -43,7 +43,7 @@ describe('OwnerProfileTaxId', () => {
       const result = OwnerProfileTaxId.safeCreate(taxId)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(ProfileDomainException.invalidOwnerTaxId(taxId))
+      expect(result['error']).toStrictEqual(ProfileDomainException.invalidOwnerTaxId(taxId))
     })
   })
 

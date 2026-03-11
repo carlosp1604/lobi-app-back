@@ -47,7 +47,7 @@ describe('UserCredential', () => {
       const afterSnapshot = createSnapshot(userCredential)
 
       expect(userCredential.failedAttempts).toBe(1)
-      expect(userCredential.updatedAt).toBe(updatedAt)
+      expect(userCredential.updatedAt).toEqual(updatedAt)
       compareExceptModifiedFields(beforeSnapshot, afterSnapshot, ['failedAttempts', 'updatedAt'])
     })
 
@@ -61,7 +61,7 @@ describe('UserCredential', () => {
       const afterSnapshot = createSnapshot(userCredential)
 
       expect(userCredential.failedAttempts).toBe(1)
-      expect(userCredential.updatedAt).toBe(updatedAt)
+      expect(userCredential.updatedAt).toEqual(updatedAt)
       compareExceptModifiedFields(beforeSnapshot, afterSnapshot, ['failedAttempts', 'updatedAt'])
     })
   })
@@ -79,8 +79,8 @@ describe('UserCredential', () => {
 
       const afterSnapshot = createSnapshot(userCredential)
 
-      expect(userCredential.lockedUntil).toBe(lockUntil)
-      expect(userCredential.updatedAt).toBe(updatedAt)
+      expect(userCredential.lockedUntil).toEqual(lockUntil)
+      expect(userCredential.updatedAt).toEqual(updatedAt)
       compareExceptModifiedFields(beforeSnapshot, afterSnapshot, ['lockedUntil', 'updatedAt'])
     })
   })
@@ -98,7 +98,7 @@ describe('UserCredential', () => {
       const afterSnapshot = createSnapshot(userCredential)
 
       expect(userCredential.lockedUntil).toBeNull()
-      expect(userCredential.updatedAt).toBe(updatedAt)
+      expect(userCredential.updatedAt).toEqual(updatedAt)
       compareExceptModifiedFields(beforeSnapshot, afterSnapshot, ['lockedUntil', 'updatedAt'])
     })
   })
@@ -120,10 +120,10 @@ describe('UserCredential', () => {
 
       const afterSnapshot = createSnapshot(userCredential)
 
-      expect(userCredential.lockedUntil).toBe(null)
-      expect(userCredential.updatedAt).toBe(updatedAt)
+      expect(userCredential.lockedUntil).toBeNull()
+      expect(userCredential.updatedAt).toEqual(updatedAt)
       expect(userCredential.failedAttempts).toBe(0)
-      expect(userCredential.lastLoginAt).toBe(updatedAt)
+      expect(userCredential.lastLoginAt).toEqual(updatedAt)
       compareExceptModifiedFields(beforeSnapshot, afterSnapshot, ['lockedUntil', 'lastLoginAt', 'failedAttempts', 'updatedAt'])
     })
   })
@@ -172,7 +172,7 @@ describe('UserCredential', () => {
       const afterSnapshot = createSnapshot(userCredential)
 
       expect(userCredential.passwordHash.equals(newPasswordHash)).toBe(true)
-      expect(userCredential.updatedAt).toBe(updatedAt)
+      expect(userCredential.updatedAt).toEqual(updatedAt)
 
       expect(userCredential.failedAttempts).toBe(0)
       expect(userCredential.lockedUntil).toBeNull()
@@ -193,8 +193,8 @@ describe('UserCredential', () => {
       expect(userCredential.failedAttempts).toBe(0)
       expect(userCredential.lockedUntil).toBeNull()
       expect(userCredential.lastLoginAt).toBeNull()
-      expect(userCredential.createdAt.getTime()).toBe(now.getTime())
-      expect(userCredential.updatedAt.getTime()).toBe(now.getTime())
+      expect(userCredential.createdAt).toEqual(now)
+      expect(userCredential.updatedAt).toEqual(now)
     })
   })
 })

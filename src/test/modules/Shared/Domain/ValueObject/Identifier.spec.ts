@@ -33,7 +33,7 @@ describe('Identifier', () => {
       const result = Identifier.safeCreate(invalidIdentifier)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(SharedDomainException.invalidIdentifier(invalidIdentifier))
+      expect(result['error']).toStrictEqual(SharedDomainException.invalidIdentifier(invalidIdentifier))
     })
   })
 
@@ -41,6 +41,6 @@ describe('Identifier', () => {
     const validValue = IdentifierMother.validString()
     const identifierValueObject = Identifier.fromString(validValue)
 
-    expect(identifierValueObject.value).toEqual(validValue)
+    expect(identifierValueObject.value).toBe(validValue)
   })
 })

@@ -30,7 +30,7 @@ describe('DomainEvent', () => {
       expect(domainEvent.payload).toBe(expectedPayload)
       expect(domainEvent.metadata).toBe(expectedMetadata)
       expect(domainEvent.version).toBe(CurrentDomainEventVersion)
-      expect(domainEvent.occurredAt.getTime()).toBe(now.getTime())
+      expect(domainEvent.occurredAt).toEqual(now)
     })
   })
 })

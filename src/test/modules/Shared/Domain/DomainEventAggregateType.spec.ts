@@ -28,7 +28,7 @@ describe('DomainEventAggregateType', () => {
     it('should store the correct value', () => {
       const domainEventAggregateTypeValueObject = DomainEventAggregateType.fromString(ValidDomainEventAggregateTypes.USER)
 
-      expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.USER)
+      expect(domainEventAggregateTypeValueObject.value).toBe(ValidDomainEventAggregateTypes.USER)
     })
   })
 
@@ -36,7 +36,7 @@ describe('DomainEventAggregateType', () => {
     it('factory should return user', () => {
       const domainEventAggregateTypeValueObject = DomainEventAggregateType.user()
 
-      expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.USER)
+      expect(domainEventAggregateTypeValueObject.value).toBe(ValidDomainEventAggregateTypes.USER)
     })
   })
 
@@ -44,7 +44,7 @@ describe('DomainEventAggregateType', () => {
     it('factory should return user', () => {
       const domainEventAggregateTypeValueObject = DomainEventAggregateType.verificationToken()
 
-      expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.VERIFICATION_TOKEN)
+      expect(domainEventAggregateTypeValueObject.value).toBe(ValidDomainEventAggregateTypes.VERIFICATION_TOKEN)
     })
   })
 })

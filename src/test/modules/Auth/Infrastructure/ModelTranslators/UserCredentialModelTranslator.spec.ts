@@ -30,16 +30,16 @@ describe('UserCredentialModelTranslator', () => {
       expect(result.failedAttempts).toBe(raw.failed_attempts)
       expect(result.lockedUntil).toEqual(raw.locked_until)
       expect(result.lastLoginAt).toEqual(raw.last_login_at)
-      expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
-      expect(result.updatedAt.getTime()).toBe(raw.updated_at.getTime())
+      expect(result.createdAt).toEqual(raw.created_at)
+      expect(result.updatedAt).toEqual(raw.updated_at)
     }
 
     it('should return the correct domain object when nullable fields are not NULL', () => {
       const result = UserCredentialModelTranslator.toDomain(baseRaw)
 
       checkResult(result, baseRaw)
-      expect(result.lockedUntil?.getTime()).toBe(baseRaw.locked_until?.getTime())
-      expect(result.lastLoginAt?.getTime()).toBe(baseRaw.last_login_at?.getTime())
+      expect(result.lockedUntil).toEqual(baseRaw.locked_until)
+      expect(result.lastLoginAt).toEqual(baseRaw.last_login_at)
     })
 
     it('should return the correct domain object when nullable fields are NULL', () => {
@@ -48,7 +48,7 @@ describe('UserCredentialModelTranslator', () => {
       const result = UserCredentialModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
-      expect(result.lockedUntil?.getTime()).toBe(now.getTime())
+      expect(result.lockedUntil).toEqual(now)
       expect(result.lastLoginAt).toBeNull()
     })
 
@@ -77,8 +77,8 @@ describe('UserCredentialModelTranslator', () => {
       expect(result.failed_attempts).toBe(domain.failedAttempts)
       expect(result.locked_until).toEqual(domain.lockedUntil)
       expect(result.last_login_at).toEqual(domain.lastLoginAt)
-      expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
-      expect(result.updated_at.getTime()).toBe(domain.updatedAt.getTime())
+      expect(result.created_at).toEqual(domain.createdAt)
+      expect(result.updated_at).toEqual(domain.updatedAt)
     }
 
     beforeEach(() => {
@@ -98,8 +98,8 @@ describe('UserCredentialModelTranslator', () => {
       const result = UserCredentialModelTranslator.toDatabase(userCredential)
 
       checkDatabaseResult(result, userCredential)
-      expect(result.locked_until?.getTime()).toBe(now.getTime())
-      expect(result.last_login_at?.getTime()).toBe(now.getTime())
+      expect(result.locked_until).toEqual(now)
+      expect(result.last_login_at).toEqual(now)
     })
 
     it('returns the correct raw model when nullable fields are NULL', () => {
@@ -130,10 +130,10 @@ describe('UserCredentialModelTranslator', () => {
       expect(userCredential.userId.equals(snapshot.userId)).toBe(true)
       expect(userCredential.passwordHash.equals(snapshot.passwordHash)).toBe(true)
       expect(userCredential.failedAttempts).toBe(snapshot.failedAttempts)
-      expect(userCredential.lockedUntil?.getTime()).toBe(snapshot.lockedUntil?.getTime())
-      expect(userCredential.lastLoginAt?.getTime()).toBe(snapshot.lastLoginAt?.getTime())
-      expect(userCredential.createdAt.getTime()).toBe(snapshot.createdAt.getTime())
-      expect(userCredential.updatedAt.getTime()).toBe(snapshot.updatedAt.getTime())
+      expect(userCredential.lockedUntil).toEqual(snapshot.lockedUntil)
+      expect(userCredential.lastLoginAt).toEqual(snapshot.lastLoginAt)
+      expect(userCredential.createdAt).toEqual(snapshot.createdAt)
+      expect(userCredential.updatedAt).toEqual(snapshot.updatedAt)
     })
   })
 })

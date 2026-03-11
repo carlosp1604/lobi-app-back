@@ -41,8 +41,8 @@ describe('UserSessionPolicyManagerApplicationService', () => {
         value: [],
       })
 
-      expect(activeSession1.revokedAt).toBe(null)
-      expect(activeSession2.revokedAt).toBe(null)
+      expect(activeSession1.revokedAt).toBeNull()
+      expect(activeSession2.revokedAt).toBeNull()
     })
 
     it('should revoke the oldest session if limit is reached', () => {
@@ -63,8 +63,8 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       expect(value[0].id.equals(oldestSession.id)).toBe(true)
       expect(value[0].revokedAt).toBe(now)
 
-      expect(session2.revokedAt).toBe(null)
-      expect(session3.revokedAt).toBe(null)
+      expect(session2.revokedAt).toBeNull()
+      expect(session3.revokedAt).toBeNull()
     })
   })
 

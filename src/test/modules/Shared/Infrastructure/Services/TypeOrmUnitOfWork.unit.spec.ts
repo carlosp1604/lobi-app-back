@@ -72,7 +72,7 @@ describe('TypeOrmUnitOfWork', () => {
         uow.runInTransaction(async () => {
           await Promise.reject(Error('Unexpected work error'))
         }),
-      ).rejects.toStrictEqual(new Error('Unexpected work error'))
+      ).rejects.toThrow(new Error('Unexpected work error'))
 
       expect(mockedRunner.connect).toHaveBeenCalled()
       expect(mockedRunner.startTransaction).toHaveBeenCalled()
@@ -102,7 +102,7 @@ describe('TypeOrmUnitOfWork', () => {
         uow.runInTransaction(async () => {
           await Promise.reject(Error('Unexpected work error'))
         }),
-      ).rejects.toStrictEqual(new Error('Unexpected work error'))
+      ).rejects.toThrow(new Error('Unexpected work error'))
 
       expect(mockedRunner.rollbackTransaction).toHaveBeenCalledTimes(1)
       expect(mockedRunner.release).toHaveBeenCalledTimes(1)

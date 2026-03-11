@@ -1,6 +1,8 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 
 export class UserCredentialDomainException extends DomainException {
+  public readonly __brand = 'UserCredentialDomainException' as const
+
   public static invalidPasswordHashFormatId = 'user_credential_domain_invalid_password_hash_format'
   public static invalidPasswordFormatId = 'user_credential_domain_invalid_password_format'
 

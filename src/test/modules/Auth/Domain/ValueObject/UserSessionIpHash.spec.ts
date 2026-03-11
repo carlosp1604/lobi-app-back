@@ -22,9 +22,9 @@ describe('UserSessionIpHash', () => {
   })
 
   it('should store the correct value', () => {
-    const validValue = UserSessionIpHashMother.valid().toString()
+    const validValue = UserSessionIpHashMother.valid().value
     const userSessionIpHashValueObject = UserSessionIpHash.fromString(validValue)
 
-    expect(userSessionIpHashValueObject.value).toEqual(validValue)
+    expect(userSessionIpHashValueObject.value).toBe(validValue)
   })
 })

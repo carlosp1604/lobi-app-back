@@ -1,6 +1,8 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 
 export class RelationshipDomainException extends DomainException {
+  public readonly __brand = 'RelationshipDomainException' as const
+
   public static relationNotLoadedId = 'relationship_relation_not_loaded'
   public static cannotDeleteRelationId = 'relationship_cannot_delete_relation'
 

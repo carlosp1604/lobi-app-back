@@ -196,11 +196,11 @@ describe('ResetUserPassword', () => {
       const [updatedCredential, credentialCtx] = mockedCredentialRepository.update.mock.calls[0]
       expect(updatedCredential.userId.equals(validUserId)).toBe(true)
       expect(updatedCredential.passwordHash.equals(newPasswordHash)).toBe(true)
-      expect(updatedCredential.updatedAt.getTime()).toBe(now.getTime())
+      expect(updatedCredential.updatedAt).toEqual(now)
       expect(credentialCtx).toBe(fakeContext)
 
       const [tokenAfterUpdate, tokenCtx] = mockedVerificationTokenRepository.update.mock.calls[0]
-      expect(tokenAfterUpdate.usedAt?.getTime()).toBe(now.getTime())
+      expect(tokenAfterUpdate.usedAt).toEqual(now)
       expect(tokenCtx).toBe(fakeContext)
 
       expect(mockedDomainEventFactory.createPasswordResetEvent).toHaveBeenCalledWith(

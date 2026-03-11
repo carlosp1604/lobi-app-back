@@ -78,7 +78,7 @@ describe('RequestOriginApplicationService', () => {
       expect(result.ipHash).toBe(validIpHash.value)
       expect(result.userAgent.equals(validUA)).toBe(true)
       expect(result.normalizedIp).toBe('normalized-ip')
-      expect(result.deviceLocation).toEqual(validDeviceLocation)
+      expect(result.deviceLocation?.equals(validDeviceLocation)).toBe(true)
 
       checkCommonAsserts()
     })
@@ -100,7 +100,7 @@ describe('RequestOriginApplicationService', () => {
       expect(result.ipHash).toBe(validIpHash.value)
       expect(result.userAgent.equals(validUA)).toBe(true)
       expect(result.normalizedIp).toBe('normalized-ip')
-      expect(result.deviceLocation).toEqual(null)
+      expect(result.deviceLocation).toBeNull()
 
       checkCommonAsserts()
     })

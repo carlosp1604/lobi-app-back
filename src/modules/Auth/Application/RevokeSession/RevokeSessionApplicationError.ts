@@ -1,4 +1,6 @@
 export class RevokeSessionApplicationError extends Error {
+  public readonly __brand = 'RevokeSessionApplicationError' as const
+
   public readonly id: string
   public readonly name: string
 

@@ -38,9 +38,9 @@ describe('VerificationToken', () => {
       expect(token.email).toBe(email)
       expect(token.tokenHash).toBe(tokenHash)
       expect(token.purpose).toBe(purpose)
-      expect(token.expiresAt.getTime()).toEqual(futureExpiresAt.getTime())
+      expect(token.expiresAt).toEqual(futureExpiresAt)
       expect(token.usedAt).toBeNull()
-      expect(token.createdAt.getTime()).toEqual(now.getTime())
+      expect(token.createdAt).toEqual(now)
     })
   })
 
@@ -93,7 +93,7 @@ describe('VerificationToken', () => {
       const result = usedToken.validate(now, validEmail, validPurpose)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(VerificationTokenDomainException.alreadyUsed(usedToken.id.value))
+      expect(result['error']).toStrictEqual(VerificationTokenDomainException.alreadyUsed(usedToken.id.value))
     })
 
     it('should return alreadyExpired error when token is expired', () => {
@@ -102,7 +102,7 @@ describe('VerificationToken', () => {
       const result = expiredToken.validate(now, validEmail, validPurpose)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(VerificationTokenDomainException.alreadyExpired(expiredToken.id.value))
+      expect(result['error']).toStrictEqual(VerificationTokenDomainException.alreadyExpired(expiredToken.id.value))
     })
 
     it('should return cannotBeUsedByUser error when the candidate email does not match', () => {
@@ -113,7 +113,7 @@ describe('VerificationToken', () => {
       const result = validToken.validate(now, otherEmail, validPurpose)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(VerificationTokenDomainException.cannotBeUsedByUser(validToken.id.value, otherEmail.value))
+      expect(result['error']).toStrictEqual(VerificationTokenDomainException.cannotBeUsedByUser(validToken.id.value, otherEmail.value))
     })
 
     it('should return cannotBeUsedForPurpose error when the candidate purpose does not match', () => {
@@ -124,7 +124,9 @@ describe('VerificationToken', () => {
       const result = validToken.validate(now, validEmail, otherPurpose)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(VerificationTokenDomainException.cannotBeUsedForPurpose(validToken.id.value, otherPurpose.value))
+      expect(result['error']).toStrictEqual(
+        VerificationTokenDomainException.cannotBeUsedForPurpose(validToken.id.value, otherPurpose.value),
+      )
     })
   })
 
@@ -136,7 +138,7 @@ describe('VerificationToken', () => {
 
       validToken.markAsUsed(now, validEmail, validPurpose)
 
-      expect(validToken.usedAt?.getTime()).toEqual(now.getTime())
+      expect(validToken.usedAt).toEqual(now)
     })
 
     it('should throw alreadyUsed error when token is already used', () => {
@@ -146,7 +148,7 @@ describe('VerificationToken', () => {
       expect(() => usedToken.markAsUsed(now, validEmail, validPurpose)).toThrow(
         VerificationTokenDomainException.alreadyUsed(usedToken.id.value),
       )
-      expect(usedToken.usedAt?.getTime()).toEqual(usedAt.getTime())
+      expect(usedToken.usedAt).toEqual(usedAt)
     })
 
     it('should throw alreadyExpired error when token is expired', () => {

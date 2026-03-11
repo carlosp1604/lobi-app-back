@@ -20,7 +20,7 @@ describe('UserStatus', () => {
     it('should store the correct value', () => {
       const userStatusValueObject = UserStatus.fromString(ValidUserStatus.ACTIVE)
 
-      expect(userStatusValueObject.value).toEqual(ValidUserStatus.ACTIVE)
+      expect(userStatusValueObject.value).toBe(ValidUserStatus.ACTIVE)
     })
   })
 
@@ -28,7 +28,7 @@ describe('UserStatus', () => {
     it('factory should return active', () => {
       const userStatusValueObject = UserStatus.active()
 
-      expect(userStatusValueObject.value).toEqual(ValidUserStatus.ACTIVE)
+      expect(userStatusValueObject.value).toBe(ValidUserStatus.ACTIVE)
     })
   })
 
@@ -36,7 +36,7 @@ describe('UserStatus', () => {
     it('factory should return deactivated', () => {
       const userStatusValueObject = UserStatus.deactivated()
 
-      expect(userStatusValueObject.value).toEqual(ValidUserStatus.DEACTIVATED)
+      expect(userStatusValueObject.value).toBe(ValidUserStatus.DEACTIVATED)
     })
   })
 })

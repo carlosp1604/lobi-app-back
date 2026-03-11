@@ -40,7 +40,7 @@ describe('VerificationTokenPurpose', () => {
         const result = VerificationTokenPurpose.safeCreate(purpose)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toEqual(VerificationTokenDomainException.invalidVerificationTokenPurpose(purpose))
+        expect(result['error']).toStrictEqual(VerificationTokenDomainException.invalidVerificationTokenPurpose(purpose))
       },
     )
   })

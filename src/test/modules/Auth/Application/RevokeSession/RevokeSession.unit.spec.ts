@@ -88,8 +88,8 @@ describe('RevokeSession', () => {
       expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledWith(validUserId.value, fakeContext)
       expect(mockedSessionRepository.findById).toHaveBeenCalledWith(validSessionId, fakeContext)
 
-      expect(session.revokedAt?.getTime()).toEqual(now.getTime())
-      expect(session.updatedAt?.getTime()).toEqual(now.getTime())
+      expect(session.revokedAt).toEqual(now)
+      expect(session.updatedAt).toEqual(now)
 
       expect(mockedSessionRepository.save).toHaveBeenCalledWith([session], fakeContext)
 
