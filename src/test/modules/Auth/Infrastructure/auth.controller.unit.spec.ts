@@ -74,10 +74,10 @@ import { RevokeSession } from '~/src/modules/Auth/Application/RevokeSession/Revo
 import { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
-import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
 import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
+import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -2080,7 +2080,7 @@ describe('AuthController', () => {
     })
 
     describe('happy path', () => {
-      it('should call use-case correctly and return the sessions when successful', async () => {
+      it('should call use-case correctly and return the user sessions', async () => {
         const controller = buildController()
 
         const expectedSessionsResponse = mock<GetActiveSessionsApplicationResponseDto>()
@@ -2103,17 +2103,25 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      it('should throw InternalServerErrorException when use-case returns an application error', async () => {
+      it('should throw InternalServerErrorException when use-case returns invalidInput error', async () => {
         const controller = buildController()
 
-        const useCaseError = GetActiveSessionsApplicationError.invalidInput()
+        const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
+        const expectedInputError = GetActiveSessionsApplicationError.invalidInput(
+          'currentSessionId',
+          expectedInvalidIdentifierException.message,
+        )
 
         mockedGetActiveSessionsUseCase.execute.mockResolvedValue({
           success: false,
-          error: useCaseError,
+          error: expectedInputError,
         })
 
-        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(new InternalServerErrorException(useCaseError))
+        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(
+          new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+            cause: expectedInputError,
+          }),
+        )
 
         expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
       })

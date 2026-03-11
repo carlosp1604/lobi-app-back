@@ -105,6 +105,7 @@ import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/Re
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
+import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
 
 @Controller('auth')
 export class AuthController {
@@ -590,6 +591,14 @@ export class AuthController {
     const result = await this.getActiveSessions.execute(requestDto)
 
     if (!result.success) {
+      const errorId = result.error.id
+
+      if (errorId === GetActiveSessionsApplicationError.invalidInputId) {
+        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+          cause: result.error,
+        })
+      }
+
       throw new InternalServerErrorException(result.error)
     }
 

@@ -509,10 +509,14 @@ import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessi
     },
     {
       provide: GET_ACTIVE_SESSIONS,
-      useFactory: (sessionRepository: UserSessionRepositoryInterface, clockService: ClockServiceInterface) => {
-        return new GetActiveSessions(sessionRepository, clockService)
+      useFactory: (
+        sessionRepository: UserSessionRepositoryInterface,
+        clockService: ClockServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
+      ) => {
+        return new GetActiveSessions(sessionRepository, clockService, loggerFactory.createLogger(GetActiveSessions.name))
       },
-      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE],
+      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE, LOGGER_FACTORY],
     },
   ],
   exports: [

@@ -6,14 +6,19 @@ import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Applicatio
 import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
 import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 import { GetActiveSessionsUserSessionApplicationDtoTranslator } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsUserSessionApplicationDtoTranslator'
+import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
+import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 
 export class GetActiveSessions {
   constructor(
     private readonly sessionRepository: UserSessionRepositoryInterface,
     private readonly clockService: ClockServiceInterface,
+    private readonly loggerService: LoggerServiceInterface,
   ) {}
 
-  async execute(request: GetActiveSessionsApplicationRequestDto): Promise<Result<GetActiveSessionsApplicationResponseDto, Error>> {
+  async execute(
+    request: GetActiveSessionsApplicationRequestDto,
+  ): Promise<Result<GetActiveSessionsApplicationResponseDto, GetActiveSessionsApplicationError>> {
     const validateInputResult = this.validateInput(request)
 
     if (!validateInputResult.success) {
@@ -37,10 +42,34 @@ export class GetActiveSessions {
     request: GetActiveSessionsApplicationRequestDto,
   ): Result<{ userId: Identifier; currentSessionId: Identifier }, GetActiveSessionsApplicationError> {
     const userIdResult = Identifier.safeCreate(request.userId)
+
+    if (!userIdResult.success) {
+      const safeUserIdSample = StringFormatter.formatSafe(request.userId, 60)
+
+      this.loggerService.error('Input validation failed', userIdResult.error.stack, {
+        failedField: 'userId',
+        inputValue: safeUserIdSample,
+        reason: userIdResult.error.message,
+      })
+
+      return fail(GetActiveSessionsApplicationError.invalidInput('userId', userIdResult.error.message))
+    }
+
+    const userId = userIdResult.value
+
     const sessionIdResult = Identifier.safeCreate(request.currentSessionId)
 
-    if (!userIdResult.success || !sessionIdResult.success) {
-      return fail(GetActiveSessionsApplicationError.invalidInput())
+    if (!sessionIdResult.success) {
+      const safeSessionIdSample = StringFormatter.formatSafe(request.currentSessionId, 60)
+
+      this.loggerService.error('Input validation failed', sessionIdResult.error.stack, {
+        failedField: 'currentSessionId',
+        inputValue: safeSessionIdSample,
+        userId: userId.value,
+        reason: sessionIdResult.error.message,
+      })
+
+      return fail(GetActiveSessionsApplicationError.invalidInput('currentSessionId', sessionIdResult.error.message))
     }
 
     return success({
