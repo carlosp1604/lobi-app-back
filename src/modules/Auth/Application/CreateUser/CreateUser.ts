@@ -137,7 +137,7 @@ export class CreateUser {
         ownerProfile = OwnerProfile.create(ownerProfileId, userId, now)
       }
 
-      const domainEvent = this.authDomainEventFactory.createSuccessfulSignupDomainEvent(
+      const domainEvent = this.authDomainEventFactory.createSuccessfulSignupEvent(
         user.id,
         user.email,
         deviceLocation,

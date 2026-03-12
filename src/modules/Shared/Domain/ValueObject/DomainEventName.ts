@@ -7,6 +7,7 @@ export enum ValidDomainEventNames {
   EMAIL_VERIFICATION_REQUEST = 'emailVerificationRequest',
   SUCCESSFUL_SIGNUP = 'successfulSignup',
   SUCCESSFUL_RESET_PASSWORD = 'successfulResetPassword',
+  CLOSED_SESSION = 'closedSession',
 }
 
 export class DomainEventName extends ValueObject<ValidDomainEventNames> {
@@ -42,6 +43,10 @@ export class DomainEventName extends ValueObject<ValidDomainEventNames> {
 
   static successfulResetPassword(): DomainEventName {
     return new DomainEventName(ValidDomainEventNames.SUCCESSFUL_RESET_PASSWORD)
+  }
+
+  static closedSession(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.CLOSED_SESSION)
   }
 
   private isValidDomainEventName(value: string): boolean {
