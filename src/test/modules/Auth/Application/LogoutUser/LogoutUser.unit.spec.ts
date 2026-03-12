@@ -3,8 +3,8 @@ import { mock, mockReset } from 'jest-mock-extended'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { RevokeSession } from '~/src/modules/Auth/Application/RevokeSession/RevokeSession'
-import { RevokeSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationRequestDto'
+import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
+import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
@@ -13,11 +13,11 @@ import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
-import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
+import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
-describe('RevokeSession', () => {
+describe('LogoutUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
   const mockedSessionRepository = mock<UserSessionRepositoryInterface>()
   const mockedClock = mock<ClockServiceInterface>()
@@ -31,12 +31,12 @@ describe('RevokeSession', () => {
   const validUserId = IdentifierMother.valid()
   const validSessionId = IdentifierMother.valid()
 
-  let baseRequest: RevokeSessionApplicationRequestDto
+  let baseRequest: LogoutUserApplicationRequestDto
   let userBuilder: UserTestBuilder
   let sessionBuilder: UserSessionTestBuilder
 
   const buildUseCase = () => {
-    return new RevokeSession(mockedUserRepository, mockedSessionRepository, mockedClock, mockedUnitOfWork, mockedLogger)
+    return new LogoutUser(mockedUserRepository, mockedSessionRepository, mockedClock, mockedUnitOfWork, mockedLogger)
   }
 
   beforeEach(() => {
@@ -120,7 +120,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.invalidInput('userId', expectedUserIdValidationError.message))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.invalidInput('userId', expectedUserIdValidationError.message))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -145,7 +145,7 @@ describe('RevokeSession', () => {
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(
-        RevokeSessionApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message),
+        LogoutUserApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message),
       )
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
@@ -164,7 +164,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound(validUserId.value))
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -183,7 +183,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.userDisabled(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userDisabled(validUserId.value))
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -195,14 +195,14 @@ describe('RevokeSession', () => {
 
       const result = await useCase.execute(baseRequest)
 
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Session revocation failed', {
+      expect(mockedLogger.warn).toHaveBeenCalledWith('Logout user failed', {
         userId: validUserId.value,
         sessionId: validSessionId.value,
         reason: 'Session not found',
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.sessionNotFound(validSessionId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound(validSessionId.value))
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
@@ -217,7 +217,7 @@ describe('RevokeSession', () => {
 
       const result = await useCase.execute(baseRequest)
 
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Session revocation rejected', {
+      expect(mockedLogger.warn).toHaveBeenCalledWith('Logout user rejected', {
         requestedUserId: validUserId.value,
         actualSessionOwner: anotherUserId.value,
         sessionId: validSessionId.value,
@@ -226,7 +226,7 @@ describe('RevokeSession', () => {
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(
-        RevokeSessionApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value),
+        LogoutUserApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value),
       )
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
@@ -243,14 +243,14 @@ describe('RevokeSession', () => {
       const result = await useCase.execute(baseRequest)
 
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
-      expect(mockedLogger.warn).toHaveBeenCalledWith('Session revocation rejected', {
+      expect(mockedLogger.warn).toHaveBeenCalledWith('Logout user rejected', {
         userId: validUserId.value,
         sessionId: validSessionId.value,
         reason: expectedRevocationError.message,
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })

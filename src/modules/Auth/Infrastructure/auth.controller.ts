@@ -5,7 +5,7 @@ import {
   GENERATE_VERIFICATION_TOKEN,
   GET_ACTIVE_SESSIONS,
   LOGIN_USER,
-  REVOKE_SESSION,
+  LOGOUT_USER,
   REFRESH_SESSION,
   RESET_USER_PASSWORD,
   VALIDATE_VERIFICATION_TOKEN,
@@ -97,11 +97,11 @@ import {
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
-import { RevokeSession } from '~/src/modules/Auth/Application/RevokeSession/RevokeSession'
-import { RevokeSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationRequestDto'
+import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
+import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
 import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access-token.decorator'
 import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
-import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
+import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
@@ -116,7 +116,7 @@ export class AuthController {
     @Inject(VALIDATE_VERIFICATION_TOKEN) private readonly validateVerificationToken: ValidateVerificationToken,
     @Inject(CREATE_USER) private readonly createUser: CreateUser,
     @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
-    @Inject(REVOKE_SESSION) private readonly revokeSession: RevokeSession,
+    @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
     @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
     private readonly configService: ConfigService<Env, true>,
   ) {}
@@ -563,12 +563,12 @@ export class AuthController {
       return
     }
 
-    const requestDto: RevokeSessionApplicationRequestDto = {
+    const requestDto: LogoutUserApplicationRequestDto = {
       userId: accessToken.sub,
       sessionId: accessToken.sid,
     }
 
-    const result = await this.revokeSession.execute(requestDto)
+    const result = await this.logoutUser.execute(requestDto)
 
     if (!result.success) {
       this.checkAndThrowRevokeError(result.error)
@@ -613,12 +613,12 @@ export class AuthController {
     @Param('id', ParseUUIDPipe) id: string,
     @Res({ passthrough: true }) response: FastifyReply,
   ) {
-    const requestDto: RevokeSessionApplicationRequestDto = {
+    const requestDto: LogoutUserApplicationRequestDto = {
       sessionId: id,
       userId: accessToken.sub,
     }
 
-    const result = await this.revokeSession.execute(requestDto)
+    const result = await this.logoutUser.execute(requestDto)
 
     if (!result.success) {
       this.checkAndThrowRevokeError(result.error)
@@ -710,22 +710,22 @@ export class AuthController {
     })
   }
 
-  private checkAndThrowRevokeError(error: RevokeSessionApplicationError): void {
+  private checkAndThrowRevokeError(error: LogoutUserApplicationError): void {
     const errorId = error.id
 
     const obfuscatedErrors = [
-      RevokeSessionApplicationError.userNotFoundId,
-      RevokeSessionApplicationError.userDisabledId,
-      RevokeSessionApplicationError.cannotRevokeSessionId,
-      RevokeSessionApplicationError.sessionNotFoundId,
-      RevokeSessionApplicationError.sessionDoesNotBelongToUserId,
+      LogoutUserApplicationError.userNotFoundId,
+      LogoutUserApplicationError.userDisabledId,
+      LogoutUserApplicationError.cannotRevokeSessionId,
+      LogoutUserApplicationError.sessionNotFoundId,
+      LogoutUserApplicationError.sessionDoesNotBelongToUserId,
     ]
 
     if (obfuscatedErrors.includes(errorId)) {
       return
     }
 
-    if (errorId === RevokeSessionApplicationError.invalidInputId) {
+    if (errorId === LogoutUserApplicationError.invalidInputId) {
       throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', { cause: error })
     }
 

@@ -5,11 +5,11 @@ import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
+import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
-import { RevokeSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationRequestDto'
+import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
 
-export class RevokeSession {
+export class LogoutUser {
   constructor(
     private readonly userRepository: UserRepositoryInterface,
     private readonly sessionRepository: UserSessionRepositoryInterface,
@@ -18,7 +18,7 @@ export class RevokeSession {
     private readonly loggerService: LoggerServiceInterface,
   ) {}
 
-  public async execute(request: RevokeSessionApplicationRequestDto): Promise<Result<void, RevokeSessionApplicationError>> {
+  public async execute(request: LogoutUserApplicationRequestDto): Promise<Result<void, LogoutUserApplicationError>> {
     const now = this.clockService.now()
 
     const inputValidationResult = this.validateInput(request)
@@ -37,7 +37,7 @@ export class RevokeSession {
           reason: 'User not found',
         })
 
-        return fail(RevokeSessionApplicationError.userNotFound(userId.value))
+        return fail(LogoutUserApplicationError.userNotFound(userId.value))
       }
 
       if (!user.isActive()) {
@@ -46,42 +46,42 @@ export class RevokeSession {
           reason: 'User is disabled',
         })
 
-        return fail(RevokeSessionApplicationError.userDisabled(userId.value))
+        return fail(LogoutUserApplicationError.userDisabled(userId.value))
       }
 
       const session = await this.sessionRepository.findById(sessionId, context)
 
       if (!session) {
-        this.loggerService.warn('Session revocation failed', {
+        this.loggerService.warn('Logout user failed', {
           userId: userId.value,
           sessionId: sessionId.value,
           reason: 'Session not found',
         })
 
-        return fail(RevokeSessionApplicationError.sessionNotFound(sessionId.value))
+        return fail(LogoutUserApplicationError.sessionNotFound(sessionId.value))
       }
 
       if (!session.userId.equals(user.id)) {
-        this.loggerService.warn('Session revocation rejected', {
+        this.loggerService.warn('Logout user rejected', {
           requestedUserId: userId.value,
           actualSessionOwner: session.userId.value,
           sessionId: sessionId.value,
           reason: 'Session owner mismatch',
         })
 
-        return fail(RevokeSessionApplicationError.sessionDoesNotBelongToUser(sessionId.value, userId.value))
+        return fail(LogoutUserApplicationError.sessionDoesNotBelongToUser(sessionId.value, userId.value))
       }
 
       const canRevokeResult = session.canBeRevoked(now)
 
       if (!canRevokeResult.success) {
-        this.loggerService.warn('Session revocation rejected', {
+        this.loggerService.warn('Logout user rejected', {
           userId: userId.value,
           sessionId: sessionId.value,
           reason: canRevokeResult.error.message,
         })
 
-        return fail(RevokeSessionApplicationError.cannotRevokeSession(canRevokeResult.error.message))
+        return fail(LogoutUserApplicationError.cannotRevokeSession(canRevokeResult.error.message))
       }
 
       session.revoke(now)
@@ -93,8 +93,8 @@ export class RevokeSession {
   }
 
   private validateInput(
-    request: RevokeSessionApplicationRequestDto,
-  ): Result<{ userId: Identifier; sessionId: Identifier }, RevokeSessionApplicationError> {
+    request: LogoutUserApplicationRequestDto,
+  ): Result<{ userId: Identifier; sessionId: Identifier }, LogoutUserApplicationError> {
     const userIdResult = Identifier.safeCreate(request.userId)
 
     if (!userIdResult.success) {
@@ -106,7 +106,7 @@ export class RevokeSession {
         reason: userIdResult.error.message,
       })
 
-      return fail(RevokeSessionApplicationError.invalidInput('userId', userIdResult.error.message))
+      return fail(LogoutUserApplicationError.invalidInput('userId', userIdResult.error.message))
     }
 
     const userId = userIdResult.value
@@ -123,7 +123,7 @@ export class RevokeSession {
         reason: sessionIdResult.error.message,
       })
 
-      return fail(RevokeSessionApplicationError.invalidInput('sessionId', sessionIdResult.error.message))
+      return fail(LogoutUserApplicationError.invalidInput('sessionId', sessionIdResult.error.message))
     }
 
     return success({

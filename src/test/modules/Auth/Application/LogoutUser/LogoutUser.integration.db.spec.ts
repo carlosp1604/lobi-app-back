@@ -1,4 +1,4 @@
-import { RevokeSession } from '~/src/modules/Auth/Application/RevokeSession/RevokeSession'
+import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { QueryRunner } from 'typeorm'
 import { mock, mockReset } from 'jest-mock-extended'
@@ -9,9 +9,9 @@ import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserD
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
-import { RevokeSessionApplicationError } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationError'
+import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
-import { RevokeSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RevokeSession/RevokeSessionApplicationRequestDto'
+import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
@@ -19,7 +19,7 @@ import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/Post
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
-describe('RevokeSession', () => {
+describe('LogoutUser', () => {
   const now = new Date('2026-03-09T11:45:00.000Z')
   const futureDate = new Date(now.getTime() + 3600 * 1000)
   const pastDate = new Date(now.getTime() - 3600 * 1000)
@@ -35,7 +35,7 @@ describe('RevokeSession', () => {
   let activeRawSession: UserSessionRawWithRelationships
   let secondaryRawSession: UserSessionRawWithRelationships
 
-  let baseRequest: RevokeSessionApplicationRequestDto
+  let baseRequest: LogoutUserApplicationRequestDto
 
   let runner: QueryRunner
 
@@ -80,7 +80,7 @@ describe('RevokeSession', () => {
   })
 
   const buildUseCase = () => {
-    return new RevokeSession(
+    return new LogoutUser(
       new PostgresqlUserRepository(mockedResolver),
       new PostgreSqlUserSessionRepository(mockedResolver),
       new ClockServiceMock(now),
@@ -140,7 +140,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound(validUserId.value))
     })
 
     it('should return error when session does not exist', async () => {
@@ -151,7 +151,7 @@ describe('RevokeSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.sessionNotFound(validSessionId1.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound(validSessionId1.value))
     })
 
     it('should return error when session does not belong to user', async () => {
@@ -173,7 +173,7 @@ describe('RevokeSession', () => {
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(
-        RevokeSessionApplicationError.sessionDoesNotBelongToUser(validSessionId1.value, validUserId.value),
+        LogoutUserApplicationError.sessionDoesNotBelongToUser(validSessionId1.value, validUserId.value),
       )
 
       const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
@@ -198,7 +198,7 @@ describe('RevokeSession', () => {
       const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(validSessionId1.value)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RevokeSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))
 
       const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
       expect(sessionAfter!.revoked_at).toEqual(pastDate)
