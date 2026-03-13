@@ -153,7 +153,7 @@ describe('GenerateVerificationToken', () => {
       purpose: purposeCreateAccount.value,
       sendNewToken: false,
       ip: '8.8.8.8',
-      userAgent: validUA.value,
+      userAgent: validUA.raw,
     }
   })
 

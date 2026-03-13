@@ -63,7 +63,12 @@ export class RequestOriginApplicationService {
     }
 
     try {
-      return UserAgent.fromString(userAgent)
+      return UserAgent.fromProps({
+        raw: userAgent,
+        os: { name: null, version: null },
+        device: { vendor: null, type: null, model: null },
+        browser: { version: null, name: null },
+      })
     } catch (exception: unknown) {
       if (!(exception instanceof UserSessionDomainException)) {
         throw exception

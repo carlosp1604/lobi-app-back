@@ -125,7 +125,7 @@ describe('ResetUserPassword', () => {
       token: validTokenValue.value,
       password: validNewPassword.value,
       ip: '127.0.0.1',
-      userAgent: UserAgentMother.forTesting().value,
+      userAgent: UserAgentMother.valid().raw,
     }
   })
 

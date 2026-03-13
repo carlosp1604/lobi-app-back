@@ -69,7 +69,7 @@ describe('RequestOriginApplicationService', () => {
     it('should call with correct arguments and return the correct data', async () => {
       const service = buildService()
 
-      const result = await service.process(validIp, validUA.value)
+      const result = await service.process(validIp, validUA.raw)
 
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
@@ -88,7 +88,7 @@ describe('RequestOriginApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.process(validIp, validUA.value)
+      const result = await service.process(validIp, validUA.raw)
 
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
@@ -114,7 +114,7 @@ describe('RequestOriginApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.process(invalidIp, validUA.value, { email: validEmail.value })
+      const result = await service.process(invalidIp, validUA.raw, { email: validEmail.value })
 
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isValid).toHaveBeenCalledTimes(1)
@@ -148,7 +148,7 @@ describe('RequestOriginApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.process(privateIp, validUA.value)
+      const result = await service.process(privateIp, validUA.raw)
 
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
       expect(mockedIpValidator.isValid).toHaveBeenCalledTimes(1)
@@ -181,7 +181,7 @@ describe('RequestOriginApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.process(validIp, validUA.value, { email: validEmail })
+      const result = await service.process(validIp, validUA.raw, { email: validEmail })
 
       checkCommonAsserts()
 
@@ -243,11 +243,11 @@ describe('RequestOriginApplicationService', () => {
       const unexpectedError = new Error('Unexpected error')
       const service = buildService()
 
-      jest.spyOn(UserAgent, 'fromString').mockImplementationOnce(() => {
+      jest.spyOn(UserAgent, 'fromProps').mockImplementationOnce(() => {
         throw unexpectedError
       })
 
-      await expect(service.process(validIp, validUA.value)).rejects.toThrow(unexpectedError)
+      await expect(service.process(validIp, validUA.raw)).rejects.toThrow(unexpectedError)
       expect(mockedLogger.error).not.toHaveBeenCalled()
       expect(mockedLogger.debug).not.toHaveBeenCalled()
       expect(mockedLogger.warn).not.toHaveBeenCalled()

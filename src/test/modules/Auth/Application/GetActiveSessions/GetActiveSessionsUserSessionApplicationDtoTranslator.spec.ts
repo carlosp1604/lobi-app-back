@@ -12,7 +12,7 @@ describe('GetActiveSessionsUserSessionApplicationDtoTranslator', () => {
 
   const sessionId = IdentifierMother.valid()
   const userId = IdentifierMother.valid()
-  const userAgent = UserAgentMother.forTesting()
+  const userAgent = UserAgentMother.valid()
 
   const buildSession = (location: DeviceLocation | null) => {
     return new UserSessionTestBuilder()

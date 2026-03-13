@@ -124,14 +124,14 @@ describe('PostgreSqlUserSessionRepository', () => {
       user_id: userId.value,
       revoked_at: null,
       ip_hash: null,
-      user_agent: UserAgentMother.forTesting().value,
+      user_agent: UserAgentMother.valid().raw,
     })
 
     const expectedRawUserSession2 = makeRawSession({
       user_id: userId.value,
       revoked_at: null,
       ip_hash: null,
-      user_agent: UserAgentMother.forTesting().value,
+      user_agent: UserAgentMother.valid().raw,
     })
 
     beforeEach(() => {

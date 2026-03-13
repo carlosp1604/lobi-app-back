@@ -141,7 +141,7 @@ export class AuthDomainEventFactory {
         targetSessionId: targetSession.id.value,
         targetDeviceLocation: this.mapLocation(targetSession.deviceLocation),
         actorDeviceLocation: this.mapLocation(actorDeviceLocation),
-        actorUserAgent: actorUserAgent.value,
+        actorUserAgent: actorUserAgent.raw,
       },
       {
         ...this.mapMetadata(actorIpHash, actorUserAgent),
@@ -165,7 +165,7 @@ export class AuthDomainEventFactory {
   private mapMetadata(ipHash: string | null, userAgent: UserAgent) {
     return {
       ipHash: ipHash,
-      ua: userAgent.value,
+      ua: userAgent.raw,
     }
   }
 }

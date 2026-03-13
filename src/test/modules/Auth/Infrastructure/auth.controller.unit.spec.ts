@@ -95,7 +95,7 @@ describe('AuthController', () => {
   const mockedGetActiveSessionsUseCase = mock<GetActiveSessions>()
 
   const mockedIp = '127.0.0.1'
-  const mockedUserAgent = UserAgentMother.forTesting().value
+  const mockedUserAgent = UserAgentMother.valid().raw
 
   const baseDate = new Date('2025-10-13T14:00:00.014Z')
 

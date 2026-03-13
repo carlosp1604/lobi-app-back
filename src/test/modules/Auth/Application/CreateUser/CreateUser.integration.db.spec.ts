@@ -122,7 +122,7 @@ describe('CreateUser', () => {
       token: validTokenValue.value,
       requestedRole: UserRoleMother.sportsman().value,
       ip: '127.0.0.1',
-      userAgent: UserAgentMother.forTesting().value,
+      userAgent: UserAgentMother.valid().raw,
     }
   })
 

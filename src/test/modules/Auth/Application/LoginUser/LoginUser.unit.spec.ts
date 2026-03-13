@@ -175,7 +175,7 @@ describe('LoginUser', () => {
       email: validEmail.value,
       password: UserPasswordMother.random().value,
       ip: '8.8.8.8',
-      userAgent: validUA.value,
+      userAgent: validUA.raw,
     }
   })
 

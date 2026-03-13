@@ -11,7 +11,7 @@ export const makeRawSession = (overrides: Partial<UserSessionRawModel> = {}): Us
     revoked_at: overrides.revoked_at ?? null,
     expires_at: overrides.expires_at ?? new Date(Date.now() + 60 * 60 * 1000),
     ip_hash: overrides.ip_hash ?? null,
-    user_agent: overrides.user_agent ?? UserAgentMother.random().value,
+    user_agent: overrides.user_agent ?? UserAgentMother.random().raw,
     device_country_code: overrides.device_country_code ?? null,
     device_city: overrides.device_city ?? null,
     created_at: overrides.created_at ?? new Date(),

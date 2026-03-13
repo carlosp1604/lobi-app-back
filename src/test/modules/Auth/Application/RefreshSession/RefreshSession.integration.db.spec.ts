@@ -46,7 +46,7 @@ describe('RefreshSession', () => {
   const pastExpiresAt = new Date(now.getTime() - 3600)
 
   const userId = IdentifierMother.valid().value
-  const expectedUserAgent = UserAgentMother.random().value
+  const expectedUserAgent = UserAgentMother.random().raw
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
@@ -95,7 +95,7 @@ describe('RefreshSession', () => {
     currentSession = makeRawSession({
       user_id: userId,
       token_hash: hashedToken,
-      user_agent: UserAgentMother.random().value,
+      user_agent: UserAgentMother.random().raw,
       ip_hash: UserSessionIpHashMother.random().value,
       expires_at: futureExpiresAt,
       revoked_at: null,

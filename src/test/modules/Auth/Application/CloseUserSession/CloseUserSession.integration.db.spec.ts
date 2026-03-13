@@ -102,7 +102,7 @@ describe('CloseUserSession', () => {
       sessionId: validTargetSessionId.value,
       currentSessionId: validCurrentSessionId.value,
       ip: '127.0.0.1',
-      userAgent: validUserAgent.value,
+      userAgent: validUserAgent.raw,
     }
   })
 

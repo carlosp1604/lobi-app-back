@@ -108,7 +108,7 @@ describe('ResetUserPassword', () => {
       password: validNewPassword.value,
       token: validTokenValue.value,
       ip: '8.8.8.8',
-      userAgent: validUA.value,
+      userAgent: validUA.raw,
     }
 
     verificationTokenBuilder = new VerificationTokenTestBuilder()

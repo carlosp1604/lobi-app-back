@@ -47,7 +47,7 @@ describe('CloseUserSession', () => {
   const validUserId = IdentifierMother.valid()
   const validSessionId = IdentifierMother.valid()
   const validCurrentSessionId = IdentifierMother.valid()
-  const validUserAgent = UserAgentMother.forTesting()
+  const validUserAgent = UserAgentMother.valid()
   const validIpHash = UserSessionIpHashMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
 
@@ -89,7 +89,7 @@ describe('CloseUserSession', () => {
       userId: validUserId.value,
       sessionId: validSessionId.value,
       currentSessionId: validCurrentSessionId.value,
-      userAgent: validUserAgent.value,
+      userAgent: validUserAgent.raw,
       ip: '8.8.8.8',
     }
 

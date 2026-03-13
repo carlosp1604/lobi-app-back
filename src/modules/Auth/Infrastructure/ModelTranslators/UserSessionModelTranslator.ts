@@ -21,7 +21,12 @@ export class UserSessionModelTranslator {
       raw.expires_at,
       raw.revoked_at,
       raw.ip_hash ? UserSessionIpHash.fromString(raw.ip_hash) : null,
-      UserAgent.fromString(raw.user_agent),
+      UserAgent.fromProps({
+        raw: raw.user_agent,
+        browser: { name: null, version: null },
+        device: { model: null, type: null, vendor: null },
+        os: { name: null, version: null },
+      }),
       deviceLocation,
       raw.created_at,
       raw.updated_at,

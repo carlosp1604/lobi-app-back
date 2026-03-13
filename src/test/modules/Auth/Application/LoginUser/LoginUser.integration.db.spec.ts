@@ -123,7 +123,7 @@ describe('LoginUser', () => {
     email: userEmail,
     password: validPassword,
     ip: '127.0.0.0',
-    userAgent: expectedUserAgent.value,
+    userAgent: expectedUserAgent.raw,
   }
 
   const buildUseCase = () => {
@@ -168,7 +168,7 @@ describe('LoginUser', () => {
       user_id: userId,
       created_at: newestCreatedAt,
       expires_at: futureExpiresAt,
-      user_agent: sameSession ? sameSession.userAgent.value : UserAgentMother.random().value,
+      user_agent: sameSession ? sameSession.userAgent.raw : UserAgentMother.random().raw,
       ip_hash: sameSession ? sameSession.ipHash.value : UserSessionIpHashMother.random().value,
     })
 
@@ -275,7 +275,7 @@ describe('LoginUser', () => {
       const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
       const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      const result = await useCase.execute({ ...request, ip: '8.8.8.8', userAgent: userAgent.value })
+      const result = await useCase.execute({ ...request, ip: '8.8.8.8', userAgent: userAgent.raw })
 
       const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
       const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)

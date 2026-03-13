@@ -126,7 +126,7 @@ describe('RefreshToken', () => {
     request = {
       token: 'a'.repeat(48),
       ip: '203.0.113.10',
-      userAgent: validUserAgent.value,
+      userAgent: validUserAgent.raw,
     }
   })
 

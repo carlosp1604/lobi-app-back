@@ -133,7 +133,7 @@ describe('UserSessionModelTranslator', () => {
       expect(result.expires_at).toEqual(domain.expiresAt)
       expect(result.created_at).toEqual(domain.createdAt)
       expect(result.updated_at).toEqual(domain.updatedAt)
-      expect(result.user_agent).toBe(domain.userAgent.value)
+      expect(result.user_agent).toEqual(domain.userAgent.value)
       expect(result.revoked_at).toEqual(domain.revokedAt)
 
       if (domain.ipHash === null) {
