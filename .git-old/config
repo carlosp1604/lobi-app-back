@@ -1,0 +1,30 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	hooksPath = .husky/_
+[remote "origin"]
+	url = git@github.com:carlosp1604/lobi-app-back.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "master"]
+	remote = origin
+	merge = refs/heads/master
+[branch "feature/generate-verification-token-use-case"]
+	remote = origin
+	merge = refs/heads/feature/generate-verification-token-use-case
+[branch "develop"]
+	remote = origin
+	merge = refs/heads/develop
+[branch "feature/create-user-use-case-c3"]
+	remote = origin
+	merge = refs/heads/master
+[branch "feature/logout-user-use-case"]
+	remote = origin
+	merge = refs/heads/feature/logout-user-use-case
+[branch "feature/get-active-sessions-use-case"]
+	remote = origin
+	merge = refs/heads/feature/get-active-sessions-use-case
+[branch "feature/close-session-use-case"]
+	remote = origin
+	merge = refs/heads/feature/close-session-use-case

@@ -1,0 +1,6 @@
+feat(auth): add CloseUserSession use-case
+
+- refactor closeSession controller handler to use CloseUserSession instead of LogoutUser
+- add unit and integration tests for CloseUserSession
+- refactor closeSession handler unit tests
+- configure CloseUserSession in auth module
