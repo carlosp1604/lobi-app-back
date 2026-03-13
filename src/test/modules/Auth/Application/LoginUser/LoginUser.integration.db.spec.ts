@@ -217,7 +217,7 @@ describe('LoginUser', () => {
       expect(savedSession!.user_agent).toBe(userAgent.value)
 
       if (!ipHash) {
-        expect(savedSession!.ip_hash).toBe(null)
+        expect(savedSession!.ip_hash).toBeNull()
       } else {
         expect(savedSession!.ip_hash).toBe(ipHash.value)
       }
@@ -225,17 +225,17 @@ describe('LoginUser', () => {
       expect(savedSession!.device_country_code).toBeNull()
       expect(savedSession!.device_city).toBeNull()
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
-      expect(savedSession!.expires_at.getTime()).toBe(now.getTime() + REFRESH_TTL_MS)
+      expect(savedSession!.expires_at).toEqual(new Date(now.getTime() + REFRESH_TTL_MS))
 
       expect(domainEvents.length).toBe(1)
       expect(domainEvents[0].name).toBe(DomainEventName.successfulLogin().value)
 
       const updatedUserCredential = await userCredentialDatabaseHelper.findUserCredential(userId)
-      expect(updatedUserCredential).not.toBe(null)
-      expect(updatedUserCredential!.updated_at.getTime()).toBe(now.getTime())
+      expect(updatedUserCredential).not.toBeNull()
+      expect(updatedUserCredential!.updated_at).toEqual(now)
       expect(updatedUserCredential!.failed_attempts).toBe(0)
-      expect(updatedUserCredential!.locked_until).toBe(null)
-      expect(updatedUserCredential!.last_login_at?.getTime()).toBe(now.getTime())
+      expect(updatedUserCredential!.locked_until).toBeNull()
+      expect(updatedUserCredential!.last_login_at).toEqual(now)
     }
 
     it('should authenticate and create a new user session correctly (no revoke sessions)', async () => {
@@ -296,9 +296,9 @@ describe('LoginUser', () => {
       expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session3.id)).toBeDefined()
 
       const oldestSessionInDb = await userSessionDatabaseHelper.findById(oldestSession.id)
-      expect(oldestSessionInDb).not.toBe(null)
-      expect(oldestSessionInDb?.revoked_at?.getTime()).toBe(now.getTime())
-      expect(oldestSessionInDb?.updated_at.getTime()).toBe(now.getTime())
+      expect(oldestSessionInDb).not.toBeNull()
+      expect(oldestSessionInDb?.revoked_at).toEqual(now)
+      expect(oldestSessionInDb?.updated_at).toEqual(now)
     })
   })
 
@@ -316,10 +316,8 @@ describe('LoginUser', () => {
       const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
       const userCredentialAfter = await userCredentialDatabaseHelper.findUserCredential(userId)
 
-      expect(result).toEqual({
-        success: false,
-        error: LoginUserApplicationError.invalidCredentials(userId),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidCredentials(userId))
 
       expect(domainEventsBefore.length).toBe(0)
       expect(domainEventsBefore).toEqual([])
@@ -328,7 +326,7 @@ describe('LoginUser', () => {
       expect(userCredentialBefore).toEqual(userCredentialAfter)
 
       expect(domainEventsAfter[0].name).toEqual(DomainEventName.failedLoginAttempt().value)
-      expect(domainEventsAfter[0].occurred_at.getTime()).toBe(now.getTime())
+      expect(domainEventsAfter[0].occurred_at).toEqual(now)
     })
 
     describe('when user is not found or is deactivated', () => {
@@ -345,10 +343,8 @@ describe('LoginUser', () => {
         const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
         const userCredentialAfter = await userCredentialDatabaseHelper.findUserCredential(userId)
 
-        expect(result).toEqual({
-          success: false,
-          error: LoginUserApplicationError.userNotFound(request.email),
-        })
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound(request.email))
 
         expect(domainEventsBefore.length).toBe(0)
         expect(domainEventsBefore).toEqual([])
@@ -393,8 +389,8 @@ describe('LoginUser', () => {
 
       expect(activeSessionsBefore).toEqual(activeSessionsAfter)
       expect(domainEventsBefore).toEqual(domainEventsAfter)
-      expect(userCredentialBefore).toBe(null)
-      expect(userCredentialAfter).toBe(null)
+      expect(userCredentialBefore).toBeNull()
+      expect(userCredentialAfter).toBeNull()
     })
 
     describe('when there are errors during session revocation', () => {})

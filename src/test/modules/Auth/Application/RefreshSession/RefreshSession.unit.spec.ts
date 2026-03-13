@@ -218,10 +218,8 @@ describe('RefreshToken', () => {
 
         const result = await useCase.execute(request)
 
-        expect(result).toEqual({
-          success: false,
-          error: RefreshSessionApplicationError.invalidTokenFormat(),
-        })
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.invalidTokenFormat())
 
         expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
       }
@@ -252,10 +250,9 @@ describe('RefreshToken', () => {
 
       const result = await useCase.execute(request)
 
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.sessionNotFound(),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionNotFound())
+
       expect(mockedUserRepository.findByIdWithLock).not.toHaveBeenCalled()
     })
 
@@ -266,10 +263,9 @@ describe('RefreshToken', () => {
       const useCase = buildUseCase()
       const result = await useCase.execute(request)
 
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id.value),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id.value))
+
       expect(mockedLoggerService.warn).toHaveBeenCalledWith('Session refresh rejected', {
         sessionId: currentSession.id.value,
         userId: userId.value,
@@ -285,10 +281,9 @@ describe('RefreshToken', () => {
       const useCase = buildUseCase()
       const result = await useCase.execute(request)
 
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id.value),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id.value))
+
       expect(mockedLoggerService.warn).toHaveBeenCalledWith('Session refresh rejected', {
         sessionId: currentSession.id.value,
         userId: userId.value,
@@ -303,10 +298,9 @@ describe('RefreshToken', () => {
 
         const result = await useCase.execute(request)
 
-        expect(result).toEqual({
-          success: false,
-          error: RefreshSessionApplicationError.userNotFound(userId.value),
-        })
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userNotFound(userId.value))
+
         expect(mockedLoggerService.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
           userId: userId.value,
           sessionId: currentSession.id.value,
@@ -347,10 +341,8 @@ describe('RefreshToken', () => {
       const result = await useCase.execute(request)
 
       expect(result.success).toBe(false)
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.sessionInconsistency(serviceError.message),
-      })
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionInconsistency(serviceError.message))
+
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
 
@@ -366,19 +358,16 @@ describe('RefreshToken', () => {
       const result = await useCase.execute(request)
 
       expect(result.success).toBe(false)
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.revocationFailed(serviceError.message),
-      })
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.revocationFailed(serviceError.message))
+
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
 
     it('should return error when UserSessionPolicyManagerApplicationService returns an unknown error', async () => {
-      const unknownServiceError: UserSessionPolicyManagerApplicationError = {
-        message: 'Unexpected error',
-        id: 'unexpected-error',
-        name: UserSessionPolicyManagerApplicationError.name,
-      }
+      const unknownServiceError = {
+        message: 'Unknown error',
+        id: 'user_session_policy_manager_application_service_unknown_error',
+      } as unknown as UserSessionPolicyManagerApplicationError
 
       mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh.mockReturnValue({
         success: false,
@@ -389,10 +378,10 @@ describe('RefreshToken', () => {
       const result = await useCase.execute(request)
 
       expect(result.success).toBe(false)
-      expect(result).toEqual({
-        success: false,
-        error: RefreshSessionApplicationError.internalError(`Unknown internal error: ${unknownServiceError.message}`),
-      })
+      expect(result['error']).toStrictEqual(
+        RefreshSessionApplicationError.internalError(`Unknown internal error: ${unknownServiceError.message}`),
+      )
+
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
 

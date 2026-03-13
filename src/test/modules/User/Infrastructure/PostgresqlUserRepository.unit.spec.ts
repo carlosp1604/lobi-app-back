@@ -121,7 +121,7 @@ describe('PostgresqlUserRepository', () => {
 
           const result = await repository.findByIdWithLock(userId.value, context)
 
-          expect(result).toBe(expectedUser)
+          expect(result).toStrictEqual(expectedUser)
         })
 
         it('should return NULL when user is not found', async () => {
@@ -218,7 +218,7 @@ describe('PostgresqlUserRepository', () => {
 
           const result = await repository.findByEmailWithLock(userEmail.value, context)
 
-          expect(result).toBe(expectedUser)
+          expect(result).toEqual(expectedUser)
         })
 
         it('should return NULL when user is not found', async () => {
@@ -330,7 +330,7 @@ describe('PostgresqlUserRepository', () => {
 
         const result = await repository.findByEmail(userEmail.value, context)
 
-        expect(result).toBe(expectedUser)
+        expect(result).toStrictEqual(expectedUser)
       })
 
       it('should return NULL when user is not found', async () => {

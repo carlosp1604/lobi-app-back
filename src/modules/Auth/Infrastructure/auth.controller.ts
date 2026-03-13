@@ -1,6 +1,7 @@
 import type { FastifyReply } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import {
+  CLOSE_USER_SESSION,
   CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
   GET_ACTIVE_SESSIONS,
@@ -62,6 +63,9 @@ import {
   GoneException,
   NotFoundException,
   Get,
+  Delete,
+  Param,
+  ParseUUIDPipe,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
@@ -102,6 +106,10 @@ import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/Logou
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
+import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
+import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
+import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
+import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
 
 @Controller('auth')
 export class AuthController {
@@ -113,6 +121,7 @@ export class AuthController {
     @Inject(CREATE_USER) private readonly createUser: CreateUser,
     @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
     @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
+    @Inject(CLOSE_USER_SESSION) private readonly closeUserSession: CloseUserSession,
     @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
     private readonly configService: ConfigService<Env, true>,
   ) {}
@@ -569,19 +578,88 @@ export class AuthController {
     if (!result.success) {
       const errorId = result.error.id
 
-      if (
-        errorId === LogoutUserApplicationError.sessionNotFoundId ||
-        errorId === LogoutUserApplicationError.sessionDoesNotBelongToUserId ||
-        errorId === LogoutUserApplicationError.invalidInputId
-      ) {
+      const obfuscatedErrors = [
+        LogoutUserApplicationError.userNotFoundId,
+        LogoutUserApplicationError.userDisabledId,
+        LogoutUserApplicationError.cannotRevokeSessionId,
+        LogoutUserApplicationError.sessionNotFoundId,
+        LogoutUserApplicationError.sessionDoesNotBelongToUserId,
+      ]
+
+      if (obfuscatedErrors.includes(errorId)) {
         this.clearCookies(response)
+
         return
+      }
+
+      if (errorId === LogoutUserApplicationError.invalidInputId) {
+        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+          cause: result.error,
+        })
       }
 
       throw new InternalServerErrorException(result.error)
     }
 
     this.clearCookies(response)
+
+    return
+  }
+
+  @Delete('sessions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async closeSession(
+    @AccessToken() accessToken: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UserIp() userIp: string,
+    @UserAgent() userAgent: string | undefined,
+    @Res({ passthrough: true }) response: FastifyReply,
+  ) {
+    const requestDto: CloseUserSessionApplicationRequestDto = {
+      sessionId: id,
+      userId: accessToken.sub,
+      currentSessionId: accessToken.sid,
+      ip: userIp,
+      userAgent: userAgent,
+    }
+
+    const result = await this.closeUserSession.execute(requestDto)
+
+    const isCurrentSession = id === accessToken.sid
+
+    if (!result.success) {
+      const errorId = result.error.id
+
+      const obfuscatedErrors = [
+        CloseUserSessionApplicationError.userNotFoundId,
+        CloseUserSessionApplicationError.userDisabledId,
+        CloseUserSessionApplicationError.cannotRevokeSessionId,
+        CloseUserSessionApplicationError.sessionNotFoundId,
+        CloseUserSessionApplicationError.sessionDoesNotBelongToUserId,
+      ]
+
+      if (obfuscatedErrors.includes(errorId)) {
+        if (isCurrentSession) {
+          this.clearCookies(response)
+        }
+
+        return
+      }
+
+      if (errorId === CloseUserSessionApplicationError.invalidInputId) {
+        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+          cause: result.error,
+        })
+      }
+
+      throw new InternalServerErrorException(result.error)
+    }
+
+    if (isCurrentSession) {
+      this.clearCookies(response)
+    }
+
     return
   }
 
@@ -597,6 +675,14 @@ export class AuthController {
     const result = await this.getActiveSessions.execute(requestDto)
 
     if (!result.success) {
+      const errorId = result.error.id
+
+      if (errorId === GetActiveSessionsApplicationError.invalidInputId) {
+        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+          cause: result.error,
+        })
+      }
+
       throw new InternalServerErrorException(result.error)
     }
 

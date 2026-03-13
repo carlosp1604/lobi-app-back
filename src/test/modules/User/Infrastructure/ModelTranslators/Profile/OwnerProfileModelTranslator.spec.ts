@@ -54,8 +54,8 @@ describe('OwnerProfileModelTranslator', () => {
         expect(result.contactPhone?.value).toBe(raw.contact_phone)
       }
 
-      expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
-      expect(result.updatedAt.getTime()).toBe(raw.updated_at.getTime())
+      expect(result.createdAt).toEqual(raw.created_at)
+      expect(result.updatedAt).toEqual(raw.updated_at)
     }
 
     it('should return domain object when nullable fields are not NULL', () => {
@@ -123,8 +123,8 @@ describe('OwnerProfileModelTranslator', () => {
         expect(result.contact_phone).toBe(domain.contactPhone.value)
       }
 
-      expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
-      expect(result.updated_at.getTime()).toBe(domain.updatedAt.getTime())
+      expect(result.created_at).toEqual(domain.createdAt)
+      expect(result.updated_at).toEqual(domain.updatedAt)
     }
 
     beforeEach(() => {
@@ -180,8 +180,8 @@ describe('OwnerProfileModelTranslator', () => {
       expect(domain.companyName?.equals(snapshot.companyName)).toBe(true)
       expect(domain.taxId?.equals(snapshot.taxId)).toBe(true)
       expect(domain.contactPhone?.equals(snapshot.contactPhone)).toBe(true)
-      expect(domain.createdAt.getTime()).toBe(snapshot.createdAt.getTime())
-      expect(domain.updatedAt.getTime()).toBe(snapshot.updatedAt.getTime())
+      expect(domain.createdAt).toEqual(snapshot.createdAt)
+      expect(domain.updatedAt).toEqual(snapshot.updatedAt)
     })
   })
 })

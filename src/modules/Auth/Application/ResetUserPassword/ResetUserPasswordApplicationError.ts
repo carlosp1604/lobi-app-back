@@ -37,6 +37,8 @@ export class ResetUserPasswordApplicationError {
 }
 
 export class ResetUserPasswordError extends Error {
+  public readonly __brand = 'ResetUserPasswordError' as const
+
   public readonly id: string
   public readonly name: string
 

@@ -2,6 +2,8 @@ import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 export class SharedDomainException extends DomainException {
+  public readonly __brand = 'SharedDomainException' as const
+
   public static invalidIdentifierId = 'shared_domain_invalid_identifier'
   public static invalidEmailAddressId = 'shared_domain_invalid_email_address'
 

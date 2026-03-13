@@ -1,4 +1,6 @@
 export class UserSessionPolicyManagerApplicationError extends Error {
+  public readonly __brand = 'UserSessionPolicyManagerApplicationError' as const
+
   public readonly id: string
   public readonly name: string
 

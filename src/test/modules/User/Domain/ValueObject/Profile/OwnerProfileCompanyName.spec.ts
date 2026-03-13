@@ -45,7 +45,7 @@ describe('OwnerProfileCompanyName', () => {
         const result = OwnerProfileCompanyName.safeCreate(invalidName)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toEqual(ProfileDomainException.invalidOwnerCompanyName(invalidName))
+        expect(result['error']).toStrictEqual(ProfileDomainException.invalidOwnerCompanyName(invalidName))
       },
     )
   })

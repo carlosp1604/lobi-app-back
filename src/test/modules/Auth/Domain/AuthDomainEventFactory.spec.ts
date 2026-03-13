@@ -10,21 +10,22 @@ import { mock, mockReset } from 'jest-mock-extended'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
+import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 describe('AuthDomainEventFactory', () => {
-  const validEventId = IdentifierMother.valid()
-  const validUserId = IdentifierMother.valid()
-  const validEmail = EmailAddressMother.valid()
-  const validUserAgent = UserAgentMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const eventId = IdentifierMother.valid()
+  const baseUserAgent = UserAgentMother.valid()
+  const baseLocation = DeviceLocationMother.valid()
+  const baseIpHash = UserSessionIpHashMother.valid()
+
   const now = new Date('2026-02-19T16:18:00.000Z')
 
   const mockedIdGenerator = mock<IdGeneratorServiceInterface>()
 
   beforeEach(() => {
     mockReset(mockedIdGenerator)
-
-    mockedIdGenerator.generateId.mockReturnValue(validEventId.value)
+    mockedIdGenerator.generateId.mockReturnValue(eventId.value)
   })
 
   const buildFactory = () => {
@@ -36,61 +37,78 @@ describe('AuthDomainEventFactory', () => {
     expect(mockedIdGenerator.generateId).toHaveBeenCalledTimes(1)
   }
 
-  describe('createPasswordResetEvent', () => {
-    it('should create a valid DomainEvent for password reset', () => {
-      const location = DeviceLocationMother.valid()
+  const checkBaseEventStructure = (
+    event: DomainEvent,
+    expectedName: DomainEventName,
+    expectedAggregateType: DomainEventAggregateType,
+    expectedAggregateId: Identifier,
+  ) => {
+    expect(event.id.equals(eventId)).toBe(true)
+    expect(event.name.equals(expectedName)).toBe(true)
+    expect(event.aggregateType.equals(expectedAggregateType)).toBe(true)
+    expect(event.aggregateId.equals(expectedAggregateId)).toBe(true)
+    expect(event.occurredAt).toEqual(now)
+  }
 
+  describe('createPasswordResetEvent', () => {
+    const userId = IdentifierMother.valid()
+    const email = EmailAddressMother.valid()
+
+    it('should create a valid DomainEvent for password reset', () => {
       const factory = buildFactory()
-      const event = factory.createPasswordResetEvent(validUserId, validEmail, location, validUserAgent, validIpHash.value, now)
+
+      const event = factory.createPasswordResetEvent(userId, email, baseLocation, baseUserAgent, baseIpHash.value, now)
 
       checkIdGeneratorCall()
-
-      expect(event.id.equals(validEventId)).toBe(true)
-      expect(event.name.equals(DomainEventName.successfulResetPassword())).toBe(true)
-      expect(event.aggregateType.equals(DomainEventAggregateType.user())).toBe(true)
-      expect(event.aggregateId.value).toBe(validUserId.value)
-      expect(event.occurredAt).toBe(now)
+      checkBaseEventStructure(event, DomainEventName.successfulResetPassword(), DomainEventAggregateType.user(), userId)
 
       expect(event.payload).toEqual({
-        userId: validUserId.value,
-        email: validEmail.value,
+        userId: userId.value,
+        email: email.value,
         deviceLocation: {
-          city: location.city,
-          countryCode: location.countryCode,
+          city: baseLocation.city,
+          countryCode: baseLocation.countryCode,
         },
       })
 
       expect(event.metadata).toEqual({
-        ipHash: validIpHash.value,
-        ua: validUserAgent.value,
+        ipHash: baseIpHash.value,
+        ua: baseUserAgent.value,
       })
     })
 
     it('should handle null location and ipHash correctly', () => {
       const factory = buildFactory()
 
-      const event = factory.createPasswordResetEvent(validUserId, validEmail, null, validUserAgent, null, now)
+      const event = factory.createPasswordResetEvent(userId, email, null, baseUserAgent, null, now)
 
       checkIdGeneratorCall()
+      checkBaseEventStructure(event, DomainEventName.successfulResetPassword(), DomainEventAggregateType.user(), userId)
 
-      expect(event.payload.deviceLocation).toBeNull()
-      expect(event.payload.userId).toBe(validUserId.value)
-      expect(event.metadata.ipHash).toBeNull()
-      expect(event.metadata.ua).toBe(validUserAgent.value)
+      expect(event.payload).toEqual({
+        userId: userId.value,
+        email: email.value,
+        deviceLocation: null,
+      })
+
+      expect(event.metadata).toEqual({
+        ipHash: null,
+        ua: baseUserAgent.value,
+      })
     })
   })
 
   describe('createSuccessfulLoginEvent', () => {
-    const expectedDeviceLocation = DeviceLocationMother.valid()
+    const userId = IdentifierMother.valid()
     let userSessionBuilder: UserSessionTestBuilder
 
     beforeEach(() => {
       userSessionBuilder = new UserSessionTestBuilder()
         .withId(IdentifierMother.valid())
-        .withUserId(validUserId)
-        .withDeviceLocation(expectedDeviceLocation)
-        .withIpHash(validIpHash)
-        .withUserAgent(validUserAgent)
+        .withUserId(userId)
+        .withDeviceLocation(baseLocation)
+        .withIpHash(baseIpHash)
+        .withUserAgent(baseUserAgent)
     })
 
     it('should create a valid DomainEvent from a UserSession', () => {
@@ -101,117 +119,138 @@ describe('AuthDomainEventFactory', () => {
       const event = factory.createSuccessfulLoginEvent(session, isNewDevice, now)
 
       checkIdGeneratorCall()
-
-      expect(event.id.equals(validEventId)).toBe(true)
-      expect(event.name.equals(DomainEventName.successfulLogin())).toBe(true)
-      expect(event.aggregateType.equals(DomainEventAggregateType.user())).toBe(true)
-      expect(event.aggregateId.value).toBe(validUserId.value)
+      checkBaseEventStructure(event, DomainEventName.successfulLogin(), DomainEventAggregateType.user(), userId)
 
       expect(event.payload).toEqual({
-        userId: validUserId.value,
+        userId: userId.value,
         sessionId: session.id.value,
         isNewDevice: isNewDevice,
         deviceLocation: {
-          city: expectedDeviceLocation.city,
-          countryCode: expectedDeviceLocation.countryCode,
+          city: baseLocation.city,
+          countryCode: baseLocation.countryCode,
         },
       })
 
       expect(event.metadata).toEqual({
-        ipHash: validIpHash.value,
-        ua: validUserAgent.value,
+        ipHash: baseIpHash.value,
+        ua: baseUserAgent.value,
       })
     })
 
     it('should handle null location and ipHash in session correctly', () => {
+      const isNewDevice = false
       const sessionWithNullishIpHashAndLocation = userSessionBuilder.withIpHash(null).withDeviceLocation(null).build()
 
       const factory = buildFactory()
-      const event = factory.createSuccessfulLoginEvent(sessionWithNullishIpHashAndLocation, false, now)
+      const event = factory.createSuccessfulLoginEvent(sessionWithNullishIpHashAndLocation, isNewDevice, now)
 
       checkIdGeneratorCall()
+      checkBaseEventStructure(event, DomainEventName.successfulLogin(), DomainEventAggregateType.user(), userId)
 
-      expect(event.payload.deviceLocation).toBeNull()
-      expect(event.metadata.ipHash).toBeNull()
+      expect(event.payload).toEqual({
+        userId: userId.value,
+        sessionId: sessionWithNullishIpHashAndLocation.id.value,
+        isNewDevice: isNewDevice,
+        deviceLocation: null,
+      })
+
+      expect(event.metadata).toEqual({
+        ipHash: null,
+        ua: baseUserAgent.value,
+      })
     })
   })
 
   describe('createFailedAttemptEvent', () => {
+    const userId = IdentifierMother.valid()
+
     it('should create a valid DomainEvent for a failed login attempt', () => {
-      const location = DeviceLocationMother.valid()
       const factory = buildFactory()
 
-      const event = factory.createFailedAttemptEvent(validUserId, location, validUserAgent, validIpHash.value, now)
+      const event = factory.createFailedAttemptEvent(userId, baseLocation, baseUserAgent, baseIpHash.value, now)
 
       checkIdGeneratorCall()
-
-      expect(event.id.equals(validEventId)).toBe(true)
-      expect(event.name.equals(DomainEventName.failedLoginAttempt())).toBe(true)
-      expect(event.aggregateType.equals(DomainEventAggregateType.user())).toBe(true)
-      expect(event.aggregateId.value).toBe(validUserId.value)
+      checkBaseEventStructure(event, DomainEventName.failedLoginAttempt(), DomainEventAggregateType.user(), userId)
 
       expect(event.payload).toEqual({
-        userId: validUserId.value,
+        userId: userId.value,
         deviceLocation: {
-          city: location.city,
-          countryCode: location.countryCode,
+          city: baseLocation.city,
+          countryCode: baseLocation.countryCode,
         },
       })
 
       expect(event.metadata).toEqual({
-        ipHash: validIpHash.value,
-        ua: validUserAgent.value,
+        ipHash: baseIpHash.value,
+        ua: baseUserAgent.value,
       })
     })
 
     it('should handle null location and ipHash correctly', () => {
       const factory = buildFactory()
 
-      const event = factory.createFailedAttemptEvent(validUserId, null, validUserAgent, null, now)
+      const event = factory.createFailedAttemptEvent(userId, null, baseUserAgent, null, now)
 
-      expect(event.payload.deviceLocation).toBeNull()
-      expect(event.metadata.ipHash).toBeNull()
-      expect(event.metadata.ua).toBe(validUserAgent.value)
+      checkIdGeneratorCall()
+      checkBaseEventStructure(event, DomainEventName.failedLoginAttempt(), DomainEventAggregateType.user(), userId)
+
+      expect(event.payload).toEqual({
+        userId: userId.value,
+        deviceLocation: null,
+      })
+
+      expect(event.metadata).toEqual({
+        ipHash: null,
+        ua: baseUserAgent.value,
+      })
     })
   })
 
-  describe('createSuccessfulSignupDomainEvent', () => {
+  describe('createSuccessfulSignupEvent', () => {
+    const userId = IdentifierMother.valid()
+    const email = EmailAddressMother.valid()
+
     it('should create a valid DomainEvent for a successful signup', () => {
-      const location = DeviceLocationMother.valid()
       const factory = buildFactory()
 
-      const event = factory.createSuccessfulSignupDomainEvent(validUserId, validEmail, location, validUserAgent, validIpHash.value, now)
+      const event = factory.createSuccessfulSignupEvent(userId, email, baseLocation, baseUserAgent, baseIpHash.value, now)
 
       checkIdGeneratorCall()
-
-      expect(event.id.equals(validEventId)).toBe(true)
-      expect(event.name.equals(DomainEventName.successfulSignup())).toBe(true)
-      expect(event.aggregateType.equals(DomainEventAggregateType.user())).toBe(true)
-      expect(event.aggregateId.value).toBe(validUserId.value)
+      checkBaseEventStructure(event, DomainEventName.successfulSignup(), DomainEventAggregateType.user(), userId)
 
       expect(event.payload).toEqual({
-        userId: validUserId.value,
+        userId: userId.value,
         deviceLocation: {
-          city: location.city,
-          countryCode: location.countryCode,
+          city: baseLocation.city,
+          countryCode: baseLocation.countryCode,
         },
-        email: validEmail.value,
+        email: email.value,
       })
 
       expect(event.metadata).toEqual({
-        ipHash: validIpHash.value,
-        ua: validUserAgent.value,
+        ipHash: baseIpHash.value,
+        ua: baseUserAgent.value,
       })
     })
 
     it('should handle null location and ipHash correctly', () => {
       const factory = buildFactory()
 
-      const event = factory.createSuccessfulSignupDomainEvent(validUserId, validEmail, null, validUserAgent, null, now)
+      const event = factory.createSuccessfulSignupEvent(userId, email, null, baseUserAgent, null, now)
 
-      expect(event.payload.deviceLocation).toBeNull()
-      expect(event.metadata.ipHash).toBeNull()
-      expect(event.metadata.ua).toBe(validUserAgent.value)
+      checkIdGeneratorCall()
+      checkBaseEventStructure(event, DomainEventName.successfulSignup(), DomainEventAggregateType.user(), userId)
+
+      expect(event.payload).toEqual({
+        userId: userId.value,
+        deviceLocation: null,
+        email: email.value,
+      })
+
+      expect(event.metadata).toEqual({
+        ipHash: null,
+        ua: baseUserAgent.value,
+      })
     })
   })
 
@@ -221,25 +260,25 @@ describe('AuthDomainEventFactory', () => {
     const language = 'es'
 
     it('should create a valid DomainEvent for an email verification request', () => {
-      const location = DeviceLocationMother.valid()
       const factory = buildFactory()
 
       const event = factory.createEmailVerificationRequestEvent(
         verificationToken,
         resendCode,
         language,
-        location,
-        validUserAgent,
-        validIpHash.value,
+        baseLocation,
+        baseUserAgent,
+        baseIpHash.value,
         now,
       )
 
       checkIdGeneratorCall()
-
-      expect(event.id.equals(validEventId)).toBe(true)
-      expect(event.name.equals(DomainEventName.emailVerificationRequest())).toBe(true)
-      expect(event.aggregateType.equals(DomainEventAggregateType.verificationToken())).toBe(true)
-      expect(event.aggregateId.value).toBe(verificationToken.id.value)
+      checkBaseEventStructure(
+        event,
+        DomainEventName.emailVerificationRequest(),
+        DomainEventAggregateType.verificationToken(),
+        verificationToken.id,
+      )
 
       expect(event.payload).toEqual({
         email: verificationToken.email.value,
@@ -247,33 +286,114 @@ describe('AuthDomainEventFactory', () => {
         resendCode,
         lang: language,
         deviceLocation: {
-          city: location.city,
-          countryCode: location.countryCode,
+          city: baseLocation.city,
+          countryCode: baseLocation.countryCode,
         },
       })
 
       expect(event.metadata).toEqual({
-        ipHash: validIpHash.value,
-        ua: validUserAgent.value,
+        ipHash: baseIpHash.value,
+        ua: baseUserAgent.value,
       })
     })
 
     it('should handle null location and ipHash correctly', () => {
       const factory = buildFactory()
 
-      const event = factory.createEmailVerificationRequestEvent(
-        verificationToken,
-        resendCode,
-        language,
-        null,
-        validUserAgent,
-        null,
-        now,
+      const event = factory.createEmailVerificationRequestEvent(verificationToken, resendCode, language, null, baseUserAgent, null, now)
+
+      checkIdGeneratorCall()
+      checkBaseEventStructure(
+        event,
+        DomainEventName.emailVerificationRequest(),
+        DomainEventAggregateType.verificationToken(),
+        verificationToken.id,
       )
 
-      expect(event.payload.deviceLocation).toBeNull()
-      expect(event.metadata.ipHash).toBeNull()
-      expect(event.metadata.ua).toBe(validUserAgent.value)
+      expect(event.payload).toEqual({
+        email: verificationToken.email.value,
+        purpose: verificationToken.purpose.value,
+        resendCode,
+        lang: language,
+        deviceLocation: null,
+      })
+
+      expect(event.metadata).toEqual({
+        ipHash: null,
+        ua: baseUserAgent.value,
+      })
+    })
+  })
+
+  describe('createClosedSessionEvent', () => {
+    const targetUserId = IdentifierMother.valid()
+    const targetSessionId = IdentifierMother.valid()
+    const actorSessionId = IdentifierMother.valid()
+
+    it('should create a valid DomainEvent for a closed session', () => {
+      const factory = buildFactory()
+
+      const targetSession = new UserSessionTestBuilder()
+        .withId(targetSessionId)
+        .withUserId(targetUserId)
+        .withDeviceLocation(baseLocation)
+        .build()
+
+      const actorLocation = DeviceLocationMother.valid()
+
+      const event = factory.createClosedSessionEvent(targetSession, actorSessionId, actorLocation, baseUserAgent, baseIpHash.value, now)
+
+      checkIdGeneratorCall()
+      checkBaseEventStructure(event, DomainEventName.closedSession(), DomainEventAggregateType.userSession(), targetSession.id)
+
+      expect(event.payload).toEqual({
+        userId: targetSession.userId.value,
+        targetSessionId: targetSession.id.value,
+        targetDeviceLocation: {
+          city: baseLocation.city,
+          countryCode: baseLocation.countryCode,
+        },
+        actorDeviceLocation: {
+          city: actorLocation.city,
+          countryCode: actorLocation.countryCode,
+        },
+        actorUserAgent: baseUserAgent.value,
+      })
+
+      expect(event.metadata).toEqual({
+        ipHash: baseIpHash.value,
+        ua: baseUserAgent.value,
+        actorSessionId: actorSessionId.value,
+      })
+    })
+
+    it('should handle null locations and ipHash correctly for both target and actor', () => {
+      const factory = buildFactory()
+
+      const targetSession = new UserSessionTestBuilder()
+        .withId(targetSessionId)
+        .withUserId(targetUserId)
+        .withDeviceLocation(null)
+        .build()
+
+      const event = factory.createClosedSessionEvent(targetSession, actorSessionId, null, baseUserAgent, null, now)
+
+      checkIdGeneratorCall()
+      checkBaseEventStructure(event, DomainEventName.closedSession(), DomainEventAggregateType.userSession(), targetSession.id)
+
+      expect(event.payload).toEqual({
+        userId: targetSession.userId.value,
+        targetSessionId: targetSession.id.value,
+        targetDeviceLocation: null,
+        actorDeviceLocation: null,
+        actorUserAgent: baseUserAgent.value,
+      })
+
+      expect(event.metadata).toEqual({
+        ipHash: null,
+        ua: baseUserAgent.value,
+        actorSessionId: actorSessionId.value,
+      })
     })
   })
 })

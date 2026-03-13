@@ -36,9 +36,9 @@ describe('VerificationTokenModelTranslator', () => {
       expect(result.email.value).toBe(raw.email)
       expect(result.tokenHash.value).toBe(raw.token_hash)
       expect(result.purpose.value).toBe(raw.purpose)
-      expect(result.expiresAt.getTime()).toBe(raw.expires_at.getTime())
+      expect(result.expiresAt).toEqual(raw.expires_at)
       expect(result.usedAt).toEqual(raw.used_at)
-      expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
+      expect(result.createdAt).toEqual(raw.created_at)
     }
 
     it('should return the correct domain object when nullable fields are not NULL', () => {
@@ -47,7 +47,7 @@ describe('VerificationTokenModelTranslator', () => {
       const result = VerificationTokenModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
-      expect(result.usedAt?.getTime()).toBe(now.getTime())
+      expect(result.usedAt).toEqual(now)
     })
 
     it('should return the correct domain object when nullable fields are NULL', () => {
@@ -96,9 +96,9 @@ describe('VerificationTokenModelTranslator', () => {
       expect(result.email).toBe(domain.email.value)
       expect(result.token_hash).toBe(domain.tokenHash.value)
       expect(result.purpose).toBe(domain.purpose.value)
-      expect(result.expires_at.getTime()).toBe(domain.expiresAt.getTime())
+      expect(result.expires_at).toEqual(domain.expiresAt)
       expect(result.used_at).toEqual(domain.usedAt)
-      expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
+      expect(result.created_at).toEqual(domain.createdAt)
     }
 
     it('should return the correct raw model when nullable fields are not NULL', () => {
@@ -107,7 +107,7 @@ describe('VerificationTokenModelTranslator', () => {
       const result = VerificationTokenModelTranslator.toDatabase(verificationToken)
 
       checkResult(result, verificationToken)
-      expect(result.used_at?.getTime()).toBe(now.getTime())
+      expect(result.used_at).toEqual(now)
     })
 
     it('should return the correct raw model when nullable fields are NULL', () => {
@@ -138,10 +138,10 @@ describe('VerificationTokenModelTranslator', () => {
       expect(verificationToken.email.equals(snapshot.email)).toBe(true)
       expect(verificationToken.tokenHash.equals(snapshot.tokenHash)).toBe(true)
       expect(verificationToken.purpose.equals(snapshot.purpose)).toBe(true)
-      expect(verificationToken.expiresAt.getTime()).toEqual(snapshot.expiresAt.getTime())
+      expect(verificationToken.expiresAt).toEqual(snapshot.expiresAt)
       expect(verificationToken.usedAt).toBeNull()
       expect(snapshot.usedAt).toBeNull()
-      expect(verificationToken.createdAt.getTime()).toEqual(snapshot.createdAt.getTime())
+      expect(verificationToken.createdAt).toEqual(snapshot.createdAt)
     })
   })
 })

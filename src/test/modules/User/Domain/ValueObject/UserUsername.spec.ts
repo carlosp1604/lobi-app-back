@@ -32,14 +32,14 @@ describe('UserUsername', () => {
       const result = UserUsername.safeCreate(username)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(UserDomainException.invalidUsername(username))
+      expect(result['error']).toStrictEqual(UserDomainException.invalidUsername(username))
     })
   })
 
   it('should store the correct value', () => {
-    const validValue = UserUsernameMother.valid().toString()
+    const validValue = UserUsernameMother.valid().value
     const usernameValueObject = UserUsername.fromString(validValue)
 
-    expect(usernameValueObject.value).toEqual(validValue)
+    expect(usernameValueObject.value).toBe(validValue)
   })
 })

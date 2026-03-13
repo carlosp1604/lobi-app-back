@@ -53,8 +53,8 @@ describe('SportsmanProfileModelTranslator', () => {
         expect(result.birthDate?.toISODate()).toBe(raw.birth_date)
       }
 
-      expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
-      expect(result.updatedAt.getTime()).toBe(raw.updated_at.getTime())
+      expect(result.createdAt).toEqual(raw.created_at)
+      expect(result.updatedAt).toEqual(raw.updated_at)
     }
 
     it('should return domain object when nullable fields are not NULL', () => {
@@ -114,8 +114,8 @@ describe('SportsmanProfileModelTranslator', () => {
         expect(result.birth_date).toBe(domain.birthDate.toISODate())
       }
 
-      expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
-      expect(result.updated_at.getTime()).toBe(domain.updatedAt.getTime())
+      expect(result.created_at).toEqual(domain.createdAt)
+      expect(result.updated_at).toEqual(domain.updatedAt)
     }
 
     beforeEach(() => {
@@ -166,8 +166,8 @@ describe('SportsmanProfileModelTranslator', () => {
       expect(domain.userId.equals(snapshot.userId)).toBe(true)
       expect(domain.bio?.equals(snapshot.bio)).toBe(true)
       expect(domain.birthDate?.equals(snapshot.birthDate)).toBe(true)
-      expect(domain.createdAt.getTime()).toBe(snapshot.createdAt.getTime())
-      expect(domain.updatedAt.getTime()).toBe(snapshot.updatedAt.getTime())
+      expect(domain.createdAt).toEqual(snapshot.createdAt)
+      expect(domain.updatedAt).toEqual(snapshot.updatedAt)
     })
   })
 })

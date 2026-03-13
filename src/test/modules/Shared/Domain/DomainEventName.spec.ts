@@ -19,39 +19,45 @@ describe('DomainEventName', () => {
     it('should store the correct value', () => {
       const domainEventNameValueObject = DomainEventName.fromString(ValidDomainEventNames.SUCCESSFUL_LOGIN)
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_LOGIN)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_LOGIN)
     })
   })
 
   describe('factories', () => {
-    it('factory should return successfulLogin', () => {
+    it('successfulLogin factory should return the correct domain event name', () => {
       const domainEventNameValueObject = DomainEventName.successfulLogin()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_LOGIN)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_LOGIN)
     })
 
-    it('factory should return successfulSignup', () => {
+    it('successfulSignup factory should return the correct domain event name', () => {
       const domainEventNameValueObject = DomainEventName.successfulSignup()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_SIGNUP)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_SIGNUP)
     })
 
-    it('factory should return successfulResetPassword', () => {
+    it('successfulResetPassword factory should return the correct domain event name', () => {
       const domainEventNameValueObject = DomainEventName.successfulResetPassword()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.SUCCESSFUL_RESET_PASSWORD)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.SUCCESSFUL_RESET_PASSWORD)
     })
 
-    it('factory should return failedLoginAttempt', () => {
+    it('failedLoginAttempt factory should return the correct domain event name', () => {
       const domainEventNameValueObject = DomainEventName.failedLoginAttempt()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.FAILED_LOGIN_ATTEMPT)
     })
 
-    it('factory should return emailVerificationRequest', () => {
+    it('emailVerificationRequest factory should return the correct domain event name', () => {
       const domainEventNameValueObject = DomainEventName.emailVerificationRequest()
 
-      expect(domainEventNameValueObject.value).toEqual(ValidDomainEventNames.EMAIL_VERIFICATION_REQUEST)
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.EMAIL_VERIFICATION_REQUEST)
+    })
+
+    it('closedSession factory should return the correct domain event name', () => {
+      const domainEventNameValueObject = DomainEventName.closedSession()
+
+      expect(domainEventNameValueObject.value).toBe(ValidDomainEventNames.CLOSED_SESSION)
     })
   })
 })

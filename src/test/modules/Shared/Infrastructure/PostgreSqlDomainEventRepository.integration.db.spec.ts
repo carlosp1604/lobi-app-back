@@ -76,7 +76,7 @@ describe('PostgreSqlDomainEventRepository', () => {
       expect(foundDomainEvent?.aggregate_id).toBe(domainEvent.aggregateId.value)
       expect(foundDomainEvent?.metadata).toEqual(domainEvent.metadata)
       expect(foundDomainEvent?.payload).toEqual(domainEvent.payload)
-      expect(foundDomainEvent?.occurred_at.getTime()).toBe(domainEvent.occurredAt.getTime())
+      expect(foundDomainEvent?.occurred_at).toEqual(domainEvent.occurredAt)
     })
 
     it('should throw error if domainEvent already exists', async () => {

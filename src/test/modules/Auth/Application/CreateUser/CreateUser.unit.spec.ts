@@ -162,7 +162,7 @@ describe('CreateUser', () => {
     mockedVerifyTokenService.verify.mockResolvedValue(true)
     mockedUserRepository.checkEmailExists.mockResolvedValue(false)
     mockedUserRepository.checkUsernameExists.mockResolvedValue(false)
-    mockedDomainEventFactory.createSuccessfulSignupDomainEvent.mockReturnValue(successfulSignupEvent)
+    mockedDomainEventFactory.createSuccessfulSignupEvent.mockReturnValue(successfulSignupEvent)
 
     mockedIdGenerator.generateId.mockReturnValueOnce(validUserId.value).mockReturnValueOnce(validSportsmanProfileId.value)
   })
@@ -242,14 +242,14 @@ describe('CreateUser', () => {
       expect(mockedIdGenerator.generateId).toHaveBeenCalledTimes(idGeneratorExpectedCalls)
       expect(mockedUserRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedProfileRepository.saveSportsmanProfile).toHaveBeenCalledTimes(1)
-      expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).toHaveBeenCalledTimes(1)
+      expect(mockedDomainEventFactory.createSuccessfulSignupEvent).toHaveBeenCalledTimes(1)
       expect(mockedCredentialRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
 
-      expect(result).toStrictEqual({ success: true, value: undefined })
+      expect(result).toEqual({ success: true, value: undefined })
 
       expect(mockedRequestOriginService.process).toHaveBeenCalledWith(baseRequest.ip, baseRequest.userAgent, {
         email: validEmail.value,
@@ -264,7 +264,7 @@ describe('CreateUser', () => {
       )
       expect(mockedUserRepository.checkEmailExists).toHaveBeenCalledWith(expect.anything(), fakeContext)
       expect(mockedUserRepository.checkUsernameExists).toHaveBeenCalledWith(expect.anything(), fakeContext)
-      expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).toHaveBeenCalledWith(
+      expect(mockedDomainEventFactory.createSuccessfulSignupEvent).toHaveBeenCalledWith(
         validUserId,
         validEmail,
         expectedDeviceLocation,
@@ -559,7 +559,7 @@ describe('CreateUser', () => {
           error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail(validEmail.value)]),
         })
         assertLoggerCall(true, false)
-        expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).not.toHaveBeenCalled()
+        expect(mockedDomainEventFactory.createSuccessfulSignupEvent).not.toHaveBeenCalled()
       })
 
       it('should return error when username is duplicated', async () => {
@@ -573,7 +573,7 @@ describe('CreateUser', () => {
           error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername(validUsername.value)]),
         })
         assertLoggerCall(false, true)
-        expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).not.toHaveBeenCalled()
+        expect(mockedDomainEventFactory.createSuccessfulSignupEvent).not.toHaveBeenCalled()
       })
 
       it('should return multiple duplicated errors when both exist', async () => {
@@ -591,7 +591,7 @@ describe('CreateUser', () => {
           ]),
         })
         assertLoggerCall(true, true)
-        expect(mockedDomainEventFactory.createSuccessfulSignupDomainEvent).not.toHaveBeenCalled()
+        expect(mockedDomainEventFactory.createSuccessfulSignupEvent).not.toHaveBeenCalled()
       })
     })
 

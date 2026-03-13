@@ -1,4 +1,6 @@
 export class GenerateVerificationTokenApplicationError extends Error {
+  public readonly __brand = 'GenerateVerificationTokenApplicationError' as const
+
   public readonly id: string
   public readonly name: string
 

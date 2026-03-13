@@ -28,23 +28,27 @@ describe('DomainEventAggregateType', () => {
     it('should store the correct value', () => {
       const domainEventAggregateTypeValueObject = DomainEventAggregateType.fromString(ValidDomainEventAggregateTypes.USER)
 
-      expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.USER)
+      expect(domainEventAggregateTypeValueObject.value).toBe(ValidDomainEventAggregateTypes.USER)
     })
   })
 
-  describe('user', () => {
-    it('factory should return user', () => {
+  describe('factories', () => {
+    it('user factory should return the correct domain event aggregate type', () => {
       const domainEventAggregateTypeValueObject = DomainEventAggregateType.user()
 
-      expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.USER)
+      expect(domainEventAggregateTypeValueObject.value).toBe(ValidDomainEventAggregateTypes.USER)
     })
-  })
 
-  describe('verificationToken', () => {
-    it('factory should return user', () => {
+    it('verificationToken factory should return the correct domain event aggregate type', () => {
       const domainEventAggregateTypeValueObject = DomainEventAggregateType.verificationToken()
 
-      expect(domainEventAggregateTypeValueObject.value).toEqual(ValidDomainEventAggregateTypes.VERIFICATION_TOKEN)
+      expect(domainEventAggregateTypeValueObject.value).toBe(ValidDomainEventAggregateTypes.VERIFICATION_TOKEN)
+    })
+
+    it('userSession factory should return the correct domain event aggregate type', () => {
+      const domainEventAggregateTypeValueObject = DomainEventAggregateType.userSession()
+
+      expect(domainEventAggregateTypeValueObject.value).toBe(ValidDomainEventAggregateTypes.USER_SESSION)
     })
   })
 })

@@ -344,10 +344,8 @@ describe('GenerateVerificationToken', () => {
 
       const result = await useCase.execute(invalidEmailRequest)
 
-      expect(result).toEqual({
-        success: false,
-        error: GenerateVerificationTokenApplicationError.invalidEmail(invalidEmail),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.invalidEmail(invalidEmail))
 
       expect(mockedUserRepository.findByEmail).not.toHaveBeenCalled()
     })
@@ -360,10 +358,8 @@ describe('GenerateVerificationToken', () => {
 
       const result = await useCase.execute(invalidPurposeRequest)
 
-      expect(result).toEqual({
-        success: false,
-        error: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose(invalidPurpose),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose(invalidPurpose))
 
       expect(mockedUserRepository.findByEmail).not.toHaveBeenCalled()
     })
@@ -379,10 +375,8 @@ describe('GenerateVerificationToken', () => {
 
       const result = await useCase.execute(requestBase)
 
-      expect(result).toEqual({
-        success: false,
-        error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(verificationTokenEmail.value),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken(verificationTokenEmail.value))
 
       expect(mockedVerificationTokenRepository.findByEmailWithLock).not.toHaveBeenCalled()
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
@@ -454,13 +448,10 @@ describe('GenerateVerificationToken', () => {
 
       const result = await useCase.execute(requestBase)
 
-      expect(result).toEqual({
-        success: false,
-        error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-          verificationTokenEmail.value,
-          purposeCreateAccount.value,
-        ),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(
+        GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(verificationTokenEmail.value, purposeCreateAccount.value),
+      )
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token generation rejected', {
         email: verificationTokenEmail.value,

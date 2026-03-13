@@ -63,26 +63,26 @@ describe('PostgreSqlUserSessionRepository', () => {
 
   const checkSession = (userSession: UserSession, rawUserSession: UserSessionRawWithRelationships) => {
     expect(userSession.userId.value).toBe(rawUserSession.user_id)
-    expect(userSession.createdAt.getTime()).toBe(rawUserSession.created_at.getTime())
-    expect(userSession.updatedAt.getTime()).toBe(rawUserSession.updated_at.getTime())
-    expect(userSession.expiresAt.getTime()).toBe(rawUserSession.expires_at.getTime())
+    expect(userSession.createdAt).toEqual(rawUserSession.created_at)
+    expect(userSession.updatedAt).toEqual(rawUserSession.updated_at)
+    expect(userSession.expiresAt).toEqual(rawUserSession.expires_at)
 
     if (userSession.revokedAt) {
-      expect(userSession.revokedAt.getTime()).toBe(rawUserSession.revoked_at?.getTime())
+      expect(userSession.revokedAt).toEqual(rawUserSession.revoked_at)
     } else {
-      expect(userSession.revokedAt).toBe(null)
-      expect(rawUserSession.revoked_at).toBe(null)
+      expect(userSession.revokedAt).toBeNull()
+      expect(rawUserSession.revoked_at).toBeNull()
     }
-    expect(userSession.ipHash).toBe(null)
-    expect(rawUserSession.ip_hash).toBe(null)
+    expect(userSession.ipHash).toBeNull()
+    expect(rawUserSession.ip_hash).toBeNull()
 
     if (userSession.deviceLocation) {
       expect(userSession.deviceLocation?.countryCode).toBe(rawUserSession.device_country_code)
       expect(userSession.deviceLocation?.city).toBe(rawUserSession.device_city)
     } else {
-      expect(userSession.deviceLocation).toBe(null)
-      expect(rawUserSession.device_city).toBe(null)
-      expect(rawUserSession.device_country_code).toBe(null)
+      expect(userSession.deviceLocation).toBeNull()
+      expect(rawUserSession.device_city).toBeNull()
+      expect(rawUserSession.device_country_code).toBeNull()
     }
 
     expect(userSession.userAgent.value).toBe(rawUserSession.user_agent)

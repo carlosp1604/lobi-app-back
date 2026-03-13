@@ -74,7 +74,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         assertCommonCalls()
         expect(verificationTokenModelTranslator).toHaveBeenCalledTimes(1)
         expect(verificationTokenModelTranslator).toHaveBeenCalledWith(rawToken)
-        expect(result).toBe(expectedVerificationToken)
+        expect(result).toStrictEqual(expectedVerificationToken)
       })
 
       it('should call services correctly and return null when verificationToken is not found', async () => {
@@ -167,7 +167,7 @@ describe('PostgreSqlVerificationTokenRepository', () => {
         assertCommonCalls()
         expect(verificationTokenModelTranslator).toHaveBeenCalledTimes(1)
         expect(verificationTokenModelTranslator).toHaveBeenCalledWith(rawToken)
-        expect(result).toBe(expectedVerificationToken)
+        expect(result).toStrictEqual(expectedVerificationToken)
       })
 
       it('should call services correctly and return null when verificationToken is not found', async () => {

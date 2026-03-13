@@ -28,8 +28,8 @@ describe('GetActiveSessionsUserSessionApplicationDtoTranslator', () => {
   const assertResult = (result: GetActiveSessionsUserSessionApplicationDto, isCurrent: boolean, location: DeviceLocation | null) => {
     expect(result.id).toEqual(sessionId.value)
     expect(result.userAgent).toEqual(userAgent.value)
-    expect(result.activeSince.getTime()).toEqual(now.getTime())
-    expect(result.expiresAt.getTime()).toEqual(expiresAt.getTime())
+    expect(result.activeSince).toEqual(now)
+    expect(result.expiresAt).toEqual(expiresAt)
     expect(result.isCurrent).toEqual(isCurrent)
 
     if (location) {

@@ -54,11 +54,11 @@ describe('PostgresqlUserRepository', () => {
     expect(result?.role.equals(UserRole.sportsman())).toBe(true)
     expect(result?.username.equals(username)).toBe(true)
     expect(result?.name.equals(userName)).toBe(true)
-    expect(result?.userUploadId).toBe(null)
-    expect(result?.deletedAt).toBe(null)
-    expect(result?.createdAt.getTime()).toBe(now.getTime())
-    expect(result?.updatedAt.getTime()).toBe(now.getTime())
-    expect(result?.emailVerifiedAt.getTime()).toBe(now.getTime())
+    expect(result?.userUploadId).toBeNull()
+    expect(result?.deletedAt).toBeNull()
+    expect(result?.createdAt).toEqual(now)
+    expect(result?.updatedAt).toEqual(now)
+    expect(result?.emailVerifiedAt).toEqual(now)
   }
 
   describe('findByEmailWithLock', () => {
@@ -284,8 +284,8 @@ describe('PostgresqlUserRepository', () => {
       expect(foundUser?.status).toBe(user.status.value)
       expect(foundUser?.role).toBe(user.role.value)
       expect(foundUser?.user_upload_id).toBe(user.userUploadId?.value ?? null)
-      expect(foundUser?.created_at.getTime()).toBe(user.createdAt.getTime())
-      expect(foundUser?.updated_at.getTime()).toBe(user.updatedAt.getTime())
+      expect(foundUser?.created_at).toEqual(user.createdAt)
+      expect(foundUser?.updated_at).toEqual(user.updatedAt)
     })
 
     it('should throw error when user already exists', async () => {
@@ -332,7 +332,7 @@ describe('PostgresqlUserRepository', () => {
 
         expect(updatedUser).not.toBeNull()
         expect(updatedUser?.status.equals(UserStatus.deactivated())).toBe(true)
-        expect(updatedUser?.updatedAt.getTime()).toBe(updateNow.getTime())
+        expect(updatedUser?.updatedAt).toEqual(updateNow)
       }
 
       it('should block a second transaction until first commit (findByEmailWithLock)', async () => {

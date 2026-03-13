@@ -2,6 +2,8 @@ import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 export class ProfileDomainException extends DomainException {
+  public readonly __brand = 'ProfileDomainException' as const
+
   public static invalidSportsmanBioId = 'user_profile_domain_invalid_sportsman_bio'
   public static invalidSportsmanBirthDateId = 'user_profile_domain_invalid_sportsman_birth_date'
   public static sportsmanBirthDateInFutureId = 'user_profile_domain_sportsman_birth_date_in_future'

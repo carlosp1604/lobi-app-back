@@ -13,6 +13,7 @@ import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructur
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
 import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
+import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 
 describe('GetActiveSessions', () => {
   const now = new Date('2026-03-10T10:40:00.000Z')
@@ -70,7 +71,11 @@ describe('GetActiveSessions', () => {
   }
 
   const buildUseCase = () => {
-    return new GetActiveSessions(new PostgreSqlUserSessionRepository(mockedResolver), new ClockServiceMock(now))
+    return new GetActiveSessions(
+      new PostgreSqlUserSessionRepository(mockedResolver),
+      new ClockServiceMock(now),
+      new LoggerServiceMock(),
+    )
   }
 
   describe('happy path', () => {

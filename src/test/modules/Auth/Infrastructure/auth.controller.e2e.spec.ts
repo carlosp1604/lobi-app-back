@@ -165,6 +165,19 @@ describe('AuthController', () => {
     expect(isBeingCleared).toBe(false)
   }
 
+  const checkClearedCookies = (cookies: Array<string>) => {
+    const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+    const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
+
+    expect(cookies).toBeDefined()
+
+    const isAccessCookieCleared = cookies.some((cookie) => cookie.includes(`${accessCookieName}=;`) && cookie.includes('Max-Age=0'))
+    const isRefreshCookieCleared = cookies.some((cookie) => cookie.includes(`${refreshCookieName}=;`) && cookie.includes('Max-Age=0'))
+
+    expect(isAccessCookieCleared).toBe(true)
+    expect(isRefreshCookieCleared).toBe(true)
+  }
+
   describe('login', () => {
     const userId = IdentifierMother.valid().value
     const userEmail = EmailAddressMother.random().value
@@ -1219,6 +1232,9 @@ describe('AuthController', () => {
     let userSessionDatabaseHelper: UserSessionDatabaseHelper
     let tokenService: TokenGeneratorApplicationServiceInterface
 
+    const userId = IdentifierMother.valid()
+    const sessionId = IdentifierMother.valid()
+
     beforeEach(() => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
       userSessionDatabaseHelper = new UserSessionDatabaseHelper(dataSource.manager)
@@ -1226,13 +1242,10 @@ describe('AuthController', () => {
     })
 
     const saveSetupInDatabase = async () => {
-      const userId = IdentifierMother.valid().value
-      const sessionId = IdentifierMother.valid().value
-
-      const rawUser = makeRawUser({ id: userId })
+      const rawUser = makeRawUser({ id: userId.value })
       const rawSession = makeRawSession({
-        id: sessionId,
-        user_id: userId,
+        id: sessionId.value,
+        user_id: userId.value,
         revoked_at: null,
         expires_at: futureDate,
       })
@@ -1242,20 +1255,7 @@ describe('AuthController', () => {
 
       const accessToken = await tokenService.generateAccessToken(rawSession.user_id, rawSession.id, rawSession.expires_at, now)
 
-      return { userId, sessionId, accessToken }
-    }
-
-    const checkClearedCookies = (cookies: Array<string>) => {
-      const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
-      const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
-
-      expect(cookies).toBeDefined()
-
-      const isAccessCookieCleared = cookies.some((cookie) => cookie.includes(`${accessCookieName}=;`) && cookie.includes('Max-Age=0'))
-      const isRefreshCookieCleared = cookies.some((cookie) => cookie.includes(`${refreshCookieName}=;`) && cookie.includes('Max-Age=0'))
-
-      expect(isAccessCookieCleared).toBe(true)
-      expect(isRefreshCookieCleared).toBe(true)
+      return { accessToken }
     }
 
     describe('happy path', () => {
@@ -1264,7 +1264,7 @@ describe('AuthController', () => {
 
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
-        return request(app.getHttpServer())
+        await request(app.getHttpServer())
           .post('/auth/logout')
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(204)
@@ -1274,6 +1274,10 @@ describe('AuthController', () => {
 
             checkClearedCookies(cookies)
           })
+
+        const revokedSession = await userSessionDatabaseHelper.findById(sessionId.value)
+        expect(revokedSession).not.toBeNull()
+        expect(revokedSession!.revoked_at).not.toBeNull()
       })
     })
 
@@ -1291,11 +1295,9 @@ describe('AuthController', () => {
       })
 
       it('should return 204 and clear cookies when session does not exist', async () => {
-        const userId = IdentifierMother.valid().value
-        const sessionId = IdentifierMother.valid().value
-        const accessToken = await tokenService.generateAccessToken(userId, sessionId, futureDate, now)
+        const accessToken = await tokenService.generateAccessToken(userId.value, sessionId.value, futureDate, now)
 
-        await userDatabaseHelper.save(makeRawUser({ id: userId }))
+        await userDatabaseHelper.save(makeRawUser({ id: userId.value }))
 
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
@@ -1307,6 +1309,146 @@ describe('AuthController', () => {
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
             checkClearedCookies(cookies)
+          })
+      })
+    })
+  })
+
+  describe('closeSession', () => {
+    let userDatabaseHelper: UserDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
+    let tokenService: TokenGeneratorApplicationServiceInterface
+
+    const userId = IdentifierMother.valid()
+    const sessionId = IdentifierMother.valid()
+
+    beforeEach(() => {
+      userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(dataSource.manager)
+      tokenService = app.get<TokenGeneratorApplicationServiceInterface>(TOKEN_GENERATOR)
+    })
+
+    const saveSetupInDatabase = async () => {
+      const rawUser = makeRawUser({ id: userId.value })
+      const rawSession = makeRawSession({
+        id: sessionId.value,
+        user_id: userId.value,
+        revoked_at: null,
+        expires_at: futureDate,
+      })
+
+      await userDatabaseHelper.save(rawUser)
+      await userSessionDatabaseHelper.save(rawSession)
+
+      const accessToken = await tokenService.generateAccessToken(rawSession.user_id, rawSession.id, rawSession.expires_at, now)
+
+      return { accessToken }
+    }
+
+    describe('happy path', () => {
+      it('should return 204 No Content and clear cookies when closing current session', async () => {
+        const { accessToken } = await saveSetupInDatabase()
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        await request(app.getHttpServer())
+          .delete(`/auth/sessions/${sessionId.value}`)
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            expect(response.body).toEqual({})
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkClearedCookies(cookies)
+          })
+
+        const revokedSession = await userSessionDatabaseHelper.findById(sessionId.value)
+        expect(revokedSession).not.toBeNull()
+        expect(revokedSession!.revoked_at).not.toBeNull()
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw 400 when session id in URL is not a valid UUID', async () => {
+        const invalidSessionId = IdentifierMother.invalid()
+
+        const { accessToken } = await saveSetupInDatabase()
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .delete(`/auth/sessions/${invalidSessionId}`)
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(400)
+      })
+
+      it('should throw 401 UnauthorizedException when access token is not present', async () => {
+        return request(app.getHttpServer()).delete(`/auth/sessions/${sessionId.value}`).expect(401)
+      })
+
+      it('should return 204 No Content and clear cookies when closing current session', async () => {
+        const accessToken = await tokenService.generateAccessToken(userId.value, sessionId.value, futureDate, now)
+
+        await userDatabaseHelper.save(makeRawUser({ id: userId.value }))
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .delete(`/auth/sessions/${sessionId.value}`)
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkClearedCookies(cookies)
+          })
+      })
+
+      it('should return 204 No Content and not clear cookies when closing a different session', async () => {
+        const { accessToken } = await saveSetupInDatabase()
+
+        const otherSessionId = IdentifierMother.valid()
+        await userSessionDatabaseHelper.save(
+          makeRawSession({
+            id: otherSessionId.value,
+            user_id: userId.value,
+            revoked_at: null,
+          }),
+        )
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .delete(`/auth/sessions/${otherSessionId.value}`)
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            expect(response.headers['set-cookie']).toBeUndefined()
+          })
+      })
+
+      it('should return 204 No Content and NOT clear cookies when trying to close another user session', async () => {
+        const { accessToken } = await saveSetupInDatabase()
+
+        const anotherUserId = IdentifierMother.valid()
+        const anotherSessionId = IdentifierMother.valid()
+        await userDatabaseHelper.save(makeRawUser({ id: anotherUserId.value }))
+
+        await userSessionDatabaseHelper.save(
+          makeRawSession({
+            id: anotherSessionId.value,
+            user_id: anotherUserId.value,
+            revoked_at: null,
+          }),
+        )
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .delete(`/auth/sessions/${anotherSessionId.value}`)
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            expect(response.headers['set-cookie']).toBeUndefined()
           })
       })
     })

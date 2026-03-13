@@ -31,9 +31,9 @@ describe('PasswordHash', () => {
   })
 
   it('should store the correct value', () => {
-    const validHash = PasswordHashMother.valid().toString()
+    const validHash = PasswordHashMother.valid().value
     const passwordHashValueObject = PasswordHash.fromString(validHash)
 
-    expect(passwordHashValueObject.value).toEqual(validHash)
+    expect(passwordHashValueObject.value).toBe(validHash)
   })
 })

@@ -42,7 +42,7 @@ describe('VerificationTokenValue', () => {
         const result = VerificationTokenValue.safeCreate(invalidCode)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toEqual(VerificationTokenDomainException.invalidVerificationTokenValue(invalidCode))
+        expect(result['error']).toStrictEqual(VerificationTokenDomainException.invalidVerificationTokenValue(invalidCode))
       },
     )
   })
@@ -51,6 +51,6 @@ describe('VerificationTokenValue', () => {
     const validValue = VerificationTokenValueMother.valid().value
     const verificationTokenValueValueObject = VerificationTokenValue.fromString(validValue)
 
-    expect(verificationTokenValueValueObject.value).toEqual(validValue)
+    expect(verificationTokenValueValueObject.value).toBe(validValue)
   })
 })

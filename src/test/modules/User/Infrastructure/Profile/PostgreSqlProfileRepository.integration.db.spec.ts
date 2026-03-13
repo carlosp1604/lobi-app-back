@@ -70,8 +70,8 @@ describe('PostgreSqlProfileRepository', () => {
       expect(foundProfile!.company_name).toBe(ownerProfile.companyName?.value ?? null)
       expect(foundProfile!.tax_id).toBe(ownerProfile.taxId?.value ?? null)
       expect(foundProfile!.contact_phone).toBe(ownerProfile.contactPhone?.value ?? null)
-      expect(foundProfile!.created_at.getTime()).toBe(ownerProfile.createdAt.getTime())
-      expect(foundProfile!.updated_at.getTime()).toBe(ownerProfile.updatedAt.getTime())
+      expect(foundProfile!.created_at).toEqual(ownerProfile.createdAt)
+      expect(foundProfile!.updated_at).toEqual(ownerProfile.updatedAt)
     })
 
     it('should throw error when owner profile already exists', async () => {
@@ -141,8 +141,8 @@ describe('PostgreSqlProfileRepository', () => {
       expect(foundProfile!.user_id).toBe(sportsmanProfile.userId.value)
       expect(foundProfile!.bio).toBe(sportsmanProfile.bio?.value ?? null)
       expect(foundProfile!.birth_date).toBe(sportsmanProfile.birthDate?.toISODate() ?? null)
-      expect(foundProfile!.created_at.getTime()).toBe(sportsmanProfile.createdAt.getTime())
-      expect(foundProfile!.updated_at.getTime()).toBe(sportsmanProfile.updatedAt.getTime())
+      expect(foundProfile!.created_at).toEqual(sportsmanProfile.createdAt)
+      expect(foundProfile!.updated_at).toEqual(sportsmanProfile.updatedAt)
     })
 
     it('should throw error when sportsman profile already exists', async () => {

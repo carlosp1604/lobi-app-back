@@ -1,6 +1,8 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 
 export class UserSessionDomainException extends DomainException {
+  public readonly __brand = 'UserSessionDomainException' as const
+
   public static invalidUserSessionTokenHashId = 'user_session_domain_invalid_user_session_token_hash'
   public static invalidDeviceCountryCodeId = 'user_session_domain_invalid_device_country_code'
   public static invalidDeviceCityId = 'user_session_domain_invalid_device_city'

@@ -4,33 +4,34 @@ import { LOGGER_FACTORY } from '~/src/modules/Shared/Infrastructure/logger.modul
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import {
+  AUTH_DOMAIN_EVENT_FACTORY,
+  CLOSE_USER_SESSION,
   CREATE_USER,
   DEVICE_LOCATION_RESOLVER,
   DOMAIN_EVENT_REPOSITORY,
   EMAIL_SENDER_SERVICE,
   GENERATE_TOKENS_SERVICE,
   GENERATE_VERIFICATION_TOKEN,
+  GET_ACTIVE_SESSIONS,
   HASHER_SERVICE,
   IP_VALIDATOR,
   LOGIN_USER,
   LOGOUT_USER,
   MAX_SESSIONS_POLICY,
   PASSWORD_HASHER_SERVICE,
-  USER_PROFILE_REPOSITORY,
   RANDOM_SERVICE,
   REFRESH_SESSION,
   REQUEST_ORIGIN_SERVICE,
+  RESET_USER_PASSWORD,
   TOKEN_GENERATOR,
   USER_CREDENTIAL_REPOSITORY,
+  USER_PROFILE_REPOSITORY,
   USER_REPOSITORY,
   USER_SESSION_POLICY_MANAGER_SERVICE,
   USER_SESSION_REPOSITORY,
   VALIDATE_VERIFICATION_TOKEN,
   VERIFICATION_TOKEN_REPOSITORY,
   VERIFY_TOKEN_DOMAIN_SERVICE,
-  RESET_USER_PASSWORD,
-  AUTH_DOMAIN_EVENT_FACTORY,
-  GET_ACTIVE_SESSIONS,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -88,6 +89,7 @@ import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactor
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
+import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 
 @Module({
   imports: [
@@ -502,11 +504,49 @@ import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessi
       inject: [USER_REPOSITORY, USER_SESSION_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, LOGGER_FACTORY],
     },
     {
-      provide: GET_ACTIVE_SESSIONS,
-      useFactory: (sessionRepository: UserSessionRepositoryInterface, clockService: ClockServiceInterface) => {
-        return new GetActiveSessions(sessionRepository, clockService)
+      provide: CLOSE_USER_SESSION,
+      useFactory: (
+        userRepository: UserRepositoryInterface,
+        sessionRepository: UserSessionRepositoryInterface,
+        domainEventRepository: DomainEventRepositoryInterface,
+        requestOriginApplicationService: RequestOriginApplicationService,
+        clockService: ClockServiceInterface,
+        unitOfWork: UnitOfWork,
+        loggerFactory: LoggerFactoryInterface,
+        authDomainEventFactory: AuthDomainEventFactory,
+      ) => {
+        return new CloseUserSession(
+          userRepository,
+          sessionRepository,
+          domainEventRepository,
+          requestOriginApplicationService,
+          clockService,
+          unitOfWork,
+          loggerFactory.createLogger(CloseUserSession.name),
+          authDomainEventFactory,
+        )
       },
-      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE],
+      inject: [
+        USER_REPOSITORY,
+        USER_SESSION_REPOSITORY,
+        DOMAIN_EVENT_REPOSITORY,
+        REQUEST_ORIGIN_SERVICE,
+        CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_FACTORY,
+        AUTH_DOMAIN_EVENT_FACTORY,
+      ],
+    },
+    {
+      provide: GET_ACTIVE_SESSIONS,
+      useFactory: (
+        sessionRepository: UserSessionRepositoryInterface,
+        clockService: ClockServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
+      ) => {
+        return new GetActiveSessions(sessionRepository, clockService, loggerFactory.createLogger(GetActiveSessions.name))
+      },
+      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE, LOGGER_FACTORY],
     },
   ],
   exports: [

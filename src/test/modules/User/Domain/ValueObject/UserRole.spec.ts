@@ -24,7 +24,7 @@ describe('UserRole', () => {
       const result = UserRole.safeCreate(String(userRole))
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(UserDomainException.invalidUserRole(userRole))
+      expect(result['error']).toStrictEqual(UserDomainException.invalidUserRole(userRole))
     })
   })
 
@@ -32,19 +32,19 @@ describe('UserRole', () => {
     it('factory should return sportsman', () => {
       const userRoleValueObject = UserRole.sportsman()
 
-      expect(userRoleValueObject.value).toEqual(ValidUserRoles.SPORTSMAN)
+      expect(userRoleValueObject.value).toBe(ValidUserRoles.SPORTSMAN)
     })
 
     it('factory should return owner', () => {
       const userRoleValueObject = UserRole.owner()
 
-      expect(userRoleValueObject.value).toEqual(ValidUserRoles.OWNER)
+      expect(userRoleValueObject.value).toBe(ValidUserRoles.OWNER)
     })
   })
 
   it('should store the correct value', () => {
     const userRoleValueObject = UserRole.fromString(ValidUserRoles.OWNER)
 
-    expect(userRoleValueObject.value).toEqual(ValidUserRoles.OWNER)
+    expect(userRoleValueObject.value).toBe(ValidUserRoles.OWNER)
   })
 })

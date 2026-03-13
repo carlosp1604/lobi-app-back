@@ -50,9 +50,9 @@ describe('UserModelTranslator', () => {
         expect(result.userUploadId?.value).toBe(raw.user_upload_id)
       }
 
-      expect(result.emailVerifiedAt.getTime()).toBe(raw.email_verified_at.getTime())
-      expect(result.createdAt.getTime()).toBe(raw.created_at.getTime())
-      expect(result.updatedAt.getTime()).toBe(raw.updated_at.getTime())
+      expect(result.emailVerifiedAt).toEqual(raw.email_verified_at)
+      expect(result.createdAt).toEqual(raw.created_at)
+      expect(result.updatedAt).toEqual(raw.updated_at)
       expect(result.deletedAt).toEqual(raw.deleted_at)
     }
 
@@ -62,7 +62,7 @@ describe('UserModelTranslator', () => {
       const result = UserModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
-      expect(result.deletedAt?.getTime()).toBe(now.getTime())
+      expect(result.deletedAt).toEqual(now)
       expect(result.userUploadId).not.toBeNull()
     })
 
@@ -110,9 +110,9 @@ describe('UserModelTranslator', () => {
         expect(result.user_upload_id).toBe(domain.userUploadId.value)
       }
 
-      expect(result.email_verified_at?.getTime()).toBe(domain.emailVerifiedAt?.getTime())
-      expect(result.created_at.getTime()).toBe(domain.createdAt.getTime())
-      expect(result.updated_at.getTime()).toBe(domain.updatedAt.getTime())
+      expect(result.email_verified_at).toEqual(domain.emailVerifiedAt)
+      expect(result.created_at).toEqual(domain.createdAt)
+      expect(result.updated_at).toEqual(domain.updatedAt)
       expect(result.deleted_at).toEqual(domain.deletedAt)
     }
 
@@ -137,7 +137,7 @@ describe('UserModelTranslator', () => {
       const result = UserModelTranslator.toDatabase(user)
 
       checkResult(result, user)
-      expect(result.deleted_at?.getTime()).toBe(now.getTime())
+      expect(result.deleted_at).toEqual(now)
       expect(result.user_upload_id).not.toBeNull()
     })
 
@@ -177,10 +177,10 @@ describe('UserModelTranslator', () => {
       expect(user.status.equals(snapshot.status)).toBe(true)
       expect(user.role.equals(snapshot.role)).toBe(true)
       expect(user.userUploadId?.equals(snapshot.userUploadId)).toBe(true)
-      expect(user.emailVerifiedAt?.getTime()).toBe(snapshot.emailVerifiedAt?.getTime())
-      expect(user.createdAt.getTime()).toBe(snapshot.createdAt.getTime())
-      expect(user.updatedAt.getTime()).toBe(snapshot.updatedAt.getTime())
-      expect(user.deletedAt?.getTime()).toBe(snapshot.deletedAt?.getTime())
+      expect(user.emailVerifiedAt).toEqual(snapshot.emailVerifiedAt)
+      expect(user.createdAt).toEqual(snapshot.createdAt)
+      expect(user.updatedAt).toEqual(snapshot.updatedAt)
+      expect(user.deletedAt).toEqual(snapshot.deletedAt)
     })
   })
 })

@@ -52,7 +52,7 @@ describe('SportsmanProfileBirthDate', () => {
       const result = SportsmanProfileBirthDate.safeCreate(futureDate, fixedNow)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(ProfileDomainException.sportsmanBirthDateInFuture())
+      expect(result['error']).toStrictEqual(ProfileDomainException.sportsmanBirthDateInFuture())
     })
 
     it('should return error when birth date is too old', () => {
@@ -60,7 +60,7 @@ describe('SportsmanProfileBirthDate', () => {
       const result = SportsmanProfileBirthDate.safeCreate(tooOldDate, fixedNow)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(ProfileDomainException.sportsmanBirthDateTooOld(SportsmanProfileBirthDate.MAX_AGE_YEARS))
+      expect(result['error']).toStrictEqual(ProfileDomainException.sportsmanBirthDateTooOld(SportsmanProfileBirthDate.MAX_AGE_YEARS))
     })
 
     it.each(SportsmanProfileBirthDateMother.INVALID_STRING_FORMAT_CASES)(
@@ -68,7 +68,7 @@ describe('SportsmanProfileBirthDate', () => {
       (invalidInput) => {
         const result = SportsmanProfileBirthDate.safeCreate(invalidInput, fixedNow)
         expect(result.success).toBe(false)
-        expect(result['error']).toEqual(ProfileDomainException.invalidSportsmanBirthDate(new Date(invalidInput)))
+        expect(result['error']).toStrictEqual(ProfileDomainException.invalidSportsmanBirthDate(new Date(invalidInput)))
       },
     )
   })

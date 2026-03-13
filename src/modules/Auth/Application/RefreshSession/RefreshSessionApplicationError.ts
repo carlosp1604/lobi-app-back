@@ -1,4 +1,6 @@
 export class RefreshSessionApplicationError extends Error {
+  public readonly __brand = 'RefreshSessionApplicationError' as const
+
   public readonly id: string
   public readonly name: string
 

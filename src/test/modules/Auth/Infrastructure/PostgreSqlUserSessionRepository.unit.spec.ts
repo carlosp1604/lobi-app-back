@@ -238,7 +238,7 @@ describe('PostgreSqlUserSessionRepository', () => {
 
         expect(userSessionModelTranslatorSpy).toHaveBeenCalledTimes(1)
         expect(userSessionModelTranslatorSpy).toHaveBeenCalledWith(rawSession)
-        expect(result).toBe(expectedSession)
+        expect(result).toStrictEqual(expectedSession)
       })
 
       it('should call services correctly and return null when user is not found', async () => {
@@ -332,7 +332,7 @@ describe('PostgreSqlUserSessionRepository', () => {
 
         expect(userSessionModelTranslatorSpy).toHaveBeenCalledTimes(1)
         expect(userSessionModelTranslatorSpy).toHaveBeenCalledWith(rawSession)
-        expect(result).toBe(expectedSession)
+        expect(result).toStrictEqual(expectedSession)
       })
 
       it('should call services correctly and return null when session is not found', async () => {

@@ -22,9 +22,9 @@ describe('UserSessionTokenHash', () => {
   })
 
   it('should store the correct value', () => {
-    const validValue = UserSessionTokenHashMother.valid().toString()
+    const validValue = UserSessionTokenHashMother.valid().value
     const userSessionHashValueObject = UserSessionTokenHash.fromString(validValue)
 
-    expect(userSessionHashValueObject.value).toEqual(validValue)
+    expect(userSessionHashValueObject.value).toBe(validValue)
   })
 })

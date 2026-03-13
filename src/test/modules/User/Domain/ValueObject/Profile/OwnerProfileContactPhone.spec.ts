@@ -46,7 +46,7 @@ describe('OwnerProfileContactPhone', () => {
         const result = OwnerProfileContactPhone.safeCreate(invalidPhone)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toEqual(ProfileDomainException.invalidOwnerContactPhone(invalidPhone))
+        expect(result['error']).toStrictEqual(ProfileDomainException.invalidOwnerContactPhone(invalidPhone))
       },
     )
   })

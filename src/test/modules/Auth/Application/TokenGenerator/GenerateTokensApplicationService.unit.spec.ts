@@ -73,26 +73,26 @@ describe('GenerateTokensApplicationService', () => {
     const checkSession = (result: UserSession, expectedUserSession: UserSession) => {
       expect(result.id.equals(expectedUserSession.id)).toBe(true)
       expect(result.userId.equals(expectedUserSession.userId)).toBe(true)
-      expect(result.createdAt.getTime()).toBe(expectedUserSession.createdAt.getTime())
-      expect(result.updatedAt.getTime()).toBe(expectedUserSession.updatedAt.getTime())
-      expect(result.expiresAt.getTime()).toBe(expectedUserSession.expiresAt.getTime())
-      expect(result.revokedAt).toBe(null)
-      expect(expectedUserSession.revokedAt).toBe(null)
+      expect(result.createdAt).toEqual(expectedUserSession.createdAt)
+      expect(result.updatedAt).toEqual(expectedUserSession.updatedAt)
+      expect(result.expiresAt).toEqual(expectedUserSession.expiresAt)
+      expect(result.revokedAt).toBeNull()
+      expect(expectedUserSession.revokedAt).toBeNull()
 
       if (result.ipHash) {
-        expect(expectedUserSession.ipHash).not.toBe(null)
+        expect(expectedUserSession.ipHash).not.toBeNull()
         expect(result.ipHash.equals(expectedUserSession.ipHash)).toBe(true)
       } else {
-        expect(result.ipHash).toBe(null)
-        expect(expectedUserSession.ipHash).toBe(null)
+        expect(result.ipHash).toBeNull()
+        expect(expectedUserSession.ipHash).toBeNull()
       }
 
       if (result.deviceLocation) {
         expect(result.deviceLocation.countryCode).toBe(expectedUserSession.deviceLocation?.countryCode)
         expect(result.deviceLocation.city).toBe(expectedUserSession.deviceLocation?.city)
       } else {
-        expect(result.deviceLocation).toBe(null)
-        expect(expectedUserSession.deviceLocation).toBe(null)
+        expect(result.deviceLocation).toBeNull()
+        expect(expectedUserSession.deviceLocation).toBeNull()
       }
 
       expect(result.userAgent.equals(expectedUserSession.userAgent)).toBe(true)
@@ -101,9 +101,9 @@ describe('GenerateTokensApplicationService', () => {
 
     const checkResult = (result: GenerateTokensApplicationResponseDto) => {
       expect(result.accessToken).toBe('expected-jwt-token')
-      expect(result.accessTokenExpiresAt.getTime()).toBe(expectedAccessExpiresAt.getTime())
+      expect(result.accessTokenExpiresAt).toEqual(expectedAccessExpiresAt)
       expect(result.refreshToken).toBe('expected-refresh-token')
-      expect(result.refreshTokenExpiresAt.getTime()).toBe(expectedRefreshExpiresAt.getTime())
+      expect(result.refreshTokenExpiresAt).toEqual(expectedRefreshExpiresAt)
     }
 
     it('should call services correctly', async () => {

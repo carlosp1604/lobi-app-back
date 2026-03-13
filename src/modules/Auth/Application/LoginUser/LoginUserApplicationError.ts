@@ -1,4 +1,6 @@
 export class LoginUserApplicationError extends Error {
+  public readonly __brand = 'LoginUserApplicationError' as const
+
   public readonly id: string
   public readonly name: string
 

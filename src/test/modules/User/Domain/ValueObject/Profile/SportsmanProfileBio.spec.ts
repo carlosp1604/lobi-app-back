@@ -28,7 +28,7 @@ describe('SportsmanProfileBio', () => {
       const result = SportsmanProfileBio.safeCreate(bio)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(ProfileDomainException.invalidSportsmanBio(bio))
+      expect(result['error']).toStrictEqual(ProfileDomainException.invalidSportsmanBio(bio))
     })
   })
 

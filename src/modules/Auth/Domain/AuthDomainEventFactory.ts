@@ -74,7 +74,7 @@ export class AuthDomainEventFactory {
     )
   }
 
-  public createSuccessfulSignupDomainEvent(
+  public createSuccessfulSignupEvent(
     userId: Identifier,
     userEmail: EmailAddress,
     deviceLocation: DeviceLocation | null,
@@ -119,6 +119,34 @@ export class AuthDomainEventFactory {
         deviceLocation: this.mapLocation(deviceLocation),
       },
       this.mapMetadata(ipHash, userAgent),
+      now,
+    )
+  }
+
+  public createClosedSessionEvent(
+    targetSession: UserSession,
+    actorSessionId: Identifier,
+    actorDeviceLocation: DeviceLocation | null,
+    actorUserAgent: UserAgent,
+    actorIpHash: string | null,
+    now: Date,
+  ): DomainEvent {
+    return DomainEvent.create(
+      Identifier.fromString(this.idGeneratorService.generateId()),
+      DomainEventName.closedSession(),
+      DomainEventAggregateType.userSession(),
+      targetSession.id,
+      {
+        userId: targetSession.userId.value,
+        targetSessionId: targetSession.id.value,
+        targetDeviceLocation: this.mapLocation(targetSession.deviceLocation),
+        actorDeviceLocation: this.mapLocation(actorDeviceLocation),
+        actorUserAgent: actorUserAgent.value,
+      },
+      {
+        ...this.mapMetadata(actorIpHash, actorUserAgent),
+        actorSessionId: actorSessionId.value,
+      },
       now,
     )
   }

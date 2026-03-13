@@ -37,7 +37,7 @@ describe('UserPassword', () => {
         const result = UserPassword.safeCreate(invalidPassword)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toEqual(UserCredentialDomainException.invalidPasswordFormat())
+        expect(result['error']).toStrictEqual(UserCredentialDomainException.invalidPasswordFormat())
       },
     )
   })
@@ -46,6 +46,6 @@ describe('UserPassword', () => {
     const validValue = UserPasswordMother.valid().value
     const userPasswordValueObject = UserPassword.fromString(validValue)
 
-    expect(userPasswordValueObject.value).toEqual(validValue)
+    expect(userPasswordValueObject.value).toBe(validValue)
   })
 })

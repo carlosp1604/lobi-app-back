@@ -1,6 +1,8 @@
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 
 export class ValidateVerificationTokenError extends Error {
+  public readonly __brand = 'ValidateVerificationTokenError' as const
+
   public readonly id: string
   public readonly name: string
 
@@ -8,11 +10,11 @@ export class ValidateVerificationTokenError extends Error {
   public static invalidTokenPurposeId = 'validate_verification_token_invalid_verification_token_purpose'
   public static invalidTokenFormatId = 'validate_verification_token_invalid_token_format'
   public static tokenNotFoundId = 'validate_verification_token_not_found'
-  public static tokenExpiredId = 'validate_token_expired'
-  public static tokenAlreadyUsedId = 'validate_token_already_used'
-  public static tokenPurposeMismatchId = 'validate_token_token_purpose_mismatch'
-  public static invalidTokenOwnerId = 'validate_token_invalid_owner'
-  public static invalidTokenId = 'validate_token_invalid_token'
+  public static tokenExpiredId = 'validate_verification_token_expired'
+  public static tokenAlreadyUsedId = 'validate_verification_token_already_used'
+  public static tokenPurposeMismatchId = 'validate_verification_token_token_purpose_mismatch'
+  public static invalidTokenOwnerId = 'validate_verification_token_invalid_owner'
+  public static invalidTokenId = 'validate_verification_token_invalid_token'
 
   private constructor(message: string, id: string) {
     super(message)

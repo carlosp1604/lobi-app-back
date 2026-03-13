@@ -194,11 +194,11 @@ describe('ResetUserPassword', () => {
       expect(updatedCredential).not.toBeNull()
       const isPasswordCorrect = await passwordHasher.compare(validNewPassword.value, updatedCredential!.password_hash)
       expect(isPasswordCorrect).toBe(true)
-      expect(updatedCredential!.updated_at.getTime()).toBe(now.getTime())
+      expect(updatedCredential!.updated_at).toEqual(now)
 
       const updatedToken = await verificationTokenDatabaseHelper.findOneByEmail(validEmail.value)
       expect(updatedToken).not.toBeNull()
-      expect(updatedToken!.used_at?.getTime()).toBe(now.getTime())
+      expect(updatedToken!.used_at).toEqual(now)
 
       const events = await domainEventDatabaseHelper.findByAggregateTypeAndId(existingRawUser.id, DomainEventAggregateType.user().value)
       expect(events.length).toBe(1)
@@ -221,10 +221,10 @@ describe('ResetUserPassword', () => {
         events: { before: 0, after: 0 },
       })
 
-      expect(result).toMatchObject({
-        success: false,
-        error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(baseRequest.email)),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(
+        ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(baseRequest.email)),
+      )
 
       const credential = await userCredentialDatabaseHelper.findUserCredential(existingRawUser.id)
       expect(credential).not.toBeNull()
@@ -240,10 +240,10 @@ describe('ResetUserPassword', () => {
         events: { before: 0, after: 0 },
       })
 
-      expect(result).toMatchObject({
-        success: false,
-        error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(baseRequest.email)),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(
+        ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(baseRequest.email)),
+      )
 
       const token = await verificationTokenDatabaseHelper.findById(existingRawToken.id)
       expect(token).not.toBeNull()
@@ -260,10 +260,8 @@ describe('ResetUserPassword', () => {
         events: { before: 0, after: 0 },
       })
 
-      expect(result).toMatchObject({
-        success: false,
-        error: ResetUserPasswordApplicationError.inconsistentState(existingRawUser.id),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.inconsistentState(existingRawUser.id))
 
       const token = await verificationTokenDatabaseHelper.findById(existingRawToken.id)
       expect(token).not.toBeNull()

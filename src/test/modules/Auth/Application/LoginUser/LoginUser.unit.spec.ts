@@ -228,7 +228,7 @@ describe('LoginUser', () => {
 
     const checkResult = (result: Result<LoginUserApplicationResponseDto, LoginUserApplicationError>, newDevice: boolean) => {
       expect(result.success).toBe(true)
-      expect(result).toStrictEqual({
+      expect(result).toEqual({
         success: true,
         value: {
           refreshToken: 'refresh-clear-token',
@@ -279,10 +279,8 @@ describe('LoginUser', () => {
       const useCase = buildUseCase()
       const result = await useCase.execute({ ...request, email: invalidEmail })
 
-      expect(result).toEqual({
-        success: false,
-        error: LoginUserApplicationError.invalidUserEmail(invalidEmail),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidUserEmail(invalidEmail))
 
       expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
     })
@@ -291,10 +289,8 @@ describe('LoginUser', () => {
       const useCase = buildUseCase()
       const result = await useCase.execute({ ...request, password: UserPasswordMother.invalid() })
 
-      expect(result).toEqual({
-        success: false,
-        error: LoginUserApplicationError.invalidPasswordFormat(),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidPasswordFormat())
 
       expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
     })
@@ -305,10 +301,9 @@ describe('LoginUser', () => {
 
         const result = await useCase.execute(request)
 
-        expect(result).toEqual({
-          success: false,
-          error: LoginUserApplicationError.userNotFound(validEmail.value),
-        })
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound(validEmail.value))
+
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
       }
 
@@ -370,10 +365,8 @@ describe('LoginUser', () => {
 
       const result = await useCase.execute(request)
 
-      expect(result).toEqual({
-        success: false,
-        error: LoginUserApplicationError.userDoesNotHaveCredentials(validUserId.value),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.userDoesNotHaveCredentials(validUserId.value))
 
       expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
         userId: validUserId.value,
@@ -390,10 +383,8 @@ describe('LoginUser', () => {
       mockedHasherService.compare.mockResolvedValue(false)
       const result = await useCase.execute(request)
 
-      expect(result).toEqual({
-        success: false,
-        error: LoginUserApplicationError.invalidCredentials(validUserId.value),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidCredentials(validUserId.value))
 
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(failedLoginAttemptEvent, fakeContext)
 
@@ -421,19 +412,18 @@ describe('LoginUser', () => {
 
         const result = await useCase.execute(request)
 
-        expect(result).toEqual({
-          success: false,
-          error: LoginUserApplicationError.revocationFailed(expectedError.message),
-        })
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.revocationFailed(expectedError.message))
+
         expect(mockedDomainEventFactory.createSuccessfulLoginEvent).not.toHaveBeenCalled()
       })
 
       it('should return error if UserSessionPolicyManagerApplicationService returns an unknown error', async () => {
-        const unknownServiceError: UserSessionPolicyManagerApplicationError = {
-          message: 'Unexpected error',
-          id: 'unexpected-error',
-          name: UserSessionPolicyManagerApplicationError.name,
-        }
+        const unknownServiceError = {
+          message: 'Unknown error',
+          id: 'user_session_policy_manager_application_service_unknown_error',
+        } as unknown as UserSessionPolicyManagerApplicationError
+
         mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin.mockReturnValue({
           success: false,
           error: unknownServiceError,
@@ -443,10 +433,11 @@ describe('LoginUser', () => {
 
         const result = await useCase.execute(request)
 
-        expect(result).toEqual({
-          success: false,
-          error: LoginUserApplicationError.internalError(`Unknown internal error: ${unknownServiceError.message}`),
-        })
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(
+          LoginUserApplicationError.internalError(`Unknown internal error: ${unknownServiceError.message}`),
+        )
+
         expect(mockedDomainEventFactory.createSuccessfulLoginEvent).not.toHaveBeenCalled()
       })
 

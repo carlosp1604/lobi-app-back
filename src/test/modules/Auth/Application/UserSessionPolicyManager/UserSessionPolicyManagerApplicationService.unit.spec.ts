@@ -71,7 +71,8 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(UserSessionPolicyManagerApplicationError.revocationFailed(expectedDomainException.message))
+      expect(result['error']).toStrictEqual(UserSessionPolicyManagerApplicationError.revocationFailed(expectedDomainException.message))
+
       expect(expiredSession.revokedAt).toBeNull()
 
       assertLoggerWarnCall('Session revocation failed', expiredSession, expectedDomainException.message)
@@ -99,9 +100,10 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       const result = service.applyPolicyAndRevokeForRefresh(currentSession.id, userId, activeSessionsWithoutCurrent, now)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toEqual(
+      expect(result['error']).toStrictEqual(
         UserSessionPolicyManagerApplicationError.sessionsInconsistency(currentSession.id.value, currentSession.userId.value),
       )
+
       expect(mockedLoggerService.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
         sessionId: currentSession.id.value,
         userId: currentSession.userId.value,

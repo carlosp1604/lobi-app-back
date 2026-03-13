@@ -40,7 +40,7 @@ describe('EmailAddress', () => {
         const result = EmailAddress.safeCreate(invalidEmailAddress)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toEqual(SharedDomainException.invalidEmailAddress(invalidEmailAddress))
+        expect(result['error']).toStrictEqual(SharedDomainException.invalidEmailAddress(invalidEmailAddress))
       },
     )
   })
@@ -49,6 +49,6 @@ describe('EmailAddress', () => {
     const validValue = EmailAddressMother.randomString()
     const emailAddressValueObject = EmailAddress.fromString(validValue)
 
-    expect(emailAddressValueObject.value).toEqual(validValue)
+    expect(emailAddressValueObject.value).toBe(validValue)
   })
 })

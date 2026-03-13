@@ -206,7 +206,7 @@ describe('CreateUser', () => {
 
       const updatedToken = await verificationTokenDatabaseHelper.findOneByEmail(validEmail.value)
       expect(updatedToken).not.toBeNull()
-      expect(updatedToken!.used_at?.getTime()).toBe(now.getTime())
+      expect(updatedToken!.used_at).toEqual(now)
 
       const events = await domainEventDatabaseHelper.findByAggregateTypeAndId(createdUser!.id, DomainEventAggregateType.user().value)
       expect(events.length).toBe(1)
@@ -264,10 +264,10 @@ describe('CreateUser', () => {
 
       const result = await useCase.execute(requestWithDuplicatedEmail)
 
-      expect(result).toMatchObject({
-        success: false,
-        error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail(existingRawUser.email)]),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(
+        CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail(existingRawUser.email)]),
+      )
 
       await assertNoChangesInDatabase(existingRawUser.email)
     })
@@ -284,10 +284,10 @@ describe('CreateUser', () => {
 
       const result = await useCase.execute(requestWithDuplicatedUsername)
 
-      expect(result).toMatchObject({
-        success: false,
-        error: CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername(existingRawUser.username)]),
-      })
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(
+        CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername(existingRawUser.username)]),
+      )
 
       await assertNoChangesInDatabase(existingRawToken.email)
     })

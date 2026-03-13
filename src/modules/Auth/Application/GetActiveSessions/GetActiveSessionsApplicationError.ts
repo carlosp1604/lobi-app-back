@@ -1,4 +1,6 @@
 export class GetActiveSessionsApplicationError extends Error {
+  public readonly __brand = 'GetActiveSessionsApplicationError' as const
+
   public readonly id: string
   public readonly name: string
 
@@ -10,7 +12,10 @@ export class GetActiveSessionsApplicationError extends Error {
     this.name = GetActiveSessionsApplicationError.name
   }
 
-  public static invalidInput() {
-    return new GetActiveSessionsApplicationError('Identifiers format is not valid', this.invalidInputId)
+  public static invalidInput(field: string, errorMessage: string) {
+    return new GetActiveSessionsApplicationError(
+      `Invalid input provided for field ${field}. Reason: ${errorMessage}`,
+      this.invalidInputId,
+    )
   }
 }
