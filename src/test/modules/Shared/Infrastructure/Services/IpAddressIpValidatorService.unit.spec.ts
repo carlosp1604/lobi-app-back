@@ -1,5 +1,5 @@
 import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
-import ipaddr from 'ipaddr.js'
+import ipaddr, { IPv4, IPv6 } from 'ipaddr.js'
 
 describe('IpAddressIpValidatorService', () => {
   let service: IpAddressIpValidatorService
@@ -37,7 +37,7 @@ describe('IpAddressIpValidatorService', () => {
       jest.spyOn(ipaddr, 'parse').mockReturnValueOnce({
         range: () => 'unicast',
         kind: () => 'ipv4',
-      } as any)
+      } as IPv4)
 
       expect(service.isPublic('an-ip')).toBe(true)
     })
@@ -46,7 +46,7 @@ describe('IpAddressIpValidatorService', () => {
       jest.spyOn(ipaddr, 'parse').mockReturnValueOnce({
         range: () => 'private',
         kind: () => 'ipv4',
-      } as any)
+      } as IPv4)
 
       expect(service.isPublic('an-ip')).toBe(false)
     })
@@ -58,7 +58,7 @@ describe('IpAddressIpValidatorService', () => {
         isIPv4MappedAddress: () => true,
         toIPv4Address: () => toV4,
         range: () => 'private',
-      } as any)
+      } as unknown as IPv6)
 
       expect(service.isPublic('a-v6-v4-mapped-ip')).toBe(true)
     })
@@ -70,7 +70,7 @@ describe('IpAddressIpValidatorService', () => {
         isIPv4MappedAddress: () => true,
         toIPv4Address: () => toV4,
         range: () => 'unicast',
-      } as any)
+      } as unknown as IPv6)
 
       expect(service.isPublic('a-v6-v4-mapped-ip')).toBe(false)
     })
@@ -88,7 +88,7 @@ describe('IpAddressIpValidatorService', () => {
     it('should return the correct value', () => {
       jest.spyOn(ipaddr, 'parse').mockReturnValueOnce({
         toNormalizedString: () => 'normalized-ip',
-      } as any)
+      } as IPv4)
 
       expect(service.normalize('invalid-ip')).toBe('normalized-ip')
     })
