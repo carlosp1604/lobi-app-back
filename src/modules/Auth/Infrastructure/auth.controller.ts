@@ -1,6 +1,7 @@
 import type { FastifyReply } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import {
+  CLOSE_USER_SESSION,
   CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
   GET_ACTIVE_SESSIONS,
@@ -106,6 +107,9 @@ import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optio
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
 import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
+import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
+import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
+import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
 
 @Controller('auth')
 export class AuthController {
@@ -117,6 +121,7 @@ export class AuthController {
     @Inject(CREATE_USER) private readonly createUser: CreateUser,
     @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
     @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
+    @Inject(CLOSE_USER_SESSION) private readonly closeUserSession: CloseUserSession,
     @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
     private readonly configService: ConfigService<Env, true>,
   ) {}
@@ -571,10 +576,89 @@ export class AuthController {
     const result = await this.logoutUser.execute(requestDto)
 
     if (!result.success) {
-      this.checkAndThrowRevokeError(result.error)
+      const errorId = result.error.id
+
+      const obfuscatedErrors = [
+        LogoutUserApplicationError.userNotFoundId,
+        LogoutUserApplicationError.userDisabledId,
+        LogoutUserApplicationError.cannotRevokeSessionId,
+        LogoutUserApplicationError.sessionNotFoundId,
+        LogoutUserApplicationError.sessionDoesNotBelongToUserId,
+      ]
+
+      if (obfuscatedErrors.includes(errorId)) {
+        this.clearCookies(response)
+
+        return
+      }
+
+      if (errorId === LogoutUserApplicationError.invalidInputId) {
+        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+          cause: result.error,
+        })
+      }
+
+      throw new InternalServerErrorException(result.error)
     }
 
     this.clearCookies(response)
+
+    return
+  }
+
+  @Delete('sessions/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async closeSession(
+    @AccessToken() accessToken: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @UserIp() userIp: string,
+    @UserAgent() userAgent: string | undefined,
+    @Res({ passthrough: true }) response: FastifyReply,
+  ) {
+    const requestDto: CloseUserSessionApplicationRequestDto = {
+      sessionId: id,
+      userId: accessToken.sub,
+      currentSessionId: accessToken.sid,
+      ip: userIp,
+      userAgent: userAgent,
+    }
+
+    const result = await this.closeUserSession.execute(requestDto)
+
+    const isCurrentSession = id === accessToken.sid
+
+    if (!result.success) {
+      const errorId = result.error.id
+
+      const obfuscatedErrors = [
+        CloseUserSessionApplicationError.userNotFoundId,
+        CloseUserSessionApplicationError.userDisabledId,
+        CloseUserSessionApplicationError.cannotRevokeSessionId,
+        CloseUserSessionApplicationError.sessionNotFoundId,
+        CloseUserSessionApplicationError.sessionDoesNotBelongToUserId,
+      ]
+
+      if (obfuscatedErrors.includes(errorId)) {
+        if (isCurrentSession) {
+          this.clearCookies(response)
+        }
+
+        return
+      }
+
+      if (errorId === CloseUserSessionApplicationError.invalidInputId) {
+        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
+          cause: result.error,
+        })
+      }
+
+      throw new InternalServerErrorException(result.error)
+    }
+
+    if (isCurrentSession) {
+      this.clearCookies(response)
+    }
 
     return
   }
@@ -603,32 +687,6 @@ export class AuthController {
     }
 
     return result.value
-  }
-
-  @Delete('sessions/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(AccessTokenGuard)
-  async closeSession(
-    @AccessToken() accessToken: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
-    @Res({ passthrough: true }) response: FastifyReply,
-  ) {
-    const requestDto: LogoutUserApplicationRequestDto = {
-      sessionId: id,
-      userId: accessToken.sub,
-    }
-
-    const result = await this.logoutUser.execute(requestDto)
-
-    if (!result.success) {
-      this.checkAndThrowRevokeError(result.error)
-    }
-
-    if (id === accessToken.sid) {
-      this.clearCookies(response)
-    }
-
-    return
   }
 
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {
@@ -708,27 +766,5 @@ export class AuthController {
     response.clearCookie(accessTokenCookieName, {
       ...cookieBase,
     })
-  }
-
-  private checkAndThrowRevokeError(error: LogoutUserApplicationError): void {
-    const errorId = error.id
-
-    const obfuscatedErrors = [
-      LogoutUserApplicationError.userNotFoundId,
-      LogoutUserApplicationError.userDisabledId,
-      LogoutUserApplicationError.cannotRevokeSessionId,
-      LogoutUserApplicationError.sessionNotFoundId,
-      LogoutUserApplicationError.sessionDoesNotBelongToUserId,
-    ]
-
-    if (obfuscatedErrors.includes(errorId)) {
-      return
-    }
-
-    if (errorId === LogoutUserApplicationError.invalidInputId) {
-      throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', { cause: error })
-    }
-
-    throw new InternalServerErrorException(error)
   }
 }

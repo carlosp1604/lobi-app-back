@@ -78,6 +78,8 @@ import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Appl
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
+import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
+import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -89,6 +91,7 @@ describe('AuthController', () => {
   const mockedCreateUserUseCase = mock<CreateUser>()
   const mockedResetUserPasswordUseCase = mock<ResetUserPassword>()
   const mockedLogoutUserUseCase = mock<LogoutUser>()
+  const mockedCloseUserSessionUserCase = mock<CloseUserSession>()
   const mockedGetActiveSessionsUseCase = mock<GetActiveSessions>()
 
   const mockedIp = '127.0.0.1'
@@ -106,6 +109,7 @@ describe('AuthController', () => {
     mockReset(mockedCreateUserUseCase)
     mockReset(mockedResetUserPasswordUseCase)
     mockReset(mockedLogoutUserUseCase)
+    mockReset(mockedCloseUserSessionUserCase)
     mockReset(mockedGetActiveSessionsUseCase)
   })
 
@@ -118,6 +122,7 @@ describe('AuthController', () => {
       mockedCreateUserUseCase,
       mockedResetUserPasswordUseCase,
       mockedLogoutUserUseCase,
+      mockedCloseUserSessionUserCase,
       mockedGetActiveSessionsUseCase,
       mockedConfigService,
     )
@@ -1878,21 +1883,30 @@ describe('AuthController', () => {
 
     describe('happy path', () => {
       beforeEach(() => {
-        mockedLogoutUserUseCase.execute.mockResolvedValue({
+        mockedCloseUserSessionUserCase.execute.mockResolvedValue({
           success: true,
           value: undefined,
         })
       })
 
-      it('should call use-case correctly and clear cookies when closing the current session', async () => {
+      it('should call use-case correctly with IP and UserAgent and clear cookies when closing the current session', async () => {
         const controller = buildController()
 
-        const result = await controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)
+        const result = await controller.closeSession(
+          mockedAccessToken,
+          currentSessionId.value,
+          mockedIp,
+          mockedUserAgent,
+          mockedResponse,
+        )
 
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledWith({
+        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledWith({
           userId: mockedAccessToken.sub,
           sessionId: currentSessionId.value,
+          currentSessionId: mockedAccessToken.sid,
+          ip: mockedIp,
+          userAgent: mockedUserAgent,
         })
 
         expectCookiesCleared()
@@ -1903,12 +1917,21 @@ describe('AuthController', () => {
       it('should call use-case correctly and not clear cookies when closing a different session', async () => {
         const controller = buildController()
 
-        const result = await controller.closeSession(mockedAccessToken, anotherActiveSessionId.value, mockedResponse)
+        const result = await controller.closeSession(
+          mockedAccessToken,
+          anotherActiveSessionId.value,
+          mockedIp,
+          mockedUserAgent,
+          mockedResponse,
+        )
 
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledWith({
+        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledWith({
           userId: mockedAccessToken.sub,
           sessionId: anotherActiveSessionId.value,
+          currentSessionId: mockedAccessToken.sid,
+          ip: mockedIp,
+          userAgent: mockedUserAgent,
         })
 
         expect(mockedConfigService.get).not.toHaveBeenCalled()
@@ -1916,28 +1939,56 @@ describe('AuthController', () => {
 
         expect(result).toBeUndefined()
       })
+
+      it('should call use-case correctly when UserAgent is undefined', async () => {
+        const controller = buildController()
+
+        const result = await controller.closeSession(
+          mockedAccessToken,
+          anotherActiveSessionId.value,
+          mockedIp,
+          undefined,
+          mockedResponse,
+        )
+
+        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledWith({
+          userId: mockedAccessToken.sub,
+          sessionId: anotherActiveSessionId.value,
+          currentSessionId: mockedAccessToken.sid,
+          ip: mockedIp,
+          userAgent: undefined,
+        })
+
+        expect(result).toBeUndefined()
+      })
     })
 
     describe('when there are errors', () => {
       describe('when errors should be obfuscated', () => {
-        const testObfuscatedErrorAndClearCookiesCase = async (error: LogoutUserApplicationError) => {
+        const testObfuscatedErrorAndClearCookiesCase = async (error: CloseUserSessionApplicationError) => {
           const controller = buildController()
 
-          mockedLogoutUserUseCase.execute.mockResolvedValue({ success: false, error })
+          mockedCloseUserSessionUserCase.execute.mockResolvedValue({ success: false, error })
 
-          const result = await controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)
+          const result = await controller.closeSession(
+            mockedAccessToken,
+            currentSessionId.value,
+            mockedIp,
+            mockedUserAgent,
+            mockedResponse,
+          )
 
           expectCookiesCleared()
 
           expect(result).toBeUndefined()
         }
 
-        const testObfuscatedErrorAndNotClearCookiesCase = async (error: LogoutUserApplicationError) => {
+        const testObfuscatedErrorAndNotClearCookiesCase = async (error: CloseUserSessionApplicationError, targetSessionId: string) => {
           const controller = buildController()
 
-          mockedLogoutUserUseCase.execute.mockResolvedValue({ success: false, error })
+          mockedCloseUserSessionUserCase.execute.mockResolvedValue({ success: false, error })
 
-          const result = await controller.closeSession(mockedAccessToken, anotherActiveSessionId.value, mockedResponse)
+          const result = await controller.closeSession(mockedAccessToken, targetSessionId, mockedIp, mockedUserAgent, mockedResponse)
 
           expect(mockedConfigService.get).not.toHaveBeenCalled()
           expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
@@ -1946,52 +1997,65 @@ describe('AuthController', () => {
         }
 
         it('should clear cookies when closing current session and use-case returns userNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userNotFound(currentSessionId.value))
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userNotFound(userId.value))
         })
 
         it('should not clear cookies when closing a different session and use-case returns userNotFound error', async () => {
-          await testObfuscatedErrorAndNotClearCookiesCase(LogoutUserApplicationError.userNotFound(anotherActiveSessionId.value))
+          await testObfuscatedErrorAndNotClearCookiesCase(
+            CloseUserSessionApplicationError.userNotFound(userId.value),
+            anotherActiveSessionId.value,
+          )
         })
 
         it('should clear cookies when closing current session and use-case returns userDisabled error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userDisabled(currentSessionId.value))
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userDisabled(userId.value))
         })
 
         it('should not clear cookies when closing a different session and use-case returns userDisabled error', async () => {
-          await testObfuscatedErrorAndNotClearCookiesCase(LogoutUserApplicationError.userDisabled(anotherActiveSessionId.value))
+          await testObfuscatedErrorAndNotClearCookiesCase(
+            CloseUserSessionApplicationError.userDisabled(userId.value),
+            anotherActiveSessionId.value,
+          )
         })
 
         it('should clear cookies when closing current session and use-case returns sessionNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.sessionNotFound(currentSessionId.value))
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.sessionNotFound(currentSessionId.value))
         })
 
         it('should not clear cookies when closing a different session and use-case returns sessionNotFound error', async () => {
-          await testObfuscatedErrorAndNotClearCookiesCase(LogoutUserApplicationError.sessionNotFound(anotherActiveSessionId.value))
+          await testObfuscatedErrorAndNotClearCookiesCase(
+            CloseUserSessionApplicationError.sessionNotFound(anotherActiveSessionId.value),
+            anotherActiveSessionId.value,
+          )
         })
 
         it('should clear cookies when closing current session and use-case returns sessionDoesNotBelongToUser error', async () => {
           await testObfuscatedErrorAndClearCookiesCase(
-            LogoutUserApplicationError.sessionDoesNotBelongToUser(currentSessionId.value, mockedAccessToken.sub),
+            CloseUserSessionApplicationError.sessionDoesNotBelongToUser(currentSessionId.value, mockedAccessToken.sub),
           )
         })
 
         it('should not clear cookies when closing a different session and use-case returns sessionDoesNotBelongToUser error', async () => {
           await testObfuscatedErrorAndNotClearCookiesCase(
-            LogoutUserApplicationError.sessionDoesNotBelongToUser(anotherActiveSessionId.value, mockedAccessToken.sub),
+            CloseUserSessionApplicationError.sessionDoesNotBelongToUser(anotherActiveSessionId.value, mockedAccessToken.sub),
+            anotherActiveSessionId.value,
           )
         })
 
         it('should clear cookies when closing current session and use-case returns cannotRevokeSession error', async () => {
           const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(currentSessionId.value)
 
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))
+          await testObfuscatedErrorAndClearCookiesCase(
+            CloseUserSessionApplicationError.cannotRevokeSession(expectedRevocationError.message),
+          )
         })
 
         it('should not clear cookies when closing a different session and use-case returns cannotRevokeSession error', async () => {
           const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(anotherActiveSessionId.value)
 
           await testObfuscatedErrorAndNotClearCookiesCase(
-            LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message),
+            CloseUserSessionApplicationError.cannotRevokeSession(expectedRevocationError.message),
+            anotherActiveSessionId.value,
           )
         })
       })
@@ -2000,42 +2064,47 @@ describe('AuthController', () => {
         const controller = buildController()
 
         const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
-        const expectedInputError = LogoutUserApplicationError.invalidInput('sessionId', expectedInvalidIdentifierException.message)
+        const expectedInputError = CloseUserSessionApplicationError.invalidInput(
+          'sessionId',
+          expectedInvalidIdentifierException.message,
+        )
 
-        mockedLogoutUserUseCase.execute.mockResolvedValue({
+        mockedCloseUserSessionUserCase.execute.mockResolvedValue({
           success: false,
           error: expectedInputError,
         })
 
-        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)).rejects.toThrow(
+        await expect(
+          controller.closeSession(mockedAccessToken, currentSessionId.value, mockedIp, mockedUserAgent, mockedResponse),
+        ).rejects.toThrow(
           new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
             cause: expectedInputError,
           }),
         )
 
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledTimes(1)
         expect(mockedConfigService.get).not.toHaveBeenCalled()
         expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
       })
 
-      it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown LogoutUserApplicationError', async () => {
+      it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown CloseSessionApplicationError', async () => {
         const controller = buildController()
 
         const unknownUseCaseError = {
-          id: 'revoke_session_unknown_error',
+          id: 'close_session_unknown_error',
           message: 'Unknown error',
-        } as unknown as LogoutUserApplicationError
+        } as unknown as CloseUserSessionApplicationError
 
-        mockedLogoutUserUseCase.execute.mockResolvedValue({
+        mockedCloseUserSessionUserCase.execute.mockResolvedValue({
           success: false,
           error: unknownUseCaseError,
         })
 
-        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException(unknownUseCaseError),
-        )
+        await expect(
+          controller.closeSession(mockedAccessToken, currentSessionId.value, mockedIp, mockedUserAgent, mockedResponse),
+        ).rejects.toThrow(new InternalServerErrorException(unknownUseCaseError))
 
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledTimes(1)
         expect(mockedConfigService.get).not.toHaveBeenCalled()
         expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
       })
@@ -2044,13 +2113,14 @@ describe('AuthController', () => {
         const controller = buildController()
         const unexpectedError = new Error('Unexpected error')
 
-        mockedLogoutUserUseCase.execute.mockImplementation(() => {
+        mockedCloseUserSessionUserCase.execute.mockImplementation(() => {
           throw unexpectedError
         })
 
-        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockedResponse)).rejects.toThrow(
-          unexpectedError,
-        )
+        await expect(
+          controller.closeSession(mockedAccessToken, currentSessionId.value, mockedIp, mockedUserAgent, mockedResponse),
+        ).rejects.toThrow(unexpectedError)
+
         expect(mockedConfigService.get).not.toHaveBeenCalled()
         expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
       })
