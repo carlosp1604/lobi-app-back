@@ -13,7 +13,7 @@ import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastruc
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
-import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
+import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'

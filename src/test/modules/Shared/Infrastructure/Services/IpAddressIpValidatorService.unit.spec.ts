@@ -1,4 +1,4 @@
-import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
+import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
 import ipaddr from 'ipaddr.js'
 
 describe('IpAddressIpValidatorService', () => {
