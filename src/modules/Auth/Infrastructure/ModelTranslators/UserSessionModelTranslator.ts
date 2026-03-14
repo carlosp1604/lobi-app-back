@@ -21,12 +21,7 @@ export class UserSessionModelTranslator {
       raw.expires_at,
       raw.revoked_at,
       raw.ip_hash ? UserSessionIpHash.fromString(raw.ip_hash) : null,
-      UserAgent.fromProps({
-        raw: raw.user_agent,
-        browser: { name: null, version: null },
-        device: { model: null, type: null, vendor: null },
-        os: { name: null, version: null },
-      }),
+      UserAgent.fromProps(raw.user_agent),
       deviceLocation,
       raw.created_at,
       raw.updated_at,
@@ -35,13 +30,13 @@ export class UserSessionModelTranslator {
 
   public static toDatabase(domain: UserSession): UserSessionRawModel {
     return {
-      id: domain.id.toString(),
-      user_id: domain.userId.toString(),
-      token_hash: domain.tokenHash.toString(),
+      id: domain.id.value,
+      user_id: domain.userId.value,
+      token_hash: domain.tokenHash.value,
       expires_at: domain.expiresAt,
       revoked_at: domain.revokedAt ?? null,
-      ip_hash: domain.ipHash ? domain.ipHash.toString() : null,
-      user_agent: domain.userAgent.toString(),
+      ip_hash: domain.ipHash ? domain.ipHash.value : null,
+      user_agent: domain.userAgent.value,
       device_country_code: domain.deviceLocation ? domain.deviceLocation.countryCode : null,
       device_city: domain.deviceLocation ? domain.deviceLocation.city : null,
       created_at: domain.createdAt,

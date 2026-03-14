@@ -95,7 +95,7 @@ describe('RefreshSession', () => {
     currentSession = makeRawSession({
       user_id: userId,
       token_hash: hashedToken,
-      user_agent: UserAgentMother.random().raw,
+      user_agent: UserAgentMother.random().value,
       ip_hash: UserSessionIpHashMother.random().value,
       expires_at: futureExpiresAt,
       revoked_at: null,

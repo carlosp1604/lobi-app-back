@@ -5,7 +5,7 @@ import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMot
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
-import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { UserSessionRawModel, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
@@ -21,15 +21,28 @@ describe('UserSessionModelTranslator', () => {
   const futureExpiresAt = new Date(now.getTime() + 60 * 60 * 1000)
 
   const validDeviceLocation = DeviceLocationMother.valid()
+  const validIpHash = UserSessionIpHashMother.valid()
+  const validUserAgent = UserAgentMother.valid()
+  const validSessionId = IdentifierMother.valid()
+  const validUserId = IdentifierMother.valid()
+  const validTokenHash = UserSessionTokenHashMother.valid()
 
-  const baseRaw = makeRawSession({
-    device_country_code: validDeviceLocation.countryCode,
-    device_city: validDeviceLocation.city,
-    created_at: now,
-    updated_at: now,
-    ip_hash: UserSessionIpHashMother.valid().value,
-    revoked_at: null,
-    expires_at: futureExpiresAt,
+  let baseRawModel: UserSessionRawWithRelationships
+
+  beforeEach(() => {
+    baseRawModel = makeRawSession({
+      id: validSessionId.value,
+      user_id: validUserId.value,
+      token_hash: validTokenHash.value,
+      device_country_code: validDeviceLocation.countryCode,
+      device_city: validDeviceLocation.city,
+      ip_hash: validIpHash.value,
+      revoked_at: null,
+      user_agent: validUserAgent.value,
+      created_at: now,
+      updated_at: now,
+      expires_at: futureExpiresAt,
+    })
   })
 
   describe('toDomain', () => {
@@ -39,10 +52,10 @@ describe('UserSessionModelTranslator', () => {
       expect(result.tokenHash).toBeInstanceOf(UserSessionTokenHash)
       expect(result.userAgent).toBeInstanceOf(UserAgent)
 
-      expect(result.id.value).toBe(raw.id)
-      expect(result.userId.value).toBe(raw.user_id)
-      expect(result.tokenHash.value).toBe(raw.token_hash)
-      expect(result.userAgent.value).toBe(raw.user_agent)
+      expect(result.id.equals(validSessionId)).toBe(true)
+      expect(result.userId.equals(validUserId)).toBe(true)
+      expect(result.tokenHash.equals(validTokenHash)).toBe(true)
+      expect(result.userAgent.equals(validUserAgent)).toBe(true)
       expect(result.expiresAt).toEqual(raw.expires_at)
       expect(result.createdAt).toEqual(raw.created_at)
       expect(result.updatedAt).toEqual(raw.updated_at)
@@ -52,72 +65,73 @@ describe('UserSessionModelTranslator', () => {
         expect(result.ipHash).toBeNull()
       } else {
         expect(result.ipHash).toBeInstanceOf(UserSessionIpHash)
-        expect(result.ipHash?.value).toBe(raw.ip_hash)
+        expect(result.ipHash?.equals(validIpHash)).toBe(true)
       }
 
       if (raw.device_city === null && raw.device_country_code === null) {
         expect(result.deviceLocation).toBeNull()
       } else {
         expect(result.deviceLocation).toBeInstanceOf(DeviceLocation)
-        expect(result.deviceLocation?.city).toBe(raw.device_city)
-        expect(result.deviceLocation?.countryCode).toBe(raw.device_country_code)
+        expect(result.deviceLocation?.equals(validDeviceLocation)).toBe(true)
       }
     }
 
     it('should return the correct domain object when nullable fields are not NULL', () => {
-      const raw = { ...baseRaw, revoked_at: now }
+      const rawModel = { ...baseRawModel, revoked_at: now }
 
-      const result = UserSessionModelTranslator.toDomain(raw)
+      const result = UserSessionModelTranslator.toDomain(rawModel)
 
-      checkResult(result, raw)
-      expect(result.revokedAt).toEqual(raw.revoked_at)
+      checkResult(result, rawModel)
+
+      expect(result.revokedAt).toEqual(rawModel.revoked_at)
       expect(result.ipHash).not.toBeNull()
       expect(result.deviceLocation).not.toBeNull()
     })
 
     it('should return the correct domain object when nullable fields are NULL', () => {
-      const raw: UserSessionRawModel = {
-        ...baseRaw,
+      const rawModel = {
+        ...baseRawModel,
         revoked_at: null,
         ip_hash: null,
         device_country_code: null,
         device_city: null,
       }
 
-      const result = UserSessionModelTranslator.toDomain(raw)
+      const result = UserSessionModelTranslator.toDomain(rawModel)
 
-      checkResult(result, raw)
+      checkResult(result, rawModel)
+
       expect(result.revokedAt).toBeNull()
       expect(result.ipHash).toBeNull()
       expect(result.deviceLocation).toBeNull()
     })
 
     it('should throw error if device location data is partial (city is null)', () => {
-      const raw: UserSessionRawModel = {
-        ...baseRaw,
-        device_country_code: 'ES',
+      const rawModel: UserSessionRawModel = {
+        ...baseRawModel,
+        device_country_code: validDeviceLocation.countryCode,
         device_city: null,
       }
 
-      expect(() => UserSessionModelTranslator.toDomain(raw)).toThrow(UserSessionDomainException.invalidDeviceCity(''))
+      expect(() => UserSessionModelTranslator.toDomain(rawModel)).toThrow(UserSessionDomainException.invalidDeviceCity(''))
     })
 
     it('should throw error if device location data is partial (countryCode is null)', () => {
-      const raw: UserSessionRawModel = {
-        ...baseRaw,
+      const rawModel = {
+        ...baseRawModel,
         device_country_code: null,
-        device_city: 'Madrid',
+        device_city: validDeviceLocation.city,
       }
 
-      expect(() => UserSessionModelTranslator.toDomain(raw)).toThrow(UserSessionDomainException.invalidDeviceCountryCode(''))
+      expect(() => UserSessionModelTranslator.toDomain(rawModel)).toThrow(UserSessionDomainException.invalidDeviceCountryCode(''))
     })
 
     it('does not mutate the input raw model', () => {
-      const raw = structuredClone(baseRaw)
+      const rawModel = structuredClone(baseRawModel)
 
-      UserSessionModelTranslator.toDomain(raw)
+      UserSessionModelTranslator.toDomain(rawModel)
 
-      expect(raw).toEqual(baseRaw)
+      expect(rawModel).toEqual(baseRawModel)
     })
   })
 

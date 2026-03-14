@@ -42,8 +42,7 @@ export class CreateUserSessionsTable1758135348571 implements MigrationInterface 
           },
           {
             name: 'user_agent',
-            type: 'varchar',
-            length: '512',
+            type: 'jsonb',
             isNullable: false,
           },
           {
@@ -93,39 +92,16 @@ export class CreateUserSessionsTable1758135348571 implements MigrationInterface 
         columnNames: ['user_id'],
       }),
     )
-    await queryRunner.createIndex(
-      'user_sessions',
-      new TableIndex({
-        name: 'index_user_sessions_expires_at',
-        columnNames: ['expires_at'],
-      }),
-    )
-
-    // Optimize queries
-    await queryRunner.query(`
-      CREATE INDEX index_user_sessions_active
-        ON user_sessions (user_id, expires_at)
-        WHERE revoked_at IS NULL
-    `)
 
     await queryRunner.query(`
-      CREATE INDEX index_user_sessions_active_ip_ua
-        ON user_sessions (user_id, ip_hash, user_agent)
-        WHERE revoked_at IS NULL
-    `)
-
-    await queryRunner.query(`
-      CREATE INDEX index_user_sessions_active_created_at
-        ON user_sessions (user_id, created_at)
+      CREATE INDEX index_user_sessions_active_lookup
+        ON user_sessions (user_id, expires_at, created_at DESC)
         WHERE revoked_at IS NULL
     `)
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP INDEX IF EXISTS index_user_sessions_active_ip_ua')
-    await queryRunner.query('DROP INDEX IF EXISTS index_user_sessions_active')
-    await queryRunner.query('DROP INDEX IF EXISTS index_user_sessions_active_created_at')
-    await queryRunner.dropIndex('user_sessions', 'index_user_sessions_expires_at')
+    await queryRunner.query('DROP INDEX IF EXISTS index_user_sessions_active_lookup')
     await queryRunner.dropIndex('user_sessions', 'index_user_sessions_user_id')
     await queryRunner.dropForeignKey('user_sessions', 'foreign_key_user_sessions_user')
     await queryRunner.dropTable('user_sessions', true)

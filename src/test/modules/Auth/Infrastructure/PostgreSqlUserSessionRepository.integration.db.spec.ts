@@ -39,7 +39,7 @@ describe('PostgreSqlUserSessionRepository', () => {
       revoked_at: null,
       created_at: now,
       updated_at: now,
-      user_agent: userAgent.raw,
+      user_agent: userAgent.value,
       device_city: null,
       device_country_code: null,
       ip_hash: null,

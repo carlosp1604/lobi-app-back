@@ -168,7 +168,7 @@ describe('LoginUser', () => {
       user_id: userId,
       created_at: newestCreatedAt,
       expires_at: futureExpiresAt,
-      user_agent: sameSession ? sameSession.userAgent.raw : UserAgentMother.random().raw,
+      user_agent: sameSession ? sameSession.userAgent.value : UserAgentMother.random().value,
       ip_hash: sameSession ? sameSession.ipHash.value : UserSessionIpHashMother.random().value,
     })
 
