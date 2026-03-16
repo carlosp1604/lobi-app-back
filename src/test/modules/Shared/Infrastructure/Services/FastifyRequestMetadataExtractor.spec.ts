@@ -1,10 +1,10 @@
 import { FastifyRequest } from 'fastify'
 import { RawClientMetadataDto } from '~/src/modules/Shared/Infrastructure/Services/RawClientMetadataDto'
-import { FastifyClientMetadataExtractor } from '~/src/modules/Shared/Infrastructure/Services/FastifyClientMetadataResolver'
+import { FastifyClientMetadataExtractor } from '~/src/modules/Shared/Infrastructure/Services/FastifyRequestMetadataResolver'
 import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 
-describe('FastifyClientMetadataExtractor', () => {
+describe('FastifyRequestMetadataExtractor', () => {
   let extractor: FastifyClientMetadataExtractor
 
   beforeEach(() => {
@@ -20,7 +20,7 @@ describe('FastifyClientMetadataExtractor', () => {
     } as unknown as FastifyRequest
   }
 
-  describe('resolve', () => {
+  describe('extract', () => {
     it('should extract IP and user agent when they are present', () => {
       const rawIp = UserIpMother.valid()
       const rawUa = UserAgentMother.validString()

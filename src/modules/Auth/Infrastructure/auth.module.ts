@@ -5,6 +5,7 @@ import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controlle
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import {
   AUTH_DOMAIN_EVENT_FACTORY,
+  CLIENT_METADATA_SERVICE,
   CLOSE_USER_SESSION,
   CREATE_USER,
   DEVICE_LOCATION_RESOLVER,
@@ -21,9 +22,11 @@ import {
   PASSWORD_HASHER_SERVICE,
   RANDOM_SERVICE,
   REFRESH_SESSION,
+  REQUEST_METADATA_EXTRACTOR,
   REQUEST_ORIGIN_SERVICE,
   RESET_USER_PASSWORD,
   TOKEN_GENERATOR,
+  UA_PARSER,
   USER_CREDENTIAL_REPOSITORY,
   USER_PROFILE_REPOSITORY,
   USER_REPOSITORY,
@@ -90,6 +93,10 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
+import { UaParserJsUserAgentParserService } from '~/src/modules/Shared/Infrastructure/Services/UaParserJsUserAgentParserService'
+import { FastifyClientMetadataExtractor } from '~/src/modules/Shared/Infrastructure/Services/FastifyRequestMetadataResolver'
+import { UserAgentParserServiceInterface } from '~/src/modules/Shared/Infrastructure/Services/UserAgentParserServiceInterface'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
 
 @Module({
   imports: [
@@ -175,6 +182,8 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
     },
     { provide: DEVICE_LOCATION_RESOLVER, useClass: NoopDeviceLocationResolverService },
     { provide: IP_VALIDATOR, useClass: IpAddressIpValidatorService },
+    { provide: UA_PARSER, useClass: UaParserJsUserAgentParserService },
+    { provide: REQUEST_METADATA_EXTRACTOR, useClass: FastifyClientMetadataExtractor },
     {
       provide: MAX_SESSIONS_POLICY,
       useFactory: (configService: ConfigService<Env, true>) => {
@@ -237,6 +246,25 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         )
       },
       inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_FACTORY],
+    },
+    {
+      provide: CLIENT_METADATA_SERVICE,
+      useFactory: (
+        ipValidator: IpValidatorServiceInterface,
+        hasherService: HasherServiceInterface,
+        uaParserService: UserAgentParserServiceInterface,
+        deviceLocationResolver: DeviceLocationResolverServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
+      ) => {
+        return new ClientMetadataApplicationService(
+          ipValidator,
+          hasherService,
+          uaParserService,
+          deviceLocationResolver,
+          loggerFactory.createLogger(ClientMetadataApplicationService.name),
+        )
+      },
+      inject: [IP_VALIDATOR, HASHER_SERVICE, UA_PARSER, DEVICE_LOCATION_RESOLVER, LOGGER_FACTORY],
     },
     {
       provide: VERIFY_TOKEN_DOMAIN_SERVICE,
@@ -548,6 +576,17 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
       },
       inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE, LOGGER_FACTORY],
     },
+    {
+      provide: GET_ACTIVE_SESSIONS,
+      useFactory: (
+        sessionRepository: UserSessionRepositoryInterface,
+        clockService: ClockServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
+      ) => {
+        return new GetActiveSessions(sessionRepository, clockService, loggerFactory.createLogger(GetActiveSessions.name))
+      },
+      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE, LOGGER_FACTORY],
+    },
   ],
   exports: [
     LOGIN_USER,
@@ -558,6 +597,7 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
     RESET_USER_PASSWORD,
     LOGOUT_USER,
     GET_ACTIVE_SESSIONS,
+    CLIENT_METADATA_SERVICE,
     TypeOrmModule,
   ],
 })
