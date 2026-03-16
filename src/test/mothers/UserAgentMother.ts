@@ -10,6 +10,10 @@ export class UserAgentMother {
     })
   }
 
+  static validString(): string {
+    return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LobiTestRunner/1.0'
+  }
+
   static random(): UserAgent {
     const length = 10 + Math.floor(Math.random() * 50)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/.-_ '
