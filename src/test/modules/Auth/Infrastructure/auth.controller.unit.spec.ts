@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common'
-import { FastifyReply } from 'fastify'
+import { FastifyReply, FastifyRequest } from 'fastify'
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import {
@@ -80,6 +80,10 @@ import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainE
 import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
+import { RequestMetadataExtractorInterface } from '~/src/modules/Shared/Infrastructure/Services/RequestMetadataExtractorInterface'
+import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -93,6 +97,8 @@ describe('AuthController', () => {
   const mockedLogoutUserUseCase = mock<LogoutUser>()
   const mockedCloseUserSessionUserCase = mock<CloseUserSession>()
   const mockedGetActiveSessionsUseCase = mock<GetActiveSessions>()
+  const mockedRequestMetadataExtractor = mock<RequestMetadataExtractorInterface>()
+  const mockedClientMetadataService = mock<ClientMetadataApplicationService>()
 
   const mockedIp = '127.0.0.1'
   const mockedUserAgent = UserAgentMother.valid().raw
@@ -110,6 +116,8 @@ describe('AuthController', () => {
     mockReset(mockedResetUserPasswordUseCase)
     mockReset(mockedLogoutUserUseCase)
     mockReset(mockedCloseUserSessionUserCase)
+    mockReset(mockedRequestMetadataExtractor)
+    mockReset(mockedClientMetadataService)
     mockReset(mockedGetActiveSessionsUseCase)
   })
 
@@ -124,11 +132,13 @@ describe('AuthController', () => {
       mockedLogoutUserUseCase,
       mockedCloseUserSessionUserCase,
       mockedGetActiveSessionsUseCase,
+      mockedRequestMetadataExtractor,
+      mockedClientMetadataService,
       mockedConfigService,
     )
   }
 
-  const loginRefreshAssertCommonCalls = (accessCookieValue: string, refreshCookieValue: string) => {
+  const assertAuthCookiesWereSet = (accessCookieValue: string, refreshCookieValue: string) => {
     expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
     expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
@@ -150,7 +160,7 @@ describe('AuthController', () => {
     })
   }
 
-  const expectCookiesCleared = () => {
+  const assertAuthCookiesWereCleared = () => {
     expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
     expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
@@ -175,6 +185,10 @@ describe('AuthController', () => {
     const validPassword = UserPasswordMother.valid().value
 
     const mockBody = { email: validEmail, password: validPassword }
+    const mockRequest = {} as unknown as FastifyRequest
+
+    const mockedRawRequestMetadata = { ip: UserIpMother.valid(), userAgent: UserAgentMother.validString() }
+    const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
 
     beforeEach(() => {
       mockedConfigService.get.mockImplementation(
@@ -184,7 +198,15 @@ describe('AuthController', () => {
           isProduction: false,
         }),
       )
+
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
+
+    const assertMetadataFlowWasCalled = () => {
+      expect(mockedRequestMetadataExtractor.extract).toHaveBeenCalledWith(mockRequest)
+      expect(mockedClientMetadataService.process).toHaveBeenCalledWith(mockedRawRequestMetadata)
+    }
 
     describe('happy path', () => {
       const expectedResponse = {
@@ -203,69 +225,60 @@ describe('AuthController', () => {
         })
       })
 
-      it('should call use-case correctly passing IP and UserAgent from arguments, set cookie and return data', async () => {
+      it('should extract metadata, call use-case correctly, set cookies and return data', async () => {
         const controller = buildController()
 
-        await controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)
+        const result = await controller.login(mockRequest, mockBody, mockedResponse)
 
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-refresh-token')
+        assertMetadataFlowWasCalled()
+
         expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
           password: mockBody.password,
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
-        })
-      })
-
-      it('should call use-case correctly when UserAgent is undefined, set cookie and return data', async () => {
-        const controller = buildController()
-
-        const result = await controller.login(mockBody, mockedIp, undefined, mockedResponse)
-
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-refresh-token')
-        expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
-          email: mockBody.email,
-          password: mockBody.password,
-          ip: mockedIp,
-          userAgent: undefined,
+          clientMetadata: mockedClientMetadata,
         })
 
+        assertAuthCookiesWereSet('expected-access-token', 'expected-refresh-token')
         expect(result).toEqual(expectedResponse)
       })
     })
 
     describe('when there are errors', () => {
+      const assertAuthCookiesWereNotSet = () => {
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
+      }
+
       it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
-
         const useCaseError = LoginUserApplicationError.invalidUserEmail(validEmail)
 
         mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_EMAIL,
             message: useCaseError.message,
           }),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnprocessableEntityException when use-case returns invalidPasswordFormat error', async () => {
         const controller = buildController()
-
         const useCaseError = LoginUserApplicationError.invalidPasswordFormat()
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
             message: useCaseError.message,
           }),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns invalidCredentials error', async () => {
@@ -276,12 +289,14 @@ describe('AuthController', () => {
           error: LoginUserApplicationError.invalidCredentials(IdentifierMother.valid().value),
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns userNotFound error', async () => {
@@ -292,87 +307,100 @@ describe('AuthController', () => {
           error: LoginUserApplicationError.userNotFound(validEmail),
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
+      })
+
+      it('should throw UnauthorizedException when use-case returns userDisabled error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
+          success: false,
+          error: LoginUserApplicationError.userDisabled(validEmail),
+        })
+
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
-
         const useCaseError = LoginUserApplicationError.userDoesNotHaveCredentials(validEmail)
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns internalError', async () => {
         const controller = buildController()
-
         const useCaseError = LoginUserApplicationError.internalError('Unexpected error')
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns revocationFailed', async () => {
         const controller = buildController()
-
         const useCaseError = LoginUserApplicationError.revocationFailed('Cannot revoke a session')
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns a unknown error', async () => {
         const controller = buildController()
-
         const unknownUseCaseError = {
           id: 'login_user_unknown_error',
           message: 'Unknown error',
         } as unknown as LoginUserApplicationError
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: unknownUseCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: unknownUseCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(unknownUseCaseError),
         )
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
-      it('should throw error when use-case fails with a unexpected error', async () => {
+      it('should throw error when use-case fails with an unexpected exception', async () => {
         const controller = buildController()
-
         const unexpectedError = new Error('Unexpected error')
 
         mockedLoginUseCase.execute.mockImplementation(() => {
           throw unexpectedError
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(unexpectedError)
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(unexpectedError)
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
     })
   })
@@ -409,7 +437,7 @@ describe('AuthController', () => {
 
         const result = await controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')
 
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-new-refresh-token')
+        assertAuthCookiesWereSet('expected-access-token', 'expected-new-refresh-token')
         expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({
           ip: mockedIp,
           userAgent: mockedUserAgent,
@@ -423,7 +451,7 @@ describe('AuthController', () => {
 
         const result = await controller.refresh(mockedIp, undefined, mockedResponse, 'expected-refresh-token')
 
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-new-refresh-token')
+        assertAuthCookiesWereSet('expected-access-token', 'expected-new-refresh-token')
         expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({
           ip: mockedIp,
           userAgent: undefined,
@@ -1742,7 +1770,7 @@ describe('AuthController', () => {
           sessionId: mockedAccessToken.sid,
         })
 
-        expectCookiesCleared()
+        assertAuthCookiesWereCleared()
 
         expect(result).toBeUndefined()
       })
@@ -1754,7 +1782,7 @@ describe('AuthController', () => {
 
         expect(mockedLogoutUserUseCase.execute).not.toHaveBeenCalled()
 
-        expectCookiesCleared()
+        assertAuthCookiesWereCleared()
 
         expect(result).toBeUndefined()
       })
@@ -1769,7 +1797,7 @@ describe('AuthController', () => {
 
           const result = await controller.logout(mockedAccessToken, mockedResponse)
 
-          expectCookiesCleared()
+          assertAuthCookiesWereCleared()
           expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
 
           expect(result).toBeUndefined()
@@ -1909,7 +1937,7 @@ describe('AuthController', () => {
           userAgent: mockedUserAgent,
         })
 
-        expectCookiesCleared()
+        assertAuthCookiesWereCleared()
 
         expect(result).toBeUndefined()
       })
@@ -1978,7 +2006,7 @@ describe('AuthController', () => {
             mockedResponse,
           )
 
-          expectCookiesCleared()
+          assertAuthCookiesWereCleared()
 
           expect(result).toBeUndefined()
         }

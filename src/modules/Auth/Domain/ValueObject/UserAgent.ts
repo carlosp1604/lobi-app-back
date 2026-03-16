@@ -2,7 +2,7 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
-export interface UserAgentProps {
+export type UserAgentProps = {
   raw: string
   browser: {
     name: string | null

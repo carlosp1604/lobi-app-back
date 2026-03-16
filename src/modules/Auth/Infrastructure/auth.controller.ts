@@ -1,6 +1,7 @@
-import type { FastifyReply } from 'fastify'
+import type { FastifyReply, FastifyRequest } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import {
+  CLIENT_METADATA_SERVICE,
   CLOSE_USER_SESSION,
   CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
@@ -8,6 +9,7 @@ import {
   LOGIN_USER,
   LOGOUT_USER,
   REFRESH_SESSION,
+  REQUEST_METADATA_EXTRACTOR,
   RESET_USER_PASSWORD,
   VALIDATE_VERIFICATION_TOKEN,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
@@ -66,6 +68,7 @@ import {
   Delete,
   Param,
   ParseUUIDPipe,
+  Req,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
@@ -110,6 +113,8 @@ import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Applicatio
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
 import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
+import type { RequestMetadataExtractorInterface } from '~/src/modules/Shared/Infrastructure/Services/RequestMetadataExtractorInterface'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
 
 @Controller('auth')
 export class AuthController {
@@ -123,22 +128,22 @@ export class AuthController {
     @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
     @Inject(CLOSE_USER_SESSION) private readonly closeUserSession: CloseUserSession,
     @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
+    @Inject(REQUEST_METADATA_EXTRACTOR) private readonly requestMetadataExtractor: RequestMetadataExtractorInterface,
+    @Inject(CLIENT_METADATA_SERVICE) private readonly clientMetadataService: ClientMetadataApplicationService,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() body: LoginUserBodyDto,
-    @UserIp() userIp: string,
-    @UserAgent() userAgent: string | undefined,
-    @Res({ passthrough: true }) response: FastifyReply,
-  ) {
+  async login(@Req() request: FastifyRequest, @Body() body: LoginUserBodyDto, @Res({ passthrough: true }) response: FastifyReply) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: LoginUserApplicationRequestDto = {
       email: body.email,
       password: body.password,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.loginUser.execute(requestDto)
@@ -160,7 +165,8 @@ export class AuthController {
 
       if (
         result.error.id === LoginUserApplicationError.invalidCredentialsId ||
-        result.error.id === LoginUserApplicationError.userNotFoundId
+        result.error.id === LoginUserApplicationError.userNotFoundId ||
+        result.error.id === LoginUserApplicationError.userDisabledId
       ) {
         throw new UnauthorizedException({
           code: UNAUTHORIZED_ACCESS,

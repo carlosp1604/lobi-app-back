@@ -46,7 +46,7 @@ describe('RefreshSession', () => {
   const pastExpiresAt = new Date(now.getTime() - 3600)
 
   const userId = IdentifierMother.valid().value
-  const expectedUserAgent = UserAgentMother.random().raw
+  const expectedUserAgent = UserAgentMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
@@ -108,7 +108,7 @@ describe('RefreshSession', () => {
     request = {
       token: refreshToken,
       ip: '8.8.8.8',
-      userAgent: expectedUserAgent,
+      userAgent: expectedUserAgent.raw,
     }
 
     hashedIp = await hasherService.hash(request.ip)
@@ -193,7 +193,7 @@ describe('RefreshSession', () => {
       const savedSession = UserSessionDatabaseHelper.findSessionByIdInArray(activeSessions, sessionId)
       expect(savedSession).toBeDefined()
       expect(savedSession!.user_id).toBe(userId)
-      expect(savedSession!.user_agent).toBe(expectedUserAgent)
+      expect(savedSession!.user_agent).toEqual(expectedUserAgent)
 
       expect(savedSession!.ip_hash).toBe(hashedIp)
 

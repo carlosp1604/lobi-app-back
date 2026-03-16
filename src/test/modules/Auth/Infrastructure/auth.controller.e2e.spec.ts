@@ -152,7 +152,7 @@ describe('AuthController', () => {
     await app.close()
   })
 
-  const checkAuthCookies = (cookies: Array<string>) => {
+  const checkAuthCookiesWereSet = (cookies: Array<string>) => {
     const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
     const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
 
@@ -165,7 +165,7 @@ describe('AuthController', () => {
     expect(isBeingCleared).toBe(false)
   }
 
-  const checkClearedCookies = (cookies: Array<string>) => {
+  const checkAuthCookiesWereCleared = (cookies: Array<string>) => {
     const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
     const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
 
@@ -181,26 +181,28 @@ describe('AuthController', () => {
   describe('login', () => {
     const userId = IdentifierMother.valid().value
     const userEmail = EmailAddressMother.random().value
-    const validPassword = UserPasswordMother.valid().value
+    const userPassword = UserPasswordMother.valid().value
 
     let userDatabaseHelper: UserDatabaseHelper
     let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
     let rawUser: UserRawModelWithRelations
     let rawCredential: UserCredentialRawWitRelationships
 
     beforeEach(async () => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
       userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(dataSource.manager)
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(dataSource.manager)
 
       const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
-      const userPassword = await passwordHasher.hash(validPassword)
+      const passwordHash = await passwordHasher.hash(userPassword)
 
       rawCredential = makeRawUserCredential({
         user_id: userId,
         locked_until: null,
         last_login_at: null,
         failed_attempts: 0,
-        password_hash: userPassword,
+        password_hash: passwordHash,
       })
 
       rawUser = makeRawUser({
@@ -217,9 +219,9 @@ describe('AuthController', () => {
 
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail, password: validPassword })
+          .send({ email: userEmail, password: userPassword })
           .expect(200)
-          .expect((response) => {
+          .expect(async (response) => {
             expect(response.body).toEqual({
               accessToken: expect.any(String),
               refreshToken: expect.any(String),
@@ -230,7 +232,10 @@ describe('AuthController', () => {
             } as Record<string, unknown>)
 
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
-            checkAuthCookies(cookies)
+            checkAuthCookiesWereSet(cookies)
+
+            const savedSession = await userSessionDatabaseHelper.findById(response.body.sessionId as string)
+            expect(savedSession).toBeDefined()
           })
       })
     })
@@ -306,20 +311,20 @@ describe('AuthController', () => {
         }
 
         it('should throw UnauthorizedException when user is not found', async () => {
-          await testCase(validPassword)
+          await testCase(userPassword)
         })
 
         it('should throw UnauthorizedException when user is deleted', async () => {
           await userDatabaseHelper.save({ ...rawUser, deleted_at: now })
 
-          await testCase(validPassword)
+          await testCase(userPassword)
         })
 
         it('should throw UnauthorizedException when user is not active', async () => {
           await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
           await userCredentialDatabaseHelper.save(rawCredential)
 
-          await testCase(validPassword)
+          await testCase(userPassword)
         })
 
         it('should throw UnauthorizedException when user password does not match', async () => {
@@ -335,7 +340,7 @@ describe('AuthController', () => {
 
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail, password: validPassword })
+          .send({ email: userEmail, password: userPassword })
           .expect(500)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -410,7 +415,7 @@ describe('AuthController', () => {
             } as Record<string, unknown>)
 
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
-            checkAuthCookies(cookies)
+            checkAuthCookiesWereSet(cookies)
           })
       })
     })
@@ -1272,7 +1277,7 @@ describe('AuthController', () => {
             expect(response.body).toEqual({})
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
 
         const revokedSession = await userSessionDatabaseHelper.findById(sessionId.value)
@@ -1290,7 +1295,7 @@ describe('AuthController', () => {
             expect(response.body).toEqual({})
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
       })
 
@@ -1308,7 +1313,7 @@ describe('AuthController', () => {
           .expect((response) => {
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
       })
     })
@@ -1359,7 +1364,7 @@ describe('AuthController', () => {
             expect(response.body).toEqual({})
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
 
         const revokedSession = await userSessionDatabaseHelper.findById(sessionId.value)
@@ -1399,7 +1404,7 @@ describe('AuthController', () => {
           .expect((response) => {
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
       })
 

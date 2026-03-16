@@ -9,19 +9,15 @@ import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructu
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
-import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
-import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
-import { DomainEventRawModel } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
@@ -43,16 +39,12 @@ import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserD
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
-
-interface BuildAndSaveSessionsResponse {
-  oldestSession: UserSessionRawWithRelationships
-  session2: UserSessionRawWithRelationships
-  session3: UserSessionRawWithRelationships
-}
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
+import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
+import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 
 describe('LoginUser', () => {
   const now = new Date('2025-10-22T19:00:00Z')
@@ -60,14 +52,19 @@ describe('LoginUser', () => {
 
   const userId = IdentifierMother.valid().value
   const userEmail = EmailAddressMother.random().value
-  const expectedUserAgent = UserAgentMother.random()
-  const domainType = DomainEventAggregateType.user().value
   const validPassword = UserPasswordMother.random().value
+
+  const userAgent = UserAgentMother.random()
+  const userDeviceLocation = DeviceLocationMother.valid()
+  const userIpHash = UserIpHashMother.random()
+  const userDomainAggregateType = DomainEventAggregateType.user().value
 
   let userDatabaseHelper: UserDatabaseHelper
   let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
   let domainEventDatabaseHelper: DomainEventDatabaseHelper
+
+  let baseRequest: LoginUserApplicationRequestDto
 
   const ACCESS_TTL_MS = env.ACCESS_TTL_MS
   const REFRESH_TTL_MS = env.REFRESH_TTL_MS
@@ -109,6 +106,16 @@ describe('LoginUser', () => {
       last_login_at: null,
     })
     await userCredentialDatabaseHelper.save(rawUserCredential)
+
+    baseRequest = {
+      email: userEmail,
+      password: validPassword,
+      clientMetadata: new ClientMetadataResponseTestBuilder()
+        .withUserAgent(userAgent)
+        .withUserIpHash(userIpHash)
+        .withDeviceLocation(userDeviceLocation)
+        .build(),
+    }
   })
 
   const mockedConfigService = mock<ConfigService>()
@@ -118,13 +125,6 @@ describe('LoginUser', () => {
   const domainEventFactory = new AuthDomainEventFactory(idGenerator)
   const loggerService = new LoggerServiceMock()
   const maxSessions = env.USER_MAX_SESSIONS
-
-  const request: LoginUserApplicationRequestDto = {
-    email: userEmail,
-    password: validPassword,
-    ip: '127.0.0.0',
-    userAgent: expectedUserAgent.raw,
-  }
 
   const buildUseCase = () => {
     return new LoginUser(
@@ -140,12 +140,6 @@ describe('LoginUser', () => {
         mockedConfigService,
       ),
       new UserSessionPolicyManagerApplicationService(new MaxSessionsPolicy(maxSessions), loggerService),
-      new RequestOriginApplicationService(
-        new IpAddressIpValidatorService(),
-        hasherService,
-        new NoopDeviceLocationResolverService(),
-        loggerService,
-      ),
       new ClockServiceMock(now),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
@@ -154,31 +148,40 @@ describe('LoginUser', () => {
     )
   }
 
-  const buildAndSaveSessions = async (sameSession?: {
-    ipHash: UserIpHash
-    userAgent: UserAgent
-  }): Promise<BuildAndSaveSessionsResponse> => {
-    const oldestCreatedAt = new Date(now.getTime() - 3000)
-    const middleCreatedAt = new Date(now.getTime() - 2000)
-    const newestCreatedAt = new Date(now.getTime() - 1000)
+  const runTestWithCount = async (
+    request: LoginUserApplicationRequestDto,
+    expectedCounts: {
+      sessions: { before: number; after: number }
+      events: { before: number; after: number }
+      credentials?: { before: number; after: number }
+    },
+  ) => {
+    const useCase = buildUseCase()
 
-    const oldestSession = makeRawSession({ user_id: userId, created_at: oldestCreatedAt, expires_at: futureExpiresAt })
-    const session2 = makeRawSession({ user_id: userId, created_at: middleCreatedAt, expires_at: futureExpiresAt })
-    const session3 = makeRawSession({
-      user_id: userId,
-      created_at: newestCreatedAt,
-      expires_at: futureExpiresAt,
-      user_agent: sameSession ? sameSession.userAgent.value : UserAgentMother.random().value,
-      ip_hash: sameSession ? sameSession.ipHash.value : UserIpHashMother.random().value,
-    })
+    const userCredentialBefore = await userCredentialDatabaseHelper.count()
+    const sessionsBeforeLogin = await userSessionDatabaseHelper.count()
+    const eventsBeforeLogin = await domainEventDatabaseHelper.count()
 
-    await userSessionDatabaseHelper.save([oldestSession, session2, session3])
+    const result = await useCase.execute(request)
 
-    return {
-      oldestSession,
-      session2,
-      session3,
+    const sessionsAfterLogin = await userSessionDatabaseHelper.count()
+    const eventsAfterLogin = await domainEventDatabaseHelper.count()
+    const userCredentialAfter = await userCredentialDatabaseHelper.count()
+
+    expect(sessionsBeforeLogin).toEqual(expectedCounts.sessions.before)
+    expect(sessionsAfterLogin).toEqual(expectedCounts.sessions.after)
+    expect(eventsBeforeLogin).toEqual(expectedCounts.events.before)
+    expect(eventsAfterLogin).toEqual(expectedCounts.events.after)
+
+    if (expectedCounts.credentials) {
+      expect(userCredentialBefore).toEqual(expectedCounts.credentials.before)
+      expect(userCredentialAfter).toEqual(expectedCounts.credentials.after)
+    } else {
+      expect(userCredentialBefore).toEqual(1)
+      expect(userCredentialAfter).toEqual(1)
     }
+
+    return result
   }
 
   describe('happy path', () => {
@@ -199,36 +202,50 @@ describe('LoginUser', () => {
 
     const assertSavedSessionDomainAndCredential = async (
       result: Result<LoginUserApplicationResponseDto, LoginUserApplicationError>,
-      activeSessions: Array<UserSessionRawWithRelationships>,
-      domainEvents: Array<DomainEventRawModel>,
-      userAgent: UserAgent,
-      ipHash: UserIpHash | null,
+      expectedUserAgent: UserAgent,
+      expectedIpHash: UserIpHash | null,
+      expectedDeviceLocation: DeviceLocation | null,
     ) => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      const sessionId: string = result.value!.sessionId as string
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      const expectedSessionHash = await hasherService.hash(result.value!.refreshToken as string)
+      expect(result.success).toBe(true)
 
-      const savedSession = UserSessionDatabaseHelper.findSessionByIdInArray(activeSessions, sessionId)
+      const sessionId: string = result['value'].sessionId as string
+      const expectedSessionHash = await hasherService.hash(result['value'].refreshToken as string)
+
+      const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+
+      const savedSession = userActiveSessions.find((savedSession) => savedSession.id === sessionId)
       expect(savedSession).toBeDefined()
+      expect(savedSession!.id).toBe(sessionId)
       expect(savedSession!.user_id).toBe(userId)
-      expect(savedSession!.user_agent).toBe(userAgent.value)
+      expect(savedSession!.user_agent).toEqual(expectedUserAgent.value)
 
-      if (!ipHash) {
+      if (!expectedIpHash) {
         expect(savedSession!.ip_hash).toBeNull()
       } else {
-        expect(savedSession!.ip_hash).toBe(ipHash.value)
+        expect(savedSession!.ip_hash).toBe(expectedIpHash.value)
       }
 
-      expect(savedSession!.device_country_code).toBeNull()
-      expect(savedSession!.device_city).toBeNull()
+      if (!expectedDeviceLocation) {
+        expect(savedSession!.device_country_code).toBeNull()
+        expect(savedSession!.device_city).toBeNull()
+      } else {
+        expect(savedSession!.device_country_code).toBe(expectedDeviceLocation.countryCode)
+        expect(savedSession!.device_city).toBe(expectedDeviceLocation.city)
+      }
+
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
       expect(savedSession!.expires_at).toEqual(new Date(now.getTime() + REFRESH_TTL_MS))
 
-      expect(domainEvents.length).toBe(1)
-      expect(domainEvents[0].name).toBe(DomainEventName.successfulLogin().value)
+      const userDomainEvents = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, userDomainAggregateType)
+
+      const savedDomainEvent = userDomainEvents.find(
+        (savedDomainEvent) => savedDomainEvent.name === String(DomainEventName.successfulLogin().value),
+      )
+      expect(savedDomainEvent).toBeDefined()
+      expect(savedDomainEvent!.aggregate_id).toBe(userId)
+      expect(savedDomainEvent!.aggregate_type).toBe(userDomainAggregateType)
+      expect(savedDomainEvent!.name).toBe(DomainEventName.successfulLogin().value)
+      expect(savedDomainEvent!.occurred_at).toEqual(now)
 
       const updatedUserCredential = await userCredentialDatabaseHelper.findUserCredential(userId)
       expect(updatedUserCredential).not.toBeNull()
@@ -238,62 +255,50 @@ describe('LoginUser', () => {
       expect(updatedUserCredential!.last_login_at).toEqual(now)
     }
 
-    it('should authenticate and create a new user session correctly (no revoke sessions)', async () => {
-      const useCase = buildUseCase()
-
-      const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-
-      const result = await useCase.execute(request)
-
-      const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+    it('should create a new user session and its domain event correctly (no revoke sessions)', async () => {
+      const result = await runTestWithCount(baseRequest, {
+        sessions: { before: 0, after: 1 },
+        events: { before: 0, after: 1 },
+      })
 
       assertResult(result, true)
 
-      expect(domainEventsBefore.length).toBe(0)
-      expect(domainEventsBefore).toEqual([])
-      expect(activeSessionsBefore.length).toBe(0)
-      expect(activeSessionsBefore).toEqual([])
-
-      expect(activeSessionsAfter.length).toBe(1)
-      await assertSavedSessionDomainAndCredential(result, activeSessionsAfter, domainEventsAfter, expectedUserAgent, null)
+      await assertSavedSessionDomainAndCredential(result, userAgent, userIpHash, userDeviceLocation)
     })
 
-    it('should authenticate and create a new user session correctly (revoke sessions)', async () => {
-      const ipHash = await hasherService.hash('8.8.8.8')
-      const expectedIpHash = UserIpHash.fromString(ipHash)
-      const userAgent = UserAgentMother.valid()
+    it('should create a new user session and its domain event correctly (revoke sessions)', async () => {
+      const oldestCreatedAt = new Date(now.getTime() - 3000)
+      const middleCreatedAt = new Date(now.getTime() - 2000)
+      const newestCreatedAt = new Date(now.getTime() - 1000)
 
-      const { oldestSession, session2, session3 } = await buildAndSaveSessions({
-        ipHash: UserIpHash.fromString(ipHash),
-        userAgent,
+      const oldestSession = makeRawSession({ user_id: userId, created_at: oldestCreatedAt, expires_at: futureExpiresAt })
+      const session2 = makeRawSession({ user_id: userId, created_at: middleCreatedAt, expires_at: futureExpiresAt })
+      const session3 = makeRawSession({
+        user_id: userId,
+        created_at: newestCreatedAt,
+        expires_at: futureExpiresAt,
+        user_agent: userAgent.value,
+        ip_hash: userIpHash.value,
       })
 
-      const useCase = buildUseCase()
+      await userSessionDatabaseHelper.save([oldestSession, session2, session3])
 
-      const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-
-      const result = await useCase.execute({ ...request, ip: '8.8.8.8', userAgent: userAgent.raw })
-
-      const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      const result = await runTestWithCount(baseRequest, {
+        sessions: { before: 3, after: 4 },
+        events: { before: 0, after: 1 },
+      })
 
       assertResult(result, false)
 
-      expect(domainEventsBefore.length).toBe(0)
-      expect(domainEventsBefore).toEqual([])
-      expect(activeSessionsBefore.length).toBe(3)
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsBefore, oldestSession.id)).toBeDefined()
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsBefore, session2.id)).toBeDefined()
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsBefore, session3.id)).toBeDefined()
+      await assertSavedSessionDomainAndCredential(result, userAgent, userIpHash, userDeviceLocation)
 
-      expect(activeSessionsAfter.length).toBe(maxSessions)
-      await assertSavedSessionDomainAndCredential(result, activeSessionsAfter, domainEventsAfter, userAgent, expectedIpHash)
+      const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session2.id)).toBeDefined()
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session3.id)).toBeDefined()
+      expect(userActiveSessions).toHaveLength(maxSessions)
+
+      expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === session2.id)).toBeDefined()
+      expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === session3.id)).toBeDefined()
+      expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === oldestSession.id)).toBeUndefined()
 
       const oldestSessionInDb = await userSessionDatabaseHelper.findById(oldestSession.id)
       expect(oldestSessionInDb).not.toBeNull()
@@ -304,95 +309,66 @@ describe('LoginUser', () => {
 
   describe('when there are errors', () => {
     it('should return error when password is incorrect', async () => {
-      const useCase = buildUseCase()
+      const anotherPassword = UserPasswordMother.random()
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-      const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const userCredentialBefore = await userCredentialDatabaseHelper.findUserCredential(userId)
-
-      const result = await useCase.execute({ ...request, password: UserPasswordMother.random().value })
-
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-      const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const userCredentialAfter = await userCredentialDatabaseHelper.findUserCredential(userId)
+      const result = await runTestWithCount(
+        { ...baseRequest, password: anotherPassword.value },
+        {
+          sessions: { before: 0, after: 0 },
+          events: { before: 0, after: 1 },
+        },
+      )
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidCredentials(userId))
 
-      expect(domainEventsBefore.length).toBe(0)
-      expect(domainEventsBefore).toEqual([])
+      const savedDomainEvents = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, userDomainAggregateType)
 
-      expect(activeSessionsBefore).toEqual(activeSessionsAfter)
-      expect(userCredentialBefore).toEqual(userCredentialAfter)
-
-      expect(domainEventsAfter[0].name).toEqual(DomainEventName.failedLoginAttempt().value)
-      expect(domainEventsAfter[0].occurred_at).toEqual(now)
+      expect(savedDomainEvents).toHaveLength(1)
+      expect(savedDomainEvents[0].name).toEqual(DomainEventName.failedLoginAttempt().value)
+      expect(savedDomainEvents[0].occurred_at).toEqual(now)
     })
 
-    describe('when user is not found or is deactivated', () => {
-      const testCase = async (request: LoginUserApplicationRequestDto) => {
-        const useCase = buildUseCase()
-
-        const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-        const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-        const userCredentialBefore = await userCredentialDatabaseHelper.findUserCredential(userId)
-
-        const result = await useCase.execute(request)
-
-        const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-        const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-        const userCredentialAfter = await userCredentialDatabaseHelper.findUserCredential(userId)
-
-        expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound(request.email))
-
-        expect(domainEventsBefore.length).toBe(0)
-        expect(domainEventsBefore).toEqual([])
-
-        expect(activeSessionsBefore).toEqual(activeSessionsAfter)
-        expect(userCredentialBefore).toEqual(userCredentialAfter)
-        expect(domainEventsAfter).toEqual(domainEventsBefore)
-      }
-
+    describe('when user is not found or is disabled', () => {
       it('should return error when user is not found', async () => {
         const anotherUserEmail = EmailAddressMother.random()
 
-        await testCase({ ...request, email: anotherUserEmail.value })
+        const result = await runTestWithCount(
+          { ...baseRequest, email: anotherUserEmail.value },
+          {
+            sessions: { before: 0, after: 0 },
+            events: { before: 0, after: 0 },
+          },
+        )
+
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound(anotherUserEmail.value))
       })
 
       it('should return error when user is not active', async () => {
         await userDatabaseHelper.update(userId, { status: UserStatus.deactivated().value })
 
-        await testCase(request)
+        const result = await runTestWithCount(baseRequest, {
+          sessions: { before: 0, after: 0 },
+          events: { before: 0, after: 0 },
+        })
+
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userDisabled(userEmail))
       })
     })
 
     it('should return error when user does not have credentials', async () => {
       await userCredentialDatabaseHelper.delete(userId)
 
-      const useCase = buildUseCase()
-
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-      const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const userCredentialBefore = await userCredentialDatabaseHelper.findUserCredential(userId)
-
-      const result = await useCase.execute(request)
-
-      expect(result).toEqual({
-        success: false,
-        error: LoginUserApplicationError.userDoesNotHaveCredentials(userId),
+      const result = await runTestWithCount(baseRequest, {
+        sessions: { before: 0, after: 0 },
+        events: { before: 0, after: 0 },
+        credentials: { before: 0, after: 0 },
       })
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-      const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, domainType)
-      const userCredentialAfter = await userCredentialDatabaseHelper.findUserCredential(userId)
-
-      expect(activeSessionsBefore).toEqual(activeSessionsAfter)
-      expect(domainEventsBefore).toEqual(domainEventsAfter)
-      expect(userCredentialBefore).toBeNull()
-      expect(userCredentialAfter).toBeNull()
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.userDoesNotHaveCredentials(userId))
     })
-
-    describe('when there are errors during session revocation', () => {})
   })
 })

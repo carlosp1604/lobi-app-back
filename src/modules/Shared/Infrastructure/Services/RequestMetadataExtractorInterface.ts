@@ -1,4 +1,4 @@
-import { RawClientMetadataDto } from './RawClientMetadataDto'
+import { RawRequestMetadataDto } from './RawRequestMetadataDto'
 
 export interface RequestMetadataExtractorInterface<TRequest = any> {
   /**
@@ -6,5 +6,5 @@ export interface RequestMetadataExtractorInterface<TRequest = any> {
    * @param request - The raw HTTP request object provided by the underlying framework
    * @returns A Data Transfer Object containing the unparsed, raw client origin data.
    */
-  extract(request: TRequest): RawClientMetadataDto
+  extract(request: TRequest): RawRequestMetadataDto
 }

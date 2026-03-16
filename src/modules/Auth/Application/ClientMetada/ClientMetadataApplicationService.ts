@@ -28,7 +28,7 @@ export class ClientMetadataApplicationService {
 
   public async process(
     dto: ClientMetadataApplicationRequestDto,
-    context: ClientMetadataContext,
+    context: ClientMetadataContext = {},
   ): Promise<ClientMetadataApplicationResponse> {
     const userAgentVO = this.resolveUserAgent(dto.userAgent, context)
 

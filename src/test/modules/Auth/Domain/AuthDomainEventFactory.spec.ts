@@ -167,7 +167,7 @@ describe('AuthDomainEventFactory', () => {
     it('should create a valid DomainEvent for a failed login attempt', () => {
       const factory = buildFactory()
 
-      const event = factory.createFailedAttemptEvent(userId, baseLocation, baseUserAgent, baseIpHash.value, now)
+      const event = factory.createFailedAttemptEvent(userId, baseLocation, baseUserAgent, baseIpHash, now)
 
       checkIdGeneratorCall()
       checkBaseEventStructure(event, DomainEventName.failedLoginAttempt(), DomainEventAggregateType.user(), userId)

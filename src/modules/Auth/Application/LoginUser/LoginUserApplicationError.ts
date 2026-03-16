@@ -5,11 +5,11 @@ export class LoginUserApplicationError extends Error {
   public readonly name: string
 
   public static userNotFoundId = 'login_user_user_not_found'
+  public static userDisabledId = 'login_user_user_disabled'
   public static invalidCredentialsId = 'login_user_invalid_credentials'
   public static userDoesNotHaveCredentialsId = 'login_user_user_does_not_have_credentials'
   public static invalidUserEmailId = 'login_user_invalid_user_email'
   public static invalidPasswordFormatId = 'login_user_invalid_password_format'
-  public static cannotRevokeSessionsId = 'login_user_cannot_revoke_session'
   public static revocationFailedId = 'login_user_revocation_failed'
   public static internalErrorId = 'login_user_internal_error'
 
@@ -21,6 +21,10 @@ export class LoginUserApplicationError extends Error {
 
   public static userNotFound(userEmail: string) {
     return new LoginUserApplicationError(`User identified by the email ${userEmail} was not found`, this.userNotFoundId)
+  }
+
+  public static userDisabled(userEmail: string) {
+    return new LoginUserApplicationError(`User identified by the email ${userEmail} is disabled`, this.userDisabledId)
   }
 
   public static invalidCredentials(userId: string) {
@@ -43,10 +47,6 @@ export class LoginUserApplicationError extends Error {
       `User identified by ID ${userId} does not have credentials to local login`,
       this.userDoesNotHaveCredentialsId,
     )
-  }
-
-  public static cannotRevokeSession(message: string) {
-    return new LoginUserApplicationError(message, this.cannotRevokeSessionsId)
   }
 
   public static revocationFailed(errorMessage: string) {

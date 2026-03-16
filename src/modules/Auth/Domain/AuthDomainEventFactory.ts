@@ -8,6 +8,7 @@ import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainE
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 
 export class AuthDomainEventFactory {
   constructor(private readonly idGeneratorService: IdGeneratorServiceInterface) {}
@@ -48,7 +49,7 @@ export class AuthDomainEventFactory {
         sessionId: session.id.value,
         isNewDevice,
       },
-      this.mapMetadata(session.ipHash ? session.ipHash.value : null, session.userAgent),
+      this.mapMetadataFromVO(session.ipHash, session.userAgent),
       now,
     )
   }
@@ -57,7 +58,7 @@ export class AuthDomainEventFactory {
     userId: Identifier,
     deviceLocation: DeviceLocation | null,
     userAgent: UserAgent,
-    ipHash: string | null,
+    ipHash: UserIpHash | null,
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
@@ -69,7 +70,7 @@ export class AuthDomainEventFactory {
         userId: userId.value,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadata(ipHash, userAgent),
+      this.mapMetadataFromVO(ipHash, userAgent),
       now,
     )
   }
@@ -141,7 +142,7 @@ export class AuthDomainEventFactory {
         targetSessionId: targetSession.id.value,
         targetDeviceLocation: this.mapLocation(targetSession.deviceLocation),
         actorDeviceLocation: this.mapLocation(actorDeviceLocation),
-        actorUserAgent: actorUserAgent.raw,
+        actorUserAgent: actorUserAgent.value,
       },
       {
         ...this.mapMetadata(actorIpHash, actorUserAgent),
@@ -165,7 +166,14 @@ export class AuthDomainEventFactory {
   private mapMetadata(ipHash: string | null, userAgent: UserAgent) {
     return {
       ipHash: ipHash,
-      ua: userAgent.raw,
+      ua: userAgent.value,
+    }
+  }
+
+  private mapMetadataFromVO(ipHash: UserIpHash | null, userAgent: UserAgent) {
+    return {
+      ipHash: ipHash ? ipHash.value : null,
+      ua: userAgent.value,
     }
   }
 }

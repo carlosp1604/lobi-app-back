@@ -10,14 +10,12 @@ import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSe
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
@@ -31,7 +29,6 @@ export class LoginUser {
     private readonly hasherService: HasherServiceInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
-    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -57,15 +54,7 @@ export class LoginUser {
     const userEmail = validateUserEmailResult.value
     const userPassword = validateUserPasswordResult.value
 
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: userEmail.value,
-    })
-
-    let sessionIpHash: UserIpHash | null = null
-
-    if (ipHash) {
-      sessionIpHash = UserIpHash.fromString(ipHash)
-    }
+    const { deviceLocation, userAgent, userIpHash } = request.clientMetadata
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const getAndValidateUserResult = await this.getAndValidateUser(userEmail, context)
@@ -74,7 +63,7 @@ export class LoginUser {
         return getAndValidateUserResult
       }
 
-      const user: User = getAndValidateUserResult.value
+      const user = getAndValidateUserResult.value
 
       const getUserCredential = await this.getUserCredential(user, context)
 
@@ -87,7 +76,7 @@ export class LoginUser {
       const passwordMatches = await this.hasherService.compare(userPassword.value, credentials.passwordHash.value)
 
       if (!passwordMatches) {
-        const domainEvent = this.authDomainEventFactory.createFailedAttemptEvent(user.id, deviceLocation, userAgent, ipHash, now)
+        const domainEvent = this.authDomainEventFactory.createFailedAttemptEvent(user.id, deviceLocation, userAgent, userIpHash, now)
 
         await this.domainEventRepository.save(domainEvent, context)
 
@@ -97,7 +86,7 @@ export class LoginUser {
       credentials.resetAfterSuccessfulLogin(now)
 
       const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
-        await this.generateTokensService.generate(user.id, now, userAgent, sessionIpHash, deviceLocation)
+        await this.generateTokensService.generate(user.id, now, userAgent, userIpHash, deviceLocation)
 
       const activeSessions = await this.sessionRepository.findUserActiveSessions(user.id, now, context)
 
@@ -157,13 +146,22 @@ export class LoginUser {
   private async getAndValidateUser(userEmail: EmailAddress, context: TxContext): Promise<Result<User, LoginUserApplicationError>> {
     const user = await this.userRepository.findByEmailWithLock(userEmail.value, context)
 
-    if (!user || !user.isActive()) {
+    if (!user) {
       this.loggerService.warn('Login rejected', {
         email: userEmail.value,
-        reason: user ? 'User is disabled' : 'User not found',
+        reason: 'User not found',
       })
 
       return fail(LoginUserApplicationError.userNotFound(userEmail.value))
+    }
+
+    if (!user.isActive()) {
+      this.loggerService.warn('Login rejected', {
+        email: userEmail.value,
+        reason: 'User is disabled',
+      })
+
+      return fail(LoginUserApplicationError.userDisabled(userEmail.value))
     }
 
     return success(user)

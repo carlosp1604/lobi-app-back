@@ -1,5 +1,5 @@
 import { FastifyRequest } from 'fastify'
-import { RawClientMetadataDto } from '~/src/modules/Shared/Infrastructure/Services/RawClientMetadataDto'
+import { RawRequestMetadataDto } from '~/src/modules/Shared/Infrastructure/Services/RawRequestMetadataDto'
 import { FastifyClientMetadataExtractor } from '~/src/modules/Shared/Infrastructure/Services/FastifyRequestMetadataResolver'
 import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -26,7 +26,7 @@ describe('FastifyRequestMetadataExtractor', () => {
       const rawUa = UserAgentMother.validString()
       const request = createMockRequest(rawIp, rawUa)
 
-      const result: RawClientMetadataDto = extractor.extract(request)
+      const result: RawRequestMetadataDto = extractor.extract(request)
 
       expect(result.ip).toBe(rawIp)
       expect(result.userAgent).toBe(rawUa)

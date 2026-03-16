@@ -85,7 +85,7 @@ describe('PostgreSqlUserSessionRepository', () => {
       expect(rawUserSession.device_country_code).toBeNull()
     }
 
-    expect(userSession.userAgent.value).toBe(rawUserSession.user_agent)
+    expect(userSession.userAgent.value).toEqual(rawUserSession.user_agent)
     expect(userSession.tokenHash.value).toBe(rawUserSession.token_hash)
   }
 

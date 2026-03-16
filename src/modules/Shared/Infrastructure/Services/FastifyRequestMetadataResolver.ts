@@ -1,6 +1,6 @@
 import { FastifyRequest } from 'fastify'
 import { RequestMetadataExtractorInterface } from '~/src/modules/Shared/Infrastructure/Services/RequestMetadataExtractorInterface'
-import { RawClientMetadataDto } from '~/src/modules/Shared/Infrastructure/Services/RawClientMetadataDto'
+import { RawRequestMetadataDto } from '~/src/modules/Shared/Infrastructure/Services/RawRequestMetadataDto'
 
 export class FastifyClientMetadataExtractor implements RequestMetadataExtractorInterface<FastifyRequest> {
   /**
@@ -8,7 +8,7 @@ export class FastifyClientMetadataExtractor implements RequestMetadataExtractorI
    * @param request - The raw HTTP request object provided by the underlying framework
    * @returns A Data Transfer Object containing the unparsed, raw client origin data.
    */
-  public extract(request: FastifyRequest): RawClientMetadataDto {
+  public extract(request: FastifyRequest): RawRequestMetadataDto {
     return {
       ip: request.ip,
       userAgent: request.headers['user-agent'],
