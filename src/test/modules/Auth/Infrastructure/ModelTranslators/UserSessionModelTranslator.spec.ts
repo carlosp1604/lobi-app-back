@@ -1,16 +1,16 @@
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { UserSessionRawModel, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
@@ -21,7 +21,7 @@ describe('UserSessionModelTranslator', () => {
   const futureExpiresAt = new Date(now.getTime() + 60 * 60 * 1000)
 
   const validDeviceLocation = DeviceLocationMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
   const validUserAgent = UserAgentMother.valid()
   const validSessionId = IdentifierMother.valid()
   const validUserId = IdentifierMother.valid()
@@ -64,7 +64,7 @@ describe('UserSessionModelTranslator', () => {
       if (raw.ip_hash === null) {
         expect(result.ipHash).toBeNull()
       } else {
-        expect(result.ipHash).toBeInstanceOf(UserSessionIpHash)
+        expect(result.ipHash).toBeInstanceOf(UserIpHash)
         expect(result.ipHash?.equals(validIpHash)).toBe(true)
       }
 
@@ -138,7 +138,7 @@ describe('UserSessionModelTranslator', () => {
   describe('toDatabase', () => {
     let sessionBuilder: UserSessionTestBuilder
     const validDeviceLocation = DeviceLocationMother.valid()
-    const validIpHash = UserSessionIpHashMother.valid()
+    const validIpHash = UserIpHashMother.valid()
 
     const checkResult = (result: UserSessionRawModel, domain: UserSession) => {
       expect(result.id).toBe(domain.id.value)

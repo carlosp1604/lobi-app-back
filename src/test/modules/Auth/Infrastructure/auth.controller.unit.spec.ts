@@ -55,7 +55,7 @@ import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
@@ -69,7 +69,7 @@ import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'

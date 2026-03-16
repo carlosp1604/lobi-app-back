@@ -1,5 +1,5 @@
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { UserSessionRawModel, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 

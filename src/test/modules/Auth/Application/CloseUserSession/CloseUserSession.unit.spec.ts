@@ -6,7 +6,7 @@ import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServic
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
@@ -22,7 +22,7 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
@@ -48,7 +48,7 @@ describe('CloseUserSession', () => {
   const validSessionId = IdentifierMother.valid()
   const validCurrentSessionId = IdentifierMother.valid()
   const validUserAgent = UserAgentMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
 
   let baseRequest: CloseUserSessionApplicationRequestDto

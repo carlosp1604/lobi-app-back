@@ -1,14 +1,14 @@
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { mock, mockReset } from 'jest-mock-extended'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
@@ -17,7 +17,7 @@ describe('AuthDomainEventFactory', () => {
   const eventId = IdentifierMother.valid()
   const baseUserAgent = UserAgentMother.valid()
   const baseLocation = DeviceLocationMother.valid()
-  const baseIpHash = UserSessionIpHashMother.valid()
+  const baseIpHash = UserIpHashMother.valid()
 
   const now = new Date('2026-02-19T16:18:00.000Z')
 

@@ -8,7 +8,7 @@ import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'

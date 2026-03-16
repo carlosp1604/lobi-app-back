@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm'
 import { Test, TestingModule } from '@nestjs/testing'
 import { AuthModule } from '~/src/modules/Auth/Infrastructure/auth.module'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserCredentialRawWitRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
@@ -73,7 +73,7 @@ import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 
 describe('AuthController', () => {

@@ -18,7 +18,7 @@ import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenDatabaseHelper'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { DomainEventDatabaseHelper } from '~/src/test/modules/Shared/Infrastructure/DomainEventDatabaseHelper'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
@@ -37,7 +37,7 @@ import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { HashMother } from '~/src/test/mothers/HashMother'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 describe('GenerateVerificationToken', () => {

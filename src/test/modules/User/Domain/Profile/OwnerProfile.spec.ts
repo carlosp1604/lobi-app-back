@@ -1,5 +1,5 @@
 import { OwnerProfile } from '~/src/modules/User/Domain/Profile/OwnerProfile'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 
 describe('OwnerProfile', () => {
   describe('create', () => {

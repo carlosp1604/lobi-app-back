@@ -6,7 +6,7 @@ import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.enti
 import { UserCredentialEntity } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 
 describe('TypeOrmUnitOfWork', () => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

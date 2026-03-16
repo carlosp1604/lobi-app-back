@@ -8,7 +8,7 @@ import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCode
 import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
 import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigServiceMock'
 import { z, ZodError } from 'zod'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { Reflector } from '@nestjs/core'
 import { HttpArgumentsHost } from '@nestjs/common/interfaces'
 

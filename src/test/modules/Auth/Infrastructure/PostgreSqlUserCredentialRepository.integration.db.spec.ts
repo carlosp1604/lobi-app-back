@@ -2,7 +2,7 @@ import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCr
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
@@ -12,7 +12,7 @@ import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 
 describe('PostgreSqlUserCredentialRepository', () => {

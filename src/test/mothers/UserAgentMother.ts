@@ -29,4 +29,8 @@ export class UserAgentMother {
   static unknown(): UserAgent {
     return UserAgent.unknown()
   }
+
+  static invalid(): string {
+    return 'Mozilla/5.0 😊'
+  }
 }

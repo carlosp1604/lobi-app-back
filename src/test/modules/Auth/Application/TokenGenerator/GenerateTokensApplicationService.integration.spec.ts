@@ -1,7 +1,7 @@
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { ConfigService } from '@nestjs/config'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
@@ -17,7 +17,7 @@ describe('GenerateTokensApplicationService', () => {
   const now = new Date('2025-10-17T15:26:21Z')
   const userId = IdentifierMother.valid()
   const userAgent = UserAgentMother.valid()
-  const ipHash = UserSessionIpHashMother.valid()
+  const ipHash = UserIpHashMother.valid()
 
   const deviceLocation = DeviceLocationMother.valid()
 

@@ -15,7 +15,7 @@ import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServic
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
@@ -23,7 +23,7 @@ import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositor
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import {
   RequestOriginApplicationService,
@@ -31,7 +31,7 @@ import {
 } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { VerificationTokenPurposeMother } from '~/src/test/mothers/VerificationTokenPurposeMother'
@@ -66,7 +66,7 @@ describe('GenerateVerificationToken', () => {
   const mockedRequestOriginService = mock<RequestOriginApplicationService>()
   const mockedDomainEventFactory = mock<AuthDomainEventFactory>()
 
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
   const validUA = UserAgentMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
 

@@ -51,6 +51,16 @@ describe('UserAgent VO', () => {
       expect(result['value'].raw).toBe(validProps.raw)
     })
 
+    it('should return fail when raw user agent is longer than 512 characters', () => {
+      const tooLong = 'a'.repeat(513)
+      const invalidProps: UserAgentProps = { ...validProps, raw: tooLong }
+
+      const result = UserAgent.safeCreate(invalidProps)
+
+      expect(result.success).toBe(false)
+      expect(result['error']).toEqual(UserSessionDomainException.invalidUserAgent(tooLong))
+    })
+
     it('should return fail when raw user agent contains invalid characters', () => {
       const invalidRaw = 'Mozilla/5.0 😊'
       const invalidProps: UserAgentProps = { ...validProps, raw: invalidRaw }

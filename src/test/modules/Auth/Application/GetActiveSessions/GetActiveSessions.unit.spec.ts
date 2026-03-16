@@ -2,7 +2,7 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { mock, mockReset } from 'jest-mock-extended'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'

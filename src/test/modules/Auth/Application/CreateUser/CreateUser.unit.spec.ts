@@ -27,7 +27,7 @@ import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTok
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
@@ -40,8 +40,8 @@ import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainE
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
@@ -81,7 +81,7 @@ describe('CreateUser', () => {
   const validPasswordHash = PasswordHashMother.valid()
   const validUA = UserAgentMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
 
   let baseRequest: CreateUserApplicationRequestDto
   let verificationTokenBuilder: VerificationTokenTestBuilder

@@ -6,6 +6,7 @@ export class SharedDomainException extends DomainException {
 
   public static invalidIdentifierId = 'shared_domain_invalid_identifier'
   public static invalidEmailAddressId = 'shared_domain_invalid_email_address'
+  public static invalidUserIpHashId = 'shared_domain_invalid_user_ip_hash'
 
   private constructor(message: string, id: string) {
     super(message, id, SharedDomainException.name)
@@ -19,5 +20,9 @@ export class SharedDomainException extends DomainException {
   public static invalidEmailAddress(emailAddress: string) {
     const safeEmailAddressSample = StringFormatter.formatSafe(emailAddress, 255)
     return new SharedDomainException(`${safeEmailAddressSample} is not a valid Email Address`, this.invalidEmailAddressId)
+  }
+
+  public static invalidUserIpHash() {
+    return new SharedDomainException('Invalid User IP format', this.invalidUserIpHashId)
   }
 }

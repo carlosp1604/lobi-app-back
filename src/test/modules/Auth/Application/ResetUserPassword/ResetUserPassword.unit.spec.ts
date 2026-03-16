@@ -14,14 +14,14 @@ import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceI
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { ResetUserPasswordApplicationRequestDto } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationRequestDto'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
@@ -66,7 +66,7 @@ describe('ResetUserPassword', () => {
   const newPasswordHash = PasswordHashMother.other()
   const validUA = UserAgentMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
 
   let baseRequest: ResetUserPasswordApplicationRequestDto
   let verificationTokenBuilder: VerificationTokenTestBuilder

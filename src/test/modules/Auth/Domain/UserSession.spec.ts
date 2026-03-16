@@ -1,8 +1,8 @@
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
@@ -25,7 +25,7 @@ describe('UserSession', () => {
     const userAgent = UserAgentMother.valid()
 
     it('should initialize the UserSession instance correctly', () => {
-      const userSessionIpHash: UserSessionIpHash = UserSessionIpHashMother.valid()
+      const userSessionIpHash: UserIpHash = UserIpHashMother.valid()
       const deviceLocation = DeviceLocationMother.valid()
 
       const session = UserSession.create(id, userId, tokenHash, userAgent, expiresTtlMs, now, userSessionIpHash, deviceLocation)
@@ -125,10 +125,10 @@ describe('UserSession', () => {
   describe('isSameDeviceAs', () => {
     const userAgent1 = UserAgentMother.valid()
     const userAgent2 = UserAgentMother.random()
-    const ip1 = UserSessionIpHashMother.valid()
-    const ip2 = UserSessionIpHashMother.random()
+    const ip1 = UserIpHashMother.valid()
+    const ip2 = UserIpHashMother.random()
 
-    const createSession = (userAgent: UserAgent, ip: UserSessionIpHash | null): UserSession => {
+    const createSession = (userAgent: UserAgent, ip: UserIpHash | null): UserSession => {
       return new UserSessionTestBuilder().withUserAgent(userAgent).withIpHash(ip).build()
     }
 

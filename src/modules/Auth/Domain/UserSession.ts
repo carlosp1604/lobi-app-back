@@ -1,7 +1,7 @@
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
@@ -12,7 +12,7 @@ export class UserSession {
   public tokenHash: UserSessionTokenHash
   public expiresAt: Date
   public revokedAt: Date | null
-  public ipHash: UserSessionIpHash | null
+  public ipHash: UserIpHash | null
   public userAgent: UserAgent
   public deviceLocation: DeviceLocation | null
 
@@ -25,7 +25,7 @@ export class UserSession {
     tokenHash: UserSessionTokenHash,
     expiresAt: Date,
     revokedAt: Date | null,
-    ipHash: UserSessionIpHash | null,
+    ipHash: UserIpHash | null,
     userAgent: UserAgent,
     deviceLocation: DeviceLocation | null,
     createdAt: Date,
@@ -50,7 +50,7 @@ export class UserSession {
     userAgent: UserAgent,
     expiresTtlMs: number,
     now: Date,
-    ipHash: UserSessionIpHash | null,
+    ipHash: UserIpHash | null,
     deviceLocation: DeviceLocation | null,
   ): UserSession {
     const expiresAt = new Date(now.getTime() + expiresTtlMs)

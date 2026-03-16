@@ -4,7 +4,7 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { mock, mockReset } from 'jest-mock-extended'
 import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
@@ -13,7 +13,7 @@ import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructu
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 

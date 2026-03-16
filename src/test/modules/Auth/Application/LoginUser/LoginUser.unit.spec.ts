@@ -9,10 +9,10 @@ import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
@@ -34,7 +34,7 @@ import { Result } from '~/src/modules/Shared/Domain/Result'
 import { LoginUserApplicationResponseDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationResponseDto'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
@@ -62,7 +62,7 @@ describe('LoginUser', () => {
   const validEmail = EmailAddressMother.valid()
   const validUserId = IdentifierMother.valid()
   const validPasswordHash = PasswordHashMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
 
   const expectedSessionId = IdentifierMother.valid()
   const validUA = UserAgentMother.valid()
@@ -183,7 +183,7 @@ describe('LoginUser', () => {
     const checkCommonCalls = (
       expectedSession: UserSession,
       expectNewDevice: boolean,
-      ipHash: UserSessionIpHash | null,
+      ipHash: UserIpHash | null,
       deviceLocation: DeviceLocation | null,
       sessionsToRevoke: Array<UserSession>,
     ) => {

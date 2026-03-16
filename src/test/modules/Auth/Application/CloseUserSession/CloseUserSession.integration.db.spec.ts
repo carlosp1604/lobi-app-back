@@ -7,7 +7,7 @@ import { mock, mockReset } from 'jest-mock-extended'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
@@ -15,7 +15,7 @@ import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
@@ -38,7 +38,7 @@ describe('CloseUserSession', () => {
   const validTargetSessionId = IdentifierMother.valid()
   const validCurrentSessionId = IdentifierMother.valid()
   const validUserAgent = UserAgentMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper

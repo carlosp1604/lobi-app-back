@@ -16,7 +16,7 @@ import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Serv
 import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
@@ -33,9 +33,9 @@ import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastru
 import { ConfigService } from '@nestjs/config'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { DomainEventDatabaseHelper } from '~/src/test/modules/Shared/Infrastructure/DomainEventDatabaseHelper'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigServiceMock'
@@ -45,7 +45,7 @@ import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructur
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 
 interface BuildAndSaveSessionsResponse {
@@ -155,7 +155,7 @@ describe('LoginUser', () => {
   }
 
   const buildAndSaveSessions = async (sameSession?: {
-    ipHash: UserSessionIpHash
+    ipHash: UserIpHash
     userAgent: UserAgent
   }): Promise<BuildAndSaveSessionsResponse> => {
     const oldestCreatedAt = new Date(now.getTime() - 3000)
@@ -169,7 +169,7 @@ describe('LoginUser', () => {
       created_at: newestCreatedAt,
       expires_at: futureExpiresAt,
       user_agent: sameSession ? sameSession.userAgent.value : UserAgentMother.random().value,
-      ip_hash: sameSession ? sameSession.ipHash.value : UserSessionIpHashMother.random().value,
+      ip_hash: sameSession ? sameSession.ipHash.value : UserIpHashMother.random().value,
     })
 
     await userSessionDatabaseHelper.save([oldestSession, session2, session3])
@@ -202,7 +202,7 @@ describe('LoginUser', () => {
       activeSessions: Array<UserSessionRawWithRelationships>,
       domainEvents: Array<DomainEventRawModel>,
       userAgent: UserAgent,
-      ipHash: UserSessionIpHash | null,
+      ipHash: UserIpHash | null,
     ) => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
@@ -262,11 +262,11 @@ describe('LoginUser', () => {
 
     it('should authenticate and create a new user session correctly (revoke sessions)', async () => {
       const ipHash = await hasherService.hash('8.8.8.8')
-      const expectedIpHash = UserSessionIpHash.fromString(ipHash)
+      const expectedIpHash = UserIpHash.fromString(ipHash)
       const userAgent = UserAgentMother.valid()
 
       const { oldestSession, session2, session3 } = await buildAndSaveSessions({
-        ipHash: UserSessionIpHash.fromString(ipHash),
+        ipHash: UserIpHash.fromString(ipHash),
         userAgent,
       })
 

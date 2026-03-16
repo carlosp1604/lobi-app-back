@@ -4,7 +4,7 @@ import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { ConfigService } from '@nestjs/config'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
@@ -29,7 +29,7 @@ export class GenerateTokensApplicationService {
     userId: Identifier,
     now: Date,
     userAgent: UserAgent,
-    ipHash: UserSessionIpHash | null,
+    ipHash: UserIpHash | null,
     deviceLocation: DeviceLocation | null,
   ): Promise<GenerateTokensApplicationResponseDto> {
     const sessionId = Identifier.fromString(this.idGeneratorService.generateId())

@@ -4,7 +4,7 @@ import { SportsmanProfileBirthDateMother } from '~/src/test/mothers/SportsmanPro
 import { SportsmanProfile } from '~/src/modules/User/Domain/Profile/SportsmanProfile'
 import { SportsmanProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { SportsmanProfileBio } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBio'
 import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject/Profile/SportsmanProfileBirthDate'
 import { SportsmanProfileModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/Profile/SportsmanProfileModelTranslator'

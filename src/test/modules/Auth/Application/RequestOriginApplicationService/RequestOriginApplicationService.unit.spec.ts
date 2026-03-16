@@ -9,9 +9,9 @@ import {
   ResolvedDeviceLocation,
 } from '~/src/modules/Auth/Domain/DeviceLocationResolverServiceInterface'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
@@ -26,7 +26,7 @@ describe('RequestOriginApplicationService', () => {
     countryCode: validDeviceLocation.countryCode,
     city: validDeviceLocation.city,
   }
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
   const validUA = UserAgentMother.valid()
   const validEmail = EmailAddressMother.valid()
   const validIp = 'valid-ip'

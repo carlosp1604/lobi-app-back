@@ -3,7 +3,7 @@ import { mock, mockReset } from 'jest-mock-extended'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm'
 import {
@@ -12,7 +12,7 @@ import {
 } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/VerificationTokenModelTranslator'
 import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlVerificationTokenRepository'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
   const fakeContext: TxContext = { __opaque_tx_context: true }

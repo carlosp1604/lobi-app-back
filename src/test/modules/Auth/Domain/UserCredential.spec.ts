@@ -1,7 +1,7 @@
 import { UserCredentialTestBuilder } from '~/src/test/modules/Auth/Domain/UserCredentialTestBuilder'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { compareExceptModifiedFields } from '~/src/test/utils/snapshot'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 interface UserCredentialSnapshot {

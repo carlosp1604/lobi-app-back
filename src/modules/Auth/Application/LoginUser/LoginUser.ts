@@ -10,7 +10,7 @@ import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSe
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
@@ -61,10 +61,10 @@ export class LoginUser {
       email: userEmail.value,
     })
 
-    let sessionIpHash: UserSessionIpHash | null = null
+    let sessionIpHash: UserIpHash | null = null
 
     if (ipHash) {
-      sessionIpHash = UserSessionIpHash.fromString(ipHash)
+      sessionIpHash = UserIpHash.fromString(ipHash)
     }
 
     return this.unitOfWork.runInTransaction(async (context) => {

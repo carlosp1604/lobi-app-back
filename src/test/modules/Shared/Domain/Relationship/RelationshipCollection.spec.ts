@@ -1,6 +1,6 @@
 import { RelationshipDomainException } from '~/src/modules/Shared/Domain/Relationship/RelationshipDomainException'
 import { RelationshipCollection } from '~/src/modules/Shared/Domain/Relationship/RelationshipCollection'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { User } from '~/src/modules/User/Domain/User'

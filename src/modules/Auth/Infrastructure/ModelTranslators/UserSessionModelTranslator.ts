@@ -2,7 +2,7 @@ import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 
@@ -20,7 +20,7 @@ export class UserSessionModelTranslator {
       UserSessionTokenHash.fromString(raw.token_hash),
       raw.expires_at,
       raw.revoked_at,
-      raw.ip_hash ? UserSessionIpHash.fromString(raw.ip_hash) : null,
+      raw.ip_hash ? UserIpHash.fromString(raw.ip_hash) : null,
       UserAgent.fromProps(raw.user_agent),
       deviceLocation,
       raw.created_at,

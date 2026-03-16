@@ -7,7 +7,7 @@ import {
   VerificationTokenEntity,
   VerificationTokenRawModel,
 } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
@@ -15,7 +15,7 @@ import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infras
 import { runPessimisticLockTest } from '~/src/test/utils/concurrencyHelper'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 
 describe('PostgreSqlVerificationTokenRepository', () => {
   const verificationTokenId = IdentifierMother.valid()

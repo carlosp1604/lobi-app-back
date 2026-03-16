@@ -15,7 +15,7 @@ import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/A
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 
 export class RefreshSession {
@@ -44,10 +44,10 @@ export class RefreshSession {
 
     const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent)
 
-    let sessionIpHash: UserSessionIpHash | null = null
+    let sessionIpHash: UserIpHash | null = null
 
     if (ipHash) {
-      sessionIpHash = UserSessionIpHash.fromString(ipHash)
+      sessionIpHash = UserIpHash.fromString(ipHash)
     }
 
     return this.unitOfWork.runInTransaction(async (context) => {

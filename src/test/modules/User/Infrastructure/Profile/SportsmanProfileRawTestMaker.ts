@@ -1,4 +1,4 @@
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { SportsmanProfileRawWithRelationships } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
 
 export const makeRawSportsmanProfile = (

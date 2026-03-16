@@ -1,4 +1,4 @@
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { SportsmanProfile } from '~/src/modules/User/Domain/Profile/SportsmanProfile'
 
 describe('SportsmanProfile', () => {

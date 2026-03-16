@@ -1,4 +1,4 @@
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { QueryRunner } from 'typeorm'
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { withTransaction } from '~/src/test/utils/withTransaction'
@@ -23,7 +23,7 @@ import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessi
 import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigServiceMock'
 import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationRequestDto'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { RefreshSessionApplicationResponseDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationResponseDto'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
@@ -96,7 +96,7 @@ describe('RefreshSession', () => {
       user_id: userId,
       token_hash: hashedToken,
       user_agent: UserAgentMother.random().value,
-      ip_hash: UserSessionIpHashMother.random().value,
+      ip_hash: UserIpHashMother.random().value,
       expires_at: futureExpiresAt,
       revoked_at: null,
       created_at: now,

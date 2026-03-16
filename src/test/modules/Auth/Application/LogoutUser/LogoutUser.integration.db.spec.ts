@@ -3,7 +3,7 @@ import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestM
 import { QueryRunner } from 'typeorm'
 import { mock, mockReset } from 'jest-mock-extended'
 import { withTransaction } from '~/src/test/utils/withTransaction'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'

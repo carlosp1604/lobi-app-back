@@ -3,11 +3,11 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { ConfigService } from '@nestjs/config'
 import { mock, mockReset } from 'jest-mock-extended'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
@@ -23,7 +23,7 @@ describe('GenerateTokensApplicationService', () => {
   const sessionId = IdentifierMother.valid()
   const userId = IdentifierMother.valid()
   const userAgent = UserAgentMother.valid()
-  const ipHash = UserSessionIpHashMother.valid()
+  const ipHash = UserIpHashMother.valid()
   const expectedTokenHash = UserSessionTokenHashMother.random()
   const deviceLocation = DeviceLocationMother.valid()
 

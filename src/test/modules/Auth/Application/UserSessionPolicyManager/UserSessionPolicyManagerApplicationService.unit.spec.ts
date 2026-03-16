@@ -7,7 +7,7 @@ import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 
 describe('UserSessionPolicyManagerApplicationService', () => {
   const now = new Date('2025-10-21T12:00:00Z')

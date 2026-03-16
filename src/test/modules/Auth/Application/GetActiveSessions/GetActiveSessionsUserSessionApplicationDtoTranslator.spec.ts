@@ -1,4 +1,4 @@
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { GetActiveSessionsUserSessionApplicationDtoTranslator } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsUserSessionApplicationDtoTranslator'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'

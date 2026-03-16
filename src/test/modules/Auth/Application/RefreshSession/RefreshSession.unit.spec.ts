@@ -8,13 +8,13 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
@@ -44,7 +44,7 @@ describe('RefreshToken', () => {
   const expectedRefreshExpiresAt = new Date(now.getTime() + 3600)
   const validDeviceLocation = DeviceLocationMother.valid()
   const validUserAgent = UserAgentMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
+  const validIpHash = UserIpHashMother.valid()
 
   let request: RefreshSessionApplicationRequestDto
 
