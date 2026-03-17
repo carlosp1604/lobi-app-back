@@ -18,7 +18,7 @@ describe('VerificationTokenPurpose', () => {
       'should throw error when VerificationToken purpose is not valid: %s',
       (purpose) => {
         expect(() => VerificationTokenPurpose.fromString(purpose)).toThrow(
-          VerificationTokenDomainException.invalidVerificationTokenPurpose(purpose),
+          VerificationTokenDomainException.invalidVerificationTokenPurpose(),
         )
       },
     )
@@ -40,19 +40,19 @@ describe('VerificationTokenPurpose', () => {
         const result = VerificationTokenPurpose.safeCreate(purpose)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(VerificationTokenDomainException.invalidVerificationTokenPurpose(purpose))
+        expect(result['error']).toStrictEqual(VerificationTokenDomainException.invalidVerificationTokenPurpose())
       },
     )
   })
 
   describe('factories', () => {
-    it('factory should return createAccount', () => {
+    it('createAccount factory should return the correct verification token purpose', () => {
       const verificationTokenPurposeValueObject = VerificationTokenPurpose.createAccount()
 
       expect(verificationTokenPurposeValueObject.value).toEqual(ValidVerificationTokenPurposes.CREATE_ACCOUNT)
     })
 
-    it('factory should return resetPassword', () => {
+    it('resetPassword factory should return the correct verification token purpose', () => {
       const verificationTokenPurposeValueObject = VerificationTokenPurpose.resetPassword()
 
       expect(verificationTokenPurposeValueObject.value).toEqual(ValidVerificationTokenPurposes.RESET_PASSWORD)

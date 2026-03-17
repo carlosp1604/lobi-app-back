@@ -115,32 +115,32 @@ export class ValidateVerificationToken {
   }
 
   private validateEmail(email: string): Result<EmailAddress, ValidateVerificationTokenError> {
-    const createVerificationTokenEmailResult = EmailAddress.safeCreate(email)
+    const emailResult = EmailAddress.safeCreate(email)
 
-    if (!createVerificationTokenEmailResult.success) {
-      return fail(ValidateVerificationTokenError.invalidEmail(email))
+    if (!emailResult.success) {
+      return fail(ValidateVerificationTokenError.invalidEmail(emailResult.error.message))
     }
 
-    return success(createVerificationTokenEmailResult.value)
+    return success(emailResult.value)
   }
 
   private validateVerificationTokenPurpose(purpose: string): Result<VerificationTokenPurpose, ValidateVerificationTokenError> {
-    const createVerificationTokenPurposeResult = VerificationTokenPurpose.safeCreate(purpose)
+    const verificationTokenPurposeResult = VerificationTokenPurpose.safeCreate(purpose)
 
-    if (!createVerificationTokenPurposeResult.success) {
-      return fail(ValidateVerificationTokenError.invalidTokenPurpose(purpose))
+    if (!verificationTokenPurposeResult.success) {
+      return fail(ValidateVerificationTokenError.invalidTokenPurpose(verificationTokenPurposeResult.error.message))
     }
 
-    return success(createVerificationTokenPurposeResult.value)
+    return success(verificationTokenPurposeResult.value)
   }
 
   private validateTokenValue(tokenValue: string): Result<string, ValidateVerificationTokenError> {
-    const createVerificationTokenValueResult = VerificationTokenValue.safeCreate(tokenValue)
+    const verificationTokenValueResult = VerificationTokenValue.safeCreate(tokenValue)
 
-    if (!createVerificationTokenValueResult.success) {
-      return fail(ValidateVerificationTokenError.invalidTokenFormat())
+    if (!verificationTokenValueResult.success) {
+      return fail(ValidateVerificationTokenError.invalidTokenFormat(verificationTokenValueResult.error.message))
     }
 
-    return success(createVerificationTokenValueResult.value.value)
+    return success(verificationTokenValueResult.value.value)
   }
 }

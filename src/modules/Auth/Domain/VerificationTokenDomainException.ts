@@ -1,5 +1,5 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
-import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
+import { ValidVerificationTokenPurposes } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
 export class VerificationTokenDomainException extends DomainException {
   public readonly __brand = 'VerificationTokenDomainException' as const
@@ -16,25 +16,28 @@ export class VerificationTokenDomainException extends DomainException {
     super(message, id, VerificationTokenDomainException.name)
   }
 
-  public static invalidVerificationTokenValue(value: string) {
-    const safeValueSample = StringFormatter.formatSafe(value, 20)
-    return new VerificationTokenDomainException(
-      `Invalid VerificationToken value format ${safeValueSample}`,
-      this.invalidVerificationTokenValueId,
-    )
+  public static invalidVerificationTokenValue() {
+    const message = [
+      'Invalid verification token format:',
+      '- Must be exactly 8 characters long.',
+      '- Must contain only numeric characters (0-9).',
+    ].join('\n')
+
+    return new VerificationTokenDomainException(message, this.invalidVerificationTokenValueId)
   }
 
   public static invalidTokenHash() {
     return new VerificationTokenDomainException('Invalid VerificationToken token hash format', this.invalidVerificationTokenTokenHashId)
   }
 
-  public static invalidVerificationTokenPurpose(purpose: string) {
-    const safePurposeSample = StringFormatter.formatSafe(purpose, 36)
+  public static invalidVerificationTokenPurpose() {
+    const validPurposesList = Object.values(ValidVerificationTokenPurposes)
+      .map((purpose) => `- ${purpose}`)
+      .join('\n')
 
-    return new VerificationTokenDomainException(
-      `${safePurposeSample} is not a valid VerificationToken purpose`,
-      this.invalidVerificationTokenPurposeId,
-    )
+    const message = ['Invalid verification token purpose. Must be one of the following:', validPurposesList].join('\n')
+
+    return new VerificationTokenDomainException(message, this.invalidVerificationTokenPurposeId)
   }
 
   public static alreadyUsed(verificationTokenId: string) {

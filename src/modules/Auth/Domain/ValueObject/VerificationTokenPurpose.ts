@@ -34,7 +34,7 @@ export class VerificationTokenPurpose extends ValueObject<ValidVerificationToken
 
   static safeCreate(value: string): Result<VerificationTokenPurpose, VerificationTokenDomainException> {
     if (!VerificationTokenPurpose.isValidVerificationTokenPurpose(value)) {
-      return fail(VerificationTokenDomainException.invalidVerificationTokenPurpose(value))
+      return fail(VerificationTokenDomainException.invalidVerificationTokenPurpose())
     }
 
     return success(new VerificationTokenPurpose(value as ValidVerificationTokenPurposes))

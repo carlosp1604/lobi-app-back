@@ -16,6 +16,7 @@ import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/Veri
 import { VerificationTokenPurposeMother } from '~/src/test/mothers/VerificationTokenPurposeMother'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2026-02-12T11:41:00Z')
@@ -90,13 +91,16 @@ describe('ValidateVerificationToken', () => {
       it('should return invalidEmail error when email is not valid', async () => {
         const invalidEmail = EmailAddressMother.invalid()
         const invalidEmailRequest = { ...requestBase, email: invalidEmail }
+
         const useCase = buildUseCase()
+
+        const expectedDomainErrorMessage = SharedDomainException.invalidEmailAddress(invalidEmail).message
 
         const result = await useCase.execute(invalidEmailRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ValidateVerificationTokenError.invalidEmail(invalidEmail),
+          error: ValidateVerificationTokenError.invalidEmail(expectedDomainErrorMessage),
         })
 
         expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
@@ -105,13 +109,16 @@ describe('ValidateVerificationToken', () => {
       it('should return invalidTokenPurpose error when purpose is not valid', async () => {
         const invalidTokenPurpose = VerificationTokenPurposeMother.invalid()
         const invalidPurposeRequest = { ...requestBase, purpose: invalidTokenPurpose }
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenPurpose().message
+
         const useCase = buildUseCase()
 
         const result = await useCase.execute(invalidPurposeRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ValidateVerificationTokenError.invalidTokenPurpose(invalidTokenPurpose),
+          error: ValidateVerificationTokenError.invalidTokenPurpose(expectedDomainErrorMessage),
         })
 
         expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
@@ -120,13 +127,16 @@ describe('ValidateVerificationToken', () => {
       it('should return invalidTokenFormat error when token format is not valid', async () => {
         const invalidTokenValue = VerificationTokenValueMother.invalid()
         const invalidTokenRequest = { ...requestBase, token: invalidTokenValue }
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenValue().message
+
         const useCase = buildUseCase()
 
         const result = await useCase.execute(invalidTokenRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ValidateVerificationTokenError.invalidTokenFormat(),
+          error: ValidateVerificationTokenError.invalidTokenFormat(expectedDomainErrorMessage),
         })
 
         expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
@@ -282,7 +292,7 @@ describe('ValidateVerificationToken', () => {
       })
     })
 
-    it('should throw exception when repository throws a unexpected error', async () => {
+    it('should throw exception when verificationTokenRepository throws an unexpected error', async () => {
       const useCase = buildUseCase()
       const dbError = new Error('Unexpected verificationTokenRepository error')
 
@@ -291,7 +301,7 @@ describe('ValidateVerificationToken', () => {
       await expect(useCase.execute(requestBase)).rejects.toThrow(dbError)
     })
 
-    it('should throw exception when verify service throws a unexpected error', async () => {
+    it('should throw exception when verifyTokenService throws an unexpected error', async () => {
       const useCase = buildUseCase()
       const verificationToken = verificationTokenTestBuilder().build()
       const verifyError = new Error('Unexpected verifyTokenService error')

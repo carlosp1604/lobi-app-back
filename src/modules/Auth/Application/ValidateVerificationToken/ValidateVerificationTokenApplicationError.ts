@@ -1,5 +1,3 @@
-import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
-
 export class ValidateVerificationTokenError extends Error {
   public readonly __brand = 'ValidateVerificationTokenError' as const
 
@@ -22,18 +20,16 @@ export class ValidateVerificationTokenError extends Error {
     this.name = ValidateVerificationTokenError.name
   }
 
-  public static invalidEmail(email: string) {
-    const cleanEmail = StringFormatter.formatSafe(email, 60)
-    return new ValidateVerificationTokenError(`Invalid email: ${cleanEmail}`, this.invalidEmailId)
+  public static invalidEmail(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.invalidEmailId)
   }
 
-  public static invalidTokenPurpose(purpose: string) {
-    const safePurposeSample = StringFormatter.formatSafe(purpose, 60)
-    return new ValidateVerificationTokenError(`Invalid VerificationToken purpose: ${safePurposeSample}`, this.invalidTokenPurposeId)
+  public static invalidTokenPurpose(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.invalidTokenPurposeId)
   }
 
-  public static invalidTokenFormat() {
-    return new ValidateVerificationTokenError('Invalid token format', this.invalidTokenFormatId)
+  public static invalidTokenFormat(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.invalidTokenFormatId)
   }
 
   public static notFound() {

@@ -77,6 +77,7 @@ import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMot
 import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
+import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -744,6 +745,8 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when token purpose is not valid', async () => {
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenPurpose().message
+
         return request(app.getHttpServer())
           .post('/auth/validate-token')
           .send({
@@ -757,7 +760,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
-                message: ValidateVerificationTokenError.invalidTokenPurpose('INVALID_PURPOSE').message,
+                message: ValidateVerificationTokenError.invalidTokenPurpose(expectedDomainErrorMessage).message,
               },
               statusCode: 422,
               requestId: expect.any(String),
@@ -767,6 +770,8 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when token format is not valid', async () => {
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenValue().message
+
         return request(app.getHttpServer())
           .post('/auth/validate-token')
           .send({
@@ -780,7 +785,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
-                message: ValidateVerificationTokenError.invalidTokenFormat().message,
+                message: ValidateVerificationTokenError.invalidTokenFormat(expectedDomainErrorMessage).message,
               },
               statusCode: 422,
               requestId: expect.any(String),
