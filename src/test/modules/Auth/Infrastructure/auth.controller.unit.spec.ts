@@ -41,6 +41,7 @@ import {
   AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
+  AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
 import { mock, mockReset } from 'jest-mock-extended'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
@@ -121,6 +122,11 @@ describe('AuthController', () => {
     refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
     sessionId: 'expected-session-id',
     isNewDevice: true,
+  }
+
+  const assertMetadataFlowWasCalled = (request: FastifyRequest) => {
+    expect(mockedRequestMetadataExtractor.extract).toHaveBeenCalledWith(request)
+    expect(mockedClientMetadataService.process).toHaveBeenCalledWith(mockedRawRequestMetadata)
   }
 
   beforeEach(() => {
@@ -211,11 +217,6 @@ describe('AuthController', () => {
       mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
 
-    const assertMetadataFlowWasCalled = () => {
-      expect(mockedRequestMetadataExtractor.extract).toHaveBeenCalledWith(mockRequest)
-      expect(mockedClientMetadataService.process).toHaveBeenCalledWith(mockedRawRequestMetadata)
-    }
-
     describe('happy path', () => {
       beforeEach(() => {
         mockedLoginUseCase.execute.mockResolvedValue({
@@ -229,7 +230,7 @@ describe('AuthController', () => {
 
         const result = await controller.login(mockRequest, mockBody, mockedResponse)
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
 
         expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
@@ -250,7 +251,7 @@ describe('AuthController', () => {
 
       it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
-        const useCaseError = LoginUserApplicationError.invalidUserEmail(validEmail)
+        const useCaseError = LoginUserApplicationError.invalidUserEmail('Invalid email format')
 
         mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
@@ -260,13 +261,13 @@ describe('AuthController', () => {
             message: useCaseError.message,
           }),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnprocessableEntityException when use-case returns invalidPasswordFormat error', async () => {
         const controller = buildController()
-        const useCaseError = LoginUserApplicationError.invalidPasswordFormat()
+        const useCaseError = LoginUserApplicationError.invalidPasswordFormat('Invalid password format')
 
         mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
@@ -276,7 +277,7 @@ describe('AuthController', () => {
             message: useCaseError.message,
           }),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -294,7 +295,7 @@ describe('AuthController', () => {
             message: 'Unauthorized access',
           }),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -312,7 +313,7 @@ describe('AuthController', () => {
             message: 'Unauthorized access',
           }),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -330,7 +331,7 @@ describe('AuthController', () => {
             message: 'Unauthorized access',
           }),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -343,7 +344,7 @@ describe('AuthController', () => {
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -356,7 +357,7 @@ describe('AuthController', () => {
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -369,7 +370,7 @@ describe('AuthController', () => {
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -385,7 +386,7 @@ describe('AuthController', () => {
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(unknownUseCaseError),
         )
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -398,7 +399,7 @@ describe('AuthController', () => {
         })
 
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(unexpectedError)
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
     })
@@ -418,11 +419,6 @@ describe('AuthController', () => {
       mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
 
-    const assertMetadataFlowWasCalled = () => {
-      expect(mockedRequestMetadataExtractor.extract).toHaveBeenCalledWith(mockRequest)
-      expect(mockedClientMetadataService.process).toHaveBeenCalledWith(mockedRawRequestMetadata)
-    }
-
     describe('happy path', () => {
       beforeEach(() => {
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -436,7 +432,7 @@ describe('AuthController', () => {
 
         const result = await controller.refresh(mockRequest, mockedResponse, mockRefreshToken)
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
 
         expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({
           token: mockRefreshToken,
@@ -469,7 +465,7 @@ describe('AuthController', () => {
           }),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -488,7 +484,7 @@ describe('AuthController', () => {
           }),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -507,7 +503,7 @@ describe('AuthController', () => {
           }),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -526,7 +522,7 @@ describe('AuthController', () => {
           }),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -545,7 +541,7 @@ describe('AuthController', () => {
           }),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -564,7 +560,7 @@ describe('AuthController', () => {
           }),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -581,7 +577,7 @@ describe('AuthController', () => {
           new InternalServerErrorException(useCaseError),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -598,7 +594,7 @@ describe('AuthController', () => {
           new InternalServerErrorException(useCaseError),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -615,7 +611,7 @@ describe('AuthController', () => {
           new InternalServerErrorException(useCaseError),
         )
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
 
@@ -629,15 +625,21 @@ describe('AuthController', () => {
 
         await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(unexpectedError)
 
-        assertMetadataFlowWasCalled()
+        assertMetadataFlowWasCalled(mockRequest)
         assertAuthCookiesWereNotSet()
       })
     })
   })
 
   describe('verify email', () => {
+    const mockRequest = {} as unknown as FastifyRequest
     const validEmail = EmailAddressMother.valid()
     const mockBody = { email: validEmail.value, sendNewToken: false }
+
+    beforeEach(() => {
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
+    })
 
     describe('happy path', () => {
       beforeEach(() => {
@@ -648,68 +650,38 @@ describe('AuthController', () => {
       })
 
       describe('signup', () => {
-        it('should call use-case correctly passing IP and UserAgent from arguments and return data', async () => {
+        it('should extract metadata, call use-case correctly and return undefined', async () => {
           const controller = buildController()
 
-          const result = await controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)
+          const result = await controller.verifyEmailCreateAccount(mockRequest, mockBody)
+
+          assertMetadataFlowWasCalled(mockRequest)
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
             sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: mockedUserAgent,
-          })
-          expect(result).toBeUndefined()
-        })
-
-        it('should call use-case correctly when UserAgent is undefined and return data', async () => {
-          const controller = buildController()
-
-          const result = await controller.verifyEmailCreateAccount(mockedIp, undefined, mockBody)
-
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.createAccount().value,
-            email: mockBody.email,
-            sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: undefined,
+            clientMetadata: mockedClientMetadata,
           })
           expect(result).toBeUndefined()
         })
       })
 
       describe('reset', () => {
-        it('should call use-case correctly passing IP and UserAgent from arguments and return data', async () => {
+        it('should extract metadata, call use-case correctly and return undefined', async () => {
           const controller = buildController()
 
-          const result = await controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)
+          const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
+
+          assertMetadataFlowWasCalled(mockRequest)
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
             sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: mockedUserAgent,
-          })
-          expect(result).toBeUndefined()
-        })
-
-        it('should call use-case correctly when UserAgent is undefined and return data', async () => {
-          const controller = buildController()
-
-          const result = await controller.verifyEmailResetPassword(mockedIp, undefined, mockBody)
-
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.resetPassword().value,
-            email: mockBody.email,
-            sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: undefined,
+            clientMetadata: mockedClientMetadata,
           })
           expect(result).toBeUndefined()
         })
@@ -719,7 +691,6 @@ describe('AuthController', () => {
     describe('when there are errors', () => {
       const invalidEmail = EmailAddressMother.invalid()
       const mockBodyWithInvalidEmail = { email: invalidEmail, sendNewToken: false }
-      const mockBody = { email: validEmail.value, sendNewToken: false }
 
       describe('signup', () => {
         it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
@@ -730,12 +701,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBodyWithInvalidEmail)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBodyWithInvalidEmail)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_EMAIL,
               message: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email).message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw UnprocessableEntityException when use-case returns invalidVerificationTokenPurpose error', async () => {
@@ -746,12 +718,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose'),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
               message: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose').message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns activeTokenAlreadyIssued error', async () => {
@@ -759,21 +732,16 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-              mockBody.email,
-              VerificationTokenPurpose.createAccount().value,
-            ),
+            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose'),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
-              code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
-              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-                mockBody.email,
-                VerificationTokenPurpose.createAccount().value,
-              ).message,
+              code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose').message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns emailAlreadyTaken error', async () => {
@@ -784,12 +752,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
               message: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email).message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
@@ -805,21 +774,22 @@ describe('AuthController', () => {
             error: unknownUseCaseError,
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new InternalServerErrorException(unknownUseCaseError),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
-        it('should throw error when use-case fails', async () => {
+        it('should throw error when use-case fails unexpectedly', async () => {
           const controller = buildController()
+          const unexpectedError = Error('Unexpected error')
 
           mockedGenerateVerificationTokenUseCase.execute.mockImplementation(() => {
-            throw Error('Unexpected error')
+            throw unexpectedError
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            Error('Unexpected error'),
-          )
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(unexpectedError)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
@@ -832,12 +802,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBodyWithInvalidEmail)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBodyWithInvalidEmail)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_EMAIL,
               message: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email).message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw UnprocessableEntityException when use-case returns invalidVerificationTokenPurpose error', async () => {
@@ -848,12 +819,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose'),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
               message: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose').message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns activeTokenAlreadyIssued error', async () => {
@@ -861,37 +833,44 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-              mockBody.email,
-              VerificationTokenPurpose.resetPassword().value,
-            ),
+            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose'),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
-              code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
-              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-                mockBody.email,
-                VerificationTokenPurpose.resetPassword().value,
-              ).message,
+              code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose').message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
-        it('should throw ConflictException when use-case returns emailAlreadyTaken error', async () => {
+        it('should return undefined (204 No Content) to obfuscate userNotFound error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email),
+            error: GenerateVerificationTokenApplicationError.userNotFound(mockBody.email),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            new ConflictException({
-              code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
-              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email).message,
-            }),
-          )
+          const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
+
+          expect(result).toBeUndefined()
+          assertMetadataFlowWasCalled(mockRequest)
+        })
+
+        it('should return undefined (204 No Content) to obfuscate userDisabled error', async () => {
+          const controller = buildController()
+
+          mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
+            success: false,
+            error: GenerateVerificationTokenApplicationError.userDisabled(mockBody.email),
+          })
+
+          const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
+
+          expect(result).toBeUndefined()
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
@@ -907,21 +886,22 @@ describe('AuthController', () => {
             error: unknownUseCaseError,
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(
             new InternalServerErrorException(unknownUseCaseError),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
-        it('should throw error when use-case fails', async () => {
+        it('should throw error when use-case fails unexpectedly', async () => {
           const controller = buildController()
+          const unexpectedError = Error('Unexpected error')
 
           mockedGenerateVerificationTokenUseCase.execute.mockImplementation(() => {
-            throw Error('Unexpected error')
+            throw unexpectedError
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            Error('Unexpected error'),
-          )
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(unexpectedError)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
     })

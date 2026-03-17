@@ -19,7 +19,7 @@ export class VerificationTokenDomainException extends DomainException {
   public static invalidVerificationTokenValue(value: string) {
     const safeValueSample = StringFormatter.formatSafe(value, 20)
     return new VerificationTokenDomainException(
-      `${safeValueSample} is not a valid VerificationToken value format`,
+      `Invalid VerificationToken value format ${safeValueSample}`,
       this.invalidVerificationTokenValueId,
     )
   }
@@ -29,8 +29,10 @@ export class VerificationTokenDomainException extends DomainException {
   }
 
   public static invalidVerificationTokenPurpose(purpose: string) {
+    const safePurposeSample = StringFormatter.formatSafe(purpose, 36)
+
     return new VerificationTokenDomainException(
-      `${purpose} is not a valid VerificationToken purpose`,
+      `${safePurposeSample} is not a valid VerificationToken purpose`,
       this.invalidVerificationTokenPurposeId,
     )
   }

@@ -268,7 +268,7 @@ describe('AuthDomainEventFactory', () => {
         language,
         baseLocation,
         baseUserAgent,
-        baseIpHash.value,
+        baseIpHash,
         now,
       )
 

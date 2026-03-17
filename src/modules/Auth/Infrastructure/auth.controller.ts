@@ -233,41 +233,47 @@ export class AuthController {
 
   @Post('verify-email/signup')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async verifyEmailCreateAccount(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
+  async verifyEmailCreateAccount(@Req() request: FastifyRequest, @Body() body: VerifyEmailDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.createAccount().toString(),
       email: body.email,
       // TODO: Use language from request when multi-language emails are supported
       // language: body.language,
       sendNewToken: body.sendNewToken,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.generateVerificationToken.execute(requestDto)
 
     if (!result.success) {
-      this.handleVerifyEmailError(result.error)
+      return this.handleVerifyEmailError(result.error)
     }
   }
 
   @Post('verify-email/reset')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async verifyEmailResetPassword(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
+  async verifyEmailResetPassword(@Req() request: FastifyRequest, @Body() body: VerifyEmailDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.resetPassword().toString(),
       email: body.email,
       // TODO: Use language from request when multi-language emails are supported
       // language: body.language,
       sendNewToken: body.sendNewToken,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.generateVerificationToken.execute(requestDto)
 
     if (!result.success) {
-      this.handleVerifyEmailError(result.error)
+      return this.handleVerifyEmailError(result.error)
     }
   }
 
@@ -692,6 +698,15 @@ export class AuthController {
   }
 
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {
+    const obfuscatedErrors = [
+      GenerateVerificationTokenApplicationError.userNotFoundId,
+      GenerateVerificationTokenApplicationError.userDisabledId,
+    ]
+
+    if (obfuscatedErrors.includes(error.id)) {
+      return
+    }
+
     if (error.id === GenerateVerificationTokenApplicationError.invalidEmailId) {
       throw new UnprocessableEntityException({
         code: AUTH_VERIFY_EMAIL_INVALID_EMAIL,

@@ -127,7 +127,7 @@ export class LoginUser {
     const emailResult = EmailAddress.safeCreate(email)
 
     if (!emailResult.success) {
-      return fail(LoginUserApplicationError.invalidUserEmail(email))
+      return fail(LoginUserApplicationError.invalidUserEmail(emailResult.error.message))
     }
 
     return success(emailResult.value)
@@ -137,7 +137,7 @@ export class LoginUser {
     const passwordResult = UserPassword.safeCreate(password)
 
     if (!passwordResult.success) {
-      return fail(LoginUserApplicationError.invalidPasswordFormat())
+      return fail(LoginUserApplicationError.invalidPasswordFormat(passwordResult.error.message))
     }
 
     return success(passwordResult.value)

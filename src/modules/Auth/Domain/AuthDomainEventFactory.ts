@@ -104,7 +104,7 @@ export class AuthDomainEventFactory {
     language: string,
     deviceLocation: DeviceLocation | null,
     userAgent: UserAgent,
-    ipHash: string | null,
+    ipHash: UserIpHash | null,
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
@@ -119,7 +119,7 @@ export class AuthDomainEventFactory {
         lang: language,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadata(ipHash, userAgent),
+      this.mapMetadataFromVO(ipHash, userAgent),
       now,
     )
   }

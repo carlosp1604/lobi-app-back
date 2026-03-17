@@ -35,6 +35,8 @@ import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLoca
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
+import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('LoginUser', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -263,12 +265,13 @@ describe('LoginUser', () => {
   describe('when there are errors', () => {
     it('should return error when email is not valid', async () => {
       const invalidEmail = EmailAddressMother.invalid()
+      const expectedDomainErrorMessage = SharedDomainException.invalidEmailAddress(invalidEmail).message
 
       const useCase = buildUseCase()
       const result = await useCase.execute({ ...request, email: invalidEmail })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidUserEmail(invalidEmail))
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidUserEmail(expectedDomainErrorMessage))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -278,8 +281,10 @@ describe('LoginUser', () => {
       const useCase = buildUseCase()
       const result = await useCase.execute({ ...request, password: invalidPassword })
 
+      const invalidPasswordMessage = UserCredentialDomainException.invalidPasswordFormat().message
+
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidPasswordFormat())
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidPasswordFormat(invalidPasswordMessage))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })

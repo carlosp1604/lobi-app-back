@@ -75,6 +75,8 @@ import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/Creat
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
+import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
+import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -272,16 +274,19 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when password format is not valid', async () => {
+        const expectedDomainErrorMessage = UserCredentialDomainException.invalidPasswordFormat().message
+        const invalidPassword = UserPasswordMother.invalid()
+
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail, password: 'invalid-password' })
+          .send({ email: userEmail, password: invalidPassword })
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
               path: '/auth/login',
               response: {
                 code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
-                message: LoginUserApplicationError.invalidPasswordFormat().message,
+                message: LoginUserApplicationError.invalidPasswordFormat(expectedDomainErrorMessage).message,
               },
               statusCode: 422,
               requestId: expect.any(String),
@@ -479,9 +484,11 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when token format is not valid', async () => {
+        const invalidTokenFormat = RefreshTokenMother.invalidFormat()
+
         return request(app.getHttpServer())
           .post('/auth/refresh')
-          .set('Cookie', `${refreshCookieName}=invalid-token-format`)
+          .set('Cookie', `${refreshCookieName}=${invalidTokenFormat}`)
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -507,7 +514,7 @@ describe('AuthController', () => {
     let rawUser: UserRawModelWithRelations
     let rawCurrentVerificationToken: VerificationTokenRawModel
 
-    const validBody = { email: userEmail.value, sendNewToken: false }
+    const body = { email: userEmail.value, sendNewToken: false }
 
     beforeEach(() => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
@@ -530,16 +537,43 @@ describe('AuthController', () => {
 
     describe('happy path', () => {
       it('should return 204 for signup when user does not exist', async () => {
-        return request(app.getHttpServer()).post('/auth/verify-email/signup').send(validBody).expect(204)
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/signup').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(1)
       })
 
       it('should return 204 for reset password when user exists', async () => {
         await userDatabaseHelper.save(rawUser)
-        return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
+
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/reset').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(1)
       })
 
       it('should return 204 when user does not exist for reset password', async () => {
-        return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/reset').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(0)
+      })
+
+      it('should return 204 when user is not active for reset password', async () => {
+        await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
+
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/reset').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(0)
       })
     })
 
@@ -587,7 +621,7 @@ describe('AuthController', () => {
         const testCase = async (path: string, purpose: string) => {
           return request(app.getHttpServer())
             .post(path)
-            .send(validBody)
+            .send(body)
             .expect(409)
             .expect((response) => {
               expect(response.body).toEqual({
@@ -625,7 +659,7 @@ describe('AuthController', () => {
 
         return request(app.getHttpServer())
           .post('/auth/verify-email/signup')
-          .send(validBody)
+          .send(body)
           .expect(409)
           .expect((response) => {
             expect(response.body).toEqual({
