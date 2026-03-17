@@ -7,6 +7,7 @@ export class RefreshSessionApplicationError extends Error {
   public static invalidTokenFormatId = 'refresh_session_invalid_token_format'
   public static sessionNotFoundId = 'refresh_session_session_not_found'
   public static userNotFoundId = 'refresh_session_user_not_found'
+  public static userDisabledId = 'refresh_session_user_disabled'
   public static sessionAlreadyRevokedId = 'refresh_session_session_already_revoked'
   public static sessionAlreadyExpiredId = 'refresh_session_session_already_expired'
   public static sessionInconsistencyId = 'refresh_session_session_inconsistency'
@@ -24,25 +25,23 @@ export class RefreshSessionApplicationError extends Error {
   }
 
   public static sessionNotFound() {
-    return new RefreshSessionApplicationError('UserSession was not found', this.sessionNotFoundId)
+    return new RefreshSessionApplicationError('Session was not found', this.sessionNotFoundId)
   }
 
   public static userNotFound(userId: string) {
-    return new RefreshSessionApplicationError(`User identified by the ID ${userId} was not found`, this.userNotFoundId)
+    return new RefreshSessionApplicationError(`User identified by ID ${userId} was not found`, this.userNotFoundId)
+  }
+
+  public static userDisabled(userId: string) {
+    return new RefreshSessionApplicationError(`User identified by ID ${userId} is disabled`, this.userDisabledId)
   }
 
   public static sessionAlreadyRevoked(sessionId: string) {
-    return new RefreshSessionApplicationError(
-      `UserSession identified by the ID ${sessionId} is already revoked`,
-      this.sessionAlreadyRevokedId,
-    )
+    return new RefreshSessionApplicationError(`Session identified by ID ${sessionId} is already revoked`, this.sessionAlreadyRevokedId)
   }
 
   public static sessionAlreadyExpired(sessionId: string) {
-    return new RefreshSessionApplicationError(
-      `UserSession identified by the ID ${sessionId} is already expired`,
-      this.sessionAlreadyExpiredId,
-    )
+    return new RefreshSessionApplicationError(`Session identified by ID ${sessionId} is already expired`, this.sessionAlreadyExpiredId)
   }
 
   public static sessionInconsistency(errorMessage: string) {

@@ -14,8 +14,6 @@ import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/R
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
-import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 
 export class RefreshSession {
@@ -25,7 +23,6 @@ export class RefreshSession {
     private readonly hasherService: HasherServiceInterface,
     private readonly generateTokensService: GenerateTokensApplicationService,
     private readonly userSessionManagerService: UserSessionPolicyManagerApplicationService,
-    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -42,13 +39,7 @@ export class RefreshSession {
 
     const validatedToken = validateTokenResult.value
 
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent)
-
-    let sessionIpHash: UserIpHash | null = null
-
-    if (ipHash) {
-      sessionIpHash = UserIpHash.fromString(ipHash)
-    }
+    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const now = this.clockService.now()
@@ -70,7 +61,7 @@ export class RefreshSession {
       const user = findAndValidateUserResult.value
 
       const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
-        await this.generateTokensService.generate(user.id, now, userAgent, sessionIpHash, deviceLocation)
+        await this.generateTokensService.generate(user.id, now, userAgent, userIpHash, deviceLocation)
 
       const refreshSessionResult = await this.refreshSession(currentSession, session, user.id, now, context)
 
@@ -110,6 +101,12 @@ export class RefreshSession {
     const sessionFound = await this.sessionRepository.findByHash(hashedToken, context)
 
     if (!sessionFound) {
+      this.loggerService.warn('Session refresh failed', {
+        reason: 'Session not found for the provided token',
+        tokenSample: token.slice(0, 10),
+        tokenLength: token.length,
+      })
+
       return fail(RefreshSessionApplicationError.sessionNotFound())
     }
 
@@ -140,14 +137,24 @@ export class RefreshSession {
   ): Promise<Result<User, RefreshSessionApplicationError>> {
     const user = await this.userRepository.findByIdWithLock(userSession.userId.value, context)
 
-    if (!user || !user.isActive()) {
+    if (!user) {
       this.loggerService.error('Inconsistent state', undefined, {
         userId: userSession.userId.value,
         sessionId: userSession.id.value,
-        reason: user ? 'User is disabled' : 'User not found',
+        reason: 'User not found',
       })
 
       return fail(RefreshSessionApplicationError.userNotFound(userSession.userId.value))
+    }
+
+    if (!user.isActive()) {
+      this.loggerService.error('Inconsistent state', undefined, {
+        userId: userSession.userId.value,
+        sessionId: userSession.id.value,
+        reason: 'User is disabled',
+      })
+
+      return fail(RefreshSessionApplicationError.userDisabled(userSession.userId.value))
     }
 
     return success(user)

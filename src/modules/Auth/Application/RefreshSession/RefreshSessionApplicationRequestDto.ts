@@ -1,5 +1,6 @@
+import { ClientMetadataApplicationResponse } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationResponse'
+
 export interface RefreshSessionApplicationRequestDto {
   token: string
-  ip: string
-  userAgent: string | undefined
+  clientMetadata: ClientMetadataApplicationResponse
 }

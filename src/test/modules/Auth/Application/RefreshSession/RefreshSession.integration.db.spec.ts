@@ -30,15 +30,12 @@ import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/R
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
-import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
-import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
-
-interface BuildAndSaveSessionsResponse {
-  oldestSession: UserSessionRawWithRelationships
-  session2: UserSessionRawWithRelationships
-  session3: UserSessionRawWithRelationships
-}
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
+import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
+import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
+import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
+import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 
 describe('RefreshSession', () => {
   const now = new Date('2025-10-23T11:00:00Z')
@@ -46,7 +43,10 @@ describe('RefreshSession', () => {
   const pastExpiresAt = new Date(now.getTime() - 3600)
 
   const userId = IdentifierMother.valid().value
-  const expectedUserAgent = UserAgentMother.valid()
+  const currentSessionId = IdentifierMother.valid().value
+  const userAgent = UserAgentMother.valid()
+  const userDeviceLocation = DeviceLocationMother.valid()
+  const userIpHash = UserIpHashMother.random()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
@@ -67,9 +67,11 @@ describe('RefreshSession', () => {
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
 
-  let request: RefreshSessionApplicationRequestDto
+  let baseRequest: RefreshSessionApplicationRequestDto
   let currentSession: UserSessionRawWithRelationships
-  let hashedIp: string
+  let rawUser: UserRawModelWithRelations
+  let refreshToken: string
+  let hashedToken: string
 
   beforeEach(async () => {
     mockReset(mockedResolver)
@@ -81,37 +83,32 @@ describe('RefreshSession', () => {
     userDatabaseHelper = new UserDatabaseHelper(runner.manager)
     userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
 
-    const rawUser = makeRawUser({
+    refreshToken = await jwtGenerator.generateSessionToken()
+    hashedToken = await hasherService.hash(refreshToken)
+
+    rawUser = makeRawUser({
       id: userId,
       status: UserStatus.active().value,
       deleted_at: null,
     })
 
-    await userDatabaseHelper.save(rawUser)
-
-    const refreshToken = await jwtGenerator.generateSessionToken()
-    const hashedToken = await hasherService.hash(refreshToken)
-
     currentSession = makeRawSession({
+      id: currentSessionId,
       user_id: userId,
       token_hash: hashedToken,
-      user_agent: UserAgentMother.random().value,
-      ip_hash: UserIpHashMother.random().value,
       expires_at: futureExpiresAt,
       revoked_at: null,
       created_at: now,
-      device_country_code: null,
-      device_city: null,
     })
-    await userSessionDatabaseHelper.save(currentSession)
 
-    request = {
+    baseRequest = {
       token: refreshToken,
-      ip: '8.8.8.8',
-      userAgent: expectedUserAgent.raw,
+      clientMetadata: new ClientMetadataResponseTestBuilder()
+        .withUserAgent(userAgent)
+        .withUserIpHash(userIpHash)
+        .withDeviceLocation(userDeviceLocation)
+        .build(),
     }
-
-    hashedIp = await hasherService.hash(request.ip)
   })
 
   const buildUseCase = () => {
@@ -126,12 +123,6 @@ describe('RefreshSession', () => {
         mockedConfigService,
       ),
       new UserSessionPolicyManagerApplicationService(new MaxSessionsPolicy(maxSessions), new LoggerServiceMock()),
-      new RequestOriginApplicationService(
-        new IpAddressIpValidatorService(),
-        hasherService,
-        new NoopDeviceLocationResolverService(),
-        new LoggerServiceMock(),
-      ),
       new ClockServiceMock(now),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
@@ -139,25 +130,30 @@ describe('RefreshSession', () => {
     )
   }
 
-  const buildAndSaveSessions = async (): Promise<BuildAndSaveSessionsResponse> => {
-    const middleCreatedAt = new Date(now.getTime() - 2000)
-    const newestCreatedAt = new Date(now.getTime() - 1000)
-    const oldestCreatedAt = new Date(now.getTime() - 3000)
+  const runTestWithCount = async (
+    requestDto: RefreshSessionApplicationRequestDto,
+    expectedCounts: { sessions: { before: number; after: number } },
+  ) => {
+    const useCase = buildUseCase()
 
-    const session2 = makeRawSession({ user_id: userId, created_at: middleCreatedAt, expires_at: futureExpiresAt })
-    const session3 = makeRawSession({ user_id: userId, created_at: newestCreatedAt, expires_at: futureExpiresAt })
-    const oldestSession = makeRawSession({ user_id: userId, created_at: oldestCreatedAt, expires_at: futureExpiresAt })
+    const totalSessionsBeforeRefresh = await userSessionDatabaseHelper.count()
 
-    await userSessionDatabaseHelper.save([oldestSession, session2, session3])
+    const result = await useCase.execute(requestDto)
 
-    return {
-      oldestSession,
-      session2,
-      session3,
-    }
+    const totalSessionsAfterRefresh = await userSessionDatabaseHelper.count()
+
+    expect(totalSessionsBeforeRefresh).toEqual(expectedCounts.sessions.before)
+    expect(totalSessionsAfterRefresh).toEqual(expectedCounts.sessions.after)
+
+    return { result }
   }
 
   describe('happy path', () => {
+    beforeEach(async () => {
+      await userDatabaseHelper.save(rawUser)
+      await userSessionDatabaseHelper.save(currentSession)
+    })
+
     const assertResult = (result: Result<RefreshSessionApplicationResponseDto, RefreshSessionApplicationError>) => {
       expect(result).toEqual({
         success: true,
@@ -172,153 +168,149 @@ describe('RefreshSession', () => {
       })
     }
 
-    const assertSavedAndRevokeSession = async (
+    const assertSavedAndRevokedSession = async (
       result: Result<RefreshSessionApplicationResponseDto, RefreshSessionApplicationError>,
-      activeSessions: Array<UserSessionRawWithRelationships>,
+      expectedUserAgent: UserAgent,
+      expectedIpHash: UserIpHash | null,
+      expectedDeviceLocation: DeviceLocation | null,
     ) => {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      const sessionId: string = result.value!.sessionId as string
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      const expectedSessionHash = await hasherService.hash(result.value!.refreshToken as string)
+      expect(result.success).toBe(true)
 
-      const currentSessionInDb = await userSessionDatabaseHelper.findById(currentSession.id)
+      const sessionId = result['value'].sessionId as string
+      const expectedSessionHash = await hasherService.hash(result['value'].refreshToken as string)
 
-      expect(currentSessionInDb).not.toBeNull()
-      expect(currentSessionInDb!.revoked_at).not.toBeNull()
-      expect(currentSessionInDb!.revoked_at).toEqual(now)
-      expect(currentSessionInDb!.updated_at).toEqual(now)
+      const updatedCurrentSession = await userSessionDatabaseHelper.findById(currentSessionId)
 
-      const savedSession = UserSessionDatabaseHelper.findSessionByIdInArray(activeSessions, sessionId)
+      expect(updatedCurrentSession).not.toBeNull()
+      expect(updatedCurrentSession!.revoked_at).not.toBeNull()
+      expect(updatedCurrentSession!.revoked_at).toEqual(now)
+      expect(updatedCurrentSession!.updated_at).toEqual(now)
+
+      const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+
+      const savedSession = userActiveSessions.find((activeSession) => activeSession.id === sessionId)
       expect(savedSession).toBeDefined()
       expect(savedSession!.user_id).toBe(userId)
-      expect(savedSession!.user_agent).toEqual(expectedUserAgent)
+      expect(savedSession!.user_agent).toEqual(expectedUserAgent.value)
 
-      expect(savedSession!.ip_hash).toBe(hashedIp)
+      if (!expectedIpHash) {
+        expect(savedSession!.ip_hash).toBeNull()
+      } else {
+        expect(savedSession!.ip_hash).toBe(expectedIpHash.value)
+      }
 
-      expect(savedSession!.device_country_code).toBeNull()
-      expect(savedSession!.device_city).toBeNull()
+      if (!expectedDeviceLocation) {
+        expect(savedSession!.device_country_code).toBeNull()
+        expect(savedSession!.device_city).toBeNull()
+      } else {
+        expect(savedSession!.device_country_code).toBe(expectedDeviceLocation.countryCode)
+        expect(savedSession!.device_city).toBe(expectedDeviceLocation.city)
+      }
+
       expect(savedSession!.token_hash).toBe(expectedSessionHash)
       expect(savedSession!.expires_at).toEqual(new Date(now.getTime() + REFRESH_TTL_MS))
     }
 
-    it('should revoke current session and create a new user session correctly (no revoke sessions)', async () => {
-      const useCase = buildUseCase()
-
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-
-      const result = await useCase.execute(request)
-
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+    it('should revoke current session and create a new user session correctly (no revoke additional sessions)', async () => {
+      const { result } = await runTestWithCount(baseRequest, {
+        sessions: { before: 1, after: 2 },
+      })
 
       assertResult(result)
-
-      expect(activeSessionsBefore.length).toBe(1)
-      expect(activeSessionsBefore).toEqual([currentSession])
-
-      expect(activeSessionsAfter.length).toBe(1)
-      await assertSavedAndRevokeSession(result, activeSessionsAfter)
+      await assertSavedAndRevokedSession(result, userAgent, userIpHash, userDeviceLocation)
     })
 
-    it('should revoke current session and create a new user session correctly (revoke sessions)', async () => {
-      const { oldestSession, session2, session3 } = await buildAndSaveSessions()
+    it('should revoke current session and create a new user session correctly (revoke sessions by policy)', async () => {
+      const middleCreatedAt = new Date(now.getTime() - 2000)
+      const newestCreatedAt = new Date(now.getTime() - 1000)
+      const oldestCreatedAt = new Date(now.getTime() - 3000)
 
-      const useCase = buildUseCase()
+      const session2 = makeRawSession({ user_id: userId, created_at: middleCreatedAt, expires_at: futureExpiresAt })
+      const session3 = makeRawSession({ user_id: userId, created_at: newestCreatedAt, expires_at: futureExpiresAt })
+      const oldestSession = makeRawSession({ user_id: userId, created_at: oldestCreatedAt, expires_at: futureExpiresAt })
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      await userSessionDatabaseHelper.save([oldestSession, session2, session3])
 
-      const result = await useCase.execute(request)
-
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      const { result } = await runTestWithCount(baseRequest, {
+        sessions: { before: 4, after: 5 },
+      })
 
       assertResult(result)
 
-      expect(activeSessionsBefore.length).toBe(4)
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsBefore, oldestSession.id)).toBeDefined()
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsBefore, session2.id)).toBeDefined()
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsBefore, session3.id)).toBeDefined()
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsBefore, currentSession.id)).toBeDefined()
+      await assertSavedAndRevokedSession(result, userAgent, userIpHash, userDeviceLocation)
 
-      expect(activeSessionsAfter.length).toBe(maxSessions)
-      await assertSavedAndRevokeSession(result, activeSessionsAfter)
+      const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session2.id))
-      expect(UserSessionDatabaseHelper.findSessionByIdInArray(activeSessionsAfter, session3.id))
+      expect(userActiveSessions).toHaveLength(maxSessions)
 
-      const oldestSessionInDb = await userSessionDatabaseHelper.findById(oldestSession.id)
-      expect(oldestSessionInDb).not.toBeNull()
-      expect(oldestSessionInDb?.revoked_at).toEqual(now)
-      expect(oldestSessionInDb?.updated_at).toEqual(now)
+      expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === oldestSession.id)).toBeUndefined()
+      expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === session2.id)).toBeDefined()
+      expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === session3.id)).toBeDefined()
+
+      const updatedOldestSession = await userSessionDatabaseHelper.findById(oldestSession.id)
+      expect(updatedOldestSession).not.toBeNull()
+      expect(updatedOldestSession?.revoked_at).toEqual(now)
+      expect(updatedOldestSession?.updated_at).toEqual(now)
     })
   })
 
   describe('when there are errors', () => {
-    it('should return error when session is not found', async () => {
-      const useCase = buildUseCase()
+    const assertCurrentActiveSession = async () => {
+      const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      expect(userActiveSessions).toHaveLength(1)
+      expect(userActiveSessions[0].id).toEqual(currentSessionId)
+    }
+
+    it('should return error when the session to refresh is not found', async () => {
+      await userDatabaseHelper.save(rawUser)
+      await userSessionDatabaseHelper.save(currentSession)
 
       const anotherRefreshToken = await jwtGenerator.generateSessionToken()
-      const result = await useCase.execute({ ...request, token: anotherRefreshToken })
 
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      const { result } = await runTestWithCount({ ...baseRequest, token: anotherRefreshToken }, { sessions: { before: 1, after: 1 } })
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionNotFound())
-
-      expect(activeSessionsBefore).toEqual(activeSessionsAfter)
+      await assertCurrentActiveSession()
     })
 
-    it('should return error when session is already expired', async () => {
-      await userSessionDatabaseHelper.update(currentSession.id, { expires_at: pastExpiresAt })
+    it('should return error when the session to refresh is already expired', async () => {
+      await userDatabaseHelper.save(rawUser)
+      await userSessionDatabaseHelper.save({ ...currentSession, expires_at: pastExpiresAt })
 
-      const useCase = buildUseCase()
-
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-
-      const result = await useCase.execute(request)
-
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      const { result } = await runTestWithCount(baseRequest, { sessions: { before: 1, after: 1 } })
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id))
 
-      expect(activeSessionsBefore).toEqual(activeSessionsAfter)
+      const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      expect(userActiveSessions).toHaveLength(0)
     })
 
-    it('should return error when session is already expired', async () => {
-      await userSessionDatabaseHelper.update(currentSession.id, { revoked_at: now })
+    it('should return error when the session to refresh is already revoked', async () => {
+      await userDatabaseHelper.save(rawUser)
+      await userSessionDatabaseHelper.save({ ...currentSession, revoked_at: now })
 
-      const useCase = buildUseCase()
-
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-
-      const result = await useCase.execute(request)
-
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      const { result } = await runTestWithCount(baseRequest, { sessions: { before: 1, after: 1 } })
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id))
 
-      expect(activeSessionsBefore).toEqual(activeSessionsAfter)
+      const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      expect(userActiveSessions).toHaveLength(0)
     })
 
-    it('should return error when session is not found', async () => {
-      await userDatabaseHelper.update(userId, { status: UserStatus.deactivated().value })
+    it('should return error when user is disabled', async () => {
+      await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
+      await userSessionDatabaseHelper.save(currentSession)
 
-      const useCase = buildUseCase()
-
-      const activeSessionsBefore = await userSessionDatabaseHelper.findActiveSessions(userId, now)
-
-      const result = await useCase.execute(request)
-
-      const activeSessionsAfter = await userSessionDatabaseHelper.findActiveSessions(userId, now)
+      const { result } = await runTestWithCount(baseRequest, { sessions: { before: 1, after: 1 } })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userNotFound(userId))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userDisabled(userId))
 
-      expect(activeSessionsBefore).toEqual(activeSessionsAfter)
+      await assertCurrentActiveSession()
     })
   })
 })

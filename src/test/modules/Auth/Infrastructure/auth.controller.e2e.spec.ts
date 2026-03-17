@@ -217,26 +217,26 @@ describe('AuthController', () => {
         await userDatabaseHelper.save(rawUser)
         await userCredentialDatabaseHelper.save(rawCredential)
 
-        return request(app.getHttpServer())
+        const response = await request(app.getHttpServer())
           .post('/auth/login')
           .send({ email: userEmail, password: userPassword })
           .expect(200)
-          .expect(async (response) => {
-            expect(response.body).toEqual({
-              accessToken: expect.any(String),
-              refreshToken: expect.any(String),
-              sessionId: expect.any(String),
-              accessTokenExpiresAt: expectIsoDate,
-              refreshTokenExpiresAt: expectIsoDate,
-              isNewDevice: expect.any(Boolean),
-            } as Record<string, unknown>)
 
-            const cookies = response.headers['set-cookie'] as unknown as Array<string>
-            checkAuthCookiesWereSet(cookies)
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({
+          accessToken: expect.any(String),
+          refreshToken: expect.any(String),
+          sessionId: expect.any(String),
+          accessTokenExpiresAt: expectIsoDate,
+          refreshTokenExpiresAt: expectIsoDate,
+          isNewDevice: expect.any(Boolean),
+        } as Record<string, unknown>)
 
-            const savedSession = await userSessionDatabaseHelper.findById(response.body.sessionId as string)
-            expect(savedSession).toBeDefined()
-          })
+        const cookies = response.headers['set-cookie'] as unknown as Array<string>
+        checkAuthCookiesWereSet(cookies)
+
+        const savedSession = await userSessionDatabaseHelper.findById(response.body.sessionId as string)
+        expect(savedSession).toBeDefined()
       })
     })
 
@@ -401,22 +401,20 @@ describe('AuthController', () => {
         await userDatabaseHelper.save(rawUser)
         await userSessionDatabaseHelper.save(rawCurrentSession)
 
-        return request(app.getHttpServer())
-          .post('/auth/refresh')
-          .set('Cookie', `${refreshCookieName}=${inputToken}`)
-          .expect(200)
-          .expect((response) => {
-            expect(response.body).toEqual({
-              accessToken: expect.any(String),
-              refreshToken: expect.any(String),
-              sessionId: expect.any(String),
-              accessTokenExpiresAt: expectIsoDate,
-              refreshTokenExpiresAt: expectIsoDate,
-            } as Record<string, unknown>)
+        const response = await request(app.getHttpServer()).post('/auth/refresh').set('Cookie', `${refreshCookieName}=${inputToken}`)
 
-            const cookies = response.headers['set-cookie'] as unknown as Array<string>
-            checkAuthCookiesWereSet(cookies)
-          })
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({
+          accessToken: expect.any(String),
+          refreshToken: expect.any(String),
+          sessionId: expect.any(String),
+          accessTokenExpiresAt: expectIsoDate,
+          refreshTokenExpiresAt: expectIsoDate,
+        } as Record<string, unknown>)
+        checkAuthCookiesWereSet(response.headers['set-cookie'] as unknown as Array<string>)
+
+        const savedSession = await userSessionDatabaseHelper.findById(response.body.sessionId as string)
+        expect(savedSession).toBeDefined()
       })
     })
 

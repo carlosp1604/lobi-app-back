@@ -300,10 +300,10 @@ describe('LoginUser', () => {
       expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === session3.id)).toBeDefined()
       expect(userActiveSessions.find((userActiveSession) => userActiveSession.id === oldestSession.id)).toBeUndefined()
 
-      const oldestSessionInDb = await userSessionDatabaseHelper.findById(oldestSession.id)
-      expect(oldestSessionInDb).not.toBeNull()
-      expect(oldestSessionInDb?.revoked_at).toEqual(now)
-      expect(oldestSessionInDb?.updated_at).toEqual(now)
+      const updatedOldestSession = await userSessionDatabaseHelper.findById(oldestSession.id)
+      expect(updatedOldestSession).not.toBeNull()
+      expect(updatedOldestSession?.revoked_at).toEqual(now)
+      expect(updatedOldestSession?.updated_at).toEqual(now)
     })
   })
 

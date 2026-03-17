@@ -75,7 +75,7 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationRequestDto'
 import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/RefreshSession'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
-import { RefreshTokenDecorator } from '~/src/modules/Auth/Infrastructure/Decorators/refresh-token.decorator'
+import { RefreshToken } from '~/src/modules/Auth/Infrastructure/Decorators/refresh-token.decorator'
 import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { RefreshTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/refresh-token.guard'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
@@ -191,23 +191,19 @@ export class AuthController {
   @Post('refresh')
   @UseGuards(RefreshTokenGuard)
   @HttpCode(HttpStatus.OK)
-  async refresh(
-    @UserIp() userIp: string,
-    @UserAgent() userAgent: string | undefined,
-    @Res({ passthrough: true }) response: FastifyReply,
-    @RefreshTokenDecorator() refreshTokenFromCookie: string,
-  ) {
-    const requestDto: RefreshSessionApplicationRequestDto = {
-      ip: userIp,
-      userAgent,
-      token: refreshTokenFromCookie,
-    }
+  async refresh(@Req() request: FastifyRequest, @Res({ passthrough: true }) response: FastifyReply, @RefreshToken() token: string) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
+    const requestDto: RefreshSessionApplicationRequestDto = { token, clientMetadata }
 
     const result = await this.refreshSession.execute(requestDto)
 
     if (!result.success) {
       if (
         result.error.id === RefreshSessionApplicationError.userNotFoundId ||
+        result.error.id === RefreshSessionApplicationError.userDisabledId ||
         result.error.id === RefreshSessionApplicationError.sessionNotFoundId ||
         result.error.id === RefreshSessionApplicationError.sessionAlreadyExpiredId ||
         result.error.id === RefreshSessionApplicationError.sessionAlreadyRevokedId

@@ -103,7 +103,25 @@ describe('AuthController', () => {
   const mockedIp = '127.0.0.1'
   const mockedUserAgent = UserAgentMother.valid().raw
 
+  const mockedRawRequestMetadata = { ip: UserIpMother.valid(), userAgent: UserAgentMother.validString() }
+  const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
+
   const baseDate = new Date('2025-10-13T14:00:00.014Z')
+
+  const loginRefreshConfigServiceMockImplementation = createConfigServiceMockImplementation({
+    REFRESH_COOKIE_NAME: 'x-refresh-token',
+    ACCESS_COOKIE_NAME: 'x-access-token',
+    isProduction: false,
+  })
+
+  const expectedLoginRefreshResponse = {
+    accessToken: 'expected-access-token',
+    refreshToken: 'expected-refresh-token',
+    accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
+    refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
+    sessionId: 'expected-session-id',
+    isNewDevice: true,
+  }
 
   beforeEach(() => {
     mockReset(mockedResponse)
@@ -187,18 +205,8 @@ describe('AuthController', () => {
     const mockBody = { email: validEmail, password: validPassword }
     const mockRequest = {} as unknown as FastifyRequest
 
-    const mockedRawRequestMetadata = { ip: UserIpMother.valid(), userAgent: UserAgentMother.validString() }
-    const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
-
     beforeEach(() => {
-      mockedConfigService.get.mockImplementation(
-        createConfigServiceMockImplementation({
-          REFRESH_COOKIE_NAME: 'x-refresh-token',
-          ACCESS_COOKIE_NAME: 'x-access-token',
-          isProduction: false,
-        }),
-      )
-
+      mockedConfigService.get.mockImplementation(loginRefreshConfigServiceMockImplementation)
       mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
       mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
@@ -209,19 +217,10 @@ describe('AuthController', () => {
     }
 
     describe('happy path', () => {
-      const expectedResponse = {
-        accessToken: 'expected-access-token',
-        refreshToken: 'expected-refresh-token',
-        accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
-        refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
-        sessionId: 'expected-session-id',
-        isNewDevice: true,
-      }
-
       beforeEach(() => {
         mockedLoginUseCase.execute.mockResolvedValue({
           success: true,
-          value: expectedResponse,
+          value: expectedLoginRefreshResponse,
         })
       })
 
@@ -239,7 +238,7 @@ describe('AuthController', () => {
         })
 
         assertAuthCookiesWereSet('expected-access-token', 'expected-refresh-token')
-        expect(result).toEqual(expectedResponse)
+        expect(result).toEqual(expectedLoginRefreshResponse)
       })
     })
 
@@ -406,76 +405,91 @@ describe('AuthController', () => {
   })
 
   describe('refresh', () => {
+    const validUserId = IdentifierMother.valid().value
+    const validSessionId = IdentifierMother.valid().value
+    const mockRequest = {} as unknown as FastifyRequest
+    const mockRefreshToken = 'expected-refresh-token'
+
+    const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
+
     beforeEach(() => {
-      mockedConfigService.get.mockImplementation(
-        createConfigServiceMockImplementation({
-          REFRESH_COOKIE_NAME: 'x-refresh-token',
-          ACCESS_COOKIE_NAME: 'x-access-token',
-          isProduction: false,
-        }),
-      )
+      mockedConfigService.get.mockImplementation(loginRefreshConfigServiceMockImplementation)
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
 
-    describe('happy path', () => {
-      const expectedResponse = {
-        accessToken: 'expected-access-token',
-        refreshToken: 'expected-new-refresh-token',
-        accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
-        refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
-        sessionId: 'expected-session-id',
-      }
+    const assertMetadataFlowWasCalled = () => {
+      expect(mockedRequestMetadataExtractor.extract).toHaveBeenCalledWith(mockRequest)
+      expect(mockedClientMetadataService.process).toHaveBeenCalledWith(mockedRawRequestMetadata)
+    }
 
+    describe('happy path', () => {
       beforeEach(() => {
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: true,
-          value: expectedResponse,
+          value: expectedLoginRefreshResponse,
         })
       })
 
-      it('should call use-case correctly passing IP and UserAgent from arguments, set cookie and return data', async () => {
+      it('should extract metadata, call use-case correctly, set cookies and return data', async () => {
         const controller = buildController()
 
-        const result = await controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')
+        const result = await controller.refresh(mockRequest, mockedResponse, mockRefreshToken)
 
-        assertAuthCookiesWereSet('expected-access-token', 'expected-new-refresh-token')
+        assertMetadataFlowWasCalled()
+
         expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
-          token: 'expected-refresh-token',
+          token: mockRefreshToken,
+          clientMetadata: mockedClientMetadata,
         })
-        expect(result).toEqual(expectedResponse)
-      })
 
-      it('should call use-case correctly when UserAgent is undefined, set cookie and return data', async () => {
-        const controller = buildController()
-
-        const result = await controller.refresh(mockedIp, undefined, mockedResponse, 'expected-refresh-token')
-
-        assertAuthCookiesWereSet('expected-access-token', 'expected-new-refresh-token')
-        expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({
-          ip: mockedIp,
-          userAgent: undefined,
-          token: 'expected-refresh-token',
-        })
-        expect(result).toEqual(expectedResponse)
+        assertAuthCookiesWereSet('expected-access-token', 'expected-refresh-token')
+        expect(result).toEqual(expectedLoginRefreshResponse)
       })
     })
 
     describe('when there are errors', () => {
+      const assertAuthCookiesWereNotSet = () => {
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
+      }
+
       it('should throw UnauthorizedException when use-case returns userNotFound error', async () => {
         const controller = buildController()
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.userNotFound('test-user-id'),
+          error: RefreshSessionApplicationError.userNotFound(validUserId),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
+      })
+
+      it('should throw UnauthorizedException when use-case returns userDisabled error', async () => {
+        const controller = buildController()
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: RefreshSessionApplicationError.userDisabled(validUserId),
+        })
+
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns sessionNotFound error', async () => {
@@ -486,12 +500,15 @@ describe('AuthController', () => {
           error: RefreshSessionApplicationError.sessionNotFound(),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns sessionAlreadyExpired error', async () => {
@@ -499,15 +516,18 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.sessionAlreadyExpired('test-session-id'),
+          error: RefreshSessionApplicationError.sessionAlreadyExpired(validSessionId),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns sessionAlreadyRevoked error', async () => {
@@ -515,15 +535,18 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.sessionAlreadyRevoked('test-session-id'),
+          error: RefreshSessionApplicationError.sessionAlreadyRevoked(validSessionId),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnprocessableEntityException when use-case returns invalidTokenFormat error', async () => {
@@ -534,17 +557,19 @@ describe('AuthController', () => {
           error: RefreshSessionApplicationError.invalidTokenFormat(),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'invalid-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, 'invalid-refresh-token')).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_REFRESH_INVALID_TOKEN_FORMAT,
             message: RefreshSessionApplicationError.invalidTokenFormat().message,
           }),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns sessionInconsistency error', async () => {
         const controller = buildController()
-
         const useCaseError = RefreshSessionApplicationError.sessionInconsistency('Unexpected inconsistency error')
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -552,14 +577,16 @@ describe('AuthController', () => {
           error: useCaseError,
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns revocationFailed error', async () => {
         const controller = buildController()
-
         const useCaseError = RefreshSessionApplicationError.revocationFailed('Unexpected revocation error')
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -567,14 +594,16 @@ describe('AuthController', () => {
           error: useCaseError,
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns internalError error', async () => {
         const controller = buildController()
-
         const useCaseError = RefreshSessionApplicationError.internalError('Unexpected internal error')
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -582,21 +611,26 @@ describe('AuthController', () => {
           error: useCaseError,
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
 
-      it('should throw error when use-case fails with an unexpected error', async () => {
+      it('should throw error when use-case fails with an unexpected exception', async () => {
         const controller = buildController()
+        const unexpectedError = new Error('Unexpected error')
 
         mockedRefreshSessionUseCase.execute.mockImplementation(() => {
-          throw Error('Unexpected error')
+          throw unexpectedError
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
-          Error('Unexpected error'),
-        )
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(unexpectedError)
+
+        assertMetadataFlowWasCalled()
+        assertAuthCookiesWereNotSet()
       })
     })
   })

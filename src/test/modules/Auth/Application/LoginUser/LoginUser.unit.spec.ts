@@ -430,7 +430,7 @@ describe('LoginUser', () => {
       })
     })
 
-    it('should throw error when UserRepository fails', async () => {
+    it('should throw error when UserRepository fails during findByEmailWithLock', async () => {
       mockedUserRepository.findByEmailWithLock.mockImplementationOnce(() => {
         throw Error('Unexpected Error')
       })
