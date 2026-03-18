@@ -1842,21 +1842,19 @@ describe('AuthController', () => {
         }
 
         it('should clear cookies when use-case returns userNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userNotFound(mockedAccessToken.sub))
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userNotFound())
         })
 
         it('should clear cookies when use-case returns userDisabled error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userDisabled(mockedAccessToken.sub))
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userDisabled())
         })
 
         it('should clear cookies when use-case returns sessionNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.sessionNotFound(mockedAccessToken.sid))
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.sessionNotFound())
         })
 
         it('should clear cookies when use-case returns sessionDoesNotBelongToUser error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(
-            LogoutUserApplicationError.sessionDoesNotBelongToUser(mockedAccessToken.sid, mockedAccessToken.sub),
-          )
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.sessionDoesNotBelongToUser())
         })
 
         it('should clear cookies when use-case returns cannotRevokeSession error', async () => {
@@ -1864,28 +1862,14 @@ describe('AuthController', () => {
 
           await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))
         })
-      })
 
-      it('should throw InternalServerErrorException and do not clean cookies when use-case returns invalidInput error', async () => {
-        const controller = buildController()
-
-        const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
-        const expectedInputError = LogoutUserApplicationError.invalidInput('sessionId', expectedInvalidIdentifierException.message)
-
-        mockedLogoutUserUseCase.execute.mockResolvedValue({
-          success: false,
-          error: expectedInputError,
+        it('should clear cookies when use-case returns invalidUserId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.invalidUserId('Invalid user id'))
         })
 
-        await expect(controller.logout(mockedAccessToken, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-            cause: expectedInputError,
-          }),
-        )
-
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
-        expect(mockedConfigService.get).not.toHaveBeenCalled()
-        expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+        it('should clear cookies when use-case returns invalidSessionId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.invalidSessionId('Invalid session id'))
+        })
       })
 
       it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown LogoutUserApplicationError', async () => {

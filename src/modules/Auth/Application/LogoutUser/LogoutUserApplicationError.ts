@@ -4,7 +4,8 @@ export class LogoutUserApplicationError extends Error {
   public readonly id: string
   public readonly name: string
 
-  public static invalidInputId = 'logout_user_invalid_input'
+  public static invalidUserIdId = 'logout_user_invalid_user_id'
+  public static invalidSessionIdId = 'logout_user_invalid_session_id'
   public static userNotFoundId = 'logout_user_user_not_found'
   public static userDisabledId = 'logout_user_user_disabled'
   public static sessionNotFoundId = 'logout_user_session_not_found'
@@ -17,30 +18,34 @@ export class LogoutUserApplicationError extends Error {
     this.name = LogoutUserApplicationError.name
   }
 
-  public static invalidInput(field: string, errorMessage: string) {
-    return new LogoutUserApplicationError(`Invalid input provided for field ${field}. Reason: ${errorMessage}`, this.invalidInputId)
+  public static invalidUserId(domainMessage: string) {
+    return new LogoutUserApplicationError(domainMessage, this.invalidUserIdId)
   }
 
-  public static userNotFound(userId: string) {
-    return new LogoutUserApplicationError(`User identified by ID ${userId} was not found`, this.userNotFoundId)
+  public static invalidSessionId(domainMessage: string) {
+    return new LogoutUserApplicationError(domainMessage, this.invalidSessionIdId)
   }
 
-  public static userDisabled(userId: string) {
-    return new LogoutUserApplicationError(`User identified by ID ${userId} is disabled`, this.userDisabledId)
+  public static userNotFound() {
+    return new LogoutUserApplicationError('The user associated with this session could not be found', this.userNotFoundId)
   }
 
-  public static sessionNotFound(sessionId: string) {
-    return new LogoutUserApplicationError(`Session identified by ID ${sessionId} was not found`, this.sessionNotFoundId)
+  public static userDisabled() {
+    return new LogoutUserApplicationError('The user associated with this session is currently disabled', this.userDisabledId)
   }
 
-  public static sessionDoesNotBelongToUser(sessionId: string, userId: string) {
+  public static sessionNotFound() {
+    return new LogoutUserApplicationError('No session was found for the provided session identifier', this.sessionNotFoundId)
+  }
+
+  public static sessionDoesNotBelongToUser() {
     return new LogoutUserApplicationError(
-      `Session identified by ID ${sessionId} does not belong to user identified by ID ${userId}`,
+      'The provided session does not belong to the provider user identifier',
       this.sessionDoesNotBelongToUserId,
     )
   }
 
-  public static cannotRevokeSession(message: string) {
-    return new LogoutUserApplicationError(message, this.cannotRevokeSessionId)
+  public static cannotRevokeSession(domainMessage: string) {
+    return new LogoutUserApplicationError(domainMessage, this.cannotRevokeSessionId)
   }
 }

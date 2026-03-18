@@ -6,7 +6,6 @@ export class UserSessionDomainException extends DomainException {
   public static invalidUserSessionTokenHashId = 'user_session_domain_invalid_user_session_token_hash'
   public static invalidDeviceCountryCodeId = 'user_session_domain_invalid_device_country_code'
   public static invalidDeviceCityId = 'user_session_domain_invalid_device_city'
-  public static invalidUserSessionIpHashId = 'user_session_domain_invalid_user_session_ip_hash'
   public static invalidUserAgentId = 'user_session_domain_invalid_user_agent'
   public static sessionAlreadyRevokedId = 'user_session_domain_session_already_revoked'
   public static sessionAlreadyExpiredId = 'user_session_domain_session_already_expired'
@@ -17,10 +16,6 @@ export class UserSessionDomainException extends DomainException {
 
   public static invalidUserSessionTokenHash() {
     return new UserSessionDomainException('Invalid UserSession token hash format', this.invalidUserSessionTokenHashId)
-  }
-
-  public static invalidUserSessionIpHash() {
-    return new UserSessionDomainException('Invalid UserSession IP format', this.invalidUserSessionIpHashId)
   }
 
   public static invalidUserAgent(userAgent: string) {

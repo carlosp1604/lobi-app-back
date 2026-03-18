@@ -598,18 +598,14 @@ export class AuthController {
         LogoutUserApplicationError.cannotRevokeSessionId,
         LogoutUserApplicationError.sessionNotFoundId,
         LogoutUserApplicationError.sessionDoesNotBelongToUserId,
+        LogoutUserApplicationError.invalidSessionIdId,
+        LogoutUserApplicationError.invalidUserIdId,
       ]
 
       if (obfuscatedErrors.includes(errorId)) {
         this.clearCookies(response)
 
         return
-      }
-
-      if (errorId === LogoutUserApplicationError.invalidInputId) {
-        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-          cause: result.error,
-        })
       }
 
       throw new InternalServerErrorException(result.error)

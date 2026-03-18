@@ -24,9 +24,9 @@ describe('LogoutUser', () => {
   const futureDate = new Date(now.getTime() + 3600 * 1000)
   const pastDate = new Date(now.getTime() - 3600 * 1000)
 
-  const validUserId = IdentifierMother.valid()
-  const validSessionId1 = IdentifierMother.valid()
-  const validSessionId2 = IdentifierMother.valid()
+  const userId = IdentifierMother.valid()
+  const sessionId1 = IdentifierMother.valid()
+  const sessionId2 = IdentifierMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
@@ -54,28 +54,28 @@ describe('LogoutUser', () => {
     userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
 
     existingRawUser = makeRawUser({
-      id: validUserId.value,
+      id: userId.value,
     })
 
     activeRawSession = makeRawSession({
-      id: validSessionId1.value,
-      user_id: validUserId.value,
+      id: sessionId1.value,
+      user_id: userId.value,
       revoked_at: null,
       expires_at: futureDate,
       updated_at: pastDate,
     })
 
     secondaryRawSession = makeRawSession({
-      id: validSessionId2.value,
-      user_id: validUserId.value,
+      id: sessionId2.value,
+      user_id: userId.value,
       revoked_at: null,
       expires_at: futureDate,
       updated_at: pastDate,
     })
 
     baseRequest = {
-      userId: validUserId.value,
-      sessionId: validSessionId1.value,
+      userId: userId.value,
+      sessionId: sessionId1.value,
     }
   })
 
@@ -121,12 +121,12 @@ describe('LogoutUser', () => {
       expect(result.success).toBe(true)
       expect(result['value']).toBeUndefined()
 
-      const targetSession = await userSessionDatabaseHelper.findById(validSessionId1.value)
+      const targetSession = await userSessionDatabaseHelper.findById(sessionId1.value)
       expect(targetSession).not.toBeNull()
       expect(targetSession!.revoked_at).toEqual(now)
       expect(targetSession!.updated_at).toEqual(now)
 
-      const secondarySession = await userSessionDatabaseHelper.findById(validSessionId2.value)
+      const secondarySession = await userSessionDatabaseHelper.findById(sessionId2.value)
       expect(secondarySession).not.toBeNull()
       expect(secondarySession!.revoked_at).toBeNull()
       expect(secondarySession!.updated_at).toEqual(pastDate)
@@ -140,7 +140,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound())
     })
 
     it('should return error when session does not exist', async () => {
@@ -151,7 +151,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound(validSessionId1.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound())
     })
 
     it('should return error when session does not belong to user', async () => {
@@ -172,11 +172,9 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        LogoutUserApplicationError.sessionDoesNotBelongToUser(validSessionId1.value, validUserId.value),
-      )
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionDoesNotBelongToUser())
 
-      const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
+      const sessionAfter = await userSessionDatabaseHelper.findById(sessionId1.value)
       expect(sessionAfter!.revoked_at).toBeNull()
       expect(sessionAfter!.updated_at).toEqual(pastDate)
     })
@@ -195,12 +193,12 @@ describe('LogoutUser', () => {
         sessions: { before: 1, after: 1 },
       })
 
-      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(validSessionId1.value)
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(sessionId1.value)
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))
 
-      const sessionAfter = await userSessionDatabaseHelper.findById(validSessionId1.value)
+      const sessionAfter = await userSessionDatabaseHelper.findById(sessionId1.value)
       expect(sessionAfter!.revoked_at).toEqual(pastDate)
       expect(sessionAfter!.updated_at).toEqual(pastDate)
     })

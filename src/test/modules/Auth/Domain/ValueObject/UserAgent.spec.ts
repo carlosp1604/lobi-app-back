@@ -1,13 +1,20 @@
 import { UserAgent, UserAgentProps } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
+import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
+import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 
-describe('UserAgent VO', () => {
-  const validProps: UserAgentProps = {
-    raw: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-    browser: { name: 'Safari', version: '15.0' },
-    os: { name: 'Mac OS X', version: '10.15.7' },
-    device: { type: null, vendor: 'Apple', model: 'Macintosh' },
+class DummyVO extends ValueObject<UserAgentProps> {
+  private constructor(value: UserAgentProps) {
+    super(value)
   }
+
+  static fromProps(props: UserAgentProps) {
+    return new DummyVO(props)
+  }
+}
+
+describe('UserAgent', () => {
+  const validProps = UserAgentMother.valid().value
 
   describe('fromProps', () => {
     it('should create a valid UserAgent when props are valid', () => {
@@ -73,6 +80,15 @@ describe('UserAgent VO', () => {
   })
 
   describe('equals', () => {
+    it('returns false when valueObjects values are equal but their types are different', () => {
+      const valueA = DummyVO.fromProps(validProps)
+      const valueB = UserAgent.fromProps(validProps)
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(valueB.equals(valueA)).toBe(false)
+    })
+
     it('should return true when two UserAgents have the same raw string', () => {
       const userAgentValueObject1 = UserAgent.fromProps(validProps)
       const userAgentValueObject2 = UserAgent.fromProps({ ...validProps, browser: { name: 'Different', version: '1.0' } })

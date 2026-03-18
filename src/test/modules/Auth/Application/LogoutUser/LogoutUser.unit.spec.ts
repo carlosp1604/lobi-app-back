@@ -120,7 +120,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.invalidInput('userId', expectedUserIdValidationError.message))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.invalidUserId(expectedUserIdValidationError.message))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -144,9 +144,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        LogoutUserApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message),
-      )
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.invalidSessionId(expectedSessionIdValidationError.message))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -164,7 +162,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound())
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -183,7 +181,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userDisabled(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userDisabled())
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -202,7 +200,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound(validSessionId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound())
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
@@ -225,9 +223,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        LogoutUserApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value),
-      )
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionDoesNotBelongToUser())
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
