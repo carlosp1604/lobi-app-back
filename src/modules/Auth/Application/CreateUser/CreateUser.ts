@@ -89,6 +89,7 @@ export class CreateUser {
       if (!isCryptoValid) {
         this.loggerService.warn('Token cryptography verification failed', {
           email: verificationToken.email.value,
+          verificationTokenId: verificationToken.id.value,
           purpose: createAccountVerificationTokenPurpose,
         })
 

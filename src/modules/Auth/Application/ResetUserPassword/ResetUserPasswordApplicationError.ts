@@ -31,8 +31,8 @@ export class ResetUserPasswordApplicationError {
     return new ResetUserPasswordApplicationError(this.cannotResetPasswordId, [ResetUserPasswordError.samePasswordValue()])
   }
 
-  public static inconsistentState(userId: string): ResetUserPasswordApplicationError {
-    return new ResetUserPasswordApplicationError(this.inconsistentStateId, [ResetUserPasswordError.userDoesNotHaveCredentials(userId)])
+  public static inconsistentState(): ResetUserPasswordApplicationError {
+    return new ResetUserPasswordApplicationError(this.inconsistentStateId, [ResetUserPasswordError.userDoesNotHaveCredentials()])
   }
 }
 
@@ -47,6 +47,7 @@ export class ResetUserPasswordError extends Error {
   public static invalidTokenFormatId = 'reset_user_password_error_invalid_token_format'
   public static tokenNotFoundId = 'reset_user_password_error_token_not_found'
   public static userNotFoundId = 'reset_user_password_error_user_not_found'
+  public static userDisabledId = 'reset_user_password_error_user_disabled'
   public static userDoesNotHaveCredentialsId = 'reset_user_password_error_user_does_not_have_credentials'
   public static samePasswordValueId = 'reset_user_password_error_same_password_value'
   public static invalidVerificationTokenId = 'reset_user_password_error_invalid_verification_token'
@@ -61,54 +62,55 @@ export class ResetUserPasswordError extends Error {
     this.name = ResetUserPasswordError.name
   }
 
-  public static invalidEmail() {
-    return new ResetUserPasswordError('Invalid email', this.invalidEmailId)
+  public static invalidEmail(domainMessage: string) {
+    return new ResetUserPasswordError(domainMessage, this.invalidEmailId)
   }
 
-  public static invalidPassword() {
-    return new ResetUserPasswordError('Invalid password', this.invalidPasswordId)
+  public static invalidPassword(domainMessage: string) {
+    return new ResetUserPasswordError(domainMessage, this.invalidPasswordId)
   }
 
-  public static invalidTokenFormat() {
-    return new ResetUserPasswordError('Invalid token format', this.invalidTokenFormatId)
+  public static invalidTokenFormat(domainMessage: string) {
+    return new ResetUserPasswordError(domainMessage, this.invalidTokenFormatId)
   }
 
-  public static tokenNotFound(email: string) {
-    return new ResetUserPasswordError(`Token associated to email ${email} was not found`, this.tokenNotFoundId)
+  public static tokenNotFound() {
+    return new ResetUserPasswordError('No valid verification token was found for the provided email address', this.tokenNotFoundId)
   }
 
-  public static userNotFound(userEmail: string) {
-    return new ResetUserPasswordError(`User identified by the email ${userEmail} was not found`, this.userNotFoundId)
+  public static userNotFound() {
+    return new ResetUserPasswordError('No user was found for the provided email address', this.userNotFoundId)
   }
 
-  public static userDoesNotHaveCredentials(userId: string) {
-    return new ResetUserPasswordError(
-      `User identified by ID ${userId} does not have credentials to local login`,
-      this.userDoesNotHaveCredentialsId,
-    )
+  public static userDisabled() {
+    return new ResetUserPasswordError('The user associated with this email address is currently disabled', this.userDisabledId)
+  }
+
+  public static userDoesNotHaveCredentials() {
+    return new ResetUserPasswordError('The user does not have a password set for local login', this.userDoesNotHaveCredentialsId)
   }
 
   public static samePasswordValue() {
     return new ResetUserPasswordError('New password cannot be the same as the current password', this.samePasswordValueId)
   }
 
+  public static tokenExpired(domainMessage: string) {
+    return new ResetUserPasswordError(domainMessage, this.tokenExpiredId)
+  }
+
+  public static tokenAlreadyUsed(domainMessage: string) {
+    return new ResetUserPasswordError(domainMessage, this.tokenAlreadyUsedId)
+  }
+
+  public static tokenInvalidOwner(domainMessage: string) {
+    return new ResetUserPasswordError(domainMessage, this.tokenInvalidOwnerId)
+  }
+
+  public static tokenPurposeMismatch(domainMessage: string) {
+    return new ResetUserPasswordError(domainMessage, this.tokenPurposeMismatchId)
+  }
+
   public static invalidToken() {
-    return new ResetUserPasswordError('The provided token code does not match the stored hash', this.invalidVerificationTokenId)
-  }
-
-  public static tokenExpired() {
-    return new ResetUserPasswordError('The verification token has already expired', this.tokenExpiredId)
-  }
-
-  public static tokenAlreadyUsed() {
-    return new ResetUserPasswordError('The verification token has already been used', this.tokenAlreadyUsedId)
-  }
-
-  public static tokenInvalidOwner() {
-    return new ResetUserPasswordError('The verification token does not belong to the provided email address', this.tokenInvalidOwnerId)
-  }
-
-  public static tokenPurposeMismatch() {
-    return new ResetUserPasswordError('The token cannot be used for the requested purpose', this.tokenPurposeMismatchId)
+    return new ResetUserPasswordError('The provided verification code is incorrect', this.invalidVerificationTokenId)
   }
 }

@@ -25,7 +25,9 @@ describe('JWTokenGeneratorApplicationService', () => {
     const expiresAt = new Date(now.getTime() + 60 * 60 * 1000)
 
     it('should call to jwt with correct payload and options', async () => {
-      const mockJwtSign = jest.spyOn(jwt, 'sign').mockReturnValueOnce('signed-token' as any)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      const mockJwtSign = jest.spyOn(jwt, 'sign').mockReturnValueOnce('signed-token')
 
       const nowSec = Math.floor(now.getTime() / 1000)
       const expSec = Math.floor(expiresAt.getTime() / 1000)
@@ -49,7 +51,9 @@ describe('JWTokenGeneratorApplicationService', () => {
     })
 
     it('should return the correct data', async () => {
-      jest.spyOn(jwt, 'sign').mockReturnValueOnce('signed-token' as any)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      jest.spyOn(jwt, 'sign').mockReturnValueOnce('signed-token')
 
       const token = await jwtTokenGeneratorService.generateAccessToken(userId, sessionId, expiresAt, now)
 
@@ -68,7 +72,9 @@ describe('JWTokenGeneratorApplicationService', () => {
   describe('generateSessionToken', () => {
     it('should call to randomBytes correctly', async () => {
       const expectedBuffer = Buffer.from('super-random-token')
-      const randomBytesSpy = jest.spyOn(crypto, 'randomBytes').mockReturnValue(expectedBuffer as any)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      const randomBytesSpy = jest.spyOn(crypto, 'randomBytes').mockReturnValue(expectedBuffer)
 
       await jwtTokenGeneratorService.generateSessionToken()
       expect(randomBytesSpy).toHaveBeenCalledWith(48)
@@ -76,7 +82,9 @@ describe('JWTokenGeneratorApplicationService', () => {
 
     it('should return the correct data', async () => {
       const expectedBuffer = Buffer.from('super-random-token')
-      jest.spyOn(crypto, 'randomBytes').mockReturnValue(expectedBuffer as any)
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      jest.spyOn(crypto, 'randomBytes').mockReturnValue(expectedBuffer)
 
       const token = await jwtTokenGeneratorService.generateSessionToken()
       expect(token).toBe(expectedBuffer.toString('base64'))

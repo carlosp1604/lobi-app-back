@@ -57,7 +57,7 @@ describe('AuthDomainEventFactory', () => {
     it('should create a valid DomainEvent for password reset', () => {
       const factory = buildFactory()
 
-      const event = factory.createPasswordResetEvent(userId, email, baseLocation, baseUserAgent, baseIpHash.value, now)
+      const event = factory.createPasswordResetEvent(userId, email, baseLocation, baseUserAgent, baseIpHash, now)
 
       checkIdGeneratorCall()
       checkBaseEventStructure(event, DomainEventName.successfulResetPassword(), DomainEventAggregateType.user(), userId)

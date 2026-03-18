@@ -59,6 +59,8 @@ export class ValidateVerificationToken {
     if (!isCryptoValid) {
       this.loggerService.warn('Token cryptography verification failed', {
         email: verificationToken.email.value,
+        verificationTokenId: verificationToken.id.value,
+        purpose: verificationTokenPurpose.value,
       })
 
       return fail(ValidateVerificationTokenError.invalidToken())

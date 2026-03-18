@@ -277,6 +277,8 @@ describe('ValidateVerificationToken', () => {
         expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.invalidToken() })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: email.value,
+          verificationTokenId: tokenId.value,
+          purpose: purpose.value,
         })
       })
     })

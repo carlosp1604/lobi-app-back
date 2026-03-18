@@ -474,13 +474,16 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async resetPassword(@Body() body: ResetUserPasswordBodyDto, @UserIp() userIp: string, @UserAgent() userAgent: string | undefined) {
+  async resetPassword(@Req() request: FastifyRequest, @Body() body: ResetUserPasswordBodyDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: ResetUserPasswordApplicationRequestDto = {
       email: body.email,
       token: body.token,
       password: body.password,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.resetUserPassword.execute(requestDto)

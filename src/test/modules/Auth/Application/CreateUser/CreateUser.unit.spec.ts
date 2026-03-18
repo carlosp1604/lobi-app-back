@@ -66,6 +66,7 @@ describe('CreateUser', () => {
   const validName = UserNameMother.valid()
   const validPassword = UserPasswordMother.valid()
   const validTokenValue = VerificationTokenValueMother.valid()
+  const validVerificationTokenId = IdentifierMother.valid()
   const validSportsmanRole = UserRoleMother.sportsman()
   const validOwnerRole = UserRoleMother.owner()
 
@@ -125,6 +126,7 @@ describe('CreateUser', () => {
     }
 
     verificationTokenBuilder = new VerificationTokenTestBuilder()
+      .withId(validVerificationTokenId)
       .withEmail(validEmail)
       .withPurpose(VerificationTokenPurpose.createAccount())
       .withExpiresAt(futureDate)
@@ -512,6 +514,7 @@ describe('CreateUser', () => {
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: validEmail.value,
           purpose: VerificationTokenPurpose.createAccount(),
+          verificationTokenId: validVerificationTokenId.value,
         })
         expect(mockedUserRepository.checkEmailExists).not.toHaveBeenCalled()
       })

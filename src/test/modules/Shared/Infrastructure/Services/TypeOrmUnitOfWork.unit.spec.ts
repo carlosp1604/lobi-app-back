@@ -146,7 +146,7 @@ describe('TypeOrmUnitOfWork', () => {
       const uow = new TypeOrmUnitOfWork(mockedDataSource)
 
       expect(uow.getManagerFrom()).toBe(mockedDataSource.manager)
-      expect(uow.getManagerFrom({} as any)).toBe(mockedDataSource.manager)
+      expect(uow.getManagerFrom({ __opaque_tx_context: true })).toBe(mockedDataSource.manager)
     })
   })
 })

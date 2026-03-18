@@ -1,4 +1,4 @@
-import crypto from 'node:crypto'
+import crypto, { Hash } from 'node:crypto'
 import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 
 describe('HmacHasherService', () => {
@@ -22,7 +22,7 @@ describe('HmacHasherService', () => {
     it('should call to crypto and Hmac methods correctly', async () => {
       const expectedBuffer = Buffer.from('abc')
       const expectedHmac = mockHmac(expectedBuffer)
-      const createHmacSpy = jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as any)
+      const createHmacSpy = jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
 
       await svc.hash('clear')
 
@@ -33,7 +33,7 @@ describe('HmacHasherService', () => {
 
     it('should return the correct data', async () => {
       const expectedBuf = Buffer.from('abc')
-      jest.spyOn(crypto, 'createHmac').mockReturnValue(mockHmac(expectedBuf) as any)
+      jest.spyOn(crypto, 'createHmac').mockReturnValue(mockHmac(expectedBuf) as unknown as Hash)
 
       const result = await svc.hash('clear')
 
@@ -46,7 +46,7 @@ describe('HmacHasherService', () => {
       const expectedHashedBuffer = Buffer.alloc(32, 0x11)
       const expectedHmac = mockHmac(expectedHashedBuffer)
 
-      const createHmacSpy = jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as any)
+      const createHmacSpy = jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
       const timingSafeEqualSpy = jest.spyOn(crypto, 'timingSafeEqual').mockReturnValue(true)
 
       const validB64 = expectedHashedBuffer.toString('base64')
@@ -63,7 +63,7 @@ describe('HmacHasherService', () => {
       const expectedHashedBuffer = Buffer.alloc(32, 0x11)
       const expectedHmac = mockHmac(expectedHashedBuffer)
 
-      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as any)
+      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
       jest.spyOn(crypto, 'timingSafeEqual').mockReturnValue(true)
 
       expectedHashedBuffer.toString('base64')
@@ -79,7 +79,7 @@ describe('HmacHasherService', () => {
       const expectedHashedBuffer = Buffer.alloc(32, 0x11)
       const expectedHmac = mockHmac(expectedHashedBuffer)
 
-      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as any)
+      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
       const timingSafeEqualSpy = jest.spyOn(crypto, 'timingSafeEqual')
 
       const result = await svc.compare('clear', 'invalid-base-64-hash')
@@ -92,7 +92,7 @@ describe('HmacHasherService', () => {
       const expectedHashedBuffer = Buffer.alloc(32, 0x11)
       const expectedHmac = mockHmac(expectedHashedBuffer)
 
-      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as any)
+      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
       const timingSafeEqualSpy = jest.spyOn(crypto, 'timingSafeEqual').mockReturnValue(true)
       jest.spyOn(Buffer, 'from').mockImplementationOnce(() => {
         throw Error('Unexpected error')
@@ -110,7 +110,7 @@ describe('HmacHasherService', () => {
       const expectedHashedBuffer = Buffer.alloc(32, 0x11)
       const expectedHmac = mockHmac(expectedHashedBuffer)
 
-      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as any)
+      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
       const timingSafeEqualSpy = jest.spyOn(crypto, 'timingSafeEqual').mockReturnValue(true)
 
       const shorterB64 = Buffer.alloc(16, 0x22).toString('base64')
@@ -125,7 +125,7 @@ describe('HmacHasherService', () => {
       const expectedHashedBuffer = Buffer.alloc(32, 0x11)
       const expectedHmac = mockHmac(expectedHashedBuffer)
 
-      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as any)
+      jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
       const timingSafeEqualSpy = jest.spyOn(crypto, 'timingSafeEqual').mockReturnValue(false)
 
       const validB64 = expectedHashedBuffer.toString('base64')
