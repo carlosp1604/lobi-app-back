@@ -78,6 +78,7 @@ import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Appl
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -619,7 +620,7 @@ describe('AuthController', () => {
       })
 
       describe('when token is already issued', () => {
-        const testCase = async (path: string, purpose: string) => {
+        const testCase = async (path: string) => {
           return request(app.getHttpServer())
             .post(path)
             .send(body)
@@ -629,7 +630,7 @@ describe('AuthController', () => {
                 path: path,
                 response: {
                   code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
-                  message: `An active VerificationToken for ${purpose} was already issued for email ${userEmail.value}`,
+                  message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued().message,
                 },
                 statusCode: 409,
                 requestId: expect.any(String),
@@ -641,7 +642,7 @@ describe('AuthController', () => {
         it('should throw ConflictException for signup', async () => {
           await verificationTokenDatabaseHelper.save(rawCurrentVerificationToken)
 
-          await testCase('/auth/verify-email/signup', VerificationTokenPurpose.createAccount().value)
+          await testCase('/auth/verify-email/signup')
         })
 
         it('should throw ConflictException for reset', async () => {
@@ -651,7 +652,7 @@ describe('AuthController', () => {
             purpose: VerificationTokenPurpose.resetPassword().value,
           })
 
-          await testCase('/auth/verify-email/reset', VerificationTokenPurpose.resetPassword().value)
+          await testCase('/auth/verify-email/reset')
         })
       })
 
@@ -667,7 +668,7 @@ describe('AuthController', () => {
               path: '/auth/verify-email/signup',
               response: {
                 code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
-                message: `Email ${userEmail.value} is already taken`,
+                message: GenerateVerificationTokenApplicationError.emailAlreadyTaken().message,
               },
               statusCode: 409,
               requestId: expect.any(String),
@@ -797,6 +798,8 @@ describe('AuthController', () => {
       it('should throw ConflictException when token is already used', async () => {
         await verificationTokenDatabaseHelper.save({ ...rawVerificationToken, used_at: now })
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
+
         return request(app.getHttpServer())
           .post('/auth/validate-token')
           .send({
@@ -810,7 +813,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_ALREADY_USED,
-                message: ValidateVerificationTokenError.alreadyUsed().message,
+                message: ValidateVerificationTokenError.alreadyUsed(expectedDomainErrorMessage).message,
               },
               statusCode: 409,
               requestId: expect.any(String),
@@ -821,6 +824,8 @@ describe('AuthController', () => {
 
       it('should throw GoneException when token is expired', async () => {
         await verificationTokenDatabaseHelper.save({ ...rawVerificationToken, expires_at: pastDate })
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
 
         return request(app.getHttpServer())
           .post('/auth/validate-token')
@@ -835,7 +840,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
-                message: ValidateVerificationTokenError.expired().message,
+                message: ValidateVerificationTokenError.expired(expectedDomainErrorMessage).message,
               },
               statusCode: 410,
               requestId: expect.any(String),

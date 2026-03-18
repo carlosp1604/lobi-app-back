@@ -296,7 +296,7 @@ describe('LoginUser', () => {
         const result = await useCase.execute(request)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound(validEmail.value))
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound())
 
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
       }
@@ -322,7 +322,7 @@ describe('LoginUser', () => {
         const result = await useCase.execute(request)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(LoginUserApplicationError.userDisabled(validEmail.value))
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userDisabled())
 
         expect(mockedCredentialsRepository.findByUserId).not.toHaveBeenCalled()
 
@@ -341,7 +341,7 @@ describe('LoginUser', () => {
       const result = await useCase.execute(request)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LoginUserApplicationError.userDoesNotHaveCredentials(validUserId.value))
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.userDoesNotHaveCredentials())
 
       expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
         userId: validUserId.value,
@@ -359,7 +359,7 @@ describe('LoginUser', () => {
       const result = await useCase.execute(request)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidCredentials(validUserId.value))
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidCredentials())
 
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)

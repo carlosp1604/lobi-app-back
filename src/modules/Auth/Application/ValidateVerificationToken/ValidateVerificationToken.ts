@@ -80,34 +80,37 @@ export class ValidateVerificationToken {
       error: exception.message,
     }
 
-    switch (exception.id) {
+    const exceptionId = exception.id
+    const domainMessage = exception.message
+
+    switch (exceptionId) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId:
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token has already expired',
         })
-        return fail(ValidateVerificationTokenError.expired())
+        return fail(ValidateVerificationTokenError.expired(domainMessage))
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId:
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token was already used',
         })
-        return fail(ValidateVerificationTokenError.alreadyUsed())
+        return fail(ValidateVerificationTokenError.alreadyUsed(domainMessage))
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId:
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token belongs to a different email address',
         })
-        return fail(ValidateVerificationTokenError.invalidOwner())
+        return fail(ValidateVerificationTokenError.invalidOwner(domainMessage))
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId:
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token was not generated for the requested purpose',
         })
-        return fail(ValidateVerificationTokenError.tokenPurposeMismatch())
+        return fail(ValidateVerificationTokenError.tokenPurposeMismatch(domainMessage))
 
       default:
         throw exception

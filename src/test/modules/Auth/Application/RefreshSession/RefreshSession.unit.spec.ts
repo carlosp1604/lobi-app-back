@@ -257,7 +257,7 @@ describe('RefreshToken', () => {
       const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id.value))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked())
 
       expect(mockedLoggerService.warn).toHaveBeenCalledWith('Session refresh rejected', {
         sessionId: currentSession.id.value,
@@ -275,7 +275,7 @@ describe('RefreshToken', () => {
       const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id.value))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired())
 
       expect(mockedLoggerService.warn).toHaveBeenCalledWith('Session refresh rejected', {
         sessionId: currentSession.id.value,
@@ -294,7 +294,7 @@ describe('RefreshToken', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userNotFound(userId.value))
+        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userNotFound())
 
         expect(mockedLoggerService.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
           userId: userId.value,
@@ -314,7 +314,7 @@ describe('RefreshToken', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userDisabled(userId.value))
+        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userDisabled())
 
         expect(mockedLoggerService.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
           userId: userId.value,

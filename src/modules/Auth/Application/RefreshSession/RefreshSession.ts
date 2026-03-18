@@ -116,7 +116,7 @@ export class RefreshSession {
         userId: sessionFound.userId.value,
         reason: 'Session has been revoked',
       })
-      return fail(RefreshSessionApplicationError.sessionAlreadyRevoked(sessionFound.id.value))
+      return fail(RefreshSessionApplicationError.sessionAlreadyRevoked())
     }
 
     if (sessionFound.isExpired(now)) {
@@ -125,7 +125,7 @@ export class RefreshSession {
         userId: sessionFound.userId.value,
         reason: 'Session has expired',
       })
-      return fail(RefreshSessionApplicationError.sessionAlreadyExpired(sessionFound.id.value))
+      return fail(RefreshSessionApplicationError.sessionAlreadyExpired())
     }
 
     return success(sessionFound)
@@ -144,7 +144,7 @@ export class RefreshSession {
         reason: 'User not found',
       })
 
-      return fail(RefreshSessionApplicationError.userNotFound(userSession.userId.value))
+      return fail(RefreshSessionApplicationError.userNotFound())
     }
 
     if (!user.isActive()) {
@@ -154,7 +154,7 @@ export class RefreshSession {
         reason: 'User is disabled',
       })
 
-      return fail(RefreshSessionApplicationError.userDisabled(userSession.userId.value))
+      return fail(RefreshSessionApplicationError.userDisabled())
     }
 
     return success(user)

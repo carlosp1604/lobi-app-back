@@ -282,7 +282,7 @@ describe('RefreshSession', () => {
       const { result } = await runTestWithCount(baseRequest, { sessions: { before: 1, after: 1 } })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired())
 
       const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
       expect(userActiveSessions).toHaveLength(0)
@@ -295,7 +295,7 @@ describe('RefreshSession', () => {
       const { result } = await runTestWithCount(baseRequest, { sessions: { before: 1, after: 1 } })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked())
 
       const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
       expect(userActiveSessions).toHaveLength(0)
@@ -308,7 +308,7 @@ describe('RefreshSession', () => {
       const { result } = await runTestWithCount(baseRequest, { sessions: { before: 1, after: 1 } })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userDisabled(userId))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userDisabled())
 
       await assertCurrentActiveSession()
     })

@@ -25,22 +25,25 @@ export class GenerateVerificationTokenApplicationError extends Error {
     return new GenerateVerificationTokenApplicationError(domainMessage, this.invalidVerificationTokenPurposeId)
   }
 
-  public static userNotFound(email: string) {
-    return new GenerateVerificationTokenApplicationError(`User identified by email ${email} was not found`, this.userNotFoundId)
+  public static userNotFound() {
+    return new GenerateVerificationTokenApplicationError('No user was found for the provided email address', this.userNotFoundId)
   }
 
-  public static userDisabled(email: string) {
-    return new GenerateVerificationTokenApplicationError(`User identified by email ${email} is disabled`, this.userDisabledId)
-  }
-
-  public static activeTokenAlreadyIssued(email: string, purpose: string) {
+  public static userDisabled() {
     return new GenerateVerificationTokenApplicationError(
-      `An active VerificationToken for ${purpose} was already issued for email ${email}`,
+      'The user associated with this email address is currently disabled',
+      this.userDisabledId,
+    )
+  }
+
+  public static activeTokenAlreadyIssued() {
+    return new GenerateVerificationTokenApplicationError(
+      'An active verification token already exists for the requested action',
       this.activeTokenAlreadyIssuedId,
     )
   }
 
-  public static emailAlreadyTaken(email: string) {
-    return new GenerateVerificationTokenApplicationError(`Email ${email} is already taken`, this.emailAlreadyTakenId)
+  public static emailAlreadyTaken() {
+    return new GenerateVerificationTokenApplicationError('The provided email address is already registered', this.emailAlreadyTakenId)
   }
 }

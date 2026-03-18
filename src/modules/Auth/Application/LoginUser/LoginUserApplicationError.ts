@@ -27,23 +27,20 @@ export class LoginUserApplicationError extends Error {
     return new LoginUserApplicationError(domainMessage, this.invalidPasswordFormatId)
   }
 
-  public static userNotFound(userEmail: string) {
-    return new LoginUserApplicationError(`User identified by email ${userEmail} was not found`, this.userNotFoundId)
+  public static userNotFound() {
+    return new LoginUserApplicationError('No user was found for the provided email address', this.userNotFoundId)
   }
 
-  public static userDisabled(userEmail: string) {
-    return new LoginUserApplicationError(`User identified by email ${userEmail} is disabled`, this.userDisabledId)
+  public static userDisabled() {
+    return new LoginUserApplicationError('The user associated with this email address is currently disabled', this.userDisabledId)
   }
 
-  public static invalidCredentials(userId: string) {
-    return new LoginUserApplicationError(`Invalid credentials for User identified by ID ${userId}`, this.invalidCredentialsId)
+  public static invalidCredentials() {
+    return new LoginUserApplicationError('The provided credentials are incorrect', this.invalidCredentialsId)
   }
 
-  public static userDoesNotHaveCredentials(userId: string) {
-    return new LoginUserApplicationError(
-      `User identified by ID ${userId} does not have credentials to local login`,
-      this.userDoesNotHaveCredentialsId,
-    )
+  public static userDoesNotHaveCredentials() {
+    return new LoginUserApplicationError('The user does not have a password set for local login', this.userDoesNotHaveCredentialsId)
   }
 
   public static revocationFailed(errorMessage: string) {

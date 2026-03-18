@@ -175,9 +175,11 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(expiredToken)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
+
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.expired() })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.expired(expectedDomainErrorMessage) })
 
         asserInvalidTokenLoggerCall(
           VerificationTokenDomainException.alreadyExpired().message,
@@ -193,9 +195,11 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(usedToken)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
+
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.alreadyUsed() })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.alreadyUsed(expectedDomainErrorMessage) })
 
         asserInvalidTokenLoggerCall(VerificationTokenDomainException.alreadyUsed().message, 'Token was already used', usedToken)
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
@@ -208,9 +212,11 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(tokenWithOtherEmail)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.cannotBeUsedByUser(email.value).message
+
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.invalidOwner() })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.invalidOwner(expectedDomainErrorMessage) })
 
         asserInvalidTokenLoggerCall(
           VerificationTokenDomainException.cannotBeUsedByUser(email.value).message,
@@ -227,9 +233,14 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(tokenWithOtherPurpose)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.cannotBeUsedForPurpose().message
+
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.tokenPurposeMismatch() })
+        expect(result).toEqual({
+          success: false,
+          error: ValidateVerificationTokenError.tokenPurposeMismatch(expectedDomainErrorMessage),
+        })
 
         asserInvalidTokenLoggerCall(
           VerificationTokenDomainException.cannotBeUsedForPurpose().message,

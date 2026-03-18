@@ -25,23 +25,23 @@ export class RefreshSessionApplicationError extends Error {
   }
 
   public static sessionNotFound() {
-    return new RefreshSessionApplicationError('Session was not found', this.sessionNotFoundId)
+    return new RefreshSessionApplicationError('No session was found for the provided token', this.sessionNotFoundId)
   }
 
-  public static userNotFound(userId: string) {
-    return new RefreshSessionApplicationError(`User identified by ID ${userId} was not found`, this.userNotFoundId)
+  public static userNotFound() {
+    return new RefreshSessionApplicationError('The user associated with this session could not be found', this.userNotFoundId)
   }
 
-  public static userDisabled(userId: string) {
-    return new RefreshSessionApplicationError(`User identified by ID ${userId} is disabled`, this.userDisabledId)
+  public static userDisabled() {
+    return new RefreshSessionApplicationError('The user associated with this session is currently disabled', this.userDisabledId)
   }
 
-  public static sessionAlreadyRevoked(sessionId: string) {
-    return new RefreshSessionApplicationError(`Session identified by ID ${sessionId} is already revoked`, this.sessionAlreadyRevokedId)
+  public static sessionAlreadyRevoked() {
+    return new RefreshSessionApplicationError('The session has been revoked and is no longer valid', this.sessionAlreadyRevokedId)
   }
 
-  public static sessionAlreadyExpired(sessionId: string) {
-    return new RefreshSessionApplicationError(`Session identified by ID ${sessionId} is already expired`, this.sessionAlreadyExpiredId)
+  public static sessionAlreadyExpired() {
+    return new RefreshSessionApplicationError('The session has expired and is no longer valid', this.sessionAlreadyExpiredId)
   }
 
   public static sessionInconsistency(errorMessage: string) {

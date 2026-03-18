@@ -289,7 +289,7 @@ describe('GenerateVerificationToken', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken())
     })
 
     describe('when purpose is resetPassword and user does not exist or is not active', () => {
@@ -303,7 +303,7 @@ describe('GenerateVerificationToken', () => {
         )
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userNotFound(email.value))
+        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userNotFound())
       })
 
       it('should return error when user is not active', async () => {
@@ -318,7 +318,7 @@ describe('GenerateVerificationToken', () => {
         )
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userDisabled(email.value))
+        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userDisabled())
       })
     })
 
@@ -332,9 +332,7 @@ describe('GenerateVerificationToken', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, purposeCreateAccount.value),
-      )
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued())
     })
   })
 })

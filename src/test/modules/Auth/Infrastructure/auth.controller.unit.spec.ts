@@ -286,7 +286,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.invalidCredentials(IdentifierMother.valid().value),
+          error: LoginUserApplicationError.invalidCredentials(),
         })
 
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
@@ -304,7 +304,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.userNotFound(validEmail),
+          error: LoginUserApplicationError.userNotFound(),
         })
 
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
@@ -322,7 +322,7 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.userDisabled(validEmail),
+          error: LoginUserApplicationError.userDisabled(),
         })
 
         await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
@@ -337,7 +337,7 @@ describe('AuthController', () => {
 
       it('should throw InternalServerErrorException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
-        const useCaseError = LoginUserApplicationError.userDoesNotHaveCredentials(validEmail)
+        const useCaseError = LoginUserApplicationError.userDoesNotHaveCredentials()
 
         mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
@@ -455,7 +455,7 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.userNotFound(validUserId),
+          error: RefreshSessionApplicationError.userNotFound(),
         })
 
         await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
@@ -474,7 +474,7 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.userDisabled(validUserId),
+          error: RefreshSessionApplicationError.userDisabled(),
         })
 
         await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
@@ -512,7 +512,7 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.sessionAlreadyExpired(validSessionId),
+          error: RefreshSessionApplicationError.sessionAlreadyExpired(),
         })
 
         await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
@@ -531,7 +531,7 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.sessionAlreadyRevoked(validSessionId),
+          error: RefreshSessionApplicationError.sessionAlreadyRevoked(),
         })
 
         await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
@@ -732,13 +732,13 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose'),
+            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(),
           })
 
           await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
-              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose').message,
+              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued().message,
             }),
           )
           assertMetadataFlowWasCalled(mockRequest)
@@ -749,13 +749,13 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email),
+            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(),
           })
 
           await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
-              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email).message,
+              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken().message,
             }),
           )
           assertMetadataFlowWasCalled(mockRequest)
@@ -833,13 +833,13 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose'),
+            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(),
           })
 
           await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
-              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(mockBody.email, 'any-purpose').message,
+              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued().message,
             }),
           )
           assertMetadataFlowWasCalled(mockRequest)
@@ -850,7 +850,7 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.userNotFound(mockBody.email),
+            error: GenerateVerificationTokenApplicationError.userNotFound(),
           })
 
           const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
@@ -864,7 +864,7 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.userDisabled(mockBody.email),
+            error: GenerateVerificationTokenApplicationError.userDisabled(),
           })
 
           const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
@@ -986,7 +986,7 @@ describe('AuthController', () => {
       it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
         const controller = buildController()
 
-        const useCaseError = ValidateVerificationTokenError.alreadyUsed()
+        const useCaseError = ValidateVerificationTokenError.alreadyUsed('Token has been used')
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
@@ -1001,7 +1001,7 @@ describe('AuthController', () => {
       it('should throw GoneException when use-case returns tokenExpired error', async () => {
         const controller = buildController()
 
-        const useCaseError = ValidateVerificationTokenError.expired()
+        const useCaseError = ValidateVerificationTokenError.expired('Token has expired')
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
@@ -1016,7 +1016,7 @@ describe('AuthController', () => {
       it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
         const controller = buildController()
 
-        const useCaseError = ValidateVerificationTokenError.tokenPurposeMismatch()
+        const useCaseError = ValidateVerificationTokenError.tokenPurposeMismatch('Mismatch purpose')
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
@@ -1046,7 +1046,7 @@ describe('AuthController', () => {
       it('should throw NotFoundException when use-case returns invalidOwner error', async () => {
         const controller = buildController()
 
-        const useCaseError = ValidateVerificationTokenError.invalidOwner()
+        const useCaseError = ValidateVerificationTokenError.invalidOwner('Invalid token owner')
 
         mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 

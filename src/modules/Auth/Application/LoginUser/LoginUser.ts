@@ -80,7 +80,7 @@ export class LoginUser {
 
         await this.domainEventRepository.save(domainEvent, context)
 
-        return fail(LoginUserApplicationError.invalidCredentials(user.id.value))
+        return fail(LoginUserApplicationError.invalidCredentials())
       }
 
       credentials.resetAfterSuccessfulLogin(now)
@@ -152,7 +152,7 @@ export class LoginUser {
         reason: 'User not found',
       })
 
-      return fail(LoginUserApplicationError.userNotFound(userEmail.value))
+      return fail(LoginUserApplicationError.userNotFound())
     }
 
     if (!user.isActive()) {
@@ -161,7 +161,7 @@ export class LoginUser {
         reason: 'User is disabled',
       })
 
-      return fail(LoginUserApplicationError.userDisabled(userEmail.value))
+      return fail(LoginUserApplicationError.userDisabled())
     }
 
     return success(user)
@@ -177,7 +177,7 @@ export class LoginUser {
         reason: 'Active user has no credentials',
       })
 
-      return fail(LoginUserApplicationError.userDoesNotHaveCredentials(user.id.value))
+      return fail(LoginUserApplicationError.userDoesNotHaveCredentials())
     }
 
     return success(userCredential)

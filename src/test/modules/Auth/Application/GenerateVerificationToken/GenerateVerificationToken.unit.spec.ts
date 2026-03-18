@@ -352,7 +352,7 @@ describe('GenerateVerificationToken', () => {
       const result = await useCase.execute(requestBase)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken(verificationTokenEmail.value))
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken())
 
       expect(mockedVerificationTokenRepository.findByEmailWithLock).not.toHaveBeenCalled()
       expect(mockedLogger.warn).toHaveBeenCalledTimes(1)
@@ -398,7 +398,7 @@ describe('GenerateVerificationToken', () => {
         const result = await testCaseAndGetResult('User not found')
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userNotFound(userEmail.value))
+        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userNotFound())
       })
 
       it('should return success when user is not active', async () => {
@@ -408,7 +408,7 @@ describe('GenerateVerificationToken', () => {
         const result = await testCaseAndGetResult('User is disabled')
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userDisabled(userEmail.value))
+        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userDisabled())
       })
     })
 
@@ -421,9 +421,7 @@ describe('GenerateVerificationToken', () => {
       const result = await useCase.execute(requestBase)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(verificationTokenEmail.value, purposeCreateAccount.value),
-      )
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued())
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token generation rejected', {
         email: verificationTokenEmail.value,

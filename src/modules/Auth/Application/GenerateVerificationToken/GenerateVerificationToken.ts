@@ -73,7 +73,7 @@ export class GenerateVerificationToken {
           reason: 'Email is already registered and purpose is create account',
         })
 
-        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
+        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken())
       }
     }
 
@@ -85,7 +85,7 @@ export class GenerateVerificationToken {
           purpose: verificationTokenPurpose.value,
         })
 
-        return fail(GenerateVerificationTokenApplicationError.userNotFound(email.value))
+        return fail(GenerateVerificationTokenApplicationError.userNotFound())
       }
 
       if (!user.isActive()) {
@@ -95,7 +95,7 @@ export class GenerateVerificationToken {
           purpose: verificationTokenPurpose.value,
         })
 
-        return fail(GenerateVerificationTokenApplicationError.userDisabled(email.value))
+        return fail(GenerateVerificationTokenApplicationError.userDisabled())
       }
     }
 
@@ -120,7 +120,7 @@ export class GenerateVerificationToken {
             reason: 'An active token has already been issued for this purpose',
           })
 
-          return fail(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, verificationTokenPurpose.value))
+          return fail(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued())
         }
 
         if (!verificationToken.isUsed()) {

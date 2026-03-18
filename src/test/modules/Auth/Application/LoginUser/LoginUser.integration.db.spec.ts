@@ -320,7 +320,7 @@ describe('LoginUser', () => {
       )
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidCredentials(userId))
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.invalidCredentials())
 
       const savedDomainEvents = await domainEventDatabaseHelper.findByAggregateTypeAndId(userId, userDomainAggregateType)
 
@@ -342,7 +342,7 @@ describe('LoginUser', () => {
         )
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound(anotherUserEmail.value))
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userNotFound())
       })
 
       it('should return error when user is not active', async () => {
@@ -354,7 +354,7 @@ describe('LoginUser', () => {
         })
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(LoginUserApplicationError.userDisabled(userEmail))
+        expect(result['error']).toStrictEqual(LoginUserApplicationError.userDisabled())
       })
     })
 
@@ -368,7 +368,7 @@ describe('LoginUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LoginUserApplicationError.userDoesNotHaveCredentials(userId))
+      expect(result['error']).toStrictEqual(LoginUserApplicationError.userDoesNotHaveCredentials())
     })
   })
 })

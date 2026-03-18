@@ -17,6 +17,7 @@ import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
+import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
@@ -113,10 +114,7 @@ describe('ValidateVerificationToken', () => {
     it('should return invalidToken error when token exists but code hash does not match', async () => {
       await createAndSaveToken(futureDate)
 
-      const requestWithWrongTokenValue = {
-        ...baseRequest,
-        token: wrongTokenValue,
-      }
+      const requestWithWrongTokenValue = { ...baseRequest, token: wrongTokenValue }
 
       const result = await runTestWithGuards(requestWithWrongTokenValue)
 
@@ -124,13 +122,15 @@ describe('ValidateVerificationToken', () => {
       expect(result['error']).toStrictEqual(ValidateVerificationTokenError.invalidToken())
     })
 
-    it('should return expired error when token exists but is expired, without mutating the database', async () => {
+    it('should return expired error when token exists but is expired', async () => {
       await createAndSaveToken(pastDate)
 
       const result = await runTestWithGuards(baseRequest)
 
+      const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
+
       expect(result.success).toEqual(false)
-      expect(result['error']).toStrictEqual(ValidateVerificationTokenError.expired())
+      expect(result['error']).toStrictEqual(ValidateVerificationTokenError.expired(expectedDomainErrorMessage))
     })
   })
 })
