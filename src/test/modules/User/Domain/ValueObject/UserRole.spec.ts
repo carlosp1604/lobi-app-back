@@ -9,7 +9,7 @@ describe('UserRole', () => {
     })
 
     it.each(UserRoleMother.INVALID_ROLES)('should throw error when user role is not valid: %s', (userRole) => {
-      expect(() => UserRole.fromString(userRole)).toThrow(UserDomainException.invalidUserRole(userRole))
+      expect(() => UserRole.fromString(userRole)).toThrow(UserDomainException.invalidUserRole())
     })
   })
 
@@ -24,7 +24,7 @@ describe('UserRole', () => {
       const result = UserRole.safeCreate(String(userRole))
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(UserDomainException.invalidUserRole(userRole))
+      expect(result['error']).toStrictEqual(UserDomainException.invalidUserRole())
     })
   })
 

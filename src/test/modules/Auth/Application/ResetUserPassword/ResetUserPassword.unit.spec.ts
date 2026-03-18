@@ -309,7 +309,7 @@ describe('ResetUserPassword', () => {
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
-          error: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
+          error: VerificationTokenDomainException.alreadyExpired().message,
           reason: 'Token has already expired',
           email: expiredVerificationToken.email.value,
           expiresAt: expiredVerificationToken.expiresAt,
@@ -332,7 +332,7 @@ describe('ResetUserPassword', () => {
           error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
-          error: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
+          error: VerificationTokenDomainException.alreadyUsed().message,
           reason: 'Token was already used',
           email: usedVerificationToken.email.value,
           expiresAt: usedVerificationToken.expiresAt,
@@ -348,7 +348,7 @@ describe('ResetUserPassword', () => {
         const verificationToken = verificationTokenBuilder.withEmail(anotherEmail).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
 
-        const domainException = VerificationTokenDomainException.cannotBeUsedByUser(verificationToken.id.value, validEmail.value)
+        const domainException = VerificationTokenDomainException.cannotBeUsedByUser(validEmail.value)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
@@ -374,10 +374,7 @@ describe('ResetUserPassword', () => {
         const notResetPasswordToken = verificationTokenBuilder.withPurpose(VerificationTokenPurpose.createAccount()).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(notResetPasswordToken)
 
-        const domainException = VerificationTokenDomainException.cannotBeUsedForPurpose(
-          notResetPasswordToken.id.value,
-          VerificationTokenPurpose.resetPassword().value,
-        )
+        const domainException = VerificationTokenDomainException.cannotBeUsedForPurpose()
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)

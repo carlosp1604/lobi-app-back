@@ -40,30 +40,24 @@ export class VerificationTokenDomainException extends DomainException {
     return new VerificationTokenDomainException(message, this.invalidVerificationTokenPurposeId)
   }
 
-  public static alreadyUsed(verificationTokenId: string) {
-    return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} is already used`,
-      this.verificationTokenAlreadyUsedId,
-    )
+  public static alreadyUsed() {
+    return new VerificationTokenDomainException('The verification token has already been used', this.verificationTokenAlreadyUsedId)
   }
 
-  public static alreadyExpired(verificationTokenId: string) {
-    return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} is already expired`,
-      this.verificationTokenAlreadyExpiredId,
-    )
+  public static alreadyExpired() {
+    return new VerificationTokenDomainException('The verification token has expired', this.verificationTokenAlreadyExpiredId)
   }
 
-  public static cannotBeUsedForPurpose(verificationTokenId: string, purpose: string) {
+  public static cannotBeUsedForPurpose() {
     return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} cannot be used for purpose ${purpose}`,
+      'The verification token cannot be used for the requested action',
       this.verificationTokenCannotBeUsedForPurposeId,
     )
   }
 
-  public static cannotBeUsedByUser(verificationTokenId: string, email: string) {
+  public static cannotBeUsedByUser(email: string) {
     return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} cannot be used by User email ${email}`,
+      `The verification token does not belong to the email address ${email}.`,
       this.verificationTokenCannotBeUsedByUserId,
     )
   }

@@ -59,19 +59,19 @@ export class VerificationToken {
 
   public validate(now: Date, email: EmailAddress, purpose: VerificationTokenPurpose): Result<void, VerificationTokenDomainException> {
     if (this.isUsed()) {
-      return fail(VerificationTokenDomainException.alreadyUsed(this.id.value))
+      return fail(VerificationTokenDomainException.alreadyUsed())
     }
 
     if (this.isExpired(now)) {
-      return fail(VerificationTokenDomainException.alreadyExpired(this.id.value))
+      return fail(VerificationTokenDomainException.alreadyExpired())
     }
 
     if (!this.email.equals(email)) {
-      return fail(VerificationTokenDomainException.cannotBeUsedByUser(this.id.value, email.value))
+      return fail(VerificationTokenDomainException.cannotBeUsedByUser(email.value))
     }
 
     if (!this.purpose.equals(purpose)) {
-      return fail(VerificationTokenDomainException.cannotBeUsedForPurpose(this.id.value, purpose.value))
+      return fail(VerificationTokenDomainException.cannotBeUsedForPurpose())
     }
 
     return success(undefined)

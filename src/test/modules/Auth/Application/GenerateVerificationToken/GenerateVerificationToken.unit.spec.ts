@@ -326,7 +326,7 @@ describe('GenerateVerificationToken', () => {
       const invalidPurpose = VerificationTokenPurposeMother.invalid()
       const invalidPurposeRequest = { ...requestBase, purpose: invalidPurpose }
 
-      const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenPurpose(invalidPurpose).message
+      const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenPurpose().message
 
       const useCase = buildUseCase()
 

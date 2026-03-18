@@ -1,3 +1,5 @@
+import { ClientMetadataApplicationResponse } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationResponse'
+
 export interface CreateUserApplicationRequestDto {
   readonly email: string
   readonly token: string
@@ -5,6 +7,5 @@ export interface CreateUserApplicationRequestDto {
   readonly name: string
   readonly password: string
   readonly requestedRole: string
-  readonly ip: string
-  readonly userAgent: string | undefined
+  readonly clientMetadata: ClientMetadataApplicationResponse
 }

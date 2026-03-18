@@ -894,12 +894,12 @@ describe('AuthController', () => {
   })
 
   describe('signup', () => {
-    const validEmail = EmailAddressMother.random()
-    const validUsername = UserUsernameMother.random()
-    const validName = UserNameMother.random()
-    const validPassword = UserPasswordMother.valid()
-    const validTokenValue = VerificationTokenValueMother.valid()
-    const validRole = UserRoleMother.sportsman()
+    const userEmail = EmailAddressMother.random()
+    const username = UserUsernameMother.random()
+    const userName = UserNameMother.random()
+    const userPassword = UserPasswordMother.valid()
+    const tokenValue = VerificationTokenValueMother.valid()
+    const sportsmanRole = UserRoleMother.sportsman()
 
     let userDatabaseHelper: UserDatabaseHelper
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
@@ -910,20 +910,20 @@ describe('AuthController', () => {
     })
 
     const getValidPayload = () => ({
-      email: validEmail.value,
-      username: validUsername.value,
-      name: validName.value,
-      password: validPassword.value,
-      token: validTokenValue.value,
-      requestedRole: validRole.value,
+      email: userEmail.value,
+      username: username.value,
+      name: userName.value,
+      password: userPassword.value,
+      token: tokenValue.value,
+      requestedRole: sportsmanRole.value,
     })
 
     const saveTokenInDatabase = async (overrides: Partial<VerificationTokenRawModel> = {}) => {
       const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
-      const tokenHash = await passwordHasher.hash(validTokenValue.value)
+      const tokenHash = await passwordHasher.hash(tokenValue.value)
       const rawToken = makeRawVerificationToken({
         id: IdentifierMother.valid().value,
-        email: validEmail.value,
+        email: userEmail.value,
         purpose: VerificationTokenPurpose.createAccount().value,
         expires_at: futureDate,
         used_at: null,
@@ -939,13 +939,15 @@ describe('AuthController', () => {
       it('should return 204 No Content when user is registered correctly', async () => {
         await saveTokenInDatabase()
 
-        await request(app.getHttpServer())
-          .post('/auth/signup')
-          .send(getValidPayload())
-          .expect(204)
-          .expect((response) => {
-            expect(response.body).toEqual({})
-          })
+        const result = await request(app.getHttpServer()).post('/auth/signup').send(getValidPayload())
+
+        expect(result.status).toBe(204)
+        expect(result.body).toEqual({})
+
+        const savedUser = await userDatabaseHelper.findByEmail(userEmail.value)
+        expect(savedUser).not.toBeNull()
+        expect(savedUser!.username).toBe(username.value)
+        expect(savedUser!.name).toBe(userName.value)
       })
     })
 
@@ -983,9 +985,12 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when password format is not valid', async () => {
         await saveTokenInDatabase()
 
+        const invalidPassword = UserPasswordMother.invalid()
+        const expectedDomainErrorMessage = UserCredentialDomainException.invalidPasswordFormat().message
+
         return request(app.getHttpServer())
           .post('/auth/signup')
-          .send({ ...getValidPayload(), password: 'invalid-password' })
+          .send({ ...getValidPayload(), password: invalidPassword })
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -995,7 +1000,7 @@ describe('AuthController', () => {
                 errors: [
                   {
                     code: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
-                    message: CreateUserError.invalidPassword().message,
+                    message: CreateUserError.invalidPassword(expectedDomainErrorMessage).message,
                   },
                 ],
               },
@@ -1013,7 +1018,7 @@ describe('AuthController', () => {
           await userDatabaseHelper.save(
             makeRawUser({
               id: IdentifierMother.valid().value,
-              email: validEmail.value,
+              email: userEmail.value,
               status: UserStatus.active().value,
             }),
           )
@@ -1024,7 +1029,7 @@ describe('AuthController', () => {
             .expect(409)
             .expect((response) => {
               expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_EMAIL)
-              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedEmail(validEmail.value).message)
+              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedEmail().message)
             })
         })
 
@@ -1035,7 +1040,7 @@ describe('AuthController', () => {
             makeRawUser({
               id: IdentifierMother.valid().value,
               email: EmailAddressMother.random().value,
-              username: validUsername.value,
+              username: username.value,
               status: UserStatus.active().value,
             }),
           )
@@ -1046,7 +1051,7 @@ describe('AuthController', () => {
             .expect(409)
             .expect((response) => {
               expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_USERNAME)
-              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedUsername(validUsername.value).message)
+              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedUsername().message)
             })
         })
       })
@@ -1064,9 +1069,9 @@ describe('AuthController', () => {
         })
 
         it('should throw GoneException when token is already expired', async () => {
-          await saveTokenInDatabase({
-            expires_at: pastDate,
-          })
+          await saveTokenInDatabase({ expires_at: pastDate })
+
+          const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
 
           return request(app.getHttpServer())
             .post('/auth/signup')
@@ -1074,14 +1079,14 @@ describe('AuthController', () => {
             .expect(410)
             .expect((response) => {
               expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED)
-              expect(response.body.response.message).toEqual(CreateUserError.tokenExpired().message)
+              expect(response.body.response.message).toEqual(CreateUserError.tokenExpired(expectedDomainErrorMessage).message)
             })
         })
 
         it('should throw ConflictException when token is already used', async () => {
-          await saveTokenInDatabase({
-            used_at: pastDate,
-          })
+          await saveTokenInDatabase({ used_at: pastDate })
+
+          const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
 
           return request(app.getHttpServer())
             .post('/auth/signup')
@@ -1089,7 +1094,7 @@ describe('AuthController', () => {
             .expect(409)
             .expect((response) => {
               expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_USED)
-              expect(response.body.response.message).toEqual(CreateUserError.tokenAlreadyUsed().message)
+              expect(response.body.response.message).toEqual(CreateUserError.tokenAlreadyUsed(expectedDomainErrorMessage).message)
             })
         })
 

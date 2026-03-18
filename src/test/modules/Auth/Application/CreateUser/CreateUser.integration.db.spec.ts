@@ -14,7 +14,6 @@ import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserCredentialRepository'
@@ -23,7 +22,6 @@ import { PostgreSqlVerificationTokenRepository } from '~/src/modules/Auth/Infras
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
@@ -40,15 +38,17 @@ import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestM
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 
 describe('CreateUser', () => {
   const now = new Date('2026-02-17T12:00:00Z')
-  const validPassword = UserPasswordMother.valid()
-  const validUserUsername = UserUsernameMother.valid()
-  const validUserName = UserNameMother.valid()
-  const validEmail = EmailAddressMother.valid()
-  const anotherValidEmail = EmailAddressMother.random()
-  const validTokenValue = VerificationTokenValueMother.valid()
+
+  const userPassword = UserPasswordMother.valid()
+  const userUsername = UserUsernameMother.valid()
+  const userName = UserNameMother.valid()
+  const userEmail = EmailAddressMother.valid()
+  const anotherUserEmail = EmailAddressMother.random()
+  const tokenValue = VerificationTokenValueMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
@@ -68,7 +68,6 @@ describe('CreateUser', () => {
   })
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
-  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
 
   const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
   const idGenerator = new NodeIdGeneratorService()
@@ -78,7 +77,6 @@ describe('CreateUser', () => {
 
   beforeEach(async () => {
     mockReset(mockedResolver)
-    mockReset(mockedRequestOriginService)
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
@@ -89,17 +87,10 @@ describe('CreateUser', () => {
     verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(runner.manager)
     domainEventDatabaseHelper = new DomainEventDatabaseHelper(runner.manager)
 
-    mockedRequestOriginService.process.mockResolvedValue({
-      userAgent: UserAgentMother.valid(),
-      ipHash: 'ip-hash',
-      normalizedIp: 'normalized-ip',
-      deviceLocation: null,
-    })
-
-    const tokenHash = await passwordHasher.hash(validTokenValue.value)
+    const tokenHash = await passwordHasher.hash(tokenValue.value)
 
     existingRawToken = makeRawVerificationToken({
-      email: validEmail.value,
+      email: userEmail.value,
       token_hash: tokenHash,
       purpose: VerificationTokenPurpose.createAccount().value,
       expires_at: new Date(now.getTime() + 3600),
@@ -108,21 +99,20 @@ describe('CreateUser', () => {
     })
 
     existingRawUser = makeRawUser({
-      email: anotherValidEmail.value,
+      email: anotherUserEmail.value,
       username: UserUsernameMother.random().value,
       name: UserNameMother.random().value,
       role: UserRole.sportsman().value,
     })
 
     baseRequest = {
-      email: validEmail.value,
-      username: validUserUsername.value,
-      name: validUserName.value,
-      password: validPassword.value,
-      token: validTokenValue.value,
+      email: userEmail.value,
+      username: userUsername.value,
+      name: userName.value,
+      password: userPassword.value,
+      token: tokenValue.value,
       requestedRole: UserRoleMother.sportsman().value,
-      ip: '127.0.0.1',
-      userAgent: UserAgentMother.valid().raw,
+      clientMetadata: new ClientMetadataResponseTestBuilder().build(),
     }
   })
 
@@ -135,7 +125,6 @@ describe('CreateUser', () => {
       new PostgreSqlDomainEventRepository(mockedResolver),
       verifyTokenService,
       passwordHasher,
-      mockedRequestOriginService,
       new ClockServiceMock(now),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
@@ -145,55 +134,65 @@ describe('CreateUser', () => {
     )
   }
 
+  const runTestWithCount = async (
+    requestDto: CreateUserApplicationRequestDto,
+    expectedCounts: {
+      users: { before: number; after: number }
+      credentials: { before: number; after: number }
+      events: { before: number; after: number }
+      sportsmanProfiles: { before: number; after: number }
+      ownerProfiles: { before: number; after: number }
+      tokens: { before: number; after: number }
+    },
+  ) => {
+    const useCase = buildUseCase()
+
+    const usersBefore = await userDatabaseHelper.count()
+    const credentialsBefore = await userCredentialDatabaseHelper.count()
+    const eventsBefore = await domainEventDatabaseHelper.count()
+    const sportsmanBefore = await sportsmanProfileDatabaseHelper.count()
+    const ownerBefore = await ownerProfileDatabaseHelper.count()
+    const tokensBefore = await verificationTokenDatabaseHelper.count()
+
+    const result = await useCase.execute(requestDto)
+
+    const usersAfter = await userDatabaseHelper.count()
+    const credentialsAfter = await userCredentialDatabaseHelper.count()
+    const eventsAfter = await domainEventDatabaseHelper.count()
+    const sportsmanAfter = await sportsmanProfileDatabaseHelper.count()
+    const ownerAfter = await ownerProfileDatabaseHelper.count()
+    const tokensAfter = await verificationTokenDatabaseHelper.count()
+
+    expect(usersBefore).toEqual(expectedCounts.users.before)
+    expect(usersAfter).toEqual(expectedCounts.users.after)
+    expect(credentialsBefore).toEqual(expectedCounts.credentials.before)
+    expect(credentialsAfter).toEqual(expectedCounts.credentials.after)
+    expect(eventsBefore).toEqual(expectedCounts.events.before)
+    expect(eventsAfter).toEqual(expectedCounts.events.after)
+    expect(sportsmanBefore).toEqual(expectedCounts.sportsmanProfiles.before)
+    expect(sportsmanAfter).toEqual(expectedCounts.sportsmanProfiles.after)
+    expect(ownerBefore).toEqual(expectedCounts.ownerProfiles.before)
+    expect(ownerAfter).toEqual(expectedCounts.ownerProfiles.after)
+    expect(tokensBefore).toEqual(expectedCounts.tokens.before)
+    expect(tokensAfter).toEqual(expectedCounts.tokens.after)
+
+    return result
+  }
+
   describe('happy path', () => {
     beforeEach(async () => {
       await verificationTokenDatabaseHelper.save(existingRawToken)
       await userDatabaseHelper.save(existingRawUser)
     })
 
-    const testCase = async (request: CreateUserApplicationRequestDto, expectedOwnerProfile: boolean) => {
-      const useCase = buildUseCase()
-
-      const usersCountBefore = await userDatabaseHelper.count()
-      const userCredentialsBefore = await userCredentialDatabaseHelper.count()
-      const userDomainEventsBefore = await domainEventDatabaseHelper.count()
-      const sportsmanProfilesBefore = await sportsmanProfileDatabaseHelper.count()
-      const ownerProfilesBefore = await ownerProfileDatabaseHelper.count()
-      const verificationTokensBefore = await verificationTokenDatabaseHelper.count()
-
-      const result = await useCase.execute(request)
-
-      const usersCountAfter = await userDatabaseHelper.count()
-      const userCredentialsAfter = await userCredentialDatabaseHelper.count()
-      const userDomainEventsAfter = await domainEventDatabaseHelper.count()
-      const sportsmanProfilesAfter = await sportsmanProfileDatabaseHelper.count()
-      const ownerProfilesAfter = await ownerProfileDatabaseHelper.count()
-      const verificationTokensAfter = await verificationTokenDatabaseHelper.count()
-
-      expect(usersCountBefore).toEqual(1)
-      expect(userCredentialsBefore).toEqual(0)
-      expect(userDomainEventsBefore).toEqual(0)
-      expect(sportsmanProfilesBefore).toEqual(0)
-      expect(ownerProfilesBefore).toEqual(0)
-      expect(verificationTokensBefore).toEqual(1)
-
-      expect(usersCountAfter).toEqual(2)
-      expect(userCredentialsAfter).toEqual(1)
-      expect(userDomainEventsAfter).toEqual(1)
-      expect(sportsmanProfilesAfter).toEqual(1)
-      expect(ownerProfilesAfter).toEqual(expectedOwnerProfile ? 1 : 0)
-      expect(verificationTokensAfter).toEqual(1)
-
-      expect(result.success).toBe(true)
-
-      const createdUser = await userDatabaseHelper.findByEmail(validEmail.value)
-
+    const assertHappyPathData = async (expectedOwnerProfile: boolean) => {
+      const createdUser = await userDatabaseHelper.findByEmail(userEmail.value)
       expect(createdUser).not.toBeNull()
-      expect(createdUser!.username).toBe(validUserUsername.value)
+      expect(createdUser!.username).toBe(userUsername.value)
 
       const credential = await userCredentialDatabaseHelper.findUserCredential(createdUser!.id)
       expect(credential).not.toBeNull()
-      const isPasswordCorrect = await passwordHasher.compare(validPassword.value, credential!.password_hash)
+      const isPasswordCorrect = await passwordHasher.compare(userPassword.value, credential!.password_hash)
       expect(isPasswordCorrect).toBe(true)
 
       const sportsmanProfile = await sportsmanProfileDatabaseHelper.findByUserId(createdUser!.id)
@@ -204,7 +203,7 @@ describe('CreateUser', () => {
         expect(ownerProfile).toBeDefined()
       }
 
-      const updatedToken = await verificationTokenDatabaseHelper.findOneByEmail(validEmail.value)
+      const updatedToken = await verificationTokenDatabaseHelper.findOneByEmail(userEmail.value)
       expect(updatedToken).not.toBeNull()
       expect(updatedToken!.used_at).toEqual(now)
 
@@ -212,20 +211,41 @@ describe('CreateUser', () => {
       expect(events.length).toBe(1)
       expect(events[0].name).toBe(DomainEventName.successfulSignup().value)
 
-      const existingUserInDB = await userDatabaseHelper.findByEmail(anotherValidEmail.value)
-      expect(existingUserInDB).not.toBeNull()
-      expect(existingUserInDB!.username).toBe(existingRawUser.username)
-      expect(existingUserInDB!.name).toBe(existingRawUser.name)
-      expect(existingUserInDB!.role).toBe(existingRawUser.role)
-      expect(existingUserInDB!.status).toBe(existingRawUser.status)
+      const existingUser = await userDatabaseHelper.findByEmail(anotherUserEmail.value)
+      expect(existingUser).not.toBeNull()
+      expect(existingUser!.username).toBe(existingRawUser.username)
+      expect(existingUser!.email).toBe(existingRawUser.email)
     }
 
     it('should save user, credential, profile, event and update token correctly (sportsman)', async () => {
-      await testCase(baseRequest, false)
+      const result = await runTestWithCount(baseRequest, {
+        users: { before: 1, after: 2 },
+        credentials: { before: 0, after: 1 },
+        events: { before: 0, after: 1 },
+        sportsmanProfiles: { before: 0, after: 1 },
+        ownerProfiles: { before: 0, after: 0 },
+        tokens: { before: 1, after: 1 },
+      })
+
+      expect(result).toEqual({ success: true, value: undefined })
+      await assertHappyPathData(false)
     })
 
     it('should save user, credential, profile, event and update token correctly (owner)', async () => {
-      await testCase({ ...baseRequest, requestedRole: UserRoleMother.owner().value }, true)
+      const result = await runTestWithCount(
+        { ...baseRequest, requestedRole: UserRoleMother.owner().value },
+        {
+          users: { before: 1, after: 2 },
+          credentials: { before: 0, after: 1 },
+          events: { before: 0, after: 1 },
+          sportsmanProfiles: { before: 0, after: 1 },
+          ownerProfiles: { before: 0, after: 1 },
+          tokens: { before: 1, after: 1 },
+        },
+      )
+
+      expect(result).toEqual({ success: true, value: undefined })
+      await assertHappyPathData(true)
     })
   })
 
@@ -234,62 +254,46 @@ describe('CreateUser', () => {
       await userDatabaseHelper.save(existingRawUser)
     })
 
-    const assertNoChangesInDatabase = async (tokenEmail: string) => {
-      const usersCountAfter = await userDatabaseHelper.count()
-      const userCredentialsAfter = await userCredentialDatabaseHelper.count()
-      const userDomainEventsAfter = await domainEventDatabaseHelper.count()
-      const sportsmanProfilesAfter = await sportsmanProfileDatabaseHelper.count()
-      const verificationTokensAfter = await verificationTokenDatabaseHelper.count()
-
-      expect(usersCountAfter).toEqual(1)
-      expect(userCredentialsAfter).toEqual(0)
-      expect(userDomainEventsAfter).toEqual(0)
-      expect(sportsmanProfilesAfter).toEqual(0)
-      expect(verificationTokensAfter).toEqual(1)
-
-      const token = await verificationTokenDatabaseHelper.findOneByEmail(tokenEmail)
-      expect(token).not.toBeNull()
-      expect(token!.used_at).toBeNull()
-    }
-
     it('should return error and not save anything when email is duplicated', async () => {
       await verificationTokenDatabaseHelper.save({ ...existingRawToken, email: existingRawUser.email })
 
-      const useCase = buildUseCase()
+      const requestWithDuplicatedEmail = { ...baseRequest, email: existingRawUser.email }
 
-      const requestWithDuplicatedEmail: CreateUserApplicationRequestDto = {
-        ...baseRequest,
-        email: existingRawUser.email,
-      }
-
-      const result = await useCase.execute(requestWithDuplicatedEmail)
+      const result = await runTestWithCount(requestWithDuplicatedEmail, {
+        users: { before: 1, after: 1 },
+        credentials: { before: 0, after: 0 },
+        events: { before: 0, after: 0 },
+        sportsmanProfiles: { before: 0, after: 0 },
+        ownerProfiles: { before: 0, after: 0 },
+        tokens: { before: 1, after: 1 },
+      })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail(existingRawUser.email)]),
-      )
+      expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail()]))
 
-      await assertNoChangesInDatabase(existingRawUser.email)
+      const token = await verificationTokenDatabaseHelper.findOneByEmail(existingRawUser.email)
+      expect(token!.used_at).toBeNull()
     })
 
     it('should return error and not save anything when username is duplicated', async () => {
       await verificationTokenDatabaseHelper.save(existingRawToken)
 
-      const useCase = buildUseCase()
+      const requestWithDuplicatedUsername = { ...baseRequest, username: existingRawUser.username }
 
-      const requestWithDuplicatedUsername: CreateUserApplicationRequestDto = {
-        ...baseRequest,
-        username: existingRawUser.username,
-      }
-
-      const result = await useCase.execute(requestWithDuplicatedUsername)
+      const result = await runTestWithCount(requestWithDuplicatedUsername, {
+        users: { before: 1, after: 1 },
+        credentials: { before: 0, after: 0 },
+        events: { before: 0, after: 0 },
+        sportsmanProfiles: { before: 0, after: 0 },
+        ownerProfiles: { before: 0, after: 0 },
+        tokens: { before: 1, after: 1 },
+      })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername(existingRawUser.username)]),
-      )
+      expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername()]))
 
-      await assertNoChangesInDatabase(existingRawToken.email)
+      const token = await verificationTokenDatabaseHelper.findOneByEmail(existingRawToken.email)
+      expect(token!.used_at).toBeNull()
     })
   })
 })

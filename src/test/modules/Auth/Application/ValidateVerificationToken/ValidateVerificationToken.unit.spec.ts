@@ -162,10 +162,7 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.notFound(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.notFound() })
 
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
@@ -180,13 +177,10 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.expired(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.expired() })
 
         asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.alreadyExpired(expiredToken.id.value).message,
+          VerificationTokenDomainException.alreadyExpired().message,
           'Token has already expired',
           expiredToken,
         )
@@ -201,16 +195,9 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.alreadyUsed(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.alreadyUsed() })
 
-        asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.alreadyUsed(usedToken.id.value).message,
-          'Token was already used',
-          usedToken,
-        )
+        asserInvalidTokenLoggerCall(VerificationTokenDomainException.alreadyUsed().message, 'Token was already used', usedToken)
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
@@ -223,13 +210,10 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.invalidOwner(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.invalidOwner() })
 
         asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.cannotBeUsedByUser(tokenWithOtherEmail.id.value, email.value).message,
+          VerificationTokenDomainException.cannotBeUsedByUser(email.value).message,
           'Token belongs to a different email address',
           tokenWithOtherEmail,
         )
@@ -245,13 +229,10 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.tokenPurposeMismatch(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.tokenPurposeMismatch() })
 
         asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.cannotBeUsedForPurpose(tokenWithOtherPurpose.id.value, purpose.value).message,
+          VerificationTokenDomainException.cannotBeUsedForPurpose().message,
           'Token was not generated for the requested purpose',
           tokenWithOtherPurpose,
         )
@@ -282,10 +263,7 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.invalidToken(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.invalidToken() })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: email.value,
         })

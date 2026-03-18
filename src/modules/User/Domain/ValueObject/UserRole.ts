@@ -35,7 +35,7 @@ export class UserRole extends ValueObject<ValidUserRoles> {
 
   static safeCreate(value: string): Result<UserRole, UserDomainException> {
     if (!UserRole.isValidUserRole(value)) {
-      return fail(UserDomainException.invalidUserRole(value))
+      return fail(UserDomainException.invalidUserRole())
     }
 
     return success(new UserRole(value as ValidUserRoles))

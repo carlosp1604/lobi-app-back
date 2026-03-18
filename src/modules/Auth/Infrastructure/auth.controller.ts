@@ -346,7 +346,11 @@ export class AuthController {
 
   @Post('signup')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async signup(@Body() body: CreateUserBodyDto, @UserIp() userIp: string, @UserAgent() userAgent: string | undefined) {
+  async signup(@Req() request: FastifyRequest, @Body() body: CreateUserBodyDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: CreateUserApplicationRequestDto = {
       email: body.email,
       username: body.username,
@@ -354,8 +358,7 @@ export class AuthController {
       password: body.password,
       token: body.token,
       requestedRole: body.requestedRole,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.createUser.execute(requestDto)

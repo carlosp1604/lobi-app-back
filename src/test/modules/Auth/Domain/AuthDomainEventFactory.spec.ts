@@ -213,7 +213,7 @@ describe('AuthDomainEventFactory', () => {
     it('should create a valid DomainEvent for a successful signup', () => {
       const factory = buildFactory()
 
-      const event = factory.createSuccessfulSignupEvent(userId, email, baseLocation, baseUserAgent, baseIpHash.value, now)
+      const event = factory.createSuccessfulSignupEvent(userId, email, baseLocation, baseUserAgent, baseIpHash, now)
 
       checkIdGeneratorCall()
       checkBaseEventStructure(event, DomainEventName.successfulSignup(), DomainEventAggregateType.user(), userId)

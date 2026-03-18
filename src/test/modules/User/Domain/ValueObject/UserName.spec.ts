@@ -11,7 +11,7 @@ describe('UserName', () => {
     })
 
     it.each(UserNameMother.INVALID_FORMAT_CASES)('should throw error when user name is not valid: %s', (userName) => {
-      expect(() => UserName.fromString(userName)).toThrow(UserDomainException.invalidUserName(userName))
+      expect(() => UserName.fromString(userName)).toThrow(UserDomainException.invalidUserName())
     })
   })
 
@@ -28,7 +28,7 @@ describe('UserName', () => {
       const result = UserName.safeCreate(userName)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(UserDomainException.invalidUserName(userName))
+      expect(result['error']).toStrictEqual(UserDomainException.invalidUserName())
     })
   })
 
