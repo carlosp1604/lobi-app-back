@@ -22,10 +22,10 @@ import { INTERNAL_SERVER_ERROR, UNAUTHORIZED_ACCESS, VALIDATION_ERROR } from '~/
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import {
+  CLIENT_METADATA_SERVICE,
   EMAIL_SENDER_SERVICE,
   HASHER_SERVICE,
   PASSWORD_HASHER_SERVICE,
-  REQUEST_ORIGIN_SERVICE,
   TOKEN_GENERATOR,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
@@ -65,7 +65,6 @@ import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/R
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { expectIsoDate } from '~/src/test/utils/matchers'
-import { HashMother } from '~/src/test/mothers/HashMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
@@ -79,6 +78,11 @@ import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCre
 import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
+import { mock } from 'jest-mock-extended'
+
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
+import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -89,20 +93,19 @@ describe('AuthController', () => {
   let dataSource: DataSource
   let configService: ConfigService<Env, true>
 
-  /* Third-party dependant service */
-  const mockedEmailSenderService = {
+  /* Third-party dependent service */
+  const mockedEmailSenderService = mock<EmailSenderServiceInterface>({
     sendWithTemplate: jest.fn().mockResolvedValue(undefined),
-  }
+  })
 
-  /* Third-party dependant service */
-  const mockedRequestOriginService = {
+  /* Third-party dependent service */
+  const mockedClientMetadataService = mock<ClientMetadataApplicationService>({
     process: jest.fn().mockResolvedValue({
-      ipHash: HashMother.valid(),
-      normalizedIp: '127.0.0.1',
-      deviceLocation: DeviceLocationMother.valid(),
       userAgent: UserAgentMother.valid(),
+      userIpHash: UserIpHashMother.valid(),
+      deviceLocation: DeviceLocationMother.valid(),
     }),
-  }
+  })
 
   beforeAll(async () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -125,8 +128,8 @@ describe('AuthController', () => {
     })
       .overrideProvider(DataSource)
       .useValue(dataSource)
-      .overrideProvider(REQUEST_ORIGIN_SERVICE)
-      .useValue(mockedRequestOriginService)
+      .overrideProvider(CLIENT_METADATA_SERVICE)
+      .useValue(mockedClientMetadataService)
       .overrideProvider(EMAIL_SENDER_SERVICE)
       .useValue(mockedEmailSenderService)
       .compile()
@@ -180,6 +183,22 @@ describe('AuthController', () => {
 
     expect(isAccessCookieCleared).toBe(true)
     expect(isRefreshCookieCleared).toBe(true)
+  }
+
+  const checkAuthCookiesWereNotCleared = (cookies?: Array<string>) => {
+    if (!cookies || cookies.length === 0) {
+      expect(cookies ?? []).not.toContain('Max-Age=0')
+      return
+    }
+
+    const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+    const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
+
+    const isAccessCookieCleared = cookies.some((cookie) => cookie.includes(`${accessCookieName}=;`) && cookie.includes('Max-Age=0'))
+    const isRefreshCookieCleared = cookies.some((cookie) => cookie.includes(`${refreshCookieName}=;`) && cookie.includes('Max-Age=0'))
+
+    expect(isAccessCookieCleared).toBe(false)
+    expect(isRefreshCookieCleared).toBe(false)
   }
 
   describe('login', () => {
@@ -1400,7 +1419,6 @@ describe('AuthController', () => {
     describe('happy path', () => {
       it('should return 204 No Content and clear cookies when closing current session', async () => {
         const { accessToken } = await saveSetupInDatabase()
-
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
         await request(app.getHttpServer())
@@ -1414,9 +1432,38 @@ describe('AuthController', () => {
             checkAuthCookiesWereCleared(cookies)
           })
 
-        const revokedSession = await userSessionDatabaseHelper.findById(sessionId.value)
-        expect(revokedSession).not.toBeNull()
-        expect(revokedSession!.revoked_at).not.toBeNull()
+        const revokedCurrentSession = await userSessionDatabaseHelper.findById(sessionId.value)
+        expect(revokedCurrentSession).not.toBeNull()
+        expect(revokedCurrentSession!.revoked_at).not.toBeNull()
+      })
+
+      it('should return 204 No Content and not clear cookies when closing a different valid session', async () => {
+        const { accessToken } = await saveSetupInDatabase()
+
+        const otherSessionId = IdentifierMother.valid()
+        await userSessionDatabaseHelper.save(
+          makeRawSession({
+            id: otherSessionId.value,
+            user_id: userId.value,
+            revoked_at: null,
+          }),
+        )
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        await request(app.getHttpServer())
+          .delete(`/auth/sessions/${otherSessionId.value}`)
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
+          })
+
+        const revokedOtherSession = await userSessionDatabaseHelper.findById(otherSessionId.value)
+        expect(revokedOtherSession).not.toBeNull()
+        expect(revokedOtherSession!.revoked_at).not.toBeNull()
       })
     })
 
@@ -1431,13 +1478,25 @@ describe('AuthController', () => {
           .delete(`/auth/sessions/${invalidSessionId}`)
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(400)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
+          })
       })
 
       it('should throw 401 UnauthorizedException when access token is not present', async () => {
-        return request(app.getHttpServer()).delete(`/auth/sessions/${sessionId.value}`).expect(401)
+        return request(app.getHttpServer())
+          .delete(`/auth/sessions/${sessionId.value}`)
+          .expect(401)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
+          })
       })
 
-      it('should return 204 No Content and clear cookies when closing current session', async () => {
+      it('should return 204 No Content and clear cookies when closing current session but it does not exist', async () => {
         const accessToken = await tokenService.generateAccessToken(userId.value, sessionId.value, futureDate, now)
 
         await userDatabaseHelper.save(makeRawUser({ id: userId.value }))
@@ -1455,30 +1514,24 @@ describe('AuthController', () => {
           })
       })
 
-      it('should return 204 No Content and not clear cookies when closing a different session', async () => {
+      it('should return 204 No Content and not clear cookies when closing a different session and it does not exist', async () => {
         const { accessToken } = await saveSetupInDatabase()
-
-        const otherSessionId = IdentifierMother.valid()
-        await userSessionDatabaseHelper.save(
-          makeRawSession({
-            id: otherSessionId.value,
-            user_id: userId.value,
-            revoked_at: null,
-          }),
-        )
-
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
+        const nonExistentSessionId = IdentifierMother.valid()
+
         return request(app.getHttpServer())
-          .delete(`/auth/sessions/${otherSessionId.value}`)
+          .delete(`/auth/sessions/${nonExistentSessionId.value}`)
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(204)
           .expect((response) => {
-            expect(response.headers['set-cookie']).toBeUndefined()
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
           })
       })
 
-      it('should return 204 No Content and NOT clear cookies when trying to close another user session', async () => {
+      it('should return 204 No Content and not clear cookies when trying to close another user session', async () => {
         const { accessToken } = await saveSetupInDatabase()
 
         const anotherUserId = IdentifierMother.valid()
@@ -1500,7 +1553,9 @@ describe('AuthController', () => {
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(204)
           .expect((response) => {
-            expect(response.headers['set-cookie']).toBeUndefined()
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
           })
       })
     })

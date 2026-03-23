@@ -31,7 +31,7 @@ export class AuthDomainEventFactory {
         email: userEmail.value,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadataFromVO(ipHash, userAgent),
+      this.mapMetadata(ipHash, userAgent),
 
       occurredAt,
     )
@@ -49,7 +49,7 @@ export class AuthDomainEventFactory {
         sessionId: session.id.value,
         isNewDevice,
       },
-      this.mapMetadataFromVO(session.ipHash, session.userAgent),
+      this.mapMetadata(session.ipHash, session.userAgent),
       now,
     )
   }
@@ -70,7 +70,7 @@ export class AuthDomainEventFactory {
         userId: userId.value,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadataFromVO(ipHash, userAgent),
+      this.mapMetadata(ipHash, userAgent),
       now,
     )
   }
@@ -93,7 +93,7 @@ export class AuthDomainEventFactory {
         deviceLocation: this.mapLocation(deviceLocation),
         email: userEmail.value,
       },
-      this.mapMetadataFromVO(ipHash, userAgent),
+      this.mapMetadata(ipHash, userAgent),
       now,
     )
   }
@@ -119,7 +119,7 @@ export class AuthDomainEventFactory {
         lang: language,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadataFromVO(ipHash, userAgent),
+      this.mapMetadata(ipHash, userAgent),
       now,
     )
   }
@@ -129,7 +129,7 @@ export class AuthDomainEventFactory {
     actorSessionId: Identifier,
     actorDeviceLocation: DeviceLocation | null,
     actorUserAgent: UserAgent,
-    actorIpHash: string | null,
+    actorIpHash: UserIpHash | null,
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
@@ -163,14 +163,7 @@ export class AuthDomainEventFactory {
     }
   }
 
-  private mapMetadata(ipHash: string | null, userAgent: UserAgent) {
-    return {
-      ipHash: ipHash,
-      ua: userAgent.value,
-    }
-  }
-
-  private mapMetadataFromVO(ipHash: UserIpHash | null, userAgent: UserAgent) {
+  private mapMetadata(ipHash: UserIpHash | null, userAgent: UserAgent) {
     return {
       ipHash: ipHash ? ipHash.value : null,
       ua: userAgent.value,

@@ -6,7 +6,6 @@ import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
-
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
@@ -214,7 +213,7 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidEmail(expectedDomainMessageError)]),
         })
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
 
       it('should return invalidInput error when token format is invalid', async () => {
@@ -231,7 +230,7 @@ describe('ResetUserPassword', () => {
             ResetUserPasswordError.invalidTokenFormat(expectedDomainMessageError),
           ]),
         })
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
 
       it('should return invalidInput error when password is invalid', async () => {
@@ -246,7 +245,7 @@ describe('ResetUserPassword', () => {
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidPassword(expectedDomainMessageError)]),
         })
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
 
       it('should return invalidInput error when multiple inputs are invalid', async () => {
@@ -270,7 +269,7 @@ describe('ResetUserPassword', () => {
             ResetUserPasswordError.invalidPassword(expectedInvalidPasswordDomainMessageError),
           ]),
         })
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
     })
 
@@ -497,7 +496,7 @@ describe('ResetUserPassword', () => {
           reason: 'The new password is the same as the current one',
           userId: validUserId.value,
         })
-        expect(mockedHasherService.hash).not.toHaveBeenCalled()
+        expect(mockedDomainEventFactory.createPasswordResetEvent).not.toHaveBeenCalled()
       })
     })
 
@@ -511,7 +510,7 @@ describe('ResetUserPassword', () => {
 
         const useCase = buildUseCase()
         await expect(useCase.execute(baseRequest)).rejects.toThrow(hashingError)
-        expect(mockedDomainEventFactory.createPasswordResetEvent).not.toHaveBeenCalled()
+        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
       })
 
       it('should throw error when UserCredentialRepository fails during update', async () => {

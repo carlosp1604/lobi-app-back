@@ -65,10 +65,10 @@ export class CreateUser {
 
     const { email, password, username, name, userRole, tokenValue } = inputValidationResult.value
 
+    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
+
     const passwordHashString = await this.hasherService.hash(password.value)
     const passwordHash = PasswordHash.fromString(passwordHashString)
-
-    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
 
     return this.unitOfWork.runInTransaction(async (context: TxContext) => {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)

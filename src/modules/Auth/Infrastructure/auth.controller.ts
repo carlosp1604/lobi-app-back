@@ -17,6 +17,7 @@ import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-u
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import {
+  AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT,
   AUTH_CREATE_USER_DUPLICATED_EMAIL,
   AUTH_CREATE_USER_DUPLICATED_USERNAME,
   AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
@@ -83,8 +84,6 @@ import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerifyEmailDto } from '~/src/modules/Auth/Infrastructure/Dtos/verify-email.dto'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
-import { UserAgent } from '~/src/modules/Shared/Infrastructure/Decorators/user-agent.decorator'
-import { UserIp } from '~/src/modules/Shared/Infrastructure/Decorators/user-ip.decorator'
 import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationRequestDto'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
@@ -622,16 +621,18 @@ export class AuthController {
   async closeSession(
     @AccessToken() accessToken: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
-    @UserIp() userIp: string,
-    @UserAgent() userAgent: string | undefined,
+    @Req() request: FastifyRequest,
     @Res({ passthrough: true }) response: FastifyReply,
   ) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: CloseUserSessionApplicationRequestDto = {
       sessionId: id,
       userId: accessToken.sub,
       currentSessionId: accessToken.sid,
-      ip: userIp,
-      userAgent: userAgent,
+      clientMetadata,
     }
 
     const result = await this.closeUserSession.execute(requestDto)
@@ -641,25 +642,35 @@ export class AuthController {
     if (!result.success) {
       const errorId = result.error.id
 
-      const obfuscatedErrors = [
+      const fatalSystemErrors = [
+        CloseUserSessionApplicationError.invalidUserIdId,
+        CloseUserSessionApplicationError.invalidCurrentSessionIdId,
         CloseUserSessionApplicationError.userNotFoundId,
         CloseUserSessionApplicationError.userDisabledId,
+      ]
+
+      if (fatalSystemErrors.includes(errorId)) {
+        this.clearCookies(response)
+        return
+      }
+
+      const targetSessionErrors = [
         CloseUserSessionApplicationError.cannotRevokeSessionId,
         CloseUserSessionApplicationError.sessionNotFoundId,
         CloseUserSessionApplicationError.sessionDoesNotBelongToUserId,
       ]
 
-      if (obfuscatedErrors.includes(errorId)) {
+      if (targetSessionErrors.includes(errorId)) {
         if (isCurrentSession) {
           this.clearCookies(response)
         }
-
         return
       }
 
-      if (errorId === CloseUserSessionApplicationError.invalidInputId) {
-        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-          cause: result.error,
+      if (errorId === CloseUserSessionApplicationError.invalidSessionIdId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT,
+          message: result.error.message,
         })
       }
 

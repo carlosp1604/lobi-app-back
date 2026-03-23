@@ -4,7 +4,9 @@ export class CloseUserSessionApplicationError extends Error {
   public readonly id: string
   public readonly name: string
 
-  public static invalidInputId = 'close_user_session_invalid_input'
+  public static invalidUserIdId = 'close_user_session_invalid_user_id'
+  public static invalidSessionIdId = 'close_user_session_invalid_session_id'
+  public static invalidCurrentSessionIdId = 'close_user_session_invalid_current_session_id'
   public static userNotFoundId = 'close_user_session_user_not_found'
   public static userDisabledId = 'close_user_session_user_disabled'
   public static sessionNotFoundId = 'close_user_session_session_not_found'
@@ -17,33 +19,38 @@ export class CloseUserSessionApplicationError extends Error {
     this.name = CloseUserSessionApplicationError.name
   }
 
-  public static invalidInput(field: string, errorMessage: string) {
+  public static invalidUserId(domainMessage: string) {
+    return new CloseUserSessionApplicationError(domainMessage, this.invalidUserIdId)
+  }
+
+  public static invalidSessionId(domainMessage: string) {
+    return new CloseUserSessionApplicationError(domainMessage, this.invalidSessionIdId)
+  }
+
+  public static invalidCurrentSessionId(domainMessage: string) {
+    return new CloseUserSessionApplicationError(domainMessage, this.invalidCurrentSessionIdId)
+  }
+
+  public static userNotFound() {
+    return new CloseUserSessionApplicationError('The user associated with this session could not be found', this.userNotFoundId)
+  }
+
+  public static userDisabled() {
+    return new CloseUserSessionApplicationError('The user associated with this session is currently disabled', this.userDisabledId)
+  }
+
+  public static sessionNotFound() {
+    return new CloseUserSessionApplicationError('No session was found for the provided session identifier', this.sessionNotFoundId)
+  }
+
+  public static sessionDoesNotBelongToUser() {
     return new CloseUserSessionApplicationError(
-      `Invalid input provided for field ${field}. Reason: ${errorMessage}`,
-      this.invalidInputId,
-    )
-  }
-
-  public static userNotFound(userId: string) {
-    return new CloseUserSessionApplicationError(`User identified by ID ${userId} was not found`, this.userNotFoundId)
-  }
-
-  public static userDisabled(userId: string) {
-    return new CloseUserSessionApplicationError(`User identified by ID ${userId} is disabled`, this.userDisabledId)
-  }
-
-  public static sessionNotFound(sessionId: string) {
-    return new CloseUserSessionApplicationError(`Session identified by ID ${sessionId} was not found`, this.sessionNotFoundId)
-  }
-
-  public static sessionDoesNotBelongToUser(sessionId: string, userId: string) {
-    return new CloseUserSessionApplicationError(
-      `Session identified by ID ${sessionId} does not belong to user identified by ID ${userId}`,
+      'The provided session does not belong to the provider user identifier',
       this.sessionDoesNotBelongToUserId,
     )
   }
 
-  public static cannotRevokeSession(message: string) {
-    return new CloseUserSessionApplicationError(message, this.cannotRevokeSessionId)
+  public static cannotRevokeSession(domainMessage: string) {
+    return new CloseUserSessionApplicationError(domainMessage, this.cannotRevokeSessionId)
   }
 }

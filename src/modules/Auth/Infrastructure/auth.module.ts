@@ -23,7 +23,6 @@ import {
   RANDOM_SERVICE,
   REFRESH_SESSION,
   REQUEST_METADATA_EXTRACTOR,
-  REQUEST_ORIGIN_SERVICE,
   RESET_USER_PASSWORD,
   TOKEN_GENERATOR,
   UA_PARSER,
@@ -78,7 +77,6 @@ import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSe
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServiceInterface'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
@@ -229,23 +227,6 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
         )
       },
       inject: [ConfigService, LOGGER_FACTORY],
-    },
-    {
-      provide: REQUEST_ORIGIN_SERVICE,
-      useFactory: (
-        ipValidator: IpValidatorServiceInterface,
-        hasherService: HasherServiceInterface,
-        deviceLocationResolver: DeviceLocationResolverServiceInterface,
-        loggerFactory: LoggerFactoryInterface,
-      ) => {
-        return new RequestOriginApplicationService(
-          ipValidator,
-          hasherService,
-          deviceLocationResolver,
-          loggerFactory.createLogger(RequestOriginApplicationService.name),
-        )
-      },
-      inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_FACTORY],
     },
     {
       provide: CLIENT_METADATA_SERVICE,
@@ -522,7 +503,6 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
         userRepository: UserRepositoryInterface,
         sessionRepository: UserSessionRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
-        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: ClockServiceInterface,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
@@ -532,7 +512,6 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
           userRepository,
           sessionRepository,
           domainEventRepository,
-          requestOriginApplicationService,
           clockService,
           unitOfWork,
           loggerFactory.createLogger(CloseUserSession.name),
@@ -543,7 +522,6 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
         USER_REPOSITORY,
         USER_SESSION_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
-        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
@@ -583,6 +561,7 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
     LOGOUT_USER,
     GET_ACTIVE_SESSIONS,
     CLIENT_METADATA_SERVICE,
+    REQUEST_METADATA_EXTRACTOR,
     TypeOrmModule,
   ],
 })

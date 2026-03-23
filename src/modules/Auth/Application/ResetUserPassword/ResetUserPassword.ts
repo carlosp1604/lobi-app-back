@@ -55,6 +55,9 @@ export class ResetUserPassword {
 
     const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
 
+    const newPasswordHashString = await this.hasherService.hash(password.value)
+    const newPasswordHash = PasswordHash.fromString(newPasswordHashString)
+
     return this.unitOfWork.runInTransaction(async (context) => {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
@@ -119,9 +122,6 @@ export class ResetUserPassword {
 
         return fail(ResetUserPasswordApplicationError.cannotResetPassword())
       }
-
-      const newPasswordHashString = await this.hasherService.hash(password.value)
-      const newPasswordHash = PasswordHash.fromString(newPasswordHashString)
 
       userCredential.updatePasswordHash(newPasswordHash, now)
       verificationToken.markAsUsed(now, email, VerificationTokenPurpose.resetPassword())

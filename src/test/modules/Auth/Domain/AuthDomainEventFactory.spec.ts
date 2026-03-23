@@ -341,7 +341,7 @@ describe('AuthDomainEventFactory', () => {
 
       const actorLocation = DeviceLocationMother.valid()
 
-      const event = factory.createClosedSessionEvent(targetSession, actorSessionId, actorLocation, baseUserAgent, baseIpHash.value, now)
+      const event = factory.createClosedSessionEvent(targetSession, actorSessionId, actorLocation, baseUserAgent, baseIpHash, now)
 
       checkIdGeneratorCall()
       checkBaseEventStructure(event, DomainEventName.closedSession(), DomainEventAggregateType.userSession(), targetSession.id)

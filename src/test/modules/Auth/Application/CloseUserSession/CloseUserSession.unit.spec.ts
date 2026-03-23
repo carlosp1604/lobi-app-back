@@ -14,26 +14,19 @@ import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessio
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import {
-  RequestOriginApplicationService,
-  RequestOriginData,
-} from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
-import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { DomainEventTestBuilder } from '~/src/test/modules/Shared/Domain/DomainEventTestBuilder'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 
 describe('CloseUserSession', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
   const mockedSessionRepository = mock<UserSessionRepositoryInterface>()
   const mockedDomainEventRepository = mock<DomainEventRepositoryInterface>()
-  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
   const mockedUnitOfWork = mock<UnitOfWork>()
   const mockedLogger = mock<LoggerServiceInterface>()
   const mockedClock = mock<ClockServiceInterface>()
@@ -47,25 +40,19 @@ describe('CloseUserSession', () => {
   const validUserId = IdentifierMother.valid()
   const validSessionId = IdentifierMother.valid()
   const validCurrentSessionId = IdentifierMother.valid()
-  const validUserAgent = UserAgentMother.valid()
-  const validIpHash = UserIpHashMother.valid()
-  const validDeviceLocation = DeviceLocationMother.valid()
 
   let baseRequest: CloseUserSessionApplicationRequestDto
-  let expectedRequestOriginData: RequestOriginData
   let userBuilder: UserTestBuilder
   let sessionBuilder: UserSessionTestBuilder
+  let expectedUserSession: UserSession
 
   let closedSessionEvent: DomainEvent
-
-  let expectedUserSession: UserSession
 
   const buildUseCase = () => {
     return new CloseUserSession(
       mockedUserRepository,
       mockedSessionRepository,
       mockedDomainEventRepository,
-      mockedRequestOriginService,
       mockedClock,
       mockedUnitOfWork,
       mockedLogger,
@@ -79,7 +66,6 @@ describe('CloseUserSession', () => {
     mockReset(mockedUserRepository)
     mockReset(mockedSessionRepository)
     mockReset(mockedDomainEventRepository)
-    mockReset(mockedRequestOriginService)
     mockReset(mockedClock)
     mockReset(mockedUnitOfWork)
     mockReset(mockedLogger)
@@ -89,15 +75,7 @@ describe('CloseUserSession', () => {
       userId: validUserId.value,
       sessionId: validSessionId.value,
       currentSessionId: validCurrentSessionId.value,
-      userAgent: validUserAgent.raw,
-      ip: '8.8.8.8',
-    }
-
-    expectedRequestOriginData = {
-      userAgent: validUserAgent,
-      ipHash: validIpHash.value,
-      normalizedIp: 'normalized-ip',
-      deviceLocation: validDeviceLocation,
+      clientMetadata: new ClientMetadataResponseTestBuilder().build(),
     }
 
     userBuilder = new UserTestBuilder().withId(validUserId)
@@ -116,7 +94,6 @@ describe('CloseUserSession', () => {
 
     closedSessionEvent = new DomainEventTestBuilder().build()
     mockedDomainEventFactory.createClosedSessionEvent.mockReturnValue(closedSessionEvent)
-    mockedRequestOriginService.process.mockResolvedValue(expectedRequestOriginData)
 
     expectedUserSession = sessionBuilder.build()
 
@@ -130,7 +107,9 @@ describe('CloseUserSession', () => {
 
       const result = await useCase.execute(baseRequest)
 
-      expect(mockedRequestOriginService.process).toHaveBeenCalledTimes(1)
+      expect(result.success).toBe(true)
+      expect(result['value']).toBeUndefined()
+
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledTimes(1)
       expect(mockedSessionRepository.findById).toHaveBeenCalledTimes(1)
@@ -138,11 +117,6 @@ describe('CloseUserSession', () => {
       expect(mockedSessionRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
 
-      expect(mockedRequestOriginService.process).toHaveBeenCalledWith(baseRequest.ip, baseRequest.userAgent, {
-        userId: validUserId.value,
-        targetSessionId: validSessionId.value,
-        currentSessionId: validCurrentSessionId.value,
-      })
       expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledWith(validUserId.value, fakeContext)
       expect(mockedSessionRepository.findById).toHaveBeenCalledWith(validSessionId, fakeContext)
 
@@ -152,9 +126,9 @@ describe('CloseUserSession', () => {
       expect(mockedDomainEventFactory.createClosedSessionEvent).toHaveBeenCalledWith(
         expectedUserSession,
         validCurrentSessionId,
-        validDeviceLocation,
-        validUserAgent,
-        validIpHash.value,
+        baseRequest.clientMetadata.deviceLocation,
+        baseRequest.clientMetadata.userAgent,
+        baseRequest.clientMetadata.userIpHash,
         now,
       )
 
@@ -163,9 +137,6 @@ describe('CloseUserSession', () => {
 
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
-
-      expect(result.success).toBe(true)
-      expect(result['value']).toBeUndefined()
     })
   })
 
@@ -188,11 +159,9 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        CloseUserSessionApplicationError.invalidInput('userId', expectedUserIdValidationError.message),
-      )
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.invalidUserId(expectedUserIdValidationError.message))
 
-      expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
     it('should log error and return fail when sessionId is invalid', async () => {
@@ -214,11 +183,9 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        CloseUserSessionApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message),
-      )
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.invalidSessionId(expectedSessionIdValidationError.message))
 
-      expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
     it('should log error and return fail when currentSessionId is invalid', async () => {
@@ -241,10 +208,10 @@ describe('CloseUserSession', () => {
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(
-        CloseUserSessionApplicationError.invalidInput('currentSessionId', expectedCurrentSessionIdValidationError.message),
+        CloseUserSessionApplicationError.invalidCurrentSessionId(expectedCurrentSessionIdValidationError.message),
       )
 
-      expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
     it('should log warn and return fail when user is not found', async () => {
@@ -260,7 +227,7 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.userNotFound())
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -279,7 +246,7 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.userDisabled(validUserId.value))
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.userDisabled())
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -298,7 +265,7 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.sessionNotFound(validSessionId.value))
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.sessionNotFound())
 
       expect(mockedDomainEventFactory.createClosedSessionEvent).not.toHaveBeenCalled()
     })
@@ -321,9 +288,7 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        CloseUserSessionApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value),
-      )
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.sessionDoesNotBelongToUser())
 
       expect(mockedDomainEventFactory.createClosedSessionEvent).not.toHaveBeenCalled()
     })
@@ -349,18 +314,6 @@ describe('CloseUserSession', () => {
       expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))
 
       expect(mockedDomainEventFactory.createClosedSessionEvent).not.toHaveBeenCalled()
-    })
-
-    it('should throw error when requestOriginApplicationService fails during process', async () => {
-      const useCase = buildUseCase()
-
-      const serviceError = new Error('Unexpected service error')
-
-      mockedRequestOriginService.process.mockRejectedValue(serviceError)
-
-      await expect(useCase.execute(baseRequest)).rejects.toThrow(serviceError)
-
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
 
     it('should throw error when userRepository fails during findByIdWithLock', async () => {
