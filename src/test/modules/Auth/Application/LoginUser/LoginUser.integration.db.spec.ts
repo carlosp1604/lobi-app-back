@@ -17,7 +17,7 @@ import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestM
 import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
@@ -30,7 +30,7 @@ import { ConfigService } from '@nestjs/config'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { DomainEventDatabaseHelper } from '~/src/test/modules/Shared/Infrastructure/DomainEventDatabaseHelper'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
@@ -54,7 +54,7 @@ describe('LoginUser', () => {
   const userEmail = EmailAddressMother.random().value
   const validPassword = UserPasswordMother.random().value
 
-  const userAgent = UserAgentMother.random()
+  const deviceInfo = DeviceInfoMother.random()
   const userDeviceLocation = DeviceLocationMother.valid()
   const userIpHash = UserIpHashMother.random()
   const userDomainAggregateType = DomainEventAggregateType.user().value
@@ -111,7 +111,7 @@ describe('LoginUser', () => {
       email: userEmail,
       password: validPassword,
       clientMetadata: new ClientMetadataResponseTestBuilder()
-        .withUserAgent(userAgent)
+        .withDeviceInfo(deviceInfo)
         .withUserIpHash(userIpHash)
         .withDeviceLocation(userDeviceLocation)
         .build(),
@@ -185,7 +185,7 @@ describe('LoginUser', () => {
   }
 
   describe('happy path', () => {
-    const assertResult = (result: Result<LoginUserApplicationResponseDto, LoginUserApplicationError>, newDevice: boolean) => {
+    const assertResult = (result: Result<LoginUserApplicationResponseDto, LoginUserApplicationError>) => {
       expect(result).toEqual({
         success: true,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -195,14 +195,13 @@ describe('LoginUser', () => {
           sessionId: expect.any(String),
           accessTokenExpiresAt: new Date(now.getTime() + ACCESS_TTL_MS),
           refreshTokenExpiresAt: new Date(now.getTime() + REFRESH_TTL_MS),
-          isNewDevice: newDevice,
         }),
       })
     }
 
     const assertSavedSessionDomainAndCredential = async (
       result: Result<LoginUserApplicationResponseDto, LoginUserApplicationError>,
-      expectedUserAgent: UserAgent,
+      expectedDeviceInfo: DeviceInfo,
       expectedIpHash: UserIpHash | null,
       expectedDeviceLocation: DeviceLocation | null,
     ) => {
@@ -217,7 +216,7 @@ describe('LoginUser', () => {
       expect(savedSession).toBeDefined()
       expect(savedSession!.id).toBe(sessionId)
       expect(savedSession!.user_id).toBe(userId)
-      expect(savedSession!.user_agent).toEqual(expectedUserAgent.value)
+      expect(savedSession!.device_info).toEqual(expectedDeviceInfo.value)
 
       if (!expectedIpHash) {
         expect(savedSession!.ip_hash).toBeNull()
@@ -261,9 +260,9 @@ describe('LoginUser', () => {
         events: { before: 0, after: 1 },
       })
 
-      assertResult(result, true)
+      assertResult(result)
 
-      await assertSavedSessionDomainAndCredential(result, userAgent, userIpHash, userDeviceLocation)
+      await assertSavedSessionDomainAndCredential(result, deviceInfo, userIpHash, userDeviceLocation)
     })
 
     it('should create a new user session and its domain event correctly (revoke sessions)', async () => {
@@ -277,7 +276,7 @@ describe('LoginUser', () => {
         user_id: userId,
         created_at: newestCreatedAt,
         expires_at: futureExpiresAt,
-        user_agent: userAgent.value,
+        device_info: deviceInfo.value,
         ip_hash: userIpHash.value,
       })
 
@@ -288,9 +287,9 @@ describe('LoginUser', () => {
         events: { before: 0, after: 1 },
       })
 
-      assertResult(result, false)
+      assertResult(result)
 
-      await assertSavedSessionDomainAndCredential(result, userAgent, userIpHash, userDeviceLocation)
+      await assertSavedSessionDomainAndCredential(result, deviceInfo, userIpHash, userDeviceLocation)
 
       const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 

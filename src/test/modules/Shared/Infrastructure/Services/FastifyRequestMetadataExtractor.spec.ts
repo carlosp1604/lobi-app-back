@@ -2,7 +2,7 @@ import { FastifyRequest } from 'fastify'
 import { RawRequestMetadataDto } from '~/src/modules/Shared/Infrastructure/Services/RawRequestMetadataDto'
 import { FastifyClientMetadataExtractor } from '~/src/modules/Shared/Infrastructure/Services/FastifyRequestMetadataResolver'
 import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { UserAgentMother } from '~/src/test/mothers/Infrastructure/UserAgentMother'
 
 describe('FastifyRequestMetadataExtractor', () => {
   let extractor: FastifyClientMetadataExtractor
@@ -23,7 +23,7 @@ describe('FastifyRequestMetadataExtractor', () => {
   describe('extract', () => {
     it('should extract IP and user agent when they are present', () => {
       const rawIp = UserIpMother.valid()
-      const rawUa = UserAgentMother.validString()
+      const rawUa = UserAgentMother.valid()
       const request = createMockRequest(rawIp, rawUa)
 
       const result: RawRequestMetadataDto = extractor.extract(request)
@@ -43,7 +43,7 @@ describe('FastifyRequestMetadataExtractor', () => {
     })
 
     it('should extract user agent and return undefined for IP when the IP is missing', () => {
-      const rawUa = UserAgentMother.validString()
+      const rawUa = UserAgentMother.valid()
       const request = createMockRequest(undefined, rawUa)
 
       const result = extractor.extract(request)

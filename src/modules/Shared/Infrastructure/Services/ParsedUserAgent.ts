@@ -8,7 +8,7 @@ export interface ParsedUserAgent {
     name: string | null
     version: string | null
   }
-  device: {
+  hardware: {
     type: string | null
     vendor: string | null
     model: string | null

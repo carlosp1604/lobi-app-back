@@ -245,7 +245,7 @@ describe('CreateUser', () => {
         validUserId,
         validEmail,
         request.clientMetadata.deviceLocation,
-        request.clientMetadata.userAgent,
+        request.clientMetadata.deviceInfo,
         request.clientMetadata.userIpHash,
         now,
       )

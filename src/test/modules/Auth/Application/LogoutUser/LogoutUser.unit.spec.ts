@@ -234,7 +234,7 @@ describe('LogoutUser', () => {
       const expiredSession = sessionBuilder.withExpiresAt(pastDate).build()
       mockedSessionRepository.findById.mockResolvedValue(expiredSession)
 
-      const expectedRevocationError = UserSessionDomainException.sessionAlreadyExpired(validSessionId.value)
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyExpired()
 
       const result = await useCase.execute(baseRequest)
 
@@ -269,7 +269,7 @@ describe('LogoutUser', () => {
       const session = sessionBuilder.build()
       mockedSessionRepository.findById.mockResolvedValue(session)
 
-      const domainException = UserSessionDomainException.sessionAlreadyRevoked(validSessionId.value)
+      const domainException = UserSessionDomainException.sessionAlreadyRevoked()
 
       jest.spyOn(session, 'revoke').mockImplementation(() => {
         throw domainException

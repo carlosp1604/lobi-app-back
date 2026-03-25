@@ -41,7 +41,7 @@ export class CreateUserSessionsTable1758135348571 implements MigrationInterface 
             isNullable: true,
           },
           {
-            name: 'user_agent',
+            name: 'device_info',
             type: 'jsonb',
             isNullable: false,
           },

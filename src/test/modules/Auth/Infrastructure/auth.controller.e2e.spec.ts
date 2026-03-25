@@ -63,8 +63,8 @@ import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { expectIsoDate } from '~/src/test/utils/matchers'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
+import { expectIsoDate, expectStringOrNull } from '~/src/test/utils/matchers'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
@@ -101,7 +101,7 @@ describe('AuthController', () => {
   /* Third-party dependent service */
   const mockedClientMetadataService = mock<ClientMetadataApplicationService>({
     process: jest.fn().mockResolvedValue({
-      userAgent: UserAgentMother.valid(),
+      deviceInfo: DeviceInfoMother.valid(),
       userIpHash: UserIpHashMother.valid(),
       deviceLocation: DeviceLocationMother.valid(),
     }),
@@ -252,7 +252,6 @@ describe('AuthController', () => {
           sessionId: expect.any(String),
           accessTokenExpiresAt: expectIsoDate,
           refreshTokenExpiresAt: expectIsoDate,
-          isNewDevice: expect.any(Boolean),
         } as Record<string, unknown>)
 
         const cookies = response.headers['set-cookie'] as unknown as Array<string>
@@ -1619,15 +1618,30 @@ describe('AuthController', () => {
             expect(body.sessions[0]).toEqual(
               expect.objectContaining({
                 id: expect.any(String),
-                userAgent: expect.any(String),
+                deviceInfo: {
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                  raw: expect.any(String),
+                  browser: {
+                    name: expectStringOrNull,
+                    version: expectStringOrNull,
+                  },
+                  os: {
+                    name: expectStringOrNull,
+                    version: expectStringOrNull,
+                  },
+                  hardware: {
+                    type: expectStringOrNull,
+                    vendor: expectStringOrNull,
+                    model: expectStringOrNull,
+                  },
+                },
+                deviceCountryCode: expectStringOrNull,
+                deviceCity: expectStringOrNull,
                 isCurrent: expect.any(Boolean),
                 activeSince: expectIsoDate,
                 expiresAt: expectIsoDate,
               } as Record<string, unknown>),
             )
-
-            expect(body.sessions[0]).toHaveProperty('deviceCountryCode')
-            expect(body.sessions[0]).toHaveProperty('deviceCity')
           })
       })
 

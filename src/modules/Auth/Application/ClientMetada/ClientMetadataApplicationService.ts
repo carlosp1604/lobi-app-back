@@ -1,4 +1,4 @@
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { ErrorUtils } from '~/src/modules/Shared/Domain/ErrorUtils'
 import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
@@ -41,20 +41,20 @@ export class ClientMetadataApplicationService {
     }
 
     return {
-      userAgent: userAgentVO,
+      deviceInfo: userAgentVO,
       userIpHash: normalizedIpWithHash ? normalizedIpWithHash.userIpHash : null,
       deviceLocation,
     }
   }
 
-  private resolveUserAgent(rawUa: string | undefined, context: ClientMetadataContext): UserAgent {
+  private resolveUserAgent(rawUa: string | undefined, context: ClientMetadataContext): DeviceInfo {
     if (!rawUa) {
       this.loggerService.info('UserAgent is missing', context)
-      return UserAgent.unknown()
+      return DeviceInfo.unknown()
     }
 
     const parsedUserAgent = this.uaParserService.parse(rawUa)
-    const userAgentResult = UserAgent.safeCreate(parsedUserAgent)
+    const userAgentResult = DeviceInfo.safeCreate(parsedUserAgent)
 
     if (userAgentResult.success) {
       return userAgentResult.value
@@ -67,7 +67,7 @@ export class ClientMetadataApplicationService {
       uaLength: rawUa.length,
     })
 
-    return UserAgent.unknown()
+    return DeviceInfo.unknown()
   }
 
   private async validateAndHashIp(rawIp: string | undefined, context: ClientMetadataContext): Promise<NormalizedIpWithHash | null> {

@@ -4,5 +4,4 @@ export interface LoginUserApplicationResponseDto {
   sessionId: string
   accessTokenExpiresAt: Date
   refreshTokenExpiresAt: Date
-  isNewDevice: boolean
 }

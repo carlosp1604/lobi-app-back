@@ -26,10 +26,6 @@ export class SportsmanProfile {
     this._updatedAt = updatedAt
   }
 
-  public static create(id: Identifier, userId: Identifier, now: Date): SportsmanProfile {
-    return new SportsmanProfile(id, userId, null, null, now, now)
-  }
-
   get birthDate(): SportsmanProfileBirthDate | null {
     return this._birthDate
   }
@@ -40,5 +36,9 @@ export class SportsmanProfile {
 
   get updatedAt(): Date {
     return this._updatedAt
+  }
+
+  public static create(id: Identifier, userId: Identifier, now: Date): SportsmanProfile {
+    return new SportsmanProfile(id, userId, null, null, now, now)
   }
 }

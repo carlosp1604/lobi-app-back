@@ -2,7 +2,7 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
-export type UserAgentProps = {
+export type DeviceInfoProps = {
   raw: string
   browser: {
     name: string | null
@@ -12,21 +12,21 @@ export type UserAgentProps = {
     name: string | null
     version: string | null
   }
-  device: {
+  hardware: {
     type: string | null
     vendor: string | null
     model: string | null
   }
 }
 
-export class UserAgent extends ValueObject<UserAgentProps> {
-  private __userAgentBrand: void
+export class DeviceInfo extends ValueObject<DeviceInfoProps> {
+  private __brand = 'DeviceInfo' as const
 
-  private constructor(props: UserAgentProps) {
+  private constructor(props: DeviceInfoProps) {
     super(props)
   }
 
-  public static fromProps(props: UserAgentProps): UserAgent {
+  public static fromProps(props: DeviceInfoProps): DeviceInfo {
     const result = this.safeCreate(props)
 
     if (!result.success) {
@@ -36,7 +36,7 @@ export class UserAgent extends ValueObject<UserAgentProps> {
     return result.value
   }
 
-  public static safeCreate(props: UserAgentProps): Result<UserAgent, UserSessionDomainException> {
+  public static safeCreate(props: DeviceInfoProps): Result<DeviceInfo, UserSessionDomainException> {
     const normalizedRaw = props.raw.trim()
 
     if (!normalizedRaw) {
@@ -44,23 +44,23 @@ export class UserAgent extends ValueObject<UserAgentProps> {
     }
 
     if (!this.isValidRaw(normalizedRaw)) {
-      return fail(UserSessionDomainException.invalidUserAgent(normalizedRaw))
+      return fail(UserSessionDomainException.invalidDeviceInfo(normalizedRaw))
     }
 
     return success(
-      new UserAgent({
+      new DeviceInfo({
         ...props,
         raw: normalizedRaw,
       }),
     )
   }
 
-  public static unknown(): UserAgent {
-    return new UserAgent({
+  public static unknown(): DeviceInfo {
+    return new DeviceInfo({
       raw: 'Unknown',
       browser: { name: null, version: null },
       os: { name: null, version: null },
-      device: { type: null, vendor: null, model: null },
+      hardware: { type: null, vendor: null, model: null },
     })
   }
 
@@ -68,19 +68,19 @@ export class UserAgent extends ValueObject<UserAgentProps> {
     return this.value.raw
   }
 
-  get browser(): UserAgentProps['browser'] {
+  get browser(): DeviceInfoProps['browser'] {
     return this.value.browser
   }
 
-  get os(): UserAgentProps['os'] {
+  get os(): DeviceInfoProps['os'] {
     return this.value.os
   }
 
-  get device(): UserAgentProps['device'] {
-    return this.value.device
+  get hardware(): DeviceInfoProps['hardware'] {
+    return this.value.hardware
   }
 
-  public equals(vo?: UserAgent | null): boolean {
+  public equals(vo?: DeviceInfo | null): boolean {
     if (vo === null || vo === undefined) {
       return false
     }

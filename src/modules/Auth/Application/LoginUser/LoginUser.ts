@@ -54,7 +54,7 @@ export class LoginUser {
     const userEmail = validateUserEmailResult.value
     const userPassword = validateUserPasswordResult.value
 
-    const { deviceLocation, userAgent, userIpHash } = request.clientMetadata
+    const { deviceLocation, deviceInfo, userIpHash } = request.clientMetadata
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const getAndValidateUserResult = await this.getAndValidateUser(userEmail, context)
@@ -76,7 +76,7 @@ export class LoginUser {
       const passwordMatches = await this.hasherService.compare(userPassword.value, credentials.passwordHash.value)
 
       if (!passwordMatches) {
-        const domainEvent = this.authDomainEventFactory.createFailedAttemptEvent(user.id, deviceLocation, userAgent, userIpHash, now)
+        const domainEvent = this.authDomainEventFactory.createFailedAttemptEvent(user.id, deviceLocation, deviceInfo, userIpHash, now)
 
         await this.domainEventRepository.save(domainEvent, context)
 
@@ -86,11 +86,9 @@ export class LoginUser {
       credentials.resetAfterSuccessfulLogin(now)
 
       const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
-        await this.generateTokensService.generate(user.id, now, userAgent, userIpHash, deviceLocation)
+        await this.generateTokensService.generate(user.id, now, deviceInfo, userIpHash, deviceLocation)
 
       const activeSessions = await this.sessionRepository.findUserActiveSessions(user.id, now, context)
-
-      const isNewDevice = !activeSessions.find((activeSession) => activeSession.isSameDeviceAs(session))
 
       const serviceResult = this.userSessionManagerService.applyPolicyAndRevokeForLogin(activeSessions, now)
 
@@ -104,7 +102,7 @@ export class LoginUser {
 
       const sessionsToRevoke = serviceResult.value
 
-      const domainEvent = this.authDomainEventFactory.createSuccessfulLoginEvent(session, isNewDevice, now)
+      const domainEvent = this.authDomainEventFactory.createSuccessfulLoginEvent(session, now)
 
       await this.sessionRepository.save([...sessionsToRevoke, session], context)
 
@@ -118,7 +116,6 @@ export class LoginUser {
         sessionId: session.id.value,
         accessTokenExpiresAt,
         refreshTokenExpiresAt,
-        isNewDevice,
       })
     })
   }

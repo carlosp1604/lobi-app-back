@@ -13,7 +13,7 @@ import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
@@ -40,7 +40,7 @@ describe('RefreshToken', () => {
   const expectedRefreshExpiresAt = new Date(now.getTime() + 3600)
 
   const validDeviceLocation = DeviceLocationMother.valid()
-  const validUserAgent = UserAgentMother.valid()
+  const validDeviceInfo = DeviceInfoMother.valid()
   const validIpHash = UserIpHashMother.valid()
   const validUserIpHash = UserIpHashMother.valid()
 
@@ -118,7 +118,7 @@ describe('RefreshToken', () => {
     baseRequest = {
       token: clearToken,
       clientMetadata: new ClientMetadataResponseTestBuilder()
-        .withUserAgent(validUserAgent)
+        .withDeviceInfo(validDeviceInfo)
         .withDeviceLocation(validDeviceLocation)
         .withUserIpHash(validUserIpHash)
         .build(),
@@ -140,7 +140,7 @@ describe('RefreshToken', () => {
     expect(mockedHasherService.hash).toHaveBeenCalledWith(baseRequest.token)
     expect(mockedSessionRepository.findByHash).toHaveBeenCalledWith(hashedToken, fakeContext)
     expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledWith(currentSession.userId.value, fakeContext)
-    expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(userId, now, validUserAgent, validIpHash, validDeviceLocation)
+    expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(userId, now, validDeviceInfo, validIpHash, validDeviceLocation)
     expect(mockedSessionRepository.findUserActiveSessions).toHaveBeenCalledWith(userId, now, fakeContext)
     expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh).toHaveBeenCalledWith(
       currentSession.id,

@@ -65,7 +65,7 @@ export class CreateUser {
 
     const { email, password, username, name, userRole, tokenValue } = inputValidationResult.value
 
-    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
 
     const passwordHashString = await this.hasherService.hash(password.value)
     const passwordHash = PasswordHash.fromString(passwordHashString)
@@ -140,7 +140,7 @@ export class CreateUser {
         user.id,
         user.email,
         deviceLocation,
-        userAgent,
+        deviceInfo,
         userIpHash,
         now,
       )

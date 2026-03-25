@@ -39,7 +39,7 @@ export class CloseUserSession {
 
     const { userId, sessionId, currentSessionId } = inputValidationResult.value
 
-    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const user = await this.userRepository.findByIdWithLock(userId.value, context)
@@ -103,7 +103,7 @@ export class CloseUserSession {
         session,
         currentSessionId,
         deviceLocation,
-        userAgent,
+        deviceInfo,
         userIpHash,
         now,
       )

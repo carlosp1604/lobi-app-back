@@ -142,10 +142,10 @@ describe('GenerateVerificationToken', () => {
       resendCode: boolean,
     ) => {
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledTimes(1)
+      expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)
       expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledTimes(1)
-      expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
       expect(mockedIdGeneratorService.generateId).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventFactory.createEmailVerificationRequestEvent).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
@@ -154,16 +154,16 @@ describe('GenerateVerificationToken', () => {
       expect(mockedLogger.warn).not.toHaveBeenCalled()
 
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledWith(verificationTokenEmail.value)
+      expect(mockedHasherService.hash).toHaveBeenCalledWith(String(generatedCode))
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledWith(verificationTokenEmail.value, fakeContext)
       expect(mockedRandomService.getRandomNumericCode).toHaveBeenCalledWith(VerificationTokenValue.LENGTH)
-      expect(mockedHasherService.hash).toHaveBeenCalledWith(String(generatedCode))
       // TODO: Use expected language when multi-language emails are supported
       expect(mockedDomainEventFactory.createEmailVerificationRequestEvent).toHaveBeenCalledWith(
         expectedVerificationToken,
         resendCode,
         'es',
         requestBase.clientMetadata.deviceLocation,
-        requestBase.clientMetadata.userAgent,
+        requestBase.clientMetadata.deviceInfo,
         requestBase.clientMetadata.userIpHash,
         now,
       )
@@ -360,7 +360,7 @@ describe('GenerateVerificationToken', () => {
         email: verificationTokenEmail.value,
         reason: 'Email is already registered and purpose is create account',
       })
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+      expect(mockedHasherService.hash).not.toHaveBeenCalled()
     })
 
     describe('when purpose is resetPassword and user does not exist or is not active', () => {
@@ -387,7 +387,7 @@ describe('GenerateVerificationToken', () => {
           reason: reason,
           purpose: purposeResetPassword.value,
         })
-        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
 
         return result
       }

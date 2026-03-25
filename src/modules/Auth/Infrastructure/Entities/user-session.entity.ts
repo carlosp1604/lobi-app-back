@@ -1,11 +1,11 @@
 import { EntitySchema } from 'typeorm'
 import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 
-export interface UserAgentRawPayload {
+export interface DeviceInfoRawPayload {
   raw: string
   browser: { name: string | null; version: string | null }
   os: { name: string | null; version: string | null }
-  device: { type: string | null; vendor: string | null; model: string | null }
+  hardware: { type: string | null; vendor: string | null; model: string | null }
 }
 
 export interface UserSessionRawModel {
@@ -15,7 +15,7 @@ export interface UserSessionRawModel {
   expires_at: Date
   revoked_at: Date | null
   ip_hash: string | null
-  user_agent: UserAgentRawPayload
+  device_info: DeviceInfoRawPayload
   device_country_code: string | null
   device_city: string | null
   created_at: Date
@@ -56,7 +56,7 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
       length: 44,
       nullable: true,
     },
-    user_agent: {
+    device_info: {
       type: 'jsonb',
       nullable: false,
     },

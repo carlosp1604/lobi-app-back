@@ -31,7 +31,7 @@ describe('UaParserJsUserAgentParserService', () => {
       raw: 'valid-ua',
       browser: { name: 'Chrome', version: '120' },
       os: { name: 'Windows', version: '10' },
-      device: { type: 'mobile', vendor: 'Apple', model: 'iPhone' },
+      hardware: { type: 'mobile', vendor: 'Apple', model: 'iPhone' },
     })
     expect(UAParser).toHaveBeenCalledWith('valid-ua')
   })
@@ -49,7 +49,7 @@ describe('UaParserJsUserAgentParserService', () => {
       raw: 'any-string',
       browser: { name: null, version: null },
       os: { name: null, version: null },
-      device: { type: null, vendor: null, model: null },
+      hardware: { type: null, vendor: null, model: null },
     })
     expect(UAParser).toHaveBeenCalledWith('any-string')
   })

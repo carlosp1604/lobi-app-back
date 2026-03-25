@@ -32,7 +32,7 @@ import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Ent
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
@@ -49,7 +49,7 @@ describe('GenerateVerificationToken', () => {
 
   const email = EmailAddressMother.valid()
   const userIpHash = UserIpHashMother.valid()
-  const userAgent = UserAgentMother.random()
+  const deviceInfo = DeviceInfoMother.random()
   const deviceLocation = DeviceLocationMother.valid()
 
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
@@ -94,7 +94,7 @@ describe('GenerateVerificationToken', () => {
       purpose: purposeCreateAccount.value,
       sendNewToken: false,
       clientMetadata: new ClientMetadataResponseTestBuilder()
-        .withUserAgent(userAgent)
+        .withDeviceInfo(deviceInfo)
         .withDeviceLocation(deviceLocation)
         .withUserIpHash(userIpHash)
         .build(),
@@ -200,7 +200,7 @@ describe('GenerateVerificationToken', () => {
       expect(savedEvent.metadata).toEqual(
         expect.objectContaining({
           ipHash: userIpHash.value,
-          ua: userAgent.value,
+          deviceInfo: deviceInfo.value,
         }),
       )
 

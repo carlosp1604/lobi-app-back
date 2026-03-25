@@ -2,7 +2,7 @@ import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/Mo
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { UserSessionRawModel, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
@@ -12,7 +12,7 @@ import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
 describe('UserSessionModelTranslator', () => {
@@ -22,7 +22,7 @@ describe('UserSessionModelTranslator', () => {
 
   const validDeviceLocation = DeviceLocationMother.valid()
   const validIpHash = UserIpHashMother.valid()
-  const validUserAgent = UserAgentMother.valid()
+  const validDeviceInfo = DeviceInfoMother.valid()
   const validSessionId = IdentifierMother.valid()
   const validUserId = IdentifierMother.valid()
   const validTokenHash = UserSessionTokenHashMother.valid()
@@ -38,7 +38,7 @@ describe('UserSessionModelTranslator', () => {
       device_city: validDeviceLocation.city,
       ip_hash: validIpHash.value,
       revoked_at: null,
-      user_agent: validUserAgent.value,
+      device_info: validDeviceInfo.value,
       created_at: now,
       updated_at: now,
       expires_at: futureExpiresAt,
@@ -50,12 +50,12 @@ describe('UserSessionModelTranslator', () => {
       expect(result.id).toBeInstanceOf(Identifier)
       expect(result.userId).toBeInstanceOf(Identifier)
       expect(result.tokenHash).toBeInstanceOf(UserSessionTokenHash)
-      expect(result.userAgent).toBeInstanceOf(UserAgent)
+      expect(result.deviceInfo).toBeInstanceOf(DeviceInfo)
 
       expect(result.id.equals(validSessionId)).toBe(true)
       expect(result.userId.equals(validUserId)).toBe(true)
       expect(result.tokenHash.equals(validTokenHash)).toBe(true)
-      expect(result.userAgent.equals(validUserAgent)).toBe(true)
+      expect(result.deviceInfo.equals(validDeviceInfo)).toBe(true)
       expect(result.expiresAt).toEqual(raw.expires_at)
       expect(result.createdAt).toEqual(raw.created_at)
       expect(result.updatedAt).toEqual(raw.updated_at)
@@ -147,7 +147,7 @@ describe('UserSessionModelTranslator', () => {
       expect(result.expires_at).toEqual(domain.expiresAt)
       expect(result.created_at).toEqual(domain.createdAt)
       expect(result.updated_at).toEqual(domain.updatedAt)
-      expect(result.user_agent).toEqual(domain.userAgent.value)
+      expect(result.device_info).toEqual(domain.deviceInfo.value)
       expect(result.revoked_at).toEqual(domain.revokedAt)
 
       if (domain.ipHash === null) {
@@ -175,7 +175,7 @@ describe('UserSessionModelTranslator', () => {
         .withExpiresAt(futureExpiresAt)
         .withRevokedAt(null)
         .withIpHash(validIpHash)
-        .withUserAgent(UserAgentMother.valid())
+        .withDeviceInfo(DeviceInfoMother.valid())
         .withDeviceLocation(validDeviceLocation)
         .withCreatedAt(now)
         .withUpdatedAt(now)
@@ -215,7 +215,7 @@ describe('UserSessionModelTranslator', () => {
         expiresAt: session.expiresAt,
         revokedAt: session.revokedAt,
         ipHash: session.ipHash,
-        userAgent: session.userAgent,
+        deviceInfo: session.deviceInfo,
         deviceLocation: session.deviceLocation,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
@@ -228,7 +228,7 @@ describe('UserSessionModelTranslator', () => {
       expect(session.tokenHash.equals(snapshot.tokenHash)).toBe(true)
       expect(session.ipHash?.equals(snapshot.ipHash)).toBe(true)
       expect(session.deviceLocation?.equals(snapshot.deviceLocation)).toBe(true)
-      expect(session.userAgent.equals(snapshot.userAgent)).toBe(true)
+      expect(session.deviceInfo.equals(snapshot.deviceInfo)).toBe(true)
       expect(session.expiresAt).toEqual(snapshot.expiresAt)
       expect(session.revokedAt).toEqual(snapshot.revokedAt)
       expect(session.createdAt).toEqual(snapshot.createdAt)

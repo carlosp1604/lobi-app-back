@@ -1,16 +1,16 @@
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { ClientMetadataApplicationResponse } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationResponse'
 
 export class ClientMetadataResponseTestBuilder {
-  private _userAgent = UserAgentMother.valid()
+  private _deviceInfo = DeviceInfoMother.valid()
   private _deviceLocation: DeviceLocation | null = null
   private _userIpHash: UserIpHash | null = null
 
-  public withUserAgent(userAgent: UserAgent): this {
-    this._userAgent = userAgent
+  public withDeviceInfo(deviceInfo: DeviceInfo): this {
+    this._deviceInfo = deviceInfo
     return this
   }
 
@@ -26,7 +26,7 @@ export class ClientMetadataResponseTestBuilder {
 
   public build(): ClientMetadataApplicationResponse {
     return {
-      userAgent: this._userAgent,
+      deviceInfo: this._deviceInfo,
       deviceLocation: this._deviceLocation,
       userIpHash: this._userIpHash,
     }

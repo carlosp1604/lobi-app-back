@@ -1,12 +1,12 @@
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 
-export class UserAgentMother {
-  static valid(): UserAgent {
-    return UserAgent.fromProps({
+export class DeviceInfoMother {
+  static valid(): DeviceInfo {
+    return DeviceInfo.fromProps({
       raw: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LobiTestRunner/1.0',
       browser: { name: 'Chrome', version: '120.0.0.0' },
       os: { name: 'Windows', version: '10.0' },
-      device: { type: null, vendor: null, model: null },
+      hardware: { type: null, vendor: null, model: null },
     })
   }
 
@@ -14,7 +14,7 @@ export class UserAgentMother {
     return 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 LobiTestRunner/1.0'
   }
 
-  static random(): UserAgent {
+  static random(): DeviceInfo {
     const length = 10 + Math.floor(Math.random() * 50)
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789/.-_ '
     const fixedString = 'LobiTestRunner/1.0'
@@ -22,16 +22,16 @@ export class UserAgentMother {
       .join('')
       .concat(` ${fixedString}`)
 
-    return UserAgent.fromProps({
+    return DeviceInfo.fromProps({
       raw: randomRaw,
       browser: { name: 'RandomBrowser', version: '1.0' },
       os: { name: 'RandomOS', version: '1.0' },
-      device: { type: null, vendor: null, model: null },
+      hardware: { type: null, vendor: null, model: null },
     })
   }
 
-  static unknown(): UserAgent {
-    return UserAgent.unknown()
+  static unknown(): DeviceInfo {
+    return DeviceInfo.unknown()
   }
 
   static invalid(): string {

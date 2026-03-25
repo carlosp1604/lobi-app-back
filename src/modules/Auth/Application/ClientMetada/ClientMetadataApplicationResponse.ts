@@ -1,9 +1,9 @@
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 
 export interface ClientMetadataApplicationResponse {
-  userAgent: UserAgent
+  deviceInfo: DeviceInfo
   deviceLocation: DeviceLocation | null
   userIpHash: UserIpHash | null
 }

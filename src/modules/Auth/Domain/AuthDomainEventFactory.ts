@@ -1,4 +1,4 @@
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
@@ -17,7 +17,7 @@ export class AuthDomainEventFactory {
     userId: Identifier,
     userEmail: EmailAddress,
     deviceLocation: DeviceLocation | null,
-    userAgent: UserAgent,
+    deviceInfo: DeviceInfo,
     ipHash: UserIpHash | null,
     occurredAt: Date,
   ): DomainEvent {
@@ -31,13 +31,13 @@ export class AuthDomainEventFactory {
         email: userEmail.value,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadata(ipHash, userAgent),
+      this.mapMetadata(ipHash, deviceInfo),
 
       occurredAt,
     )
   }
 
-  public createSuccessfulLoginEvent(session: UserSession, isNewDevice: boolean, now: Date): DomainEvent {
+  public createSuccessfulLoginEvent(session: UserSession, now: Date): DomainEvent {
     return DomainEvent.create(
       Identifier.fromString(this.idGeneratorService.generateId()),
       DomainEventName.successfulLogin(),
@@ -47,9 +47,8 @@ export class AuthDomainEventFactory {
         userId: session.userId.value,
         deviceLocation: this.mapLocation(session.deviceLocation),
         sessionId: session.id.value,
-        isNewDevice,
       },
-      this.mapMetadata(session.ipHash, session.userAgent),
+      this.mapMetadata(session.ipHash, session.deviceInfo),
       now,
     )
   }
@@ -57,7 +56,7 @@ export class AuthDomainEventFactory {
   public createFailedAttemptEvent(
     userId: Identifier,
     deviceLocation: DeviceLocation | null,
-    userAgent: UserAgent,
+    deviceInfo: DeviceInfo,
     ipHash: UserIpHash | null,
     now: Date,
   ): DomainEvent {
@@ -70,7 +69,7 @@ export class AuthDomainEventFactory {
         userId: userId.value,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadata(ipHash, userAgent),
+      this.mapMetadata(ipHash, deviceInfo),
       now,
     )
   }
@@ -79,7 +78,7 @@ export class AuthDomainEventFactory {
     userId: Identifier,
     userEmail: EmailAddress,
     deviceLocation: DeviceLocation | null,
-    userAgent: UserAgent,
+    deviceInfo: DeviceInfo,
     ipHash: UserIpHash | null,
     now: Date,
   ): DomainEvent {
@@ -93,7 +92,7 @@ export class AuthDomainEventFactory {
         deviceLocation: this.mapLocation(deviceLocation),
         email: userEmail.value,
       },
-      this.mapMetadata(ipHash, userAgent),
+      this.mapMetadata(ipHash, deviceInfo),
       now,
     )
   }
@@ -103,7 +102,7 @@ export class AuthDomainEventFactory {
     resendCode: boolean,
     language: string,
     deviceLocation: DeviceLocation | null,
-    userAgent: UserAgent,
+    deviceInfo: DeviceInfo,
     ipHash: UserIpHash | null,
     now: Date,
   ): DomainEvent {
@@ -119,7 +118,7 @@ export class AuthDomainEventFactory {
         lang: language,
         deviceLocation: this.mapLocation(deviceLocation),
       },
-      this.mapMetadata(ipHash, userAgent),
+      this.mapMetadata(ipHash, deviceInfo),
       now,
     )
   }
@@ -128,7 +127,7 @@ export class AuthDomainEventFactory {
     targetSession: UserSession,
     actorSessionId: Identifier,
     actorDeviceLocation: DeviceLocation | null,
-    actorUserAgent: UserAgent,
+    actorDeviceInfo: DeviceInfo,
     actorIpHash: UserIpHash | null,
     now: Date,
   ): DomainEvent {
@@ -142,10 +141,10 @@ export class AuthDomainEventFactory {
         targetSessionId: targetSession.id.value,
         targetDeviceLocation: this.mapLocation(targetSession.deviceLocation),
         actorDeviceLocation: this.mapLocation(actorDeviceLocation),
-        actorUserAgent: actorUserAgent.value,
+        actorDeviceInfo: actorDeviceInfo.value,
       },
       {
-        ...this.mapMetadata(actorIpHash, actorUserAgent),
+        ...this.mapMetadata(actorIpHash, actorDeviceInfo),
         actorSessionId: actorSessionId.value,
       },
       now,
@@ -163,10 +162,10 @@ export class AuthDomainEventFactory {
     }
   }
 
-  private mapMetadata(ipHash: UserIpHash | null, userAgent: UserAgent) {
+  private mapMetadata(ipHash: UserIpHash | null, deviceInfo: DeviceInfo) {
     return {
       ipHash: ipHash ? ipHash.value : null,
-      ua: userAgent.value,
+      deviceInfo: deviceInfo.value,
     }
   }
 }

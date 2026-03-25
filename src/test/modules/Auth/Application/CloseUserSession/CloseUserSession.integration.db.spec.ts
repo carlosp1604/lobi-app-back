@@ -228,7 +228,7 @@ describe('CloseUserSession', () => {
         events: { before: 0, after: 0 },
       })
 
-      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(validTargetSessionId.value)
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked()
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))

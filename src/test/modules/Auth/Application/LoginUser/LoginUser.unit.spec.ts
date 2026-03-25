@@ -22,7 +22,7 @@ import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessi
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
@@ -65,7 +65,7 @@ describe('LoginUser', () => {
   const validUserId = IdentifierMother.valid()
   const validPasswordHash = PasswordHashMother.valid()
   const validUserIpHash = UserIpHashMother.valid()
-  const validUA = UserAgentMother.valid()
+  const validDeviceInfo = DeviceInfoMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
 
   const expectedSessionId = IdentifierMother.valid()
@@ -123,7 +123,7 @@ describe('LoginUser', () => {
 
     userSessionTestBuilder = new UserSessionTestBuilder()
       .withIpHash(validUserIpHash)
-      .withUserAgent(validUA)
+      .withDeviceInfo(validDeviceInfo)
       .withUserId(validUserId)
       .withId(expectedSessionId)
       .withDeviceLocation(validDeviceLocation)
@@ -154,15 +154,11 @@ describe('LoginUser', () => {
     mockedDomainEventFactory.createSuccessfulLoginEvent.mockReturnValue(successfulLoginEvent)
     mockedDomainEventFactory.createFailedAttemptEvent.mockReturnValue(failedLoginAttemptEvent)
 
-    activeSession1.isSameDeviceAs.mockReturnValue(false)
-    activeSession2.isSameDeviceAs.mockReturnValue(false)
-    activeSession3.isSameDeviceAs.mockReturnValue(false)
-
     request = {
       email: validEmail.value,
       password: UserPasswordMother.random().value,
       clientMetadata: new ClientMetadataResponseTestBuilder()
-        .withUserAgent(validUA)
+        .withDeviceInfo(validDeviceInfo)
         .withDeviceLocation(validDeviceLocation)
         .withUserIpHash(validUserIpHash)
         .build(),
@@ -172,7 +168,6 @@ describe('LoginUser', () => {
   describe('happy path', () => {
     const checkCommonCalls = (
       expectedSession: UserSession,
-      expectNewDevice: boolean,
       ipHash: UserIpHash | null,
       deviceLocation: DeviceLocation | null,
       sessionsToRevoke: Array<UserSession>,
@@ -183,9 +178,6 @@ describe('LoginUser', () => {
       expect(mockedHasherService.compare).toHaveBeenCalledTimes(1)
       expect(mockedGenerateTokensService.generate).toHaveBeenCalledTimes(1)
       expect(mockedSessionsRepository.findUserActiveSessions).toHaveBeenCalledTimes(1)
-      expect(activeSession1.isSameDeviceAs).toHaveBeenCalledTimes(1)
-      expect(activeSession2.isSameDeviceAs).toHaveBeenCalledTimes(1)
-      expect(activeSession3.isSameDeviceAs).toHaveBeenCalledTimes(1)
       expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventFactory.createSuccessfulLoginEvent).toHaveBeenCalledTimes(1)
       expect(mockedSessionsRepository.save).toHaveBeenCalledTimes(1)
@@ -197,23 +189,20 @@ describe('LoginUser', () => {
       expect(mockedUserRepository.findByEmailWithLock).toHaveBeenCalledWith(validEmail.value, fakeContext)
       expect(mockedCredentialsRepository.findByUserId).toHaveBeenCalledWith(validUserId.value, fakeContext)
       expect(mockedHasherService.compare).toHaveBeenCalledWith(request.password, validPasswordHash.value)
-      expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(validUserId, now, validUA, ipHash, deviceLocation)
+      expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(validUserId, now, validDeviceInfo, ipHash, deviceLocation)
       expect(mockedSessionsRepository.findUserActiveSessions).toHaveBeenCalledWith(validUserId, now, fakeContext)
-      expect(activeSession1.isSameDeviceAs).toHaveBeenCalledWith(expectedSession)
-      expect(activeSession2.isSameDeviceAs).toHaveBeenCalledWith(expectedSession)
-      expect(activeSession3.isSameDeviceAs).toHaveBeenCalledWith(expectedSession)
       expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin).toHaveBeenCalledWith(
         [activeSession1, activeSession2, activeSession3],
         now,
       )
-      expect(mockedDomainEventFactory.createSuccessfulLoginEvent).toHaveBeenCalledWith(expectedSession, expectNewDevice, now)
+      expect(mockedDomainEventFactory.createSuccessfulLoginEvent).toHaveBeenCalledWith(expectedSession, now)
       expect(mockedSessionsRepository.save).toHaveBeenCalledWith([...sessionsToRevoke, expectedSession], fakeContext)
       expect(mockedCredentialsRepository.update).toHaveBeenCalledWith(mockedCredential, fakeContext)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledWith(successfulLoginEvent, fakeContext)
       expect(mockedCredential.resetAfterSuccessfulLogin).toHaveBeenCalledWith(now)
     }
 
-    const checkResult = (result: Result<LoginUserApplicationResponseDto, LoginUserApplicationError>, newDevice: boolean) => {
+    const checkResult = (result: Result<LoginUserApplicationResponseDto, LoginUserApplicationError>) => {
       expect(result.success).toBe(true)
       expect(result).toEqual({
         success: true,
@@ -223,12 +212,11 @@ describe('LoginUser', () => {
           accessTokenExpiresAt: expectedAccessExpiresAt,
           sessionId: expectedSessionId.value,
           refreshTokenExpiresAt: expectedRefreshExpiresAt,
-          isNewDevice: newDevice,
         },
       })
     }
 
-    it('should call services and entities correctly and return the correct result when it is a new device and sessions must be revoked', async () => {
+    it('should call services and entities correctly and return the correct result when sessions must be revoked', async () => {
       const expectedSession = userSessionTestBuilder.build()
       const sessionsToRevoke = [activeSession1]
 
@@ -237,11 +225,11 @@ describe('LoginUser', () => {
       const useCase = buildUseCase()
       const result = await useCase.execute(request)
 
-      checkCommonCalls(expectedSession, true, validUserIpHash, validDeviceLocation, sessionsToRevoke)
-      checkResult(result, true)
+      checkCommonCalls(expectedSession, validUserIpHash, validDeviceLocation, sessionsToRevoke)
+      checkResult(result)
     })
 
-    it('should call services and entities correctly and return the correct result when it is a known device and no sessions must be revoked', async () => {
+    it('should call services and entities correctly and return the correct result when no sessions must be revoked', async () => {
       const requestWithNullishIpAndLocation = {
         ...request,
         clientMetadata: new ClientMetadataResponseTestBuilder().withUserIpHash(null).withDeviceLocation(null).build(),
@@ -250,15 +238,14 @@ describe('LoginUser', () => {
       const expectedSession = userSessionTestBuilder.withIpHash(null).withDeviceLocation(null).build()
       mockedGenerateTokensService.generate.mockResolvedValue(buildGenerateTokensResponse(expectedSession))
 
-      activeSession3.isSameDeviceAs.mockReturnValue(true)
       mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForLogin.mockReturnValue({ success: true, value: [] })
 
       const useCase = buildUseCase()
 
       const result = await useCase.execute(requestWithNullishIpAndLocation)
 
-      checkCommonCalls(expectedSession, false, null, null, [])
-      checkResult(result, false)
+      checkCommonCalls(expectedSession, null, null, [])
+      checkResult(result)
     })
   })
 
@@ -374,7 +361,7 @@ describe('LoginUser', () => {
       expect(mockedDomainEventFactory.createFailedAttemptEvent).toHaveBeenCalledWith(
         validUserId,
         validDeviceLocation,
-        validUA,
+        validDeviceInfo,
         validUserIpHash,
         now,
       )

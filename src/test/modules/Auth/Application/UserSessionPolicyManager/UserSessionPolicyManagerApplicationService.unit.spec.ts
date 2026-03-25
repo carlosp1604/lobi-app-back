@@ -68,7 +68,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
 
       const result = service.applyPolicyAndRevokeForLogin(activeSessions, now)
 
-      const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value)
+      const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired()
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(UserSessionPolicyManagerApplicationError.revocationFailed(expectedDomainException.message))
@@ -115,7 +115,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       const expiredSession = new UserSessionTestBuilder().withExpiresAt(pastDate).build()
       mockedMaxSessionRepository.sessionsToRevoke.mockReturnValue([expiredSession])
 
-      const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value)
+      const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired()
 
       const service = buildService()
       const result = service.applyPolicyAndRevokeForRefresh(expiredSession.id, userId, [expiredSession], now)
@@ -128,7 +128,7 @@ describe('UserSessionPolicyManagerApplicationService', () => {
       const expiredSession = new UserSessionTestBuilder().withExpiresAt(pastDate).build()
       mockedMaxSessionRepository.sessionsToRevoke.mockReturnValue([expiredSession])
 
-      const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired(expiredSession.id.value)
+      const expectedDomainException = UserSessionDomainException.sessionAlreadyExpired()
 
       const service = buildService()
       const result = service.applyPolicyAndRevokeForRefresh(activeSession1.id, userId, [activeSession1, expiredSession], now)

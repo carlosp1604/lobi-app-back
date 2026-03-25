@@ -53,7 +53,7 @@ export class ResetUserPassword {
 
     const { email, password, tokenValue } = inputValidationResult.value
 
-    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
 
     const newPasswordHashString = await this.hasherService.hash(password.value)
     const newPasswordHash = PasswordHash.fromString(newPasswordHashString)
@@ -130,7 +130,7 @@ export class ResetUserPassword {
         user.id,
         user.email,
         deviceLocation,
-        userAgent,
+        deviceInfo,
         userIpHash,
         now,
       )

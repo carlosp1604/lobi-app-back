@@ -99,7 +99,11 @@ export class GenerateVerificationToken {
       }
     }
 
-    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
+
+    const clearRandomCode = this.randomService.getRandomNumericCode(VerificationTokenValue.LENGTH)
+    const hashedCode = await this.hasherService.hash(clearRandomCode)
+    const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
@@ -132,9 +136,6 @@ export class GenerateVerificationToken {
         }
       }
 
-      const clearRandomCode = this.randomService.getRandomNumericCode(VerificationTokenValue.LENGTH)
-      const hashedCode = await this.hasherService.hash(clearRandomCode)
-      const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
       const verificationTokenId = this.idGeneratorService.generateId()
 
       const newVerificationToken = VerificationToken.create(
@@ -151,7 +152,7 @@ export class GenerateVerificationToken {
         resendCode,
         language,
         deviceLocation,
-        userAgent,
+        deviceInfo,
         userIpHash,
         now,
       )

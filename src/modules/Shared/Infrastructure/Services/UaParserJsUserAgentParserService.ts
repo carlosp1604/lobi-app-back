@@ -22,7 +22,7 @@ export class UaParserJsUserAgentParserService implements UserAgentParserServiceI
         name: result.os.name || null,
         version: result.os.version || null,
       },
-      device: {
+      hardware: {
         type: result.device.type || null,
         vendor: result.device.vendor || null,
         model: result.device.model || null,

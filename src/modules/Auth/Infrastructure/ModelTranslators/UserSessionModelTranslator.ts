@@ -1,4 +1,4 @@
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
@@ -21,7 +21,7 @@ export class UserSessionModelTranslator {
       raw.expires_at,
       raw.revoked_at,
       raw.ip_hash ? UserIpHash.fromString(raw.ip_hash) : null,
-      UserAgent.fromProps(raw.user_agent),
+      DeviceInfo.fromProps(raw.device_info),
       deviceLocation,
       raw.created_at,
       raw.updated_at,
@@ -36,7 +36,7 @@ export class UserSessionModelTranslator {
       expires_at: domain.expiresAt,
       revoked_at: domain.revokedAt ?? null,
       ip_hash: domain.ipHash ? domain.ipHash.value : null,
-      user_agent: domain.userAgent.value,
+      device_info: domain.deviceInfo.value,
       device_country_code: domain.deviceLocation ? domain.deviceLocation.countryCode : null,
       device_city: domain.deviceLocation ? domain.deviceLocation.city : null,
       created_at: domain.createdAt,

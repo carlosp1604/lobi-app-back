@@ -184,7 +184,7 @@ describe('ResetUserPassword', () => {
         validUserId,
         validEmail,
         baseRequest.clientMetadata.deviceLocation,
-        baseRequest.clientMetadata.userAgent,
+        baseRequest.clientMetadata.deviceInfo,
         baseRequest.clientMetadata.userIpHash,
         now,
       )

@@ -32,6 +32,10 @@ export class VerificationToken {
     this.createdAt = createdAt
   }
 
+  get usedAt(): Date | null {
+    return this._usedAt
+  }
+
   public static create(
     id: Identifier,
     email: EmailAddress,
@@ -43,10 +47,6 @@ export class VerificationToken {
     const expiresAt = new Date(now.getTime() + expiresTtlMs)
 
     return new VerificationToken(id, email, tokenHash, purpose, expiresAt, null, now)
-  }
-
-  get usedAt(): Date | null {
-    return this._usedAt
   }
 
   public isUsed(): boolean {

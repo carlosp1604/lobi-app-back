@@ -55,7 +55,7 @@ import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCode
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
 import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
@@ -103,7 +103,7 @@ describe('AuthController', () => {
   const mockedRequestMetadataExtractor = mock<RequestMetadataExtractorInterface>()
   const mockedClientMetadataService = mock<ClientMetadataApplicationService>()
 
-  const mockedRawRequestMetadata = { ip: UserIpMother.valid(), userAgent: UserAgentMother.validString() }
+  const mockedRawRequestMetadata = { ip: UserIpMother.valid(), userAgent: DeviceInfoMother.validString() }
   const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
 
   const baseDate = new Date('2025-10-13T14:00:00.014Z')
@@ -120,7 +120,6 @@ describe('AuthController', () => {
     accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
     refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
     sessionId: 'expected-session-id',
-    isNewDevice: true,
   }
 
   const assertMetadataFlowWasCalled = (request: FastifyRequest) => {
@@ -1849,7 +1848,7 @@ describe('AuthController', () => {
         })
 
         it('should clear cookies when use-case returns cannotRevokeSession error', async () => {
-          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(mockedAccessToken.sid)
+          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked()
 
           await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))
         })

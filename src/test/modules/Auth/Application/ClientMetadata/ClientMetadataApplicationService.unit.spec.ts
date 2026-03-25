@@ -10,17 +10,18 @@ import {
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
 import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { VerificationTokenPurposeMother } from '~/src/test/mothers/VerificationTokenPurposeMother'
 import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { ParsedUserAgent } from '~/src/modules/Shared/Infrastructure/Services/ParsedUserAgent'
 import { ClientMetadataApplicationResponse } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationResponse'
 import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { ClientMetadataApplicationRequestDto } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationRequestDto'
+import { UserAgentMother } from '~/src/test/mothers/Infrastructure/UserAgentMother'
 
 describe('ClientMetadataApplicationService', () => {
   const mockedIpValidator = mock<IpValidatorServiceInterface>()
@@ -35,7 +36,7 @@ describe('ClientMetadataApplicationService', () => {
   const invalidIp = UserIpMother.invalid()
 
   const validIpHash = UserIpHashMother.valid()
-  const validUA = UserAgentMother.valid()
+  const validDeviceInfo = DeviceInfoMother.valid()
   const validDeviceLocation = DeviceLocationMother.valid()
   const expectedResolvedDeviceLocation: ResolvedDeviceLocation = {
     countryCode: validDeviceLocation.countryCode,
@@ -63,13 +64,13 @@ describe('ClientMetadataApplicationService', () => {
 
     mockedHasher.hash.mockResolvedValue(validIpHash.value)
 
-    mockedUaParser.parse.mockReturnValue(validUA.value)
+    mockedUaParser.parse.mockReturnValue(validDeviceInfo.value)
 
     mockedDeviceLocationResolver.resolve.mockResolvedValue(expectedResolvedDeviceLocation)
 
     baseRequestDto = {
       ip: validIp,
-      userAgent: validUA.value.raw,
+      userAgent: UserAgentMother.valid(),
     }
   })
 
@@ -85,11 +86,11 @@ describe('ClientMetadataApplicationService', () => {
 
   const checkResult = (
     result: ClientMetadataApplicationResponse,
-    expectedUA: UserAgent,
+    expectedUA: DeviceInfo,
     expectedIpHash: UserIpHash | null,
     expectedDeviceLocation: DeviceLocation | null,
   ) => {
-    expect(result.userAgent.equals(expectedUA)).toBe(true)
+    expect(result.deviceInfo.equals(expectedUA)).toBe(true)
 
     if (expectedIpHash) {
       expect(result.userIpHash?.equals(validIpHash)).toBe(true)
@@ -114,14 +115,14 @@ describe('ClientMetadataApplicationService', () => {
       expect(mockedLogger.error).not.toHaveBeenCalled()
       expect(mockedLogger.info).not.toHaveBeenCalled()
 
-      checkResult(result, validUA, validIpHash, validDeviceLocation)
+      checkResult(result, validDeviceInfo, validIpHash, validDeviceLocation)
 
       expect(mockedIpValidator.isValid).toHaveBeenCalledWith(validIp)
       expect(mockedIpValidator.isPublic).toHaveBeenCalledWith(validIp)
       expect(mockedIpValidator.normalize).toHaveBeenCalledWith(validIp)
       expect(mockedHasher.hash).toHaveBeenCalledWith(validNormalizedIp)
       expect(mockedDeviceLocationResolver.resolve).toHaveBeenCalledWith(validNormalizedIp)
-      expect(mockedUaParser.parse).toHaveBeenCalledWith(validUA.value.raw)
+      expect(mockedUaParser.parse).toHaveBeenCalledWith(validDeviceInfo.value.raw)
     })
   })
 
@@ -132,7 +133,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const result = await service.process(dtoWithMissingUA, testContext)
 
-      checkResult(result, UserAgentMother.unknown(), validIpHash, validDeviceLocation)
+      checkResult(result, DeviceInfoMother.unknown(), validIpHash, validDeviceLocation)
 
       expect(mockedUaParser.parse).not.toHaveBeenCalled()
       expect(mockedLogger.info).toHaveBeenCalledWith('UserAgent is missing', {
@@ -149,7 +150,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const result = await service.process(dtoWithMaliciousUA, testContext)
 
-      checkResult(result, UserAgentMother.unknown(), validIpHash, validDeviceLocation)
+      checkResult(result, DeviceInfoMother.unknown(), validIpHash, validDeviceLocation)
 
       expect(mockedLogger.info).toHaveBeenCalledWith('UserAgent validation failed', {
         ...testContext,
@@ -167,7 +168,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const result = await service.process(dtoWithMissingIp, testContext)
 
-      checkResult(result, validUA, null, null)
+      checkResult(result, validDeviceInfo, null, null)
 
       expect(mockedIpValidator.isValid).not.toHaveBeenCalled()
       expect(mockedLogger.warn).toHaveBeenCalledWith('IP address is missing', testContext)
@@ -180,7 +181,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const result = await service.process(dtoWithInvalidIp, testContext)
 
-      checkResult(result, validUA, null, null)
+      checkResult(result, validDeviceInfo, null, null)
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('IP address validation failed', {
         ...testContext,
@@ -196,11 +197,11 @@ describe('ClientMetadataApplicationService', () => {
 
       const service = buildService()
 
-      const dtoWithPrivateIp = { ip: privateIp, userAgent: validUA.value.raw }
+      const dtoWithPrivateIp = { ...baseRequestDto, ip: privateIp }
 
       const result = await service.process(dtoWithPrivateIp, testContext)
 
-      checkResult(result, validUA, null, null)
+      checkResult(result, validDeviceInfo, null, null)
 
       expect(mockedLogger.warn).toHaveBeenCalledWith('IP address validation failed', {
         ...testContext,
@@ -218,7 +219,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const result = await service.process(baseRequestDto, testContext)
 
-      checkResult(result, validUA, validIpHash, null)
+      checkResult(result, validDeviceInfo, validIpHash, null)
 
       expect(mockedLogger.debug).toHaveBeenCalledWith('Device location resolution failed', {
         ...testContext,
@@ -234,7 +235,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const result = await service.process(baseRequestDto, testContext)
 
-      checkResult(result, validUA, validIpHash, null)
+      checkResult(result, validDeviceInfo, validIpHash, null)
 
       expect(mockedLogger.error).toHaveBeenCalledWith('Device location resolution failed', expect.any(String), {
         ...testContext,

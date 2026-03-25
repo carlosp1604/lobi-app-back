@@ -6,7 +6,7 @@ import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infras
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
 import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { TypeOrmTxContext } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructure/PostgreSqlUserSessionRepository'
@@ -25,7 +25,7 @@ describe('PostgreSqlUserSessionRepository', () => {
   const userId = IdentifierMother.valid()
   const userEmail = EmailAddressMother.valid()
   const sessionTokenHash = UserSessionTokenHashMother.valid()
-  const userAgent = UserAgentMother.valid()
+  const deviceInfo = DeviceInfoMother.valid()
 
   let baseRawUserSession: UserSessionRawWithRelationships
   let rawUser: UserRawModelWithRelations
@@ -39,7 +39,7 @@ describe('PostgreSqlUserSessionRepository', () => {
       revoked_at: null,
       created_at: now,
       updated_at: now,
-      user_agent: userAgent.value,
+      device_info: deviceInfo.value,
       device_city: null,
       device_country_code: null,
       ip_hash: null,
@@ -51,7 +51,7 @@ describe('PostgreSqlUserSessionRepository', () => {
     })
 
     userSessionTestBuilder = new UserSessionTestBuilder()
-      .withUserAgent(userAgent)
+      .withDeviceInfo(deviceInfo)
       .withCreatedAt(now)
       .withUpdatedAt(now)
       .withIpHash(null)
@@ -85,7 +85,7 @@ describe('PostgreSqlUserSessionRepository', () => {
       expect(rawUserSession.device_country_code).toBeNull()
     }
 
-    expect(userSession.userAgent.value).toEqual(rawUserSession.user_agent)
+    expect(userSession.deviceInfo.value).toEqual(rawUserSession.device_info)
     expect(userSession.tokenHash.value).toBe(rawUserSession.token_hash)
   }
 

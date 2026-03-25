@@ -22,7 +22,7 @@ import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigServiceMock'
 import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationRequestDto'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { RefreshSessionApplicationResponseDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationResponseDto'
@@ -32,7 +32,7 @@ import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserD
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
@@ -44,7 +44,7 @@ describe('RefreshSession', () => {
 
   const userId = IdentifierMother.valid().value
   const currentSessionId = IdentifierMother.valid().value
-  const userAgent = UserAgentMother.valid()
+  const deviceInfo = DeviceInfoMother.valid()
   const userDeviceLocation = DeviceLocationMother.valid()
   const userIpHash = UserIpHashMother.random()
 
@@ -104,7 +104,7 @@ describe('RefreshSession', () => {
     baseRequest = {
       token: refreshToken,
       clientMetadata: new ClientMetadataResponseTestBuilder()
-        .withUserAgent(userAgent)
+        .withDeviceInfo(deviceInfo)
         .withUserIpHash(userIpHash)
         .withDeviceLocation(userDeviceLocation)
         .build(),
@@ -170,7 +170,7 @@ describe('RefreshSession', () => {
 
     const assertSavedAndRevokedSession = async (
       result: Result<RefreshSessionApplicationResponseDto, RefreshSessionApplicationError>,
-      expectedUserAgent: UserAgent,
+      expectedDeviceInfo: DeviceInfo,
       expectedIpHash: UserIpHash | null,
       expectedDeviceLocation: DeviceLocation | null,
     ) => {
@@ -191,7 +191,7 @@ describe('RefreshSession', () => {
       const savedSession = userActiveSessions.find((activeSession) => activeSession.id === sessionId)
       expect(savedSession).toBeDefined()
       expect(savedSession!.user_id).toBe(userId)
-      expect(savedSession!.user_agent).toEqual(expectedUserAgent.value)
+      expect(savedSession!.device_info).toEqual(expectedDeviceInfo.value)
 
       if (!expectedIpHash) {
         expect(savedSession!.ip_hash).toBeNull()
@@ -217,7 +217,7 @@ describe('RefreshSession', () => {
       })
 
       assertResult(result)
-      await assertSavedAndRevokedSession(result, userAgent, userIpHash, userDeviceLocation)
+      await assertSavedAndRevokedSession(result, deviceInfo, userIpHash, userDeviceLocation)
     })
 
     it('should revoke current session and create a new user session correctly (revoke sessions by policy)', async () => {
@@ -237,7 +237,7 @@ describe('RefreshSession', () => {
 
       assertResult(result)
 
-      await assertSavedAndRevokedSession(result, userAgent, userIpHash, userDeviceLocation)
+      await assertSavedAndRevokedSession(result, deviceInfo, userIpHash, userDeviceLocation)
 
       const userActiveSessions = await userSessionDatabaseHelper.findActiveSessions(userId, now)
 

@@ -193,7 +193,7 @@ describe('LogoutUser', () => {
         sessions: { before: 1, after: 1 },
       })
 
-      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(sessionId1.value)
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked()
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))

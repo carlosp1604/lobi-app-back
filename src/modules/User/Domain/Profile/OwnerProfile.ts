@@ -30,10 +30,6 @@ export class OwnerProfile {
     this._updatedAt = updatedAt
   }
 
-  public static create(id: Identifier, userId: Identifier, now: Date): OwnerProfile {
-    return new OwnerProfile(id, userId, null, null, null, now, now)
-  }
-
   get companyName(): OwnerProfileCompanyName | null {
     return this._companyName
   }
@@ -48,5 +44,9 @@ export class OwnerProfile {
 
   get updatedAt(): Date {
     return this._updatedAt
+  }
+
+  public static create(id: Identifier, userId: Identifier, now: Date): OwnerProfile {
+    return new OwnerProfile(id, userId, null, null, null, now, now)
   }
 }

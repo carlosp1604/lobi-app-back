@@ -39,11 +39,11 @@ export class RefreshSession {
 
     const validatedToken = validateTokenResult.value
 
-    const { userAgent, userIpHash, deviceLocation } = request.clientMetadata
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
+
+    const now = this.clockService.now()
 
     return this.unitOfWork.runInTransaction(async (context) => {
-      const now = this.clockService.now()
-
       const findAndValidateSessionResult = await this.findAndValidateSession(validatedToken, context, now)
 
       if (!findAndValidateSessionResult.success) {
@@ -61,7 +61,7 @@ export class RefreshSession {
       const user = findAndValidateUserResult.value
 
       const { session, accessToken, refreshToken, refreshTokenExpiresAt, accessTokenExpiresAt } =
-        await this.generateTokensService.generate(user.id, now, userAgent, userIpHash, deviceLocation)
+        await this.generateTokensService.generate(user.id, now, deviceInfo, userIpHash, deviceLocation)
 
       const refreshSessionResult = await this.refreshSession(currentSession, session, user.id, now, context)
 

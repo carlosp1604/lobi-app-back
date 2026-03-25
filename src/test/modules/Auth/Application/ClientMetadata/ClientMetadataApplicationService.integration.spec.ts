@@ -7,9 +7,10 @@ import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { UaParserJsUserAgentParserService } from '~/src/modules/Shared/Infrastructure/Services/UaParserJsUserAgentParserService'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { ClientMetadataApplicationRequestDto } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationRequestDto'
+import { UserAgentMother } from '~/src/test/mothers/Infrastructure/UserAgentMother'
 
 describe('ClientMetadataApplicationService', () => {
   const mockedDeviceLocationResolver = mock<DeviceLocationResolverServiceInterface>()
@@ -17,7 +18,8 @@ describe('ClientMetadataApplicationService', () => {
 
   const publicIp = UserIpMother.valid()
   const privateIp = UserIpMother.private()
-  const validUa = UserAgentMother.valid()
+  const validDeviceInfo = DeviceInfoMother.valid()
+  const userAgent = validDeviceInfo.raw
   const context = { integrationTest: true }
 
   let baseRequestDto: ClientMetadataApplicationRequestDto
@@ -27,7 +29,7 @@ describe('ClientMetadataApplicationService', () => {
 
     baseRequestDto = {
       ip: publicIp,
-      userAgent: validUa.value.raw,
+      userAgent,
     }
   })
 
@@ -55,7 +57,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const expectedIpHash = await hasherService.hash(publicIp)
 
-      expect(result.userAgent.equals(validUa)).toBe(true)
+      expect(result.deviceInfo.equals(validDeviceInfo)).toBe(true)
 
       expect(result.userIpHash).not.toBeNull()
       expect(result.userIpHash?.value).toBe(expectedIpHash)
@@ -70,7 +72,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const result = await service.process(dtoWithPrivateIp, context)
 
-      expect(result.userAgent.equals(validUa)).toBe(true)
+      expect(result.deviceInfo.equals(validDeviceInfo)).toBe(true)
       expect(result.userIpHash).toBeNull()
       expect(result.deviceLocation).toBeNull()
     })
@@ -87,7 +89,7 @@ describe('ClientMetadataApplicationService', () => {
 
       const expectedIpHash = await hasherService.hash(publicIp)
 
-      expect(result.userAgent.equals(UserAgentMother.unknown())).toBe(true)
+      expect(result.deviceInfo.equals(DeviceInfoMother.unknown())).toBe(true)
 
       expect(result.userIpHash).not.toBeNull()
       expect(result.userIpHash?.value).toBe(expectedIpHash)

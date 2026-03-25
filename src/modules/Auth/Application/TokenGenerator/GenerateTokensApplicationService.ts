@@ -1,5 +1,5 @@
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { ConfigService } from '@nestjs/config'
@@ -28,7 +28,7 @@ export class GenerateTokensApplicationService {
   public async generate(
     userId: Identifier,
     now: Date,
-    userAgent: UserAgent,
+    deviceInfo: DeviceInfo,
     ipHash: UserIpHash | null,
     deviceLocation: DeviceLocation | null,
   ): Promise<GenerateTokensApplicationResponseDto> {
@@ -37,7 +37,7 @@ export class GenerateTokensApplicationService {
     const newSessionHashedToken = await this.hasherService.hash(clearSessionToken)
     const sessionHash = UserSessionTokenHash.fromString(newSessionHashedToken)
 
-    const session = UserSession.create(sessionId, userId, sessionHash, userAgent, this.refreshTokenTtlMs, now, ipHash, deviceLocation)
+    const session = UserSession.create(sessionId, userId, sessionHash, deviceInfo, this.refreshTokenTtlMs, now, ipHash, deviceLocation)
 
     const accessExpiresAt = new Date(now.getTime() + this.accessTokenTtlMs)
     const accessToken = await this.tokenGenerator.generateAccessToken(userId.value, sessionId.value, accessExpiresAt, now)
