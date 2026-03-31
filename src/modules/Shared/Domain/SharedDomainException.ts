@@ -7,6 +7,7 @@ export class SharedDomainException extends DomainException {
   public static invalidIdentifierId = 'shared_domain_invalid_identifier'
   public static invalidEmailAddressId = 'shared_domain_invalid_email_address'
   public static invalidUserIpHashId = 'shared_domain_invalid_user_ip_hash'
+  public static invalidSlugId = 'shared_domain_invalid_slug'
 
   private constructor(message: string, id: string) {
     super(message, id, SharedDomainException.name)
@@ -24,5 +25,10 @@ export class SharedDomainException extends DomainException {
 
   public static invalidUserIpHash() {
     return new SharedDomainException('Invalid User IP format', this.invalidUserIpHashId)
+  }
+
+  public static invalidSlug(slug: string) {
+    const safeSlugSample = StringFormatter.formatSafe(slug, 36)
+    return new SharedDomainException(`${safeSlugSample} is not a valid slug`, this.invalidSlugId)
   }
 }
