@@ -1,4 +1,5 @@
 import { IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator'
+import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 
 export class LoginUserBodyDto {
   @IsNotEmpty()
@@ -7,7 +8,7 @@ export class LoginUserBodyDto {
 
   @IsNotEmpty()
   @IsString()
-  @MinLength(8)
-  @MaxLength(128)
+  @MinLength(UserPassword.MIN_LENGTH)
+  @MaxLength(UserPassword.MAX_LENGTH)
   password: string
 }

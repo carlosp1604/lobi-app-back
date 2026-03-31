@@ -3,6 +3,9 @@ import type { Logger } from 'pino'
 import { ClsService } from 'nestjs-cls'
 import { PinoLoggerService } from '~/src/modules/Shared/Infrastructure/Services/PinoLoggerService'
 import { ContextClsStore } from '~/src/modules/Shared/Infrastructure/ContextClsStore'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
+import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
+import { UserAgentMother } from '~/src/test/mothers/Infrastructure/UserAgentMother'
 
 describe('PinoLoggerService', () => {
   const pino = mock<Logger>()
@@ -10,6 +13,10 @@ describe('PinoLoggerService', () => {
   let logger: PinoLoggerService
 
   const DEFAULT_CONTEXT = 'TestContext'
+
+  const requestId = IdentifierMother.valid()
+  const requestIp = UserIpMother.valid()
+  const requestUserAgent = UserAgentMother.valid()
 
   beforeEach(() => {
     mockReset(pino)
@@ -24,9 +31,9 @@ describe('PinoLoggerService', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       cls.get.mockImplementation((key) => {
-        if (key === 'requestId') return 'req-123'
-        if (key === 'ip') return '127.0.0.1'
-        if (key === 'ua') return 'TestBot'
+        if (key === 'requestId') return requestId
+        if (key === 'ip') return requestIp
+        if (key === 'ua') return requestUserAgent
         return undefined
       })
 
@@ -35,9 +42,9 @@ describe('PinoLoggerService', () => {
       expect(pino.info).toHaveBeenCalledWith(
         {
           context: DEFAULT_CONTEXT,
-          reqId: 'req-123',
-          ip: '127.0.0.1',
-          userAgent: 'TestBot',
+          reqId: requestId,
+          ip: requestIp,
+          userAgent: requestUserAgent,
         },
         'test message',
       )
@@ -52,13 +59,13 @@ describe('PinoLoggerService', () => {
     it('should merge CLS context, user metadata, and NestJS context correctly', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
-      cls.get.mockImplementation((key) => (key === 'requestId' ? 'req-123' : undefined))
+      cls.get.mockImplementation((key) => (key === 'requestId' ? requestId : undefined))
 
       logger.error('error message', 'stack-trace', { userId: 1 }, 'AuthService')
 
       expect(pino.error).toHaveBeenCalledWith(
         {
-          reqId: 'req-123',
+          reqId: requestId,
           userId: 1,
           context: 'AuthService',
           trace: 'stack-trace',

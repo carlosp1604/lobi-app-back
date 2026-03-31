@@ -58,59 +58,59 @@ export class CreateUserError extends Error {
     this.name = CreateUserError.name
   }
 
-  public static invalidName() {
-    return new CreateUserError('Invalid user name', this.invalidNameId)
+  public static invalidName(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.invalidNameId)
   }
 
-  public static invalidUsername() {
-    return new CreateUserError('Invalid username', this.invalidUsernameId)
+  public static invalidUsername(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.invalidUsernameId)
   }
 
-  public static invalidEmail() {
-    return new CreateUserError('Invalid email', this.invalidEmailId)
+  public static invalidEmail(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.invalidEmailId)
   }
 
-  public static invalidPassword() {
-    return new CreateUserError('Invalid password', this.invalidPasswordId)
+  public static invalidPassword(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.invalidPasswordId)
   }
 
-  public static invalidRole() {
-    return new CreateUserError('Invalid user role', this.invalidRoleId)
+  public static invalidRole(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.invalidRoleId)
   }
 
-  public static invalidTokenFormat() {
-    return new CreateUserError('Invalid token format', this.invalidTokenFormatId)
+  public static invalidTokenFormat(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.invalidTokenFormatId)
   }
 
-  public static tokenNotFound(email: string) {
-    return new CreateUserError(`Token associated to email ${email} was not found`, this.tokenNotFoundId)
+  public static tokenNotFound() {
+    return new CreateUserError('No valid verification token was found for the provided email address', this.tokenNotFoundId)
   }
 
-  public static duplicatedEmail(email: string) {
-    return new CreateUserError(`The email ${email} is already registered`, this.duplicatedEmailId)
+  public static duplicatedEmail() {
+    return new CreateUserError('The provided email address is already registered', this.duplicatedEmailId)
   }
 
-  public static duplicatedUsername(username: string) {
-    return new CreateUserError(`The username ${username} is already taken`, this.duplicatedUsernameId)
+  public static duplicatedUsername() {
+    return new CreateUserError('The provided username is already taken', this.duplicatedUsernameId)
   }
 
   public static invalidToken() {
-    return new CreateUserError('The provided token code does not match the stored hash', this.invalidVerificationTokenId)
+    return new CreateUserError('The provided verification code is incorrect', this.invalidVerificationTokenId)
   }
 
-  public static tokenExpired() {
-    return new CreateUserError('The verification token has already expired', this.tokenExpiredId)
+  public static tokenExpired(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.tokenExpiredId)
   }
 
-  public static tokenAlreadyUsed() {
-    return new CreateUserError('The verification token has already been used', this.tokenAlreadyUsedId)
+  public static tokenAlreadyUsed(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.tokenAlreadyUsedId)
   }
 
-  public static tokenInvalidOwner() {
-    return new CreateUserError('The verification token does not belong to the provided email address', this.tokenInvalidOwnerId)
+  public static tokenInvalidOwner(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.tokenInvalidOwnerId)
   }
 
-  public static tokenPurposeMismatch() {
-    return new CreateUserError('The token cannot be used for the requested purpose', this.tokenPurposeMismatchId)
+  public static tokenPurposeMismatch(domainMessage: string) {
+    return new CreateUserError(domainMessage, this.tokenPurposeMismatchId)
   }
 }

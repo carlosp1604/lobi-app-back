@@ -25,7 +25,7 @@ export class UserName extends ValueObject<string> {
     const normalized = value.trim()
 
     if (!UserName.isValidName(normalized)) {
-      return fail(UserDomainException.invalidUserName(value))
+      return fail(UserDomainException.invalidUserName())
     }
 
     return success(new UserName(normalized))

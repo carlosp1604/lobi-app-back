@@ -1,7 +1,7 @@
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
@@ -10,14 +10,13 @@ export class UserSession {
   public readonly id: Identifier
   public readonly userId: Identifier
   public tokenHash: UserSessionTokenHash
-  public expiresAt: Date
-  public revokedAt: Date | null
-  public ipHash: UserSessionIpHash | null
-  public userAgent: UserAgent
-  public deviceLocation: DeviceLocation | null
-
+  public readonly expiresAt: Date
+  private _revokedAt: Date | null
+  public readonly ipHash: UserIpHash | null
+  public readonly deviceInfo: DeviceInfo
+  public readonly deviceLocation: DeviceLocation | null
   public readonly createdAt: Date
-  public updatedAt: Date
+  private _updatedAt: Date
 
   public constructor(
     id: Identifier,
@@ -25,8 +24,8 @@ export class UserSession {
     tokenHash: UserSessionTokenHash,
     expiresAt: Date,
     revokedAt: Date | null,
-    ipHash: UserSessionIpHash | null,
-    userAgent: UserAgent,
+    ipHash: UserIpHash | null,
+    deviceInfo: DeviceInfo,
     deviceLocation: DeviceLocation | null,
     createdAt: Date,
     updatedAt: Date,
@@ -35,36 +34,44 @@ export class UserSession {
     this.userId = userId
     this.tokenHash = tokenHash
     this.expiresAt = expiresAt
-    this.revokedAt = revokedAt
+    this._revokedAt = revokedAt
     this.ipHash = ipHash
-    this.userAgent = userAgent
+    this.deviceInfo = deviceInfo
     this.deviceLocation = deviceLocation
     this.createdAt = createdAt
-    this.updatedAt = updatedAt
+    this._updatedAt = updatedAt
+  }
+
+  public get revokedAt(): Date | null {
+    return this._revokedAt
+  }
+
+  public get updatedAt(): Date {
+    return this._updatedAt
   }
 
   static create(
     id: Identifier,
     userId: Identifier,
     tokenHash: UserSessionTokenHash,
-    userAgent: UserAgent,
+    deviceInfo: DeviceInfo,
     expiresTtlMs: number,
     now: Date,
-    ipHash: UserSessionIpHash | null,
+    ipHash: UserIpHash | null,
     deviceLocation: DeviceLocation | null,
   ): UserSession {
     const expiresAt = new Date(now.getTime() + expiresTtlMs)
 
-    return new UserSession(id, userId, tokenHash, expiresAt, null, ipHash, userAgent, deviceLocation, now, now)
+    return new UserSession(id, userId, tokenHash, expiresAt, null, ipHash, deviceInfo, deviceLocation, now, now)
   }
 
   public canBeRevoked(now: Date): Result<void, UserSessionDomainException> {
     if (this.isRevoked()) {
-      return fail(UserSessionDomainException.sessionAlreadyRevoked(this.id.value))
+      return fail(UserSessionDomainException.sessionAlreadyRevoked())
     }
 
     if (this.isExpired(now)) {
-      return fail(UserSessionDomainException.sessionAlreadyExpired(this.id.value))
+      return fail(UserSessionDomainException.sessionAlreadyExpired())
     }
 
     return success(undefined)
@@ -77,26 +84,12 @@ export class UserSession {
       throw canBeRevokedResult.error
     }
 
-    this.revokedAt = now
-    this.updatedAt = now
-  }
-
-  public isSameDeviceAs(session: UserSession): boolean {
-    const sameUa = this.userAgent.equals(session.userAgent)
-
-    if (!this.ipHash && !session.ipHash) {
-      return sameUa
-    }
-
-    if (this.ipHash && session.ipHash && this.ipHash.equals(session.ipHash)) {
-      return sameUa
-    }
-
-    return false
+    this._revokedAt = now
+    this._updatedAt = now
   }
 
   public isRevoked(): boolean {
-    return this.revokedAt !== null
+    return this._revokedAt !== null
   }
 
   public isExpired(now: Date): boolean {

@@ -4,12 +4,12 @@ export class LoginUserApplicationError extends Error {
   public readonly id: string
   public readonly name: string
 
-  public static userNotFoundId = 'login_user_user_not_found'
-  public static invalidCredentialsId = 'login_user_invalid_credentials'
-  public static userDoesNotHaveCredentialsId = 'login_user_user_does_not_have_credentials'
   public static invalidUserEmailId = 'login_user_invalid_user_email'
   public static invalidPasswordFormatId = 'login_user_invalid_password_format'
-  public static cannotRevokeSessionsId = 'login_user_cannot_revoke_session'
+  public static userNotFoundId = 'login_user_user_not_found'
+  public static userDisabledId = 'login_user_user_disabled'
+  public static invalidCredentialsId = 'login_user_invalid_credentials'
+  public static userDoesNotHaveCredentialsId = 'login_user_user_does_not_have_credentials'
   public static revocationFailedId = 'login_user_revocation_failed'
   public static internalErrorId = 'login_user_internal_error'
 
@@ -19,34 +19,28 @@ export class LoginUserApplicationError extends Error {
     this.name = LoginUserApplicationError.name
   }
 
-  public static userNotFound(userEmail: string) {
-    return new LoginUserApplicationError(`User identified by the email ${userEmail} was not found`, this.userNotFoundId)
+  public static invalidUserEmail(domainMessage: string) {
+    return new LoginUserApplicationError(domainMessage, this.invalidUserEmailId)
   }
 
-  public static invalidCredentials(userId: string) {
-    return new LoginUserApplicationError(`Invalid credentials for User identified by ID ${userId}`, this.invalidCredentialsId)
+  public static invalidPasswordFormat(domainMessage: string) {
+    return new LoginUserApplicationError(domainMessage, this.invalidPasswordFormatId)
   }
 
-  public static invalidUserEmail(userEmail: string) {
-    return new LoginUserApplicationError(`Invalid user email ${userEmail}`, this.invalidUserEmailId)
+  public static userNotFound() {
+    return new LoginUserApplicationError('No user was found for the provided email address', this.userNotFoundId)
   }
 
-  public static invalidPasswordFormat() {
-    return new LoginUserApplicationError(
-      'Password must be 8–128 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character',
-      this.invalidPasswordFormatId,
-    )
+  public static userDisabled() {
+    return new LoginUserApplicationError('The user associated with this email address is currently disabled', this.userDisabledId)
   }
 
-  public static userDoesNotHaveCredentials(userId: string) {
-    return new LoginUserApplicationError(
-      `User identified by ID ${userId} does not have credentials to local login`,
-      this.userDoesNotHaveCredentialsId,
-    )
+  public static invalidCredentials() {
+    return new LoginUserApplicationError('The provided credentials are incorrect', this.invalidCredentialsId)
   }
 
-  public static cannotRevokeSession(message: string) {
-    return new LoginUserApplicationError(message, this.cannotRevokeSessionsId)
+  public static userDoesNotHaveCredentials() {
+    return new LoginUserApplicationError('The user does not have a password set for local login', this.userDoesNotHaveCredentialsId)
   }
 
   public static revocationFailed(errorMessage: string) {

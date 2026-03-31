@@ -1,6 +1,6 @@
 import fc from 'fast-check'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('EmailAddress', () => {

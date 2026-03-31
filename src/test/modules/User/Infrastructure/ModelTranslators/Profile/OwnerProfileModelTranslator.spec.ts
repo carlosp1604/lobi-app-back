@@ -1,5 +1,5 @@
 import { OwnerProfileTestBuilder } from '~/src/test/modules/User/Domain/Profile/OwnerProfileTestBuilder'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { OwnerProfileCompanyNameMother } from '~/src/test/mothers/OwnerProfileCompanyNameMother'
 import { OwnerProfileTaxIdMother } from '~/src/test/mothers/OwnerProfileTaxIdMother'
 import { OwnerProfileContactPhoneMother } from '~/src/test/mothers/OwnerProfileContactPhoneMother'

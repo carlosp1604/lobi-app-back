@@ -23,7 +23,6 @@ import { ProfileRepositoryInterface } from '~/src/modules/User/Domain/Profile/Pr
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/VerificationTokenRepositoryInterface'
@@ -49,7 +48,6 @@ export class CreateUser {
     private readonly domainEventRepository: DomainEventRepositoryInterface,
     private readonly verifyTokenService: VerifyTokenService,
     private readonly hasherService: HasherServiceInterface,
-    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -67,9 +65,7 @@ export class CreateUser {
 
     const { email, password, username, name, userRole, tokenValue } = inputValidationResult.value
 
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: email.value,
-    })
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
 
     const passwordHashString = await this.hasherService.hash(password.value)
     const passwordHash = PasswordHash.fromString(passwordHashString)
@@ -78,10 +74,11 @@ export class CreateUser {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       if (!verificationToken) {
-        return fail(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(email.value)))
+        return fail(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound()))
       }
 
-      const validateTokenResult = verificationToken.validate(now, email, VerificationTokenPurpose.createAccount())
+      const createAccountVerificationTokenPurpose = VerificationTokenPurpose.createAccount()
+      const validateTokenResult = verificationToken.validate(now, email, createAccountVerificationTokenPurpose)
 
       if (!validateTokenResult.success) {
         return this.handleDomainError(validateTokenResult.error, verificationToken, email)
@@ -92,6 +89,8 @@ export class CreateUser {
       if (!isCryptoValid) {
         this.loggerService.warn('Token cryptography verification failed', {
           email: verificationToken.email.value,
+          verificationTokenId: verificationToken.id.value,
+          purpose: createAccountVerificationTokenPurpose,
         })
 
         return fail(CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()))
@@ -114,10 +113,10 @@ export class CreateUser {
         const errors: Array<CreateUserError> = []
 
         if (emailExists) {
-          errors.push(CreateUserError.duplicatedEmail(email.value))
+          errors.push(CreateUserError.duplicatedEmail())
         }
         if (usernameExists) {
-          errors.push(CreateUserError.duplicatedUsername(username.value))
+          errors.push(CreateUserError.duplicatedUsername())
         }
 
         return fail(CreateUserApplicationError.duplicated(errors))
@@ -141,8 +140,8 @@ export class CreateUser {
         user.id,
         user.email,
         deviceLocation,
-        userAgent,
-        ipHash,
+        deviceInfo,
+        userIpHash,
         now,
       )
 
@@ -169,32 +168,32 @@ export class CreateUser {
     const emailResult = EmailAddress.safeCreate(request.email)
 
     if (!emailResult.success) {
-      inputErrors.push(CreateUserError.invalidEmail())
+      inputErrors.push(CreateUserError.invalidEmail(emailResult.error.message))
     }
 
     const tokenResult = VerificationTokenValue.safeCreate(request.token)
     if (!tokenResult.success) {
-      inputErrors.push(CreateUserError.invalidTokenFormat())
+      inputErrors.push(CreateUserError.invalidTokenFormat(tokenResult.error.message))
     }
 
     const usernameResult = UserUsername.safeCreate(request.username)
     if (!usernameResult.success) {
-      inputErrors.push(CreateUserError.invalidUsername())
+      inputErrors.push(CreateUserError.invalidUsername(usernameResult.error.message))
     }
 
     const nameResult = UserName.safeCreate(request.name)
     if (!nameResult.success) {
-      inputErrors.push(CreateUserError.invalidName())
+      inputErrors.push(CreateUserError.invalidName(nameResult.error.message))
     }
 
     const passwordResult = UserPassword.safeCreate(request.password)
     if (!passwordResult.success) {
-      inputErrors.push(CreateUserError.invalidPassword())
+      inputErrors.push(CreateUserError.invalidPassword(passwordResult.error.message))
     }
 
     const roleResult = UserRole.safeCreate(request.requestedRole)
     if (!roleResult.success) {
-      inputErrors.push(CreateUserError.invalidRole())
+      inputErrors.push(CreateUserError.invalidRole(roleResult.error.message))
     }
 
     if (
@@ -232,13 +231,16 @@ export class CreateUser {
       error: exception.message,
     }
 
-    switch (exception.id) {
+    const exceptionId = exception.id
+    const domainMessage = exception.message
+
+    switch (exceptionId) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId: {
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token has already expired',
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired()))
+        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired(domainMessage)))
       }
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId: {
@@ -246,7 +248,7 @@ export class CreateUser {
           ...tokenState,
           reason: 'Token was already used',
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed()))
+        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed(domainMessage)))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId: {
@@ -255,7 +257,7 @@ export class CreateUser {
           reason: 'Token belongs to a different email address',
           requestEmail: requestEmail.value,
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner()))
+        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner(domainMessage)))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId: {
@@ -263,7 +265,7 @@ export class CreateUser {
           ...tokenState,
           reason: 'Token was not generated for signup',
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch()))
+        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch(domainMessage)))
       }
 
       default:

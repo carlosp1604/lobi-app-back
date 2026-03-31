@@ -8,23 +8,21 @@ import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationService'
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
-import {
-  RequestOriginApplicationService,
-  RequestOriginData,
-} from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationRequestDto'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
+import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
 
 describe('RefreshToken', () => {
   const mockedUnitOfWork = mock<UnitOfWork>()
@@ -34,19 +32,22 @@ describe('RefreshToken', () => {
   const mockedUserSessionPolicyManagerService = mock<UserSessionPolicyManagerApplicationService>()
   const mockedHasherService = mock<HasherServiceInterface>()
   const mockedClockService = mock<ClockServiceInterface>()
-  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
   const mockedLoggerService = mock<LoggerServiceInterface>()
 
   const now = new Date('2025-10-21T10:00:00Z')
   const fakeContext: TxContext = { __opaque_tx_context: true }
-  const hashedToken = UserSessionTokenHashMother.valid().value
   const expectedAccessExpiresAt = new Date(now.getTime() + 1000)
   const expectedRefreshExpiresAt = new Date(now.getTime() + 3600)
-  const validDeviceLocation = DeviceLocationMother.valid()
-  const validUserAgent = UserAgentMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
 
-  let request: RefreshSessionApplicationRequestDto
+  const validDeviceLocation = DeviceLocationMother.valid()
+  const validDeviceInfo = DeviceInfoMother.valid()
+  const validIpHash = UserIpHashMother.valid()
+  const validUserIpHash = UserIpHashMother.valid()
+
+  const clearToken = RefreshTokenMother.valid()
+  const hashedToken = UserSessionTokenHashMother.valid().value
+
+  let baseRequest: RefreshSessionApplicationRequestDto
 
   const userId = IdentifierMother.valid()
   const newUserSessionId = IdentifierMother.valid()
@@ -59,27 +60,12 @@ describe('RefreshToken', () => {
     expiresAt: new Date(now.getTime() + 3600),
   })
 
-  const expectedRequestOriginData: RequestOriginData = {
-    userAgent: validUserAgent,
-    ipHash: validIpHash.value,
-    normalizedIp: 'normalized-ip',
-    deviceLocation: validDeviceLocation,
-  }
-
   const activeSession2 = mock<UserSession>()
   const activeSession3 = mock<UserSession>()
 
   const newSession = mock<UserSession>({ id: newUserSessionId, userId })
 
-  const user = new UserTestBuilder().withId(userId).withStatus(UserStatus.active()).withDeletedAt(null).build()
-
-  const generatedTokens = {
-    session: newSession,
-    refreshToken: 'refresh-clear-token',
-    accessToken: 'access-jwt-token',
-    accessTokenExpiresAt: expectedAccessExpiresAt,
-    refreshTokenExpiresAt: expectedRefreshExpiresAt,
-  }
+  let userTestBuilder: UserTestBuilder
 
   const buildUseCase = () => {
     return new RefreshSession(
@@ -88,7 +74,6 @@ describe('RefreshToken', () => {
       mockedHasherService,
       mockedGenerateTokensService,
       mockedUserSessionPolicyManagerService,
-      mockedRequestOriginService,
       mockedClockService,
       mockedUnitOfWork,
       mockedLoggerService,
@@ -104,8 +89,10 @@ describe('RefreshToken', () => {
     mockReset(mockedClockService)
     mockReset(currentSession)
     mockReset(mockedUserSessionPolicyManagerService)
-    mockReset(mockedRequestOriginService)
     mockReset(mockedLoggerService)
+
+    userTestBuilder = new UserTestBuilder().withId(userId).withStatus(UserStatus.active()).withDeletedAt(null)
+    const user = userTestBuilder.build()
 
     mockedClockService.now.mockReturnValue(now)
     mockedUnitOfWork.runInTransaction.mockImplementation(async (work) => {
@@ -113,25 +100,32 @@ describe('RefreshToken', () => {
     })
     mockedSessionRepository.findUserActiveSessions.mockResolvedValue([currentSession])
     mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh.mockReturnValue({ success: true, value: [currentSession] })
-    mockedRequestOriginService.process.mockResolvedValue(expectedRequestOriginData)
 
     mockedHasherService.hash.mockResolvedValue(hashedToken)
     mockedSessionRepository.findByHash.mockResolvedValue(currentSession)
     mockedUserRepository.findByIdWithLock.mockResolvedValue(user)
-    mockedGenerateTokensService.generate.mockResolvedValue(generatedTokens)
+    mockedGenerateTokensService.generate.mockResolvedValue({
+      session: newSession,
+      refreshToken: 'refresh-clear-token',
+      accessToken: 'access-jwt-token',
+      accessTokenExpiresAt: expectedAccessExpiresAt,
+      refreshTokenExpiresAt: expectedRefreshExpiresAt,
+    })
 
     currentSession.isExpired.mockReturnValue(false)
     currentSession.isRevoked.mockReturnValue(false)
 
-    request = {
-      token: 'a'.repeat(48),
-      ip: '203.0.113.10',
-      userAgent: validUserAgent.value,
+    baseRequest = {
+      token: clearToken,
+      clientMetadata: new ClientMetadataResponseTestBuilder()
+        .withDeviceInfo(validDeviceInfo)
+        .withDeviceLocation(validDeviceLocation)
+        .withUserIpHash(validUserIpHash)
+        .build(),
     }
   })
 
   const checkCommonCalls = (activeSessions: Array<UserSession>, sessionsToPersist: Array<UserSession>) => {
-    expect(mockedRequestOriginService.process).toHaveBeenCalledTimes(1)
     expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
     expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
     expect(mockedSessionRepository.findByHash).toHaveBeenCalledTimes(1)
@@ -141,18 +135,12 @@ describe('RefreshToken', () => {
     expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh).toHaveBeenCalledTimes(1)
     expect(mockedSessionRepository.save).toHaveBeenCalledTimes(1)
     expect(mockedLoggerService.warn).not.toHaveBeenCalled()
+    expect(mockedLoggerService.error).not.toHaveBeenCalled()
 
-    expect(mockedRequestOriginService.process).toHaveBeenCalledWith(request.ip, request.userAgent)
-    expect(mockedHasherService.hash).toHaveBeenCalledWith(request.token)
+    expect(mockedHasherService.hash).toHaveBeenCalledWith(baseRequest.token)
     expect(mockedSessionRepository.findByHash).toHaveBeenCalledWith(hashedToken, fakeContext)
     expect(mockedUserRepository.findByIdWithLock).toHaveBeenCalledWith(currentSession.userId.value, fakeContext)
-    expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(
-      user.id,
-      now,
-      expectedRequestOriginData.userAgent,
-      validIpHash,
-      expectedRequestOriginData.deviceLocation,
-    )
+    expect(mockedGenerateTokensService.generate).toHaveBeenCalledWith(userId, now, validDeviceInfo, validIpHash, validDeviceLocation)
     expect(mockedSessionRepository.findUserActiveSessions).toHaveBeenCalledWith(userId, now, fakeContext)
     expect(mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh).toHaveBeenCalledWith(
       currentSession.id,
@@ -167,7 +155,7 @@ describe('RefreshToken', () => {
     it('should call services and entities correctly and return the correct result when only the current session must be revoked', async () => {
       const useCase = buildUseCase()
 
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       checkCommonCalls([currentSession], [currentSession, newSession])
 
@@ -194,7 +182,7 @@ describe('RefreshToken', () => {
 
       const useCase = buildUseCase()
 
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       checkCommonCalls(activeSessions, [currentSession, activeSession2, newSession])
 
@@ -212,7 +200,7 @@ describe('RefreshToken', () => {
   })
 
   describe('when there are errors', () => {
-    describe('when token is not valid', () => {
+    describe('when token format is not valid', () => {
       const testCase = async (request: RefreshSessionApplicationRequestDto) => {
         const useCase = buildUseCase()
 
@@ -221,23 +209,23 @@ describe('RefreshToken', () => {
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(RefreshSessionApplicationError.invalidTokenFormat())
 
-        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+        expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
       }
 
       it('should return error when token is not valid due to insufficient length', async () => {
-        const requestWithInsufficientLengthToken = { ...request, token: 'invalid-token' }
+        const requestWithInsufficientLengthToken = { ...baseRequest, token: RefreshTokenMother.tooShort() }
 
         await testCase(requestWithInsufficientLengthToken)
       })
 
       it('should return error when token is not valid due to excessive length', async () => {
-        const requestWithExcessiveLengthToken = { ...request, token: 'a'.repeat(120) }
+        const requestWithExcessiveLengthToken = { ...baseRequest, token: RefreshTokenMother.tooLong() }
 
         await testCase(requestWithExcessiveLengthToken)
       })
 
       it('should return error when token format is not valid', async () => {
-        const requestWithExcessiveLengthToken = { ...request, token: '*'.repeat(48) }
+        const requestWithExcessiveLengthToken = { ...baseRequest, token: RefreshTokenMother.invalidFormat() }
 
         await testCase(requestWithExcessiveLengthToken)
       })
@@ -248,11 +236,16 @@ describe('RefreshToken', () => {
 
       const useCase = buildUseCase()
 
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionNotFound())
 
+      expect(mockedLoggerService.warn).toHaveBeenCalledWith('Session refresh failed', {
+        reason: 'Session not found for the provided token',
+        tokenSample: clearToken.slice(0, 10),
+        tokenLength: clearToken.length,
+      })
       expect(mockedUserRepository.findByIdWithLock).not.toHaveBeenCalled()
     })
 
@@ -261,10 +254,10 @@ describe('RefreshToken', () => {
       currentSession.isRevoked.mockReturnValue(true)
 
       const useCase = buildUseCase()
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked(currentSession.id.value))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyRevoked())
 
       expect(mockedLoggerService.warn).toHaveBeenCalledWith('Session refresh rejected', {
         sessionId: currentSession.id.value,
@@ -279,10 +272,10 @@ describe('RefreshToken', () => {
       currentSession.isExpired.mockReturnValue(true)
 
       const useCase = buildUseCase()
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired(currentSession.id.value))
+      expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionAlreadyExpired())
 
       expect(mockedLoggerService.warn).toHaveBeenCalledWith('Session refresh rejected', {
         sessionId: currentSession.id.value,
@@ -293,39 +286,43 @@ describe('RefreshToken', () => {
     })
 
     describe('when user does not exist, is deleted or is not active', () => {
-      const runTestCaseAndAssertResult = async (reason: string) => {
+      it('should return error when user does not exist', async () => {
+        mockedUserRepository.findByIdWithLock.mockResolvedValue(null)
+
         const useCase = buildUseCase()
 
-        const result = await useCase.execute(request)
+        const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userNotFound(userId.value))
+        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userNotFound())
 
         expect(mockedLoggerService.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
           userId: userId.value,
           sessionId: currentSession.id.value,
-          reason,
+          reason: 'User not found',
         })
-      }
 
-      it('should return error when user does not exist', async () => {
-        mockedUserRepository.findByIdWithLock.mockResolvedValue(null)
-
-        await runTestCaseAndAssertResult('User not found')
+        expect(mockedGenerateTokensService.generate).not.toHaveBeenCalled()
       })
 
       it('should return error when user is not active', async () => {
         const inactiveUser = new UserTestBuilder().withId(userId).withStatus(UserStatus.deactivated()).withDeletedAt(null).build()
         mockedUserRepository.findByIdWithLock.mockResolvedValue(inactiveUser)
 
-        await runTestCaseAndAssertResult('User is disabled')
-      })
+        const useCase = buildUseCase()
 
-      it('should return error if user is deleted', async () => {
-        const inactiveUser = new UserTestBuilder().withId(userId).withStatus(UserStatus.active()).withDeletedAt(now).build()
-        mockedUserRepository.findByIdWithLock.mockResolvedValue(inactiveUser)
+        const result = await useCase.execute(baseRequest)
 
-        await runTestCaseAndAssertResult('User is disabled')
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(RefreshSessionApplicationError.userDisabled())
+
+        expect(mockedLoggerService.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
+          userId: userId.value,
+          sessionId: currentSession.id.value,
+          reason: 'User is disabled',
+        })
+
+        expect(mockedGenerateTokensService.generate).not.toHaveBeenCalled()
       })
     })
 
@@ -338,7 +335,7 @@ describe('RefreshToken', () => {
       })
 
       const useCase = buildUseCase()
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(RefreshSessionApplicationError.sessionInconsistency(serviceError.message))
@@ -355,7 +352,7 @@ describe('RefreshToken', () => {
       })
 
       const useCase = buildUseCase()
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(RefreshSessionApplicationError.revocationFailed(serviceError.message))
@@ -375,7 +372,7 @@ describe('RefreshToken', () => {
       })
 
       const useCase = buildUseCase()
-      const result = await useCase.execute(request)
+      const result = await useCase.execute(baseRequest)
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(
@@ -385,43 +382,42 @@ describe('RefreshToken', () => {
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
 
-    it('should throw error when RequestOriginApplicationService fails', async () => {
-      mockedRequestOriginService.process.mockImplementation(() => {
-        throw Error('Unexpected error')
-      })
-
-      const useCase = buildUseCase()
-      await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected error'))
-      expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
-    })
-
     it('should throw error when UserSessionPolicyManagerApplicationService fails', async () => {
+      const sessionPolicyServiceError = new Error('Unexpected error')
+
       mockedUserSessionPolicyManagerService.applyPolicyAndRevokeForRefresh.mockImplementation(() => {
-        throw Error('Unexpected error')
+        throw sessionPolicyServiceError
       })
 
       const useCase = buildUseCase()
-      await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected error'))
+
+      await expect(useCase.execute(baseRequest)).rejects.toThrow(sessionPolicyServiceError)
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
 
-    it('should throw error when UserRepository fails', async () => {
+    it('should throw error when UserRepository fails during findByIdWithLock', async () => {
+      const repositoryError = new Error('Unexpected error')
+
       mockedUserRepository.findByIdWithLock.mockImplementation(() => {
-        throw Error('Unexpected error')
+        throw repositoryError
       })
 
       const useCase = buildUseCase()
-      await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected error'))
+
+      await expect(useCase.execute(baseRequest)).rejects.toThrow(repositoryError)
       expect(mockedGenerateTokensService.generate).not.toHaveBeenCalled()
     })
 
-    it('should throw error when UserSessionRepository fails', async () => {
+    it('should throw error when UserSessionRepository fails during findUserActiveSessions', async () => {
+      const repositoryError = new Error('Unexpected error')
+
       mockedSessionRepository.findUserActiveSessions.mockImplementation(() => {
-        throw Error('Unexpected error')
+        throw repositoryError
       })
 
       const useCase = buildUseCase()
-      await expect(useCase.execute(request)).rejects.toThrow(Error('Unexpected error'))
+
+      await expect(useCase.execute(baseRequest)).rejects.toThrow(repositoryError)
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
   })

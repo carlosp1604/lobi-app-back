@@ -3,9 +3,9 @@ import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 
 describe('User', () => {
   describe('isActive', () => {

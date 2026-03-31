@@ -1,7 +1,7 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { UserCredential } from '~/src/modules/Auth/Domain/UserCredential'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
 
 export class UserCredentialTestBuilder {

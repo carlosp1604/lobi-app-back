@@ -1,18 +1,18 @@
 import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/ModelTranslators/UserSessionModelTranslator'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
-import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
+import { UserSessionRawModel, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
 
 describe('UserSessionModelTranslator', () => {
@@ -21,15 +21,28 @@ describe('UserSessionModelTranslator', () => {
   const futureExpiresAt = new Date(now.getTime() + 60 * 60 * 1000)
 
   const validDeviceLocation = DeviceLocationMother.valid()
+  const validIpHash = UserIpHashMother.valid()
+  const validDeviceInfo = DeviceInfoMother.valid()
+  const validSessionId = IdentifierMother.valid()
+  const validUserId = IdentifierMother.valid()
+  const validTokenHash = UserSessionTokenHashMother.valid()
 
-  const baseRaw = makeRawSession({
-    device_country_code: validDeviceLocation.countryCode,
-    device_city: validDeviceLocation.city,
-    created_at: now,
-    updated_at: now,
-    ip_hash: UserSessionIpHashMother.valid().value,
-    revoked_at: null,
-    expires_at: futureExpiresAt,
+  let baseRawModel: UserSessionRawWithRelationships
+
+  beforeEach(() => {
+    baseRawModel = makeRawSession({
+      id: validSessionId.value,
+      user_id: validUserId.value,
+      token_hash: validTokenHash.value,
+      device_country_code: validDeviceLocation.countryCode,
+      device_city: validDeviceLocation.city,
+      ip_hash: validIpHash.value,
+      revoked_at: null,
+      device_info: validDeviceInfo.value,
+      created_at: now,
+      updated_at: now,
+      expires_at: futureExpiresAt,
+    })
   })
 
   describe('toDomain', () => {
@@ -37,12 +50,12 @@ describe('UserSessionModelTranslator', () => {
       expect(result.id).toBeInstanceOf(Identifier)
       expect(result.userId).toBeInstanceOf(Identifier)
       expect(result.tokenHash).toBeInstanceOf(UserSessionTokenHash)
-      expect(result.userAgent).toBeInstanceOf(UserAgent)
+      expect(result.deviceInfo).toBeInstanceOf(DeviceInfo)
 
-      expect(result.id.value).toBe(raw.id)
-      expect(result.userId.value).toBe(raw.user_id)
-      expect(result.tokenHash.value).toBe(raw.token_hash)
-      expect(result.userAgent.value).toBe(raw.user_agent)
+      expect(result.id.equals(validSessionId)).toBe(true)
+      expect(result.userId.equals(validUserId)).toBe(true)
+      expect(result.tokenHash.equals(validTokenHash)).toBe(true)
+      expect(result.deviceInfo.equals(validDeviceInfo)).toBe(true)
       expect(result.expiresAt).toEqual(raw.expires_at)
       expect(result.createdAt).toEqual(raw.created_at)
       expect(result.updatedAt).toEqual(raw.updated_at)
@@ -51,80 +64,81 @@ describe('UserSessionModelTranslator', () => {
       if (raw.ip_hash === null) {
         expect(result.ipHash).toBeNull()
       } else {
-        expect(result.ipHash).toBeInstanceOf(UserSessionIpHash)
-        expect(result.ipHash?.value).toBe(raw.ip_hash)
+        expect(result.ipHash).toBeInstanceOf(UserIpHash)
+        expect(result.ipHash?.equals(validIpHash)).toBe(true)
       }
 
       if (raw.device_city === null && raw.device_country_code === null) {
         expect(result.deviceLocation).toBeNull()
       } else {
         expect(result.deviceLocation).toBeInstanceOf(DeviceLocation)
-        expect(result.deviceLocation?.city).toBe(raw.device_city)
-        expect(result.deviceLocation?.countryCode).toBe(raw.device_country_code)
+        expect(result.deviceLocation?.equals(validDeviceLocation)).toBe(true)
       }
     }
 
     it('should return the correct domain object when nullable fields are not NULL', () => {
-      const raw = { ...baseRaw, revoked_at: now }
+      const rawModel = { ...baseRawModel, revoked_at: now }
 
-      const result = UserSessionModelTranslator.toDomain(raw)
+      const result = UserSessionModelTranslator.toDomain(rawModel)
 
-      checkResult(result, raw)
-      expect(result.revokedAt).toEqual(raw.revoked_at)
+      checkResult(result, rawModel)
+
+      expect(result.revokedAt).toEqual(rawModel.revoked_at)
       expect(result.ipHash).not.toBeNull()
       expect(result.deviceLocation).not.toBeNull()
     })
 
     it('should return the correct domain object when nullable fields are NULL', () => {
-      const raw: UserSessionRawModel = {
-        ...baseRaw,
+      const rawModel = {
+        ...baseRawModel,
         revoked_at: null,
         ip_hash: null,
         device_country_code: null,
         device_city: null,
       }
 
-      const result = UserSessionModelTranslator.toDomain(raw)
+      const result = UserSessionModelTranslator.toDomain(rawModel)
 
-      checkResult(result, raw)
+      checkResult(result, rawModel)
+
       expect(result.revokedAt).toBeNull()
       expect(result.ipHash).toBeNull()
       expect(result.deviceLocation).toBeNull()
     })
 
     it('should throw error if device location data is partial (city is null)', () => {
-      const raw: UserSessionRawModel = {
-        ...baseRaw,
-        device_country_code: 'ES',
+      const rawModel: UserSessionRawModel = {
+        ...baseRawModel,
+        device_country_code: validDeviceLocation.countryCode,
         device_city: null,
       }
 
-      expect(() => UserSessionModelTranslator.toDomain(raw)).toThrow(UserSessionDomainException.invalidDeviceCity(''))
+      expect(() => UserSessionModelTranslator.toDomain(rawModel)).toThrow(UserSessionDomainException.invalidDeviceCity(''))
     })
 
     it('should throw error if device location data is partial (countryCode is null)', () => {
-      const raw: UserSessionRawModel = {
-        ...baseRaw,
+      const rawModel = {
+        ...baseRawModel,
         device_country_code: null,
-        device_city: 'Madrid',
+        device_city: validDeviceLocation.city,
       }
 
-      expect(() => UserSessionModelTranslator.toDomain(raw)).toThrow(UserSessionDomainException.invalidDeviceCountryCode(''))
+      expect(() => UserSessionModelTranslator.toDomain(rawModel)).toThrow(UserSessionDomainException.invalidDeviceCountryCode(''))
     })
 
     it('does not mutate the input raw model', () => {
-      const raw = structuredClone(baseRaw)
+      const rawModel = structuredClone(baseRawModel)
 
-      UserSessionModelTranslator.toDomain(raw)
+      UserSessionModelTranslator.toDomain(rawModel)
 
-      expect(raw).toEqual(baseRaw)
+      expect(rawModel).toEqual(baseRawModel)
     })
   })
 
   describe('toDatabase', () => {
     let sessionBuilder: UserSessionTestBuilder
     const validDeviceLocation = DeviceLocationMother.valid()
-    const validIpHash = UserSessionIpHashMother.valid()
+    const validIpHash = UserIpHashMother.valid()
 
     const checkResult = (result: UserSessionRawModel, domain: UserSession) => {
       expect(result.id).toBe(domain.id.value)
@@ -133,7 +147,7 @@ describe('UserSessionModelTranslator', () => {
       expect(result.expires_at).toEqual(domain.expiresAt)
       expect(result.created_at).toEqual(domain.createdAt)
       expect(result.updated_at).toEqual(domain.updatedAt)
-      expect(result.user_agent).toBe(domain.userAgent.value)
+      expect(result.device_info).toEqual(domain.deviceInfo.value)
       expect(result.revoked_at).toEqual(domain.revokedAt)
 
       if (domain.ipHash === null) {
@@ -161,7 +175,7 @@ describe('UserSessionModelTranslator', () => {
         .withExpiresAt(futureExpiresAt)
         .withRevokedAt(null)
         .withIpHash(validIpHash)
-        .withUserAgent(UserAgentMother.valid())
+        .withDeviceInfo(DeviceInfoMother.valid())
         .withDeviceLocation(validDeviceLocation)
         .withCreatedAt(now)
         .withUpdatedAt(now)
@@ -201,7 +215,7 @@ describe('UserSessionModelTranslator', () => {
         expiresAt: session.expiresAt,
         revokedAt: session.revokedAt,
         ipHash: session.ipHash,
-        userAgent: session.userAgent,
+        deviceInfo: session.deviceInfo,
         deviceLocation: session.deviceLocation,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
@@ -214,7 +228,7 @@ describe('UserSessionModelTranslator', () => {
       expect(session.tokenHash.equals(snapshot.tokenHash)).toBe(true)
       expect(session.ipHash?.equals(snapshot.ipHash)).toBe(true)
       expect(session.deviceLocation?.equals(snapshot.deviceLocation)).toBe(true)
-      expect(session.userAgent.equals(snapshot.userAgent)).toBe(true)
+      expect(session.deviceInfo.equals(snapshot.deviceInfo)).toBe(true)
       expect(session.expiresAt).toEqual(snapshot.expiresAt)
       expect(session.revokedAt).toEqual(snapshot.revokedAt)
       expect(session.createdAt).toEqual(snapshot.createdAt)

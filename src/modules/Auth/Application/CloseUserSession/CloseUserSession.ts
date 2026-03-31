@@ -1,15 +1,14 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
-import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
 import { UserSessionRepositoryInterface } from '~/src/modules/Auth/Domain/UserSessionRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
 import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
 
 interface CloseUserSessionValidatedInput {
@@ -23,7 +22,6 @@ export class CloseUserSession {
     private readonly userRepository: UserRepositoryInterface,
     private readonly sessionRepository: UserSessionRepositoryInterface,
     private readonly domainEventRepository: DomainEventRepositoryInterface,
-    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -41,11 +39,7 @@ export class CloseUserSession {
 
     const { userId, sessionId, currentSessionId } = inputValidationResult.value
 
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      userId: userId.value,
-      targetSessionId: sessionId.value,
-      currentSessionId: currentSessionId.value,
-    })
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const user = await this.userRepository.findByIdWithLock(userId.value, context)
@@ -56,7 +50,7 @@ export class CloseUserSession {
           reason: 'User not found',
         })
 
-        return fail(CloseUserSessionApplicationError.userNotFound(userId.value))
+        return fail(CloseUserSessionApplicationError.userNotFound())
       }
 
       if (!user.isActive()) {
@@ -65,7 +59,7 @@ export class CloseUserSession {
           reason: 'User is disabled',
         })
 
-        return fail(CloseUserSessionApplicationError.userDisabled(userId.value))
+        return fail(CloseUserSessionApplicationError.userDisabled())
       }
 
       const session = await this.sessionRepository.findById(sessionId, context)
@@ -77,7 +71,7 @@ export class CloseUserSession {
           reason: 'Session not found',
         })
 
-        return fail(CloseUserSessionApplicationError.sessionNotFound(sessionId.value))
+        return fail(CloseUserSessionApplicationError.sessionNotFound())
       }
 
       if (!session.userId.equals(user.id)) {
@@ -88,7 +82,7 @@ export class CloseUserSession {
           reason: 'Session owner mismatch',
         })
 
-        return fail(CloseUserSessionApplicationError.sessionDoesNotBelongToUser(sessionId.value, userId.value))
+        return fail(CloseUserSessionApplicationError.sessionDoesNotBelongToUser())
       }
 
       const canRevokeResult = session.canBeRevoked(now)
@@ -109,8 +103,8 @@ export class CloseUserSession {
         session,
         currentSessionId,
         deviceLocation,
-        userAgent,
-        ipHash,
+        deviceInfo,
+        userIpHash,
         now,
       )
 
@@ -135,7 +129,7 @@ export class CloseUserSession {
         reason: userIdResult.error.message,
       })
 
-      return fail(CloseUserSessionApplicationError.invalidInput('userId', userIdResult.error.message))
+      return fail(CloseUserSessionApplicationError.invalidUserId(userIdResult.error.message))
     }
 
     const userId = userIdResult.value
@@ -152,7 +146,7 @@ export class CloseUserSession {
         reason: sessionIdResult.error.message,
       })
 
-      return fail(CloseUserSessionApplicationError.invalidInput('sessionId', sessionIdResult.error.message))
+      return fail(CloseUserSessionApplicationError.invalidSessionId(sessionIdResult.error.message))
     }
 
     const currentSessionIdResult = Identifier.safeCreate(request.currentSessionId)
@@ -167,7 +161,7 @@ export class CloseUserSession {
         reason: currentSessionIdResult.error.message,
       })
 
-      return fail(CloseUserSessionApplicationError.invalidInput('currentSessionId', currentSessionIdResult.error.message))
+      return fail(CloseUserSessionApplicationError.invalidCurrentSessionId(currentSessionIdResult.error.message))
     }
 
     return success({

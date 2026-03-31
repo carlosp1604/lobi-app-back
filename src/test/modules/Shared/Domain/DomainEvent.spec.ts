@@ -1,5 +1,5 @@
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { CurrentDomainEventVersion, DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 

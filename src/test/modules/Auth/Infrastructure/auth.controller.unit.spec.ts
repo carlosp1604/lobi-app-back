@@ -7,10 +7,11 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common'
-import { FastifyReply } from 'fastify'
+import { FastifyReply, FastifyRequest } from 'fastify'
 import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controller'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import {
+  AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT,
   AUTH_CREATE_USER_DUPLICATED_EMAIL,
   AUTH_CREATE_USER_DUPLICATED_USERNAME,
   AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
@@ -41,6 +42,7 @@ import {
   AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
+  AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
 import { mock, mockReset } from 'jest-mock-extended'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
@@ -53,9 +55,9 @@ import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCode
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
@@ -69,7 +71,7 @@ import {
   ResetUserPasswordApplicationError,
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
@@ -80,6 +82,11 @@ import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainE
 import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
+import { RequestMetadataExtractorInterface } from '~/src/modules/Shared/Infrastructure/Services/RequestMetadataExtractorInterface'
+import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
+import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -93,11 +100,32 @@ describe('AuthController', () => {
   const mockedLogoutUserUseCase = mock<LogoutUser>()
   const mockedCloseUserSessionUserCase = mock<CloseUserSession>()
   const mockedGetActiveSessionsUseCase = mock<GetActiveSessions>()
+  const mockedRequestMetadataExtractor = mock<RequestMetadataExtractorInterface>()
+  const mockedClientMetadataService = mock<ClientMetadataApplicationService>()
 
-  const mockedIp = '127.0.0.1'
-  const mockedUserAgent = UserAgentMother.forTesting().value
+  const mockedRawRequestMetadata = { ip: UserIpMother.valid(), userAgent: DeviceInfoMother.validString() }
+  const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
 
   const baseDate = new Date('2025-10-13T14:00:00.014Z')
+
+  const authCookiesConfigServiceMockImplementation = createConfigServiceMockImplementation({
+    REFRESH_COOKIE_NAME: 'x-refresh-token',
+    ACCESS_COOKIE_NAME: 'x-access-token',
+    isProduction: false,
+  })
+
+  const expectedLoginRefreshResponse = {
+    accessToken: 'expected-access-token',
+    refreshToken: 'expected-refresh-token',
+    accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
+    refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
+    sessionId: 'expected-session-id',
+  }
+
+  const assertMetadataFlowWasCalled = (request: FastifyRequest) => {
+    expect(mockedRequestMetadataExtractor.extract).toHaveBeenCalledWith(request)
+    expect(mockedClientMetadataService.process).toHaveBeenCalledWith(mockedRawRequestMetadata)
+  }
 
   beforeEach(() => {
     mockReset(mockedResponse)
@@ -110,6 +138,8 @@ describe('AuthController', () => {
     mockReset(mockedResetUserPasswordUseCase)
     mockReset(mockedLogoutUserUseCase)
     mockReset(mockedCloseUserSessionUserCase)
+    mockReset(mockedRequestMetadataExtractor)
+    mockReset(mockedClientMetadataService)
     mockReset(mockedGetActiveSessionsUseCase)
   })
 
@@ -124,11 +154,13 @@ describe('AuthController', () => {
       mockedLogoutUserUseCase,
       mockedCloseUserSessionUserCase,
       mockedGetActiveSessionsUseCase,
+      mockedRequestMetadataExtractor,
+      mockedClientMetadataService,
       mockedConfigService,
     )
   }
 
-  const loginRefreshAssertCommonCalls = (accessCookieValue: string, refreshCookieValue: string) => {
+  const assertAuthCookiesWereSet = (accessCookieValue: string, refreshCookieValue: string) => {
     expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
     expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
@@ -150,7 +182,7 @@ describe('AuthController', () => {
     })
   }
 
-  const expectCookiesCleared = () => {
+  const assertAuthCookiesWereCleared = () => {
     expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
     expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
@@ -175,97 +207,76 @@ describe('AuthController', () => {
     const validPassword = UserPasswordMother.valid().value
 
     const mockBody = { email: validEmail, password: validPassword }
+    const mockRequest = {} as unknown as FastifyRequest
 
     beforeEach(() => {
-      mockedConfigService.get.mockImplementation(
-        createConfigServiceMockImplementation({
-          REFRESH_COOKIE_NAME: 'x-refresh-token',
-          ACCESS_COOKIE_NAME: 'x-access-token',
-          isProduction: false,
-        }),
-      )
+      mockedConfigService.get.mockImplementation(authCookiesConfigServiceMockImplementation)
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
 
     describe('happy path', () => {
-      const expectedResponse = {
-        accessToken: 'expected-access-token',
-        refreshToken: 'expected-refresh-token',
-        accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
-        refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
-        sessionId: 'expected-session-id',
-        isNewDevice: true,
-      }
-
       beforeEach(() => {
         mockedLoginUseCase.execute.mockResolvedValue({
           success: true,
-          value: expectedResponse,
+          value: expectedLoginRefreshResponse,
         })
       })
 
-      it('should call use-case correctly passing IP and UserAgent from arguments, set cookie and return data', async () => {
+      it('should extract metadata, call use-case correctly, set cookies and return data', async () => {
         const controller = buildController()
 
-        await controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)
+        const result = await controller.login(mockRequest, mockBody, mockedResponse)
 
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-refresh-token')
+        assertMetadataFlowWasCalled(mockRequest)
+
         expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
           email: mockBody.email,
           password: mockBody.password,
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
-        })
-      })
-
-      it('should call use-case correctly when UserAgent is undefined, set cookie and return data', async () => {
-        const controller = buildController()
-
-        const result = await controller.login(mockBody, mockedIp, undefined, mockedResponse)
-
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-refresh-token')
-        expect(mockedLoginUseCase.execute).toHaveBeenCalledWith({
-          email: mockBody.email,
-          password: mockBody.password,
-          ip: mockedIp,
-          userAgent: undefined,
+          clientMetadata: mockedClientMetadata,
         })
 
-        expect(result).toEqual(expectedResponse)
+        assertAuthCookiesWereSet('expected-access-token', 'expected-refresh-token')
+        expect(result).toEqual(expectedLoginRefreshResponse)
       })
     })
 
     describe('when there are errors', () => {
+      const assertAuthCookiesWereNotSet = () => {
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
+      }
+
       it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
-
-        const useCaseError = LoginUserApplicationError.invalidUserEmail(validEmail)
+        const useCaseError = LoginUserApplicationError.invalidUserEmail('Invalid email format')
 
         mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_EMAIL,
             message: useCaseError.message,
           }),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnprocessableEntityException when use-case returns invalidPasswordFormat error', async () => {
         const controller = buildController()
+        const useCaseError = LoginUserApplicationError.invalidPasswordFormat('Invalid password format')
 
-        const useCaseError = LoginUserApplicationError.invalidPasswordFormat()
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
-
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
             message: useCaseError.message,
           }),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns invalidCredentials error', async () => {
@@ -273,15 +284,17 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.invalidCredentials(IdentifierMother.valid().value),
+          error: LoginUserApplicationError.invalidCredentials(),
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns userNotFound error', async () => {
@@ -289,165 +302,186 @@ describe('AuthController', () => {
 
         mockedLoginUseCase.execute.mockResolvedValue({
           success: false,
-          error: LoginUserApplicationError.userNotFound(validEmail),
+          error: LoginUserApplicationError.userNotFound(),
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
+      })
+
+      it('should throw UnauthorizedException when use-case returns userDisabled error', async () => {
+        const controller = buildController()
+
+        mockedLoginUseCase.execute.mockResolvedValue({
+          success: false,
+          error: LoginUserApplicationError.userDisabled(),
+        })
+
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
+        const useCaseError = LoginUserApplicationError.userDoesNotHaveCredentials()
 
-        const useCaseError = LoginUserApplicationError.userDoesNotHaveCredentials(validEmail)
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
-
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns internalError', async () => {
         const controller = buildController()
-
         const useCaseError = LoginUserApplicationError.internalError('Unexpected error')
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns revocationFailed', async () => {
         const controller = buildController()
-
         const useCaseError = LoginUserApplicationError.revocationFailed('Cannot revoke a session')
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: useCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns a unknown error', async () => {
         const controller = buildController()
-
         const unknownUseCaseError = {
           id: 'login_user_unknown_error',
           message: 'Unknown error',
         } as unknown as LoginUserApplicationError
 
-        mockedLoginUseCase.execute.mockResolvedValue({
-          success: false,
-          error: unknownUseCaseError,
-        })
+        mockedLoginUseCase.execute.mockResolvedValue({ success: false, error: unknownUseCaseError })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(
           new InternalServerErrorException(unknownUseCaseError),
         )
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
-      it('should throw error when use-case fails with a unexpected error', async () => {
+      it('should throw error when use-case fails with an unexpected exception', async () => {
         const controller = buildController()
-
         const unexpectedError = new Error('Unexpected error')
 
         mockedLoginUseCase.execute.mockImplementation(() => {
           throw unexpectedError
         })
 
-        await expect(controller.login(mockBody, mockedIp, mockedUserAgent, mockedResponse)).rejects.toThrow(unexpectedError)
+        await expect(controller.login(mockRequest, mockBody, mockedResponse)).rejects.toThrow(unexpectedError)
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
     })
   })
 
   describe('refresh', () => {
+    const mockRequest = {} as unknown as FastifyRequest
+    const mockRefreshToken = RefreshTokenMother.valid()
+
+    const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
+
     beforeEach(() => {
-      mockedConfigService.get.mockImplementation(
-        createConfigServiceMockImplementation({
-          REFRESH_COOKIE_NAME: 'x-refresh-token',
-          ACCESS_COOKIE_NAME: 'x-access-token',
-          isProduction: false,
-        }),
-      )
+      mockedConfigService.get.mockImplementation(authCookiesConfigServiceMockImplementation)
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
 
     describe('happy path', () => {
-      const expectedResponse = {
-        accessToken: 'expected-access-token',
-        refreshToken: 'expected-new-refresh-token',
-        accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
-        refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
-        sessionId: 'expected-session-id',
-      }
-
       beforeEach(() => {
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: true,
-          value: expectedResponse,
+          value: expectedLoginRefreshResponse,
         })
       })
 
-      it('should call use-case correctly passing IP and UserAgent from arguments, set cookie and return data', async () => {
+      it('should extract metadata, call use-case correctly, set cookies and return data', async () => {
         const controller = buildController()
 
-        const result = await controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')
+        const result = await controller.refresh(mockRequest, mockedResponse, mockRefreshToken)
 
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-new-refresh-token')
+        assertMetadataFlowWasCalled(mockRequest)
+
         expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
-          token: 'expected-refresh-token',
+          token: mockRefreshToken,
+          clientMetadata: mockedClientMetadata,
         })
-        expect(result).toEqual(expectedResponse)
-      })
 
-      it('should call use-case correctly when UserAgent is undefined, set cookie and return data', async () => {
-        const controller = buildController()
-
-        const result = await controller.refresh(mockedIp, undefined, mockedResponse, 'expected-refresh-token')
-
-        loginRefreshAssertCommonCalls('expected-access-token', 'expected-new-refresh-token')
-        expect(mockedRefreshSessionUseCase.execute).toHaveBeenCalledWith({
-          ip: mockedIp,
-          userAgent: undefined,
-          token: 'expected-refresh-token',
-        })
-        expect(result).toEqual(expectedResponse)
+        assertAuthCookiesWereSet('expected-access-token', 'expected-refresh-token')
+        expect(result).toEqual(expectedLoginRefreshResponse)
       })
     })
 
     describe('when there are errors', () => {
+      const assertAuthCookiesWereNotSet = () => {
+        expect(mockedConfigService.get).not.toHaveBeenCalled()
+        expect(mockedResponse.setCookie).not.toHaveBeenCalled()
+      }
+
       it('should throw UnauthorizedException when use-case returns userNotFound error', async () => {
         const controller = buildController()
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.userNotFound('test-user-id'),
+          error: RefreshSessionApplicationError.userNotFound(),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
+      })
+
+      it('should throw UnauthorizedException when use-case returns userDisabled error', async () => {
+        const controller = buildController()
+
+        mockedRefreshSessionUseCase.execute.mockResolvedValue({
+          success: false,
+          error: RefreshSessionApplicationError.userDisabled(),
+        })
+
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
+          new UnauthorizedException({
+            code: UNAUTHORIZED_ACCESS,
+            message: 'Unauthorized access',
+          }),
+        )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns sessionNotFound error', async () => {
@@ -458,12 +492,15 @@ describe('AuthController', () => {
           error: RefreshSessionApplicationError.sessionNotFound(),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns sessionAlreadyExpired error', async () => {
@@ -471,15 +508,18 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.sessionAlreadyExpired('test-session-id'),
+          error: RefreshSessionApplicationError.sessionAlreadyExpired(),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnauthorizedException when use-case returns sessionAlreadyRevoked error', async () => {
@@ -487,15 +527,18 @@ describe('AuthController', () => {
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
           success: false,
-          error: RefreshSessionApplicationError.sessionAlreadyRevoked('test-session-id'),
+          error: RefreshSessionApplicationError.sessionAlreadyRevoked(),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new UnauthorizedException({
             code: UNAUTHORIZED_ACCESS,
             message: 'Unauthorized access',
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw UnprocessableEntityException when use-case returns invalidTokenFormat error', async () => {
@@ -506,17 +549,19 @@ describe('AuthController', () => {
           error: RefreshSessionApplicationError.invalidTokenFormat(),
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'invalid-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, 'invalid-refresh-token')).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_REFRESH_INVALID_TOKEN_FORMAT,
             message: RefreshSessionApplicationError.invalidTokenFormat().message,
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns sessionInconsistency error', async () => {
         const controller = buildController()
-
         const useCaseError = RefreshSessionApplicationError.sessionInconsistency('Unexpected inconsistency error')
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -524,14 +569,16 @@ describe('AuthController', () => {
           error: useCaseError,
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns revocationFailed error', async () => {
         const controller = buildController()
-
         const useCaseError = RefreshSessionApplicationError.revocationFailed('Unexpected revocation error')
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -539,14 +586,16 @@ describe('AuthController', () => {
           error: useCaseError,
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
       it('should throw InternalServerErrorException when use-case returns internalError error', async () => {
         const controller = buildController()
-
         const useCaseError = RefreshSessionApplicationError.internalError('Unexpected internal error')
 
         mockedRefreshSessionUseCase.execute.mockResolvedValue({
@@ -554,28 +603,39 @@ describe('AuthController', () => {
           error: useCaseError,
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(
           new InternalServerErrorException(useCaseError),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
 
-      it('should throw error when use-case fails with an unexpected error', async () => {
+      it('should throw error when use-case fails with an unexpected exception', async () => {
         const controller = buildController()
+        const unexpectedError = new Error('Unexpected error')
 
         mockedRefreshSessionUseCase.execute.mockImplementation(() => {
-          throw Error('Unexpected error')
+          throw unexpectedError
         })
 
-        await expect(controller.refresh(mockedIp, mockedUserAgent, mockedResponse, 'expected-refresh-token')).rejects.toThrow(
-          Error('Unexpected error'),
-        )
+        await expect(controller.refresh(mockRequest, mockedResponse, mockRefreshToken)).rejects.toThrow(unexpectedError)
+
+        assertMetadataFlowWasCalled(mockRequest)
+        assertAuthCookiesWereNotSet()
       })
     })
   })
 
   describe('verify email', () => {
+    const mockRequest = {} as unknown as FastifyRequest
     const validEmail = EmailAddressMother.valid()
     const mockBody = { email: validEmail.value, sendNewToken: false }
+
+    beforeEach(() => {
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
+    })
 
     describe('happy path', () => {
       beforeEach(() => {
@@ -586,68 +646,38 @@ describe('AuthController', () => {
       })
 
       describe('signup', () => {
-        it('should call use-case correctly passing IP and UserAgent from arguments and return data', async () => {
+        it('should extract metadata, call use-case correctly and return undefined', async () => {
           const controller = buildController()
 
-          const result = await controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)
+          const result = await controller.verifyEmailCreateAccount(mockRequest, mockBody)
+
+          assertMetadataFlowWasCalled(mockRequest)
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.createAccount().value,
             email: mockBody.email,
             sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: mockedUserAgent,
-          })
-          expect(result).toBeUndefined()
-        })
-
-        it('should call use-case correctly when UserAgent is undefined and return data', async () => {
-          const controller = buildController()
-
-          const result = await controller.verifyEmailCreateAccount(mockedIp, undefined, mockBody)
-
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.createAccount().value,
-            email: mockBody.email,
-            sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: undefined,
+            clientMetadata: mockedClientMetadata,
           })
           expect(result).toBeUndefined()
         })
       })
 
       describe('reset', () => {
-        it('should call use-case correctly passing IP and UserAgent from arguments and return data', async () => {
+        it('should extract metadata, call use-case correctly and return undefined', async () => {
           const controller = buildController()
 
-          const result = await controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)
+          const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
+
+          assertMetadataFlowWasCalled(mockRequest)
 
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
           expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
             purpose: VerificationTokenPurpose.resetPassword().value,
             email: mockBody.email,
             sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: mockedUserAgent,
-          })
-          expect(result).toBeUndefined()
-        })
-
-        it('should call use-case correctly when UserAgent is undefined and return data', async () => {
-          const controller = buildController()
-
-          const result = await controller.verifyEmailResetPassword(mockedIp, undefined, mockBody)
-
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledTimes(1)
-          expect(mockedGenerateVerificationTokenUseCase.execute).toHaveBeenCalledWith({
-            purpose: VerificationTokenPurpose.resetPassword().value,
-            email: mockBody.email,
-            sendNewToken: mockBody.sendNewToken,
-            ip: mockedIp,
-            userAgent: undefined,
+            clientMetadata: mockedClientMetadata,
           })
           expect(result).toBeUndefined()
         })
@@ -657,7 +687,6 @@ describe('AuthController', () => {
     describe('when there are errors', () => {
       const invalidEmail = EmailAddressMother.invalid()
       const mockBodyWithInvalidEmail = { email: invalidEmail, sendNewToken: false }
-      const mockBody = { email: validEmail.value, sendNewToken: false }
 
       describe('signup', () => {
         it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
@@ -668,12 +697,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBodyWithInvalidEmail)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBodyWithInvalidEmail)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_EMAIL,
               message: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email).message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw UnprocessableEntityException when use-case returns invalidVerificationTokenPurpose error', async () => {
@@ -684,12 +714,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose'),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
               message: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose').message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns activeTokenAlreadyIssued error', async () => {
@@ -697,21 +728,16 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-              mockBody.email,
-              VerificationTokenPurpose.createAccount().value,
-            ),
+            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
-              code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
-              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-                mockBody.email,
-                VerificationTokenPurpose.createAccount().value,
-              ).message,
+              code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued().message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns emailAlreadyTaken error', async () => {
@@ -719,15 +745,16 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email),
+            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(),
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
-              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email).message,
+              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken().message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
@@ -743,21 +770,22 @@ describe('AuthController', () => {
             error: unknownUseCaseError,
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(
             new InternalServerErrorException(unknownUseCaseError),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
-        it('should throw error when use-case fails', async () => {
+        it('should throw error when use-case fails unexpectedly', async () => {
           const controller = buildController()
+          const unexpectedError = Error('Unexpected error')
 
           mockedGenerateVerificationTokenUseCase.execute.mockImplementation(() => {
-            throw Error('Unexpected error')
+            throw unexpectedError
           })
 
-          await expect(controller.verifyEmailCreateAccount(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            Error('Unexpected error'),
-          )
+          await expect(controller.verifyEmailCreateAccount(mockRequest, mockBody)).rejects.toThrow(unexpectedError)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
@@ -770,12 +798,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBodyWithInvalidEmail)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBodyWithInvalidEmail)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_EMAIL,
               message: GenerateVerificationTokenApplicationError.invalidEmail(mockBodyWithInvalidEmail.email).message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw UnprocessableEntityException when use-case returns invalidVerificationTokenPurpose error', async () => {
@@ -786,12 +815,13 @@ describe('AuthController', () => {
             error: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose'),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(
             new UnprocessableEntityException({
               code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
               message: GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose('invalid-purpose').message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns activeTokenAlreadyIssued error', async () => {
@@ -799,37 +829,44 @@ describe('AuthController', () => {
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-              mockBody.email,
-              VerificationTokenPurpose.resetPassword().value,
-            ),
+            error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
-              code: AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
-              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(
-                mockBody.email,
-                VerificationTokenPurpose.resetPassword().value,
-              ).message,
+              code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+              message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued().message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
-        it('should throw ConflictException when use-case returns emailAlreadyTaken error', async () => {
+        it('should return undefined (204 No Content) to obfuscate userNotFound error', async () => {
           const controller = buildController()
 
           mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
             success: false,
-            error: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email),
+            error: GenerateVerificationTokenApplicationError.userNotFound(),
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            new ConflictException({
-              code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
-              message: GenerateVerificationTokenApplicationError.emailAlreadyTaken(mockBody.email).message,
-            }),
-          )
+          const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
+
+          expect(result).toBeUndefined()
+          assertMetadataFlowWasCalled(mockRequest)
+        })
+
+        it('should return undefined (204 No Content) to obfuscate userDisabled error', async () => {
+          const controller = buildController()
+
+          mockedGenerateVerificationTokenUseCase.execute.mockResolvedValue({
+            success: false,
+            error: GenerateVerificationTokenApplicationError.userDisabled(),
+          })
+
+          const result = await controller.verifyEmailResetPassword(mockRequest, mockBody)
+
+          expect(result).toBeUndefined()
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
@@ -845,21 +882,22 @@ describe('AuthController', () => {
             error: unknownUseCaseError,
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(
             new InternalServerErrorException(unknownUseCaseError),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
-        it('should throw error when use-case fails', async () => {
+        it('should throw error when use-case fails unexpectedly', async () => {
           const controller = buildController()
+          const unexpectedError = Error('Unexpected error')
 
           mockedGenerateVerificationTokenUseCase.execute.mockImplementation(() => {
-            throw Error('Unexpected error')
+            throw unexpectedError
           })
 
-          await expect(controller.verifyEmailResetPassword(mockedIp, mockedUserAgent, mockBody)).rejects.toThrow(
-            Error('Unexpected error'),
-          )
+          await expect(controller.verifyEmailResetPassword(mockRequest, mockBody)).rejects.toThrow(unexpectedError)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
     })
@@ -899,15 +937,14 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when use-case returns invalidEmail error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.invalidEmail('invalid-email'),
-        })
+        const useCaseError = ValidateVerificationTokenError.invalidEmail('Invalid email address')
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_VALIDATE_TOKEN_INVALID_EMAIL,
-            message: ValidateVerificationTokenError.invalidEmail('invalid-email').message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -915,15 +952,14 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when use-case returns invalidTokenPurpose error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.invalidTokenPurpose('invalid-purpose'),
-        })
+        const useCaseError = ValidateVerificationTokenError.invalidTokenPurpose('Invalid token purpose')
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
-            message: ValidateVerificationTokenError.invalidTokenPurpose('invalid-purpose').message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -931,15 +967,14 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when use-case returns invalidTokenFormat error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.invalidTokenFormat(),
-        })
+        const useCaseError = ValidateVerificationTokenError.invalidTokenFormat('Invalid token format')
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new UnprocessableEntityException({
             code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
-            message: ValidateVerificationTokenError.invalidTokenFormat().message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -947,15 +982,14 @@ describe('AuthController', () => {
       it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.alreadyUsed(),
-        })
+        const useCaseError = ValidateVerificationTokenError.alreadyUsed('Token has been used')
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new ConflictException({
             code: AUTH_VALIDATE_TOKEN_ALREADY_USED,
-            message: ValidateVerificationTokenError.alreadyUsed().message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -963,15 +997,14 @@ describe('AuthController', () => {
       it('should throw GoneException when use-case returns tokenExpired error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.expired(),
-        })
+        const useCaseError = ValidateVerificationTokenError.expired('Token has expired')
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new GoneException({
             code: AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
-            message: ValidateVerificationTokenError.expired().message,
+            message: useCaseError.message,
           }),
         )
       })
@@ -979,10 +1012,9 @@ describe('AuthController', () => {
       it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.tokenPurposeMismatch(),
-        })
+        const useCaseError = ValidateVerificationTokenError.tokenPurposeMismatch('Mismatch purpose')
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new NotFoundException({
@@ -995,10 +1027,9 @@ describe('AuthController', () => {
       it('should throw NotFoundException when use-case returns tokenNotFound error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.notFound(),
-        })
+        const useCaseError = ValidateVerificationTokenError.notFound()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new NotFoundException({
@@ -1011,10 +1042,9 @@ describe('AuthController', () => {
       it('should throw NotFoundException when use-case returns invalidOwner error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.invalidOwner(),
-        })
+        const useCaseError = ValidateVerificationTokenError.invalidOwner('Invalid token owner')
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new NotFoundException({
@@ -1027,10 +1057,9 @@ describe('AuthController', () => {
       it('should throw NotFoundException when use-case returns invalidCode error', async () => {
         const controller = buildController()
 
-        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({
-          success: false,
-          error: ValidateVerificationTokenError.invalidToken(),
-        })
+        const useCaseError = ValidateVerificationTokenError.invalidToken()
+
+        mockedValidateVerificationTokenUseCase.execute.mockResolvedValue({ success: false, error: useCaseError })
 
         await expect(controller.verifyToken(mockBody)).rejects.toThrow(
           new NotFoundException({
@@ -1069,6 +1098,8 @@ describe('AuthController', () => {
   })
 
   describe('signup', () => {
+    const mockRequest = {} as unknown as FastifyRequest
+
     const mockBody = {
       email: EmailAddressMother.valid().value,
       username: UserUsernameMother.valid().value,
@@ -1078,6 +1109,11 @@ describe('AuthController', () => {
       requestedRole: UserRole.sportsman().value,
     }
 
+    beforeEach(() => {
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
+    })
+
     describe('happy path', () => {
       beforeEach(() => {
         mockedCreateUserUseCase.execute.mockResolvedValue({
@@ -1086,29 +1122,17 @@ describe('AuthController', () => {
         })
       })
 
-      it('should call use-case correctly passing IP and UserAgent and return nothing', async () => {
+      it('should extract metadata, call use-case correctly and return nothing', async () => {
         const controller = buildController()
 
-        const result = await controller.signup(mockBody, mockedIp, mockedUserAgent)
+        const result = await controller.signup(mockRequest, mockBody)
+
+        assertMetadataFlowWasCalled(mockRequest)
 
         expect(mockedCreateUserUseCase.execute).toHaveBeenCalledTimes(1)
         expect(mockedCreateUserUseCase.execute).toHaveBeenCalledWith({
           ...mockBody,
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
-        })
-        expect(result).toBeUndefined()
-      })
-
-      it('should call use-case correctly when UserAgent is undefined and return nothing', async () => {
-        const controller = buildController()
-
-        const result = await controller.signup(mockBody, mockedIp, undefined)
-
-        expect(mockedCreateUserUseCase.execute).toHaveBeenCalledWith({
-          ...mockBody,
-          ip: mockedIp,
-          userAgent: undefined,
+          clientMetadata: mockedClientMetadata,
         })
         expect(result).toBeUndefined()
       })
@@ -1119,6 +1143,7 @@ describe('AuthController', () => {
         error: CreateUserError
         apiCode: string
       }
+
       const testInvalidInputMapping = async (errorsWithApiCode: ErrorWithApiCode | Array<ErrorWithApiCode>) => {
         const controller = buildController()
 
@@ -1131,7 +1156,7 @@ describe('AuthController', () => {
           ),
         })
 
-        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+        await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
           new UnprocessableEntityException({
             message: 'One or more fields have invalid formats',
             errors: Array.isArray(errorsWithApiCode)
@@ -1147,6 +1172,8 @@ describe('AuthController', () => {
                 ],
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
       }
 
       const testDuplicatedMapping = async (errorsWithApiCode: ErrorWithApiCode | Array<ErrorWithApiCode>) => {
@@ -1161,7 +1188,7 @@ describe('AuthController', () => {
           ),
         })
 
-        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+        await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
           new ConflictException({
             message: 'Some provided data is already in use',
             errors: Array.isArray(errorsWithApiCode)
@@ -1177,37 +1204,57 @@ describe('AuthController', () => {
                 ],
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
       }
 
       describe('when input data is invalid', () => {
         it('should throw UnprocessableEntityException for invalid username', async () => {
-          await testInvalidInputMapping({ error: CreateUserError.invalidUsername(), apiCode: AUTH_CREATE_USER_INVALID_USERNAME_FORMAT })
+          await testInvalidInputMapping({
+            error: CreateUserError.invalidUsername('Invalid username'),
+            apiCode: AUTH_CREATE_USER_INVALID_USERNAME_FORMAT,
+          })
         })
 
         it('should throw UnprocessableEntityException for invalid email', async () => {
-          await testInvalidInputMapping({ error: CreateUserError.invalidEmail(), apiCode: AUTH_CREATE_USER_INVALID_EMAIL_FORMAT })
+          await testInvalidInputMapping({
+            error: CreateUserError.invalidEmail('Invalid email address'),
+            apiCode: AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
+          })
         })
 
         it('should throw UnprocessableEntityException for invalid password', async () => {
-          await testInvalidInputMapping({ error: CreateUserError.invalidPassword(), apiCode: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT })
+          await testInvalidInputMapping({
+            error: CreateUserError.invalidPassword('Invalid password format'),
+            apiCode: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+          })
         })
 
         it('should throw UnprocessableEntityException for invalid token format', async () => {
-          await testInvalidInputMapping({ error: CreateUserError.invalidTokenFormat(), apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT })
+          await testInvalidInputMapping({
+            error: CreateUserError.invalidTokenFormat('Invalid token format'),
+            apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT,
+          })
         })
 
         it('should throw UnprocessableEntityException for invalid name', async () => {
-          await testInvalidInputMapping({ error: CreateUserError.invalidName(), apiCode: AUTH_CREATE_USER_INVALID_NAME_FORMAT })
+          await testInvalidInputMapping({
+            error: CreateUserError.invalidName('Invalid user name'),
+            apiCode: AUTH_CREATE_USER_INVALID_NAME_FORMAT,
+          })
         })
 
         it('should throw UnprocessableEntityException for invalid role', async () => {
-          await testInvalidInputMapping({ error: CreateUserError.invalidRole(), apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE })
+          await testInvalidInputMapping({
+            error: CreateUserError.invalidRole('Invalid user role'),
+            apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE,
+          })
         })
 
         it('should throw UnprocessableEntityException for multiple input errors', async () => {
           await testInvalidInputMapping([
-            { error: CreateUserError.invalidRole(), apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE },
-            { error: CreateUserError.invalidTokenFormat(), apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT },
+            { error: CreateUserError.invalidRole('Invalid user role'), apiCode: AUTH_CREATE_USER_INVALID_USER_ROLE },
+            { error: CreateUserError.invalidTokenFormat('Invalid token format'), apiCode: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT },
           ])
         })
 
@@ -1220,29 +1267,30 @@ describe('AuthController', () => {
             error: CreateUserApplicationError.invalidInput([unknownError]),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
       describe('when data is duplicated', () => {
         it('should throw ConflictException mapped for duplicated email', async () => {
           await testDuplicatedMapping({
-            error: CreateUserError.duplicatedEmail(mockBody.email),
+            error: CreateUserError.duplicatedEmail(),
             apiCode: AUTH_CREATE_USER_DUPLICATED_EMAIL,
           })
         })
 
         it('should throw ConflictException mapped for duplicated username', async () => {
           await testDuplicatedMapping({
-            error: CreateUserError.duplicatedUsername(mockBody.username),
+            error: CreateUserError.duplicatedUsername(),
             apiCode: AUTH_CREATE_USER_DUPLICATED_USERNAME,
           })
         })
 
         it('should throw ConflictException mapped for multiple duplicated errors', async () => {
           await testDuplicatedMapping([
-            { error: CreateUserError.duplicatedEmail(mockBody.email), apiCode: AUTH_CREATE_USER_DUPLICATED_EMAIL },
-            { error: CreateUserError.duplicatedUsername(mockBody.username), apiCode: AUTH_CREATE_USER_DUPLICATED_USERNAME },
+            { error: CreateUserError.duplicatedEmail(), apiCode: AUTH_CREATE_USER_DUPLICATED_EMAIL },
+            { error: CreateUserError.duplicatedUsername(), apiCode: AUTH_CREATE_USER_DUPLICATED_USERNAME },
           ])
         })
 
@@ -1255,7 +1303,8 @@ describe('AuthController', () => {
             error: CreateUserApplicationError.duplicated([unknownError]),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
@@ -1265,49 +1314,52 @@ describe('AuthController', () => {
 
           mockedCreateUserUseCase.execute.mockResolvedValue({
             success: false,
-            error: CreateUserApplicationError.notFound(CreateUserError.tokenNotFound(mockBody.email)),
+            error: CreateUserApplicationError.notFound(CreateUserError.tokenNotFound()),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_CREATE_USER_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw GoneException when use-case returns tokenExpired error', async () => {
           const controller = buildController()
-          const specificError = CreateUserError.tokenExpired()
+          const specificError = CreateUserError.tokenExpired('Token has already expired')
 
           mockedCreateUserUseCase.execute.mockResolvedValue({
             success: false,
             error: CreateUserApplicationError.invalidToken(specificError),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
             new GoneException({
               code: AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
               message: specificError.message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
           const controller = buildController()
-          const specificError = CreateUserError.tokenAlreadyUsed()
+          const specificError = CreateUserError.tokenAlreadyUsed('Token was already used')
 
           mockedCreateUserUseCase.execute.mockResolvedValue({
             success: false,
             error: CreateUserApplicationError.invalidToken(specificError),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_CREATE_USER_TOKEN_ALREADY_USED,
               message: specificError.message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
@@ -1315,15 +1367,16 @@ describe('AuthController', () => {
 
           mockedCreateUserUseCase.execute.mockResolvedValue({
             success: false,
-            error: CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch()),
+            error: CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch('Invalid purpose')),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_CREATE_USER_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw NotFoundException when use-case returns tokenInvalidOwner error', async () => {
@@ -1331,15 +1384,16 @@ describe('AuthController', () => {
 
           mockedCreateUserUseCase.execute.mockResolvedValue({
             success: false,
-            error: CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner()),
+            error: CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner('Invalid owner')),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_CREATE_USER_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw NotFoundException when use-case return invalidToken error', async () => {
@@ -1350,12 +1404,13 @@ describe('AuthController', () => {
             error: CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_CREATE_USER_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw InternalServerErrorException when use-case returns an unknown CreateUserError error in invalidToken', async () => {
@@ -1371,9 +1426,10 @@ describe('AuthController', () => {
             error: CreateUserApplicationError.invalidToken(unknownUseCaseError),
           })
 
-          await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(
             new InternalServerErrorException(CreateUserApplicationError.invalidToken(unknownUseCaseError)),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
@@ -1391,10 +1447,11 @@ describe('AuthController', () => {
           error: useCaseApplicationError,
         })
 
-        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+        assertMetadataFlowWasCalled(mockRequest)
       })
 
-      it('should throw original error when use-case fails with a unexpected error', async () => {
+      it('should throw original error when use-case fails with an unexpected error', async () => {
         const controller = buildController()
 
         const unexpectedError = new Error('Unexpected error')
@@ -1403,12 +1460,15 @@ describe('AuthController', () => {
           throw unexpectedError
         })
 
-        await expect(controller.signup(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(unexpectedError)
+        await expect(controller.signup(mockRequest, mockBody)).rejects.toThrow(unexpectedError)
+        assertMetadataFlowWasCalled(mockRequest)
       })
     })
   })
 
   describe('reset password', () => {
+    const mockRequest = {} as unknown as FastifyRequest
+
     const mockBody = {
       email: EmailAddressMother.valid().value,
       token: VerificationTokenValueMother.valid().value,
@@ -1416,40 +1476,26 @@ describe('AuthController', () => {
     }
 
     beforeEach(() => {
-      mockReset(mockedResetUserPasswordUseCase)
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
     })
 
     describe('happy path', () => {
       beforeEach(() => {
-        mockedResetUserPasswordUseCase.execute.mockResolvedValue({
-          success: true,
-          value: undefined,
-        })
+        mockedResetUserPasswordUseCase.execute.mockResolvedValue({ success: true, value: undefined })
       })
 
-      it('should call use-case correctly passing IP and UserAgent and return nothing', async () => {
+      it('should extract metadata, call use-case correctly and return nothing', async () => {
         const controller = buildController()
 
-        const result = await controller.resetPassword(mockBody, mockedIp, mockedUserAgent)
+        const result = await controller.resetPassword(mockRequest, mockBody)
+
+        assertMetadataFlowWasCalled(mockRequest)
 
         expect(mockedResetUserPasswordUseCase.execute).toHaveBeenCalledTimes(1)
         expect(mockedResetUserPasswordUseCase.execute).toHaveBeenCalledWith({
           ...mockBody,
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
-        })
-        expect(result).toBeUndefined()
-      })
-
-      it('should call use-case correctly when UserAgent is undefined and return nothing', async () => {
-        const controller = buildController()
-
-        const result = await controller.resetPassword(mockBody, mockedIp, undefined)
-
-        expect(mockedResetUserPasswordUseCase.execute).toHaveBeenCalledWith({
-          ...mockBody,
-          ip: mockedIp,
-          userAgent: undefined,
+          clientMetadata: mockedClientMetadata,
         })
         expect(result).toBeUndefined()
       })
@@ -1473,7 +1519,7 @@ describe('AuthController', () => {
           ),
         })
 
-        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+        await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
           new UnprocessableEntityException({
             message: 'One or more fields have invalid formats',
             errors: Array.isArray(errorsWithApiCode)
@@ -1489,34 +1535,39 @@ describe('AuthController', () => {
                 ],
           }),
         )
+
+        assertMetadataFlowWasCalled(mockRequest)
       }
 
       describe('when input data is invalid', () => {
         it('should throw UnprocessableEntityException for invalid email', async () => {
           await testInvalidInputMapping({
-            error: ResetUserPasswordError.invalidEmail(),
+            error: ResetUserPasswordError.invalidEmail('Invalid domain email'),
             apiCode: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
           })
         })
 
         it('should throw UnprocessableEntityException for invalid password', async () => {
           await testInvalidInputMapping({
-            error: ResetUserPasswordError.invalidPassword(),
+            error: ResetUserPasswordError.invalidPassword('Invalid domain password'),
             apiCode: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
           })
         })
 
         it('should throw UnprocessableEntityException for invalid token format', async () => {
           await testInvalidInputMapping({
-            error: ResetUserPasswordError.invalidTokenFormat(),
+            error: ResetUserPasswordError.invalidTokenFormat('Invalid domain token format'),
             apiCode: AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
           })
         })
 
         it('should throw UnprocessableEntityException for multiple input errors', async () => {
           await testInvalidInputMapping([
-            { error: ResetUserPasswordError.invalidEmail(), apiCode: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT },
-            { error: ResetUserPasswordError.invalidPassword(), apiCode: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT },
+            { error: ResetUserPasswordError.invalidEmail('Invalid domain email'), apiCode: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT },
+            {
+              error: ResetUserPasswordError.invalidPassword('Invalid domain password'),
+              apiCode: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+            },
           ])
         })
 
@@ -1529,7 +1580,8 @@ describe('AuthController', () => {
             error: ResetUserPasswordApplicationError.invalidInput([unknownError]),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
@@ -1539,49 +1591,52 @@ describe('AuthController', () => {
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(mockBody.email)),
+            error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw GoneException when use-case returns tokenExpired error', async () => {
           const controller = buildController()
-          const specificError = ResetUserPasswordError.tokenExpired()
+          const specificError = ResetUserPasswordError.tokenExpired('Token has already expired')
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
             error: ResetUserPasswordApplicationError.invalidToken(specificError),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new GoneException({
               code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
               message: specificError.message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
           const controller = buildController()
-          const specificError = ResetUserPasswordError.tokenAlreadyUsed()
+          const specificError = ResetUserPasswordError.tokenAlreadyUsed('Token was already used')
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
             error: ResetUserPasswordApplicationError.invalidToken(specificError),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
               message: specificError.message,
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
@@ -1589,15 +1644,16 @@ describe('AuthController', () => {
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()),
+            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch('Invalid purpose')),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw NotFoundException when use-case returns tokenInvalidOwner error', async () => {
@@ -1605,15 +1661,16 @@ describe('AuthController', () => {
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()),
+            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner('Invalid owner')),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw NotFoundException when use-case return invalidToken error', async () => {
@@ -1624,12 +1681,13 @@ describe('AuthController', () => {
             error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new NotFoundException({
               code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
               message: 'Invalid verification token',
             }),
           )
+          assertMetadataFlowWasCalled(mockRequest)
         })
 
         it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordError in invalidToken', async () => {
@@ -1641,7 +1699,8 @@ describe('AuthController', () => {
             error: ResetUserPasswordApplicationError.invalidToken(unknownError),
           })
 
-          await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+          assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
@@ -1653,12 +1712,13 @@ describe('AuthController', () => {
           error: ResetUserPasswordApplicationError.cannotResetPassword(),
         })
 
-        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(
+        await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
           new ConflictException({
             code: AUTH_RESET_PASSWORD_SAME_PASSWORD,
             message: 'New password cannot be the same as the current password',
           }),
         )
+        assertMetadataFlowWasCalled(mockRequest)
       })
 
       it('should throw InternalServerErrorException for inconsistentState error', async () => {
@@ -1666,10 +1726,11 @@ describe('AuthController', () => {
 
         mockedResetUserPasswordUseCase.execute.mockResolvedValue({
           success: false,
-          error: ResetUserPasswordApplicationError.inconsistentState(IdentifierMother.valid().value),
+          error: ResetUserPasswordApplicationError.inconsistentState(),
         })
 
-        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+        assertMetadataFlowWasCalled(mockRequest)
       })
 
       it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordApplicationError', async () => {
@@ -1686,7 +1747,8 @@ describe('AuthController', () => {
           error: useCaseApplicationError,
         })
 
-        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(InternalServerErrorException)
+        await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+        assertMetadataFlowWasCalled(mockRequest)
       })
 
       it('should throw original error when use-case fails with an unexpected exception', async () => {
@@ -1697,7 +1759,8 @@ describe('AuthController', () => {
           throw unexpectedError
         })
 
-        await expect(controller.resetPassword(mockBody, mockedIp, mockedUserAgent)).rejects.toThrow(unexpectedError)
+        await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(unexpectedError)
+        assertMetadataFlowWasCalled(mockRequest)
       })
     })
   })
@@ -1713,14 +1776,7 @@ describe('AuthController', () => {
 
     beforeEach(() => {
       mockedResponse.clearCookie.mockReturnThis()
-
-      mockedConfigService.get.mockImplementation(
-        createConfigServiceMockImplementation({
-          REFRESH_COOKIE_NAME: 'x-refresh-token',
-          ACCESS_COOKIE_NAME: 'x-access-token',
-          isProduction: false,
-        }),
-      )
+      mockedConfigService.get.mockImplementation(authCookiesConfigServiceMockImplementation)
     })
 
     describe('happy path', () => {
@@ -1742,7 +1798,7 @@ describe('AuthController', () => {
           sessionId: mockedAccessToken.sid,
         })
 
-        expectCookiesCleared()
+        assertAuthCookiesWereCleared()
 
         expect(result).toBeUndefined()
       })
@@ -1754,7 +1810,7 @@ describe('AuthController', () => {
 
         expect(mockedLogoutUserUseCase.execute).not.toHaveBeenCalled()
 
-        expectCookiesCleared()
+        assertAuthCookiesWereCleared()
 
         expect(result).toBeUndefined()
       })
@@ -1769,57 +1825,41 @@ describe('AuthController', () => {
 
           const result = await controller.logout(mockedAccessToken, mockedResponse)
 
-          expectCookiesCleared()
+          assertAuthCookiesWereCleared()
           expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
 
           expect(result).toBeUndefined()
         }
 
         it('should clear cookies when use-case returns userNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userNotFound(mockedAccessToken.sub))
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userNotFound())
         })
 
         it('should clear cookies when use-case returns userDisabled error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userDisabled(mockedAccessToken.sub))
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.userDisabled())
         })
 
         it('should clear cookies when use-case returns sessionNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.sessionNotFound(mockedAccessToken.sid))
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.sessionNotFound())
         })
 
         it('should clear cookies when use-case returns sessionDoesNotBelongToUser error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(
-            LogoutUserApplicationError.sessionDoesNotBelongToUser(mockedAccessToken.sid, mockedAccessToken.sub),
-          )
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.sessionDoesNotBelongToUser())
         })
 
         it('should clear cookies when use-case returns cannotRevokeSession error', async () => {
-          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(mockedAccessToken.sid)
+          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked()
 
           await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.cannotRevokeSession(expectedRevocationError.message))
         })
-      })
 
-      it('should throw InternalServerErrorException and do not clean cookies when use-case returns invalidInput error', async () => {
-        const controller = buildController()
-
-        const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
-        const expectedInputError = LogoutUserApplicationError.invalidInput('sessionId', expectedInvalidIdentifierException.message)
-
-        mockedLogoutUserUseCase.execute.mockResolvedValue({
-          success: false,
-          error: expectedInputError,
+        it('should clear cookies when use-case returns invalidUserId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.invalidUserId('Invalid user id'))
         })
 
-        await expect(controller.logout(mockedAccessToken, mockedResponse)).rejects.toThrow(
-          new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-            cause: expectedInputError,
-          }),
-        )
-
-        expect(mockedLogoutUserUseCase.execute).toHaveBeenCalledTimes(1)
-        expect(mockedConfigService.get).not.toHaveBeenCalled()
-        expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
+        it('should clear cookies when use-case returns invalidSessionId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(LogoutUserApplicationError.invalidSessionId('Invalid session id'))
+        })
       })
 
       it('should throw InternalServerErrorException and do not clean cookies when use-case returns an unknown LogoutUserApplicationError', async () => {
@@ -1869,69 +1909,55 @@ describe('AuthController', () => {
       sid: currentSessionId.value,
     } as JwtPayload
 
+    const mockRequest = {} as unknown as FastifyRequest
+
     beforeEach(() => {
       mockedResponse.clearCookie.mockReturnThis()
 
-      mockedConfigService.get.mockImplementation(
-        createConfigServiceMockImplementation({
-          REFRESH_COOKIE_NAME: 'x-refresh-token',
-          ACCESS_COOKIE_NAME: 'x-access-token',
-          isProduction: false,
-        }),
-      )
+      mockedRequestMetadataExtractor.extract.mockReturnValue(mockedRawRequestMetadata)
+      mockedClientMetadataService.process.mockResolvedValue(mockedClientMetadata)
+
+      mockedConfigService.get.mockImplementation(authCookiesConfigServiceMockImplementation)
     })
 
     describe('happy path', () => {
       beforeEach(() => {
-        mockedCloseUserSessionUserCase.execute.mockResolvedValue({
-          success: true,
-          value: undefined,
-        })
+        mockedCloseUserSessionUserCase.execute.mockResolvedValue({ success: true, value: undefined })
       })
 
-      it('should call use-case correctly with IP and UserAgent and clear cookies when closing the current session', async () => {
+      it('should extract metadata, call use-case correctly and clear cookies when closing the current session', async () => {
         const controller = buildController()
 
-        const result = await controller.closeSession(
-          mockedAccessToken,
-          currentSessionId.value,
-          mockedIp,
-          mockedUserAgent,
-          mockedResponse,
-        )
+        const result = await controller.closeSession(mockedAccessToken, currentSessionId.value, mockRequest, mockedResponse)
+
+        assertMetadataFlowWasCalled(mockRequest)
 
         expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledTimes(1)
         expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledWith({
           userId: mockedAccessToken.sub,
           sessionId: currentSessionId.value,
           currentSessionId: mockedAccessToken.sid,
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
+          clientMetadata: mockedClientMetadata,
         })
 
-        expectCookiesCleared()
+        assertAuthCookiesWereCleared()
 
         expect(result).toBeUndefined()
       })
 
-      it('should call use-case correctly and not clear cookies when closing a different session', async () => {
+      it('should extract metadata, call use-case correctly and NOT clear cookies when closing a different session', async () => {
         const controller = buildController()
 
-        const result = await controller.closeSession(
-          mockedAccessToken,
-          anotherActiveSessionId.value,
-          mockedIp,
-          mockedUserAgent,
-          mockedResponse,
-        )
+        const result = await controller.closeSession(mockedAccessToken, anotherActiveSessionId.value, mockRequest, mockedResponse)
+
+        assertMetadataFlowWasCalled(mockRequest)
 
         expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledTimes(1)
         expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledWith({
           userId: mockedAccessToken.sub,
           sessionId: anotherActiveSessionId.value,
           currentSessionId: mockedAccessToken.sid,
-          ip: mockedIp,
-          userAgent: mockedUserAgent,
+          clientMetadata: mockedClientMetadata,
         })
 
         expect(mockedConfigService.get).not.toHaveBeenCalled()
@@ -1939,46 +1965,18 @@ describe('AuthController', () => {
 
         expect(result).toBeUndefined()
       })
-
-      it('should call use-case correctly when UserAgent is undefined', async () => {
-        const controller = buildController()
-
-        const result = await controller.closeSession(
-          mockedAccessToken,
-          anotherActiveSessionId.value,
-          mockedIp,
-          undefined,
-          mockedResponse,
-        )
-
-        expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledWith({
-          userId: mockedAccessToken.sub,
-          sessionId: anotherActiveSessionId.value,
-          currentSessionId: mockedAccessToken.sid,
-          ip: mockedIp,
-          userAgent: undefined,
-        })
-
-        expect(result).toBeUndefined()
-      })
     })
 
     describe('when there are errors', () => {
       describe('when errors should be obfuscated', () => {
-        const testObfuscatedErrorAndClearCookiesCase = async (error: CloseUserSessionApplicationError) => {
+        const testObfuscatedErrorAndClearCookiesCase = async (error: CloseUserSessionApplicationError, targetSessionId: string) => {
           const controller = buildController()
 
           mockedCloseUserSessionUserCase.execute.mockResolvedValue({ success: false, error })
 
-          const result = await controller.closeSession(
-            mockedAccessToken,
-            currentSessionId.value,
-            mockedIp,
-            mockedUserAgent,
-            mockedResponse,
-          )
+          const result = await controller.closeSession(mockedAccessToken, targetSessionId, mockRequest, mockedResponse)
 
-          expectCookiesCleared()
+          assertAuthCookiesWereCleared()
 
           expect(result).toBeUndefined()
         }
@@ -1988,7 +1986,7 @@ describe('AuthController', () => {
 
           mockedCloseUserSessionUserCase.execute.mockResolvedValue({ success: false, error })
 
-          const result = await controller.closeSession(mockedAccessToken, targetSessionId, mockedIp, mockedUserAgent, mockedResponse)
+          const result = await controller.closeSession(mockedAccessToken, targetSessionId, mockRequest, mockedResponse)
 
           expect(mockedConfigService.get).not.toHaveBeenCalled()
           expect(mockedResponse.clearCookie).not.toHaveBeenCalled()
@@ -1996,89 +1994,104 @@ describe('AuthController', () => {
           expect(result).toBeUndefined()
         }
 
-        it('should clear cookies when closing current session and use-case returns userNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userNotFound(userId.value))
+        it('should clear cookies when closing current session and use-case returns invalidUserId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(
+            CloseUserSessionApplicationError.invalidUserId('Invalid token'),
+            currentSessionId.value,
+          )
         })
 
-        it('should not clear cookies when closing a different session and use-case returns userNotFound error', async () => {
-          await testObfuscatedErrorAndNotClearCookiesCase(
-            CloseUserSessionApplicationError.userNotFound(userId.value),
+        it('should clear cookies when closing a different session and use-case returns invalidUserId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(
+            CloseUserSessionApplicationError.invalidUserId('Invalid token'),
             anotherActiveSessionId.value,
           )
+        })
+
+        it('should clear cookies when closing current session and use-case returns invalidCurrentSessionId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(
+            CloseUserSessionApplicationError.invalidCurrentSessionId('Invalid token'),
+            currentSessionId.value,
+          )
+        })
+
+        it('should clear cookies when closing a different session and use-case returns invalidCurrentSessionId error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(
+            CloseUserSessionApplicationError.invalidCurrentSessionId('Invalid token'),
+            anotherActiveSessionId.value,
+          )
+        })
+
+        it('should clear cookies when closing current session and use-case returns userNotFound error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userNotFound(), currentSessionId.value)
+        })
+
+        it('should clear cookies when closing a different session and use-case returns userNotFound error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userNotFound(), anotherActiveSessionId.value)
         })
 
         it('should clear cookies when closing current session and use-case returns userDisabled error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userDisabled(userId.value))
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userDisabled(), currentSessionId.value)
         })
 
-        it('should not clear cookies when closing a different session and use-case returns userDisabled error', async () => {
-          await testObfuscatedErrorAndNotClearCookiesCase(
-            CloseUserSessionApplicationError.userDisabled(userId.value),
-            anotherActiveSessionId.value,
-          )
+        it('should clear cookies when closing a different session and use-case returns userDisabled error', async () => {
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.userDisabled(), anotherActiveSessionId.value)
         })
 
         it('should clear cookies when closing current session and use-case returns sessionNotFound error', async () => {
-          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.sessionNotFound(currentSessionId.value))
+          await testObfuscatedErrorAndClearCookiesCase(CloseUserSessionApplicationError.sessionNotFound(), currentSessionId.value)
         })
 
         it('should not clear cookies when closing a different session and use-case returns sessionNotFound error', async () => {
           await testObfuscatedErrorAndNotClearCookiesCase(
-            CloseUserSessionApplicationError.sessionNotFound(anotherActiveSessionId.value),
+            CloseUserSessionApplicationError.sessionNotFound(),
             anotherActiveSessionId.value,
           )
         })
 
         it('should clear cookies when closing current session and use-case returns sessionDoesNotBelongToUser error', async () => {
           await testObfuscatedErrorAndClearCookiesCase(
-            CloseUserSessionApplicationError.sessionDoesNotBelongToUser(currentSessionId.value, mockedAccessToken.sub),
+            CloseUserSessionApplicationError.sessionDoesNotBelongToUser(),
+            currentSessionId.value,
           )
         })
 
         it('should not clear cookies when closing a different session and use-case returns sessionDoesNotBelongToUser error', async () => {
           await testObfuscatedErrorAndNotClearCookiesCase(
-            CloseUserSessionApplicationError.sessionDoesNotBelongToUser(anotherActiveSessionId.value, mockedAccessToken.sub),
+            CloseUserSessionApplicationError.sessionDoesNotBelongToUser(),
             anotherActiveSessionId.value,
           )
         })
 
         it('should clear cookies when closing current session and use-case returns cannotRevokeSession error', async () => {
-          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(currentSessionId.value)
-
           await testObfuscatedErrorAndClearCookiesCase(
-            CloseUserSessionApplicationError.cannotRevokeSession(expectedRevocationError.message),
+            CloseUserSessionApplicationError.cannotRevokeSession('Session already revoked'),
+            currentSessionId.value,
           )
         })
 
         it('should not clear cookies when closing a different session and use-case returns cannotRevokeSession error', async () => {
-          const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(anotherActiveSessionId.value)
-
           await testObfuscatedErrorAndNotClearCookiesCase(
-            CloseUserSessionApplicationError.cannotRevokeSession(expectedRevocationError.message),
+            CloseUserSessionApplicationError.cannotRevokeSession('Session already revoked'),
             anotherActiveSessionId.value,
           )
         })
       })
 
-      it('should throw InternalServerErrorException and do not clean cookies when use-case returns invalidInput error', async () => {
+      it('should throw UnprocessableEntityException and do not clean cookies when use-case returns invalidSessionId error', async () => {
         const controller = buildController()
 
-        const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
-        const expectedInputError = CloseUserSessionApplicationError.invalidInput(
-          'sessionId',
-          expectedInvalidIdentifierException.message,
-        )
+        const expectedInputError = CloseUserSessionApplicationError.invalidSessionId('Invalid target session format')
 
         mockedCloseUserSessionUserCase.execute.mockResolvedValue({
           success: false,
           error: expectedInputError,
         })
 
-        await expect(
-          controller.closeSession(mockedAccessToken, currentSessionId.value, mockedIp, mockedUserAgent, mockedResponse),
-        ).rejects.toThrow(
-          new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-            cause: expectedInputError,
+        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockRequest, mockedResponse)).rejects.toThrow(
+          new UnprocessableEntityException({
+            code: AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT,
+            message: expectedInputError.message,
           }),
         )
 
@@ -2100,9 +2113,9 @@ describe('AuthController', () => {
           error: unknownUseCaseError,
         })
 
-        await expect(
-          controller.closeSession(mockedAccessToken, currentSessionId.value, mockedIp, mockedUserAgent, mockedResponse),
-        ).rejects.toThrow(new InternalServerErrorException(unknownUseCaseError))
+        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockRequest, mockedResponse)).rejects.toThrow(
+          new InternalServerErrorException(unknownUseCaseError),
+        )
 
         expect(mockedCloseUserSessionUserCase.execute).toHaveBeenCalledTimes(1)
         expect(mockedConfigService.get).not.toHaveBeenCalled()
@@ -2117,9 +2130,9 @@ describe('AuthController', () => {
           throw unexpectedError
         })
 
-        await expect(
-          controller.closeSession(mockedAccessToken, currentSessionId.value, mockedIp, mockedUserAgent, mockedResponse),
-        ).rejects.toThrow(unexpectedError)
+        await expect(controller.closeSession(mockedAccessToken, currentSessionId.value, mockRequest, mockedResponse)).rejects.toThrow(
+          unexpectedError,
+        )
 
         expect(mockedConfigService.get).not.toHaveBeenCalled()
         expect(mockedResponse.clearCookie).not.toHaveBeenCalled()

@@ -1,7 +1,7 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 
 type JsonPrimitive = string | number | boolean | null

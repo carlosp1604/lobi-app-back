@@ -2,7 +2,7 @@ import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTran
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
@@ -13,7 +13,7 @@ import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 
 describe('UserModelTranslator', () => {
   const isoDate = '2025-09-16T09:14:34.000Z'

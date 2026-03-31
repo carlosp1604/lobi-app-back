@@ -1,6 +1,7 @@
-import type { FastifyReply } from 'fastify'
+import type { FastifyReply, FastifyRequest } from 'fastify'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import {
+  CLIENT_METADATA_SERVICE,
   CLOSE_USER_SESSION,
   CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
@@ -8,6 +9,7 @@ import {
   LOGIN_USER,
   LOGOUT_USER,
   REFRESH_SESSION,
+  REQUEST_METADATA_EXTRACTOR,
   RESET_USER_PASSWORD,
   VALIDATE_VERIFICATION_TOKEN,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
@@ -15,6 +17,7 @@ import { LoginUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/login-u
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import {
+  AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT,
   AUTH_CREATE_USER_DUPLICATED_EMAIL,
   AUTH_CREATE_USER_DUPLICATED_USERNAME,
   AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
@@ -66,13 +69,14 @@ import {
   Delete,
   Param,
   ParseUUIDPipe,
+  Req,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { RefreshSessionApplicationRequestDto } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationRequestDto'
 import { RefreshSession } from '~/src/modules/Auth/Application/RefreshSession/RefreshSession'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
-import { RefreshTokenDecorator } from '~/src/modules/Auth/Infrastructure/Decorators/refresh-token.decorator'
+import { RefreshToken } from '~/src/modules/Auth/Infrastructure/Decorators/refresh-token.decorator'
 import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { RefreshTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/refresh-token.guard'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
@@ -80,8 +84,6 @@ import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerifyEmailDto } from '~/src/modules/Auth/Infrastructure/Dtos/verify-email.dto'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
-import { UserAgent } from '~/src/modules/Shared/Infrastructure/Decorators/user-agent.decorator'
-import { UserIp } from '~/src/modules/Shared/Infrastructure/Decorators/user-ip.decorator'
 import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationRequestDto'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
@@ -110,6 +112,8 @@ import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Applicatio
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
 import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
+import type { RequestMetadataExtractorInterface } from '~/src/modules/Shared/Infrastructure/Services/RequestMetadataExtractorInterface'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
 
 @Controller('auth')
 export class AuthController {
@@ -123,22 +127,22 @@ export class AuthController {
     @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
     @Inject(CLOSE_USER_SESSION) private readonly closeUserSession: CloseUserSession,
     @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
+    @Inject(REQUEST_METADATA_EXTRACTOR) private readonly requestMetadataExtractor: RequestMetadataExtractorInterface,
+    @Inject(CLIENT_METADATA_SERVICE) private readonly clientMetadataService: ClientMetadataApplicationService,
     private readonly configService: ConfigService<Env, true>,
   ) {}
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(
-    @Body() body: LoginUserBodyDto,
-    @UserIp() userIp: string,
-    @UserAgent() userAgent: string | undefined,
-    @Res({ passthrough: true }) response: FastifyReply,
-  ) {
+  async login(@Req() request: FastifyRequest, @Body() body: LoginUserBodyDto, @Res({ passthrough: true }) response: FastifyReply) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: LoginUserApplicationRequestDto = {
       email: body.email,
       password: body.password,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.loginUser.execute(requestDto)
@@ -160,7 +164,8 @@ export class AuthController {
 
       if (
         result.error.id === LoginUserApplicationError.invalidCredentialsId ||
-        result.error.id === LoginUserApplicationError.userNotFoundId
+        result.error.id === LoginUserApplicationError.userNotFoundId ||
+        result.error.id === LoginUserApplicationError.userDisabledId
       ) {
         throw new UnauthorizedException({
           code: UNAUTHORIZED_ACCESS,
@@ -185,23 +190,19 @@ export class AuthController {
   @Post('refresh')
   @UseGuards(RefreshTokenGuard)
   @HttpCode(HttpStatus.OK)
-  async refresh(
-    @UserIp() userIp: string,
-    @UserAgent() userAgent: string | undefined,
-    @Res({ passthrough: true }) response: FastifyReply,
-    @RefreshTokenDecorator() refreshTokenFromCookie: string,
-  ) {
-    const requestDto: RefreshSessionApplicationRequestDto = {
-      ip: userIp,
-      userAgent,
-      token: refreshTokenFromCookie,
-    }
+  async refresh(@Req() request: FastifyRequest, @Res({ passthrough: true }) response: FastifyReply, @RefreshToken() token: string) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
+    const requestDto: RefreshSessionApplicationRequestDto = { token, clientMetadata }
 
     const result = await this.refreshSession.execute(requestDto)
 
     if (!result.success) {
       if (
         result.error.id === RefreshSessionApplicationError.userNotFoundId ||
+        result.error.id === RefreshSessionApplicationError.userDisabledId ||
         result.error.id === RefreshSessionApplicationError.sessionNotFoundId ||
         result.error.id === RefreshSessionApplicationError.sessionAlreadyExpiredId ||
         result.error.id === RefreshSessionApplicationError.sessionAlreadyRevokedId
@@ -231,41 +232,47 @@ export class AuthController {
 
   @Post('verify-email/signup')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async verifyEmailCreateAccount(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
+  async verifyEmailCreateAccount(@Req() request: FastifyRequest, @Body() body: VerifyEmailDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.createAccount().toString(),
       email: body.email,
       // TODO: Use language from request when multi-language emails are supported
       // language: body.language,
       sendNewToken: body.sendNewToken,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.generateVerificationToken.execute(requestDto)
 
     if (!result.success) {
-      this.handleVerifyEmailError(result.error)
+      return this.handleVerifyEmailError(result.error)
     }
   }
 
   @Post('verify-email/reset')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async verifyEmailResetPassword(@UserIp() userIp: string, @UserAgent() userAgent: string | undefined, @Body() body: VerifyEmailDto) {
+  async verifyEmailResetPassword(@Req() request: FastifyRequest, @Body() body: VerifyEmailDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: GenerateVerificationTokenApplicationRequestDto = {
       purpose: VerificationTokenPurpose.resetPassword().toString(),
       email: body.email,
       // TODO: Use language from request when multi-language emails are supported
       // language: body.language,
       sendNewToken: body.sendNewToken,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.generateVerificationToken.execute(requestDto)
 
     if (!result.success) {
-      this.handleVerifyEmailError(result.error)
+      return this.handleVerifyEmailError(result.error)
     }
   }
 
@@ -338,7 +345,11 @@ export class AuthController {
 
   @Post('signup')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async signup(@Body() body: CreateUserBodyDto, @UserIp() userIp: string, @UserAgent() userAgent: string | undefined) {
+  async signup(@Req() request: FastifyRequest, @Body() body: CreateUserBodyDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: CreateUserApplicationRequestDto = {
       email: body.email,
       username: body.username,
@@ -346,8 +357,7 @@ export class AuthController {
       password: body.password,
       token: body.token,
       requestedRole: body.requestedRole,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.createUser.execute(requestDto)
@@ -463,13 +473,16 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async resetPassword(@Body() body: ResetUserPasswordBodyDto, @UserIp() userIp: string, @UserAgent() userAgent: string | undefined) {
+  async resetPassword(@Req() request: FastifyRequest, @Body() body: ResetUserPasswordBodyDto) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: ResetUserPasswordApplicationRequestDto = {
       email: body.email,
       token: body.token,
       password: body.password,
-      ip: userIp,
-      userAgent,
+      clientMetadata,
     }
 
     const result = await this.resetUserPassword.execute(requestDto)
@@ -584,18 +597,14 @@ export class AuthController {
         LogoutUserApplicationError.cannotRevokeSessionId,
         LogoutUserApplicationError.sessionNotFoundId,
         LogoutUserApplicationError.sessionDoesNotBelongToUserId,
+        LogoutUserApplicationError.invalidSessionIdId,
+        LogoutUserApplicationError.invalidUserIdId,
       ]
 
       if (obfuscatedErrors.includes(errorId)) {
         this.clearCookies(response)
 
         return
-      }
-
-      if (errorId === LogoutUserApplicationError.invalidInputId) {
-        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-          cause: result.error,
-        })
       }
 
       throw new InternalServerErrorException(result.error)
@@ -612,16 +621,18 @@ export class AuthController {
   async closeSession(
     @AccessToken() accessToken: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
-    @UserIp() userIp: string,
-    @UserAgent() userAgent: string | undefined,
+    @Req() request: FastifyRequest,
     @Res({ passthrough: true }) response: FastifyReply,
   ) {
+    const requestMetadataDto = this.requestMetadataExtractor.extract(request)
+
+    const clientMetadata = await this.clientMetadataService.process(requestMetadataDto)
+
     const requestDto: CloseUserSessionApplicationRequestDto = {
       sessionId: id,
       userId: accessToken.sub,
       currentSessionId: accessToken.sid,
-      ip: userIp,
-      userAgent: userAgent,
+      clientMetadata,
     }
 
     const result = await this.closeUserSession.execute(requestDto)
@@ -631,25 +642,35 @@ export class AuthController {
     if (!result.success) {
       const errorId = result.error.id
 
-      const obfuscatedErrors = [
+      const fatalSystemErrors = [
+        CloseUserSessionApplicationError.invalidUserIdId,
+        CloseUserSessionApplicationError.invalidCurrentSessionIdId,
         CloseUserSessionApplicationError.userNotFoundId,
         CloseUserSessionApplicationError.userDisabledId,
+      ]
+
+      if (fatalSystemErrors.includes(errorId)) {
+        this.clearCookies(response)
+        return
+      }
+
+      const targetSessionErrors = [
         CloseUserSessionApplicationError.cannotRevokeSessionId,
         CloseUserSessionApplicationError.sessionNotFoundId,
         CloseUserSessionApplicationError.sessionDoesNotBelongToUserId,
       ]
 
-      if (obfuscatedErrors.includes(errorId)) {
+      if (targetSessionErrors.includes(errorId)) {
         if (isCurrentSession) {
           this.clearCookies(response)
         }
-
         return
       }
 
-      if (errorId === CloseUserSessionApplicationError.invalidInputId) {
-        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-          cause: result.error,
+      if (errorId === CloseUserSessionApplicationError.invalidSessionIdId) {
+        throw new UnprocessableEntityException({
+          code: AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT,
+          message: result.error.message,
         })
       }
 
@@ -690,6 +711,15 @@ export class AuthController {
   }
 
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {
+    const obfuscatedErrors = [
+      GenerateVerificationTokenApplicationError.userNotFoundId,
+      GenerateVerificationTokenApplicationError.userDisabledId,
+    ]
+
+    if (obfuscatedErrors.includes(error.id)) {
+      return
+    }
+
     if (error.id === GenerateVerificationTokenApplicationError.invalidEmailId) {
       throw new UnprocessableEntityException({
         code: AUTH_VERIFY_EMAIL_INVALID_EMAIL,

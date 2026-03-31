@@ -8,8 +8,8 @@ import { UserSessionModelTranslator } from '~/src/modules/Auth/Infrastructure/Mo
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserSessionEntity, UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 
 describe('PostgreSqlUserSessionRepository', () => {
@@ -124,14 +124,14 @@ describe('PostgreSqlUserSessionRepository', () => {
       user_id: userId.value,
       revoked_at: null,
       ip_hash: null,
-      user_agent: UserAgentMother.forTesting().value,
+      device_info: DeviceInfoMother.valid().value,
     })
 
     const expectedRawUserSession2 = makeRawSession({
       user_id: userId.value,
       revoked_at: null,
       ip_hash: null,
-      user_agent: UserAgentMother.forTesting().value,
+      device_info: DeviceInfoMother.valid().value,
     })
 
     beforeEach(() => {

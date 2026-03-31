@@ -6,16 +6,17 @@ import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceI
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
 import { ValidateVerificationTokenApplicationRequestDto } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationRequestDto'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationTokenPurposeMother } from '~/src/test/mothers/VerificationTokenPurposeMother'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2026-02-12T11:41:00Z')
@@ -90,13 +91,16 @@ describe('ValidateVerificationToken', () => {
       it('should return invalidEmail error when email is not valid', async () => {
         const invalidEmail = EmailAddressMother.invalid()
         const invalidEmailRequest = { ...requestBase, email: invalidEmail }
+
         const useCase = buildUseCase()
+
+        const expectedDomainErrorMessage = SharedDomainException.invalidEmailAddress(invalidEmail).message
 
         const result = await useCase.execute(invalidEmailRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ValidateVerificationTokenError.invalidEmail(invalidEmail),
+          error: ValidateVerificationTokenError.invalidEmail(expectedDomainErrorMessage),
         })
 
         expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
@@ -105,13 +109,16 @@ describe('ValidateVerificationToken', () => {
       it('should return invalidTokenPurpose error when purpose is not valid', async () => {
         const invalidTokenPurpose = VerificationTokenPurposeMother.invalid()
         const invalidPurposeRequest = { ...requestBase, purpose: invalidTokenPurpose }
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenPurpose().message
+
         const useCase = buildUseCase()
 
         const result = await useCase.execute(invalidPurposeRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ValidateVerificationTokenError.invalidTokenPurpose(invalidTokenPurpose),
+          error: ValidateVerificationTokenError.invalidTokenPurpose(expectedDomainErrorMessage),
         })
 
         expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
@@ -120,13 +127,16 @@ describe('ValidateVerificationToken', () => {
       it('should return invalidTokenFormat error when token format is not valid', async () => {
         const invalidTokenValue = VerificationTokenValueMother.invalid()
         const invalidTokenRequest = { ...requestBase, token: invalidTokenValue }
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenValue().message
+
         const useCase = buildUseCase()
 
         const result = await useCase.execute(invalidTokenRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ValidateVerificationTokenError.invalidTokenFormat(),
+          error: ValidateVerificationTokenError.invalidTokenFormat(expectedDomainErrorMessage),
         })
 
         expect(mockedTokenRepository.findByEmail).not.toHaveBeenCalled()
@@ -152,10 +162,7 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.notFound(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.notFound() })
 
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
@@ -168,15 +175,14 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(expiredToken)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
+
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.expired(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.expired(expectedDomainErrorMessage) })
 
         asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.alreadyExpired(expiredToken.id.value).message,
+          VerificationTokenDomainException.alreadyExpired().message,
           'Token has already expired',
           expiredToken,
         )
@@ -189,18 +195,13 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(usedToken)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
+
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.alreadyUsed(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.alreadyUsed(expectedDomainErrorMessage) })
 
-        asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.alreadyUsed(usedToken.id.value).message,
-          'Token was already used',
-          usedToken,
-        )
+        asserInvalidTokenLoggerCall(VerificationTokenDomainException.alreadyUsed().message, 'Token was already used', usedToken)
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
@@ -211,15 +212,14 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(tokenWithOtherEmail)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.cannotBeUsedByUser(email.value).message
+
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.invalidOwner(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.invalidOwner(expectedDomainErrorMessage) })
 
         asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.cannotBeUsedByUser(tokenWithOtherEmail.id.value, email.value).message,
+          VerificationTokenDomainException.cannotBeUsedByUser(email.value).message,
           'Token belongs to a different email address',
           tokenWithOtherEmail,
         )
@@ -233,15 +233,17 @@ describe('ValidateVerificationToken', () => {
 
         mockedTokenRepository.findByEmail.mockResolvedValue(tokenWithOtherPurpose)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.cannotBeUsedForPurpose().message
+
         const result = await useCase.execute(requestBase)
 
         expect(result).toEqual({
           success: false,
-          error: ValidateVerificationTokenError.tokenPurposeMismatch(),
+          error: ValidateVerificationTokenError.tokenPurposeMismatch(expectedDomainErrorMessage),
         })
 
         asserInvalidTokenLoggerCall(
-          VerificationTokenDomainException.cannotBeUsedForPurpose(tokenWithOtherPurpose.id.value, purpose.value).message,
+          VerificationTokenDomainException.cannotBeUsedForPurpose().message,
           'Token was not generated for the requested purpose',
           tokenWithOtherPurpose,
         )
@@ -272,17 +274,16 @@ describe('ValidateVerificationToken', () => {
 
         const result = await useCase.execute(requestBase)
 
-        expect(result).toEqual({
-          success: false,
-          error: ValidateVerificationTokenError.invalidToken(),
-        })
+        expect(result).toEqual({ success: false, error: ValidateVerificationTokenError.invalidToken() })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: email.value,
+          verificationTokenId: tokenId.value,
+          purpose: purpose.value,
         })
       })
     })
 
-    it('should throw exception when repository throws a unexpected error', async () => {
+    it('should throw exception when verificationTokenRepository throws an unexpected error', async () => {
       const useCase = buildUseCase()
       const dbError = new Error('Unexpected verificationTokenRepository error')
 
@@ -291,7 +292,7 @@ describe('ValidateVerificationToken', () => {
       await expect(useCase.execute(requestBase)).rejects.toThrow(dbError)
     })
 
-    it('should throw exception when verify service throws a unexpected error', async () => {
+    it('should throw exception when verifyTokenService throws an unexpected error', async () => {
       const useCase = buildUseCase()
       const verificationToken = verificationTokenTestBuilder().build()
       const verifyError = new Error('Unexpected verifyTokenService error')

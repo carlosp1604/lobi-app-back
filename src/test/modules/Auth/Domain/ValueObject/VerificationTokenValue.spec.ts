@@ -19,7 +19,7 @@ describe('VerificationTokenValue', () => {
       'should throw error when token value is not valid: "%s"',
       (invalidCode) => {
         expect(() => VerificationTokenValue.fromString(invalidCode)).toThrow(
-          VerificationTokenDomainException.invalidVerificationTokenValue(invalidCode),
+          VerificationTokenDomainException.invalidVerificationTokenValue(),
         )
       },
     )
@@ -42,7 +42,7 @@ describe('VerificationTokenValue', () => {
         const result = VerificationTokenValue.safeCreate(invalidCode)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(VerificationTokenDomainException.invalidVerificationTokenValue(invalidCode))
+        expect(result['error']).toStrictEqual(VerificationTokenDomainException.invalidVerificationTokenValue())
       },
     )
   })

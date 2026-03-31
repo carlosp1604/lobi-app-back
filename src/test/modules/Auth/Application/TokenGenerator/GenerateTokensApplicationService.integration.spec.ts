@@ -1,7 +1,7 @@
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { ConfigService } from '@nestjs/config'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
@@ -16,8 +16,8 @@ import { createConfigServiceMockImplementation } from '~/src/test/utils/ConfigSe
 describe('GenerateTokensApplicationService', () => {
   const now = new Date('2025-10-17T15:26:21Z')
   const userId = IdentifierMother.valid()
-  const userAgent = UserAgentMother.valid()
-  const ipHash = UserSessionIpHashMother.valid()
+  const deviceInfo = DeviceInfoMother.valid()
+  const ipHash = UserIpHashMother.valid()
 
   const deviceLocation = DeviceLocationMother.valid()
 
@@ -50,7 +50,7 @@ describe('GenerateTokensApplicationService', () => {
     it('should generate a full set of tokens and session data correctly', async () => {
       const service = buildService()
 
-      const result = await service.generate(userId, now, userAgent, ipHash, deviceLocation)
+      const result = await service.generate(userId, now, deviceInfo, ipHash, deviceLocation)
 
       expect(result).toBeTruthy()
 
@@ -83,7 +83,7 @@ describe('GenerateTokensApplicationService', () => {
     it('should handle null ipHash and deviceLocation correctly', async () => {
       const service = buildService()
 
-      const result = await service.generate(userId, now, userAgent, null, null)
+      const result = await service.generate(userId, now, deviceInfo, null, null)
 
       expect(result.session.ipHash).toBeNull()
       expect(result.session.deviceLocation).toBeNull()

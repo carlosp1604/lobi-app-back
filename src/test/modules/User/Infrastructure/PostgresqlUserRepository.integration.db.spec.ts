@@ -1,4 +1,4 @@
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { User } from '~/src/modules/User/Domain/User'
@@ -15,7 +15,7 @@ import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserD
 import { runPessimisticLockTest, Tx1Logic, Tx2Logic } from '~/src/test/utils/concurrencyHelper'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { mock, mockReset } from 'jest-mock-extended'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 
 describe('PostgresqlUserRepository', () => {
   const userId = IdentifierMother.valid()

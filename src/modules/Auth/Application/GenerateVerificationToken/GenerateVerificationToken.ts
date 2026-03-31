@@ -18,7 +18,6 @@ import { TemplateAlias, VerificationEmailContext } from '~/src/modules/Shared/Do
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
@@ -33,7 +32,6 @@ export class GenerateVerificationToken {
     private readonly emailSenderService: EmailSenderServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly hasherService: HasherServiceInterface,
-    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly randomService: RandomServiceInterface,
     private readonly configService: ConfigService<Env, true>,
@@ -75,25 +73,37 @@ export class GenerateVerificationToken {
           reason: 'Email is already registered and purpose is create account',
         })
 
-        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
+        return fail(GenerateVerificationTokenApplicationError.emailAlreadyTaken())
       }
     }
 
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: email.value,
-    })
-
     if (verificationTokenPurpose.equals(VerificationTokenPurpose.resetPassword())) {
-      if (!user || !user.isActive()) {
+      if (!user) {
         this.loggerService.warn('Verification token generation rejected', {
           email: email.value,
-          reason: user ? 'User is disabled' : 'User not found',
+          reason: 'User not found',
           purpose: verificationTokenPurpose.value,
         })
 
-        return success(undefined)
+        return fail(GenerateVerificationTokenApplicationError.userNotFound())
+      }
+
+      if (!user.isActive()) {
+        this.loggerService.warn('Verification token generation rejected', {
+          email: email.value,
+          reason: 'User is disabled',
+          purpose: verificationTokenPurpose.value,
+        })
+
+        return fail(GenerateVerificationTokenApplicationError.userDisabled())
       }
     }
+
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
+
+    const clearRandomCode = this.randomService.getRandomNumericCode(VerificationTokenValue.LENGTH)
+    const hashedCode = await this.hasherService.hash(clearRandomCode)
+    const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
 
     return this.unitOfWork.runInTransaction(async (context) => {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
@@ -114,7 +124,7 @@ export class GenerateVerificationToken {
             reason: 'An active token has already been issued for this purpose',
           })
 
-          return fail(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, verificationTokenPurpose.value))
+          return fail(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued())
         }
 
         if (!verificationToken.isUsed()) {
@@ -126,9 +136,6 @@ export class GenerateVerificationToken {
         }
       }
 
-      const clearRandomCode = this.randomService.getRandomNumericCode(VerificationTokenValue.LENGTH)
-      const hashedCode = await this.hasherService.hash(clearRandomCode)
-      const tokenHash = VerificationTokenTokenHash.fromString(hashedCode)
       const verificationTokenId = this.idGeneratorService.generateId()
 
       const newVerificationToken = VerificationToken.create(
@@ -145,8 +152,8 @@ export class GenerateVerificationToken {
         resendCode,
         language,
         deviceLocation,
-        userAgent,
-        ipHash,
+        deviceInfo,
+        userIpHash,
         now,
       )
 
@@ -161,25 +168,27 @@ export class GenerateVerificationToken {
   }
 
   private validateEmail(email: string): Result<EmailAddress, GenerateVerificationTokenApplicationError> {
-    const createVerificationTokenEmailResult = EmailAddress.safeCreate(email)
+    const emailResult = EmailAddress.safeCreate(email)
 
-    if (!createVerificationTokenEmailResult.success) {
-      return fail(GenerateVerificationTokenApplicationError.invalidEmail(email))
+    if (!emailResult.success) {
+      return fail(GenerateVerificationTokenApplicationError.invalidEmail(emailResult.error.message))
     }
 
-    return success(createVerificationTokenEmailResult.value)
+    return success(emailResult.value)
   }
 
   private validateVerificationTokenPurpose(
     purpose: string,
   ): Result<VerificationTokenPurpose, GenerateVerificationTokenApplicationError> {
-    const createVerificationTokenPurposeResult = VerificationTokenPurpose.safeCreate(purpose)
+    const verificationTokenPurposeResult = VerificationTokenPurpose.safeCreate(purpose)
 
-    if (!createVerificationTokenPurposeResult.success) {
-      return fail(GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose(purpose))
+    if (!verificationTokenPurposeResult.success) {
+      return fail(
+        GenerateVerificationTokenApplicationError.invalidVerificationTokenPurpose(verificationTokenPurposeResult.error.message),
+      )
     }
 
-    return success(createVerificationTokenPurposeResult.value)
+    return success(verificationTokenPurposeResult.value)
   }
 
   private async sendEmail(

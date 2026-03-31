@@ -1,5 +1,5 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
-import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
+import { ValidVerificationTokenPurposes } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 
 export class VerificationTokenDomainException extends DomainException {
   public readonly __brand = 'VerificationTokenDomainException' as const
@@ -16,49 +16,48 @@ export class VerificationTokenDomainException extends DomainException {
     super(message, id, VerificationTokenDomainException.name)
   }
 
-  public static invalidVerificationTokenValue(value: string) {
-    const safeValueSample = StringFormatter.formatSafe(value, 20)
-    return new VerificationTokenDomainException(
-      `${safeValueSample} is not a valid VerificationToken value format`,
-      this.invalidVerificationTokenValueId,
-    )
+  public static invalidVerificationTokenValue() {
+    const message = [
+      'Invalid verification token format:',
+      '- Must be exactly 8 characters long.',
+      '- Must contain only numeric characters (0-9).',
+    ].join('\n')
+
+    return new VerificationTokenDomainException(message, this.invalidVerificationTokenValueId)
   }
 
   public static invalidTokenHash() {
     return new VerificationTokenDomainException('Invalid VerificationToken token hash format', this.invalidVerificationTokenTokenHashId)
   }
 
-  public static invalidVerificationTokenPurpose(purpose: string) {
-    return new VerificationTokenDomainException(
-      `${purpose} is not a valid VerificationToken purpose`,
-      this.invalidVerificationTokenPurposeId,
-    )
+  public static invalidVerificationTokenPurpose() {
+    const validPurposesList = Object.values(ValidVerificationTokenPurposes)
+      .map((purpose) => `- ${purpose}`)
+      .join('\n')
+
+    const message = ['Invalid verification token purpose. Must be one of the following:', validPurposesList].join('\n')
+
+    return new VerificationTokenDomainException(message, this.invalidVerificationTokenPurposeId)
   }
 
-  public static alreadyUsed(verificationTokenId: string) {
-    return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} is already used`,
-      this.verificationTokenAlreadyUsedId,
-    )
+  public static alreadyUsed() {
+    return new VerificationTokenDomainException('The verification token has already been used', this.verificationTokenAlreadyUsedId)
   }
 
-  public static alreadyExpired(verificationTokenId: string) {
-    return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} is already expired`,
-      this.verificationTokenAlreadyExpiredId,
-    )
+  public static alreadyExpired() {
+    return new VerificationTokenDomainException('The verification token has expired', this.verificationTokenAlreadyExpiredId)
   }
 
-  public static cannotBeUsedForPurpose(verificationTokenId: string, purpose: string) {
+  public static cannotBeUsedForPurpose() {
     return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} cannot be used for purpose ${purpose}`,
+      'The verification token cannot be used for the requested action',
       this.verificationTokenCannotBeUsedForPurposeId,
     )
   }
 
-  public static cannotBeUsedByUser(verificationTokenId: string, email: string) {
+  public static cannotBeUsedByUser(email: string) {
     return new VerificationTokenDomainException(
-      `VerificationToken identified by ID ${verificationTokenId} cannot be used by User email ${email}`,
+      `The verification token does not belong to the email address ${email}.`,
       this.verificationTokenCannotBeUsedByUserId,
     )
   }

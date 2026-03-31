@@ -5,6 +5,7 @@ import { AuthController } from '~/src/modules/Auth/Infrastructure/auth.controlle
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import {
   AUTH_DOMAIN_EVENT_FACTORY,
+  CLIENT_METADATA_SERVICE,
   CLOSE_USER_SESSION,
   CREATE_USER,
   DEVICE_LOCATION_RESOLVER,
@@ -21,9 +22,10 @@ import {
   PASSWORD_HASHER_SERVICE,
   RANDOM_SERVICE,
   REFRESH_SESSION,
-  REQUEST_ORIGIN_SERVICE,
+  REQUEST_METADATA_EXTRACTOR,
   RESET_USER_PASSWORD,
   TOKEN_GENERATOR,
+  UA_PARSER,
   USER_CREDENTIAL_REPOSITORY,
   USER_PROFILE_REPOSITORY,
   USER_REPOSITORY,
@@ -40,7 +42,7 @@ import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
 import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
-import { IpAddressIpValidatorService } from '~/src/modules/Auth/Infrastructure/Services/IpAddressIpValidatorService'
+import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
@@ -52,7 +54,7 @@ import { DeviceLocationResolverServiceInterface } from '~/src/modules/Auth/Domai
 import { NodeClockService } from '~/src/modules/Shared/Infrastructure/Services/NodeClockService'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
-import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
+import { IpValidatorServiceInterface } from '~/src/modules/Shared/Infrastructure/Services/IpValidatorServiceInterface'
 import { LoginUser } from '~/src/modules/Auth/Application/LoginUser/LoginUser'
 import { CLOCK_SERVICE, ID_GENERATOR } from '~/src/modules/Shared/Infrastructure/shared.tokens'
 import { TYPEORM_MANAGER_RESOLVER, UNIT_OF_WORK } from '~/src/db/config/typeorm.tokens'
@@ -75,7 +77,6 @@ import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSe
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { RandomServiceInterface } from '~/src/modules/Shared/Domain/RandomServiceInterface'
 import { GenerateVerificationToken } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationToken'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerificationTokenEntity } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { ValidateVerificationToken } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationToken'
@@ -90,6 +91,10 @@ import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEven
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
+import { UaParserJsUserAgentParserService } from '~/src/modules/Shared/Infrastructure/Services/UaParserJsUserAgentParserService'
+import { FastifyClientMetadataExtractor } from '~/src/modules/Shared/Infrastructure/Services/FastifyRequestMetadataResolver'
+import { UserAgentParserServiceInterface } from '~/src/modules/Shared/Infrastructure/Services/UserAgentParserServiceInterface'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
 
 @Module({
   imports: [
@@ -175,6 +180,8 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
     },
     { provide: DEVICE_LOCATION_RESOLVER, useClass: NoopDeviceLocationResolverService },
     { provide: IP_VALIDATOR, useClass: IpAddressIpValidatorService },
+    { provide: UA_PARSER, useClass: UaParserJsUserAgentParserService },
+    { provide: REQUEST_METADATA_EXTRACTOR, useClass: FastifyClientMetadataExtractor },
     {
       provide: MAX_SESSIONS_POLICY,
       useFactory: (configService: ConfigService<Env, true>) => {
@@ -222,21 +229,23 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
       inject: [ConfigService, LOGGER_FACTORY],
     },
     {
-      provide: REQUEST_ORIGIN_SERVICE,
+      provide: CLIENT_METADATA_SERVICE,
       useFactory: (
         ipValidator: IpValidatorServiceInterface,
         hasherService: HasherServiceInterface,
+        uaParserService: UserAgentParserServiceInterface,
         deviceLocationResolver: DeviceLocationResolverServiceInterface,
         loggerFactory: LoggerFactoryInterface,
       ) => {
-        return new RequestOriginApplicationService(
+        return new ClientMetadataApplicationService(
           ipValidator,
           hasherService,
+          uaParserService,
           deviceLocationResolver,
-          loggerFactory.createLogger(RequestOriginApplicationService.name),
+          loggerFactory.createLogger(ClientMetadataApplicationService.name),
         )
       },
-      inject: [IP_VALIDATOR, HASHER_SERVICE, DEVICE_LOCATION_RESOLVER, LOGGER_FACTORY],
+      inject: [IP_VALIDATOR, HASHER_SERVICE, UA_PARSER, DEVICE_LOCATION_RESOLVER, LOGGER_FACTORY],
     },
     {
       provide: VERIFY_TOKEN_DOMAIN_SERVICE,
@@ -262,7 +271,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         hasherService: HasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
-        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
@@ -276,7 +284,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
           hasherService,
           generateTokensService,
           userSessionManagerService,
-          requestOriginApplicationService,
           clockService,
           unitOfWork,
           loggerFactory.createLogger(LoginUser.name),
@@ -290,7 +297,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         PASSWORD_HASHER_SERVICE,
         GENERATE_TOKENS_SERVICE,
         USER_SESSION_POLICY_MANAGER_SERVICE,
-        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
@@ -305,7 +311,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         hasherService: HasherServiceInterface,
         generateTokensService: GenerateTokensApplicationService,
         userSessionManagerService: UserSessionPolicyManagerApplicationService,
-        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
@@ -316,7 +321,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
           hasherService,
           generateTokensService,
           userSessionManagerService,
-          requestOriginApplicationService,
           clockService,
           unitOfWork,
           loggerFactory.createLogger(RefreshSession.name),
@@ -328,7 +332,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         HASHER_SERVICE,
         GENERATE_TOKENS_SERVICE,
         USER_SESSION_POLICY_MANAGER_SERVICE,
-        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
@@ -343,7 +346,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         emailSenderService: EmailSenderServiceInterface,
         unitOfWork: UnitOfWork,
         hasherService: HasherServiceInterface,
-        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: ClockServiceInterface,
         randomService: RandomServiceInterface,
         configService: ConfigService<Env, true>,
@@ -358,7 +360,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
           emailSenderService,
           unitOfWork,
           hasherService,
-          requestOriginApplicationService,
           clockService,
           randomService,
           configService,
@@ -374,7 +375,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         EMAIL_SENDER_SERVICE,
         UNIT_OF_WORK,
         PASSWORD_HASHER_SERVICE,
-        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         RANDOM_SERVICE,
         ConfigService,
@@ -410,7 +410,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         domainEventRepository: DomainEventRepositoryInterface,
         verifyTokenService: VerifyTokenService,
         hasherService: HasherServiceInterface,
-        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
@@ -425,7 +424,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
           domainEventRepository,
           verifyTokenService,
           hasherService,
-          requestOriginApplicationService,
           clockService,
           unitOfWork,
           loggerFactory.createLogger(CreateUser.name),
@@ -440,7 +438,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         DOMAIN_EVENT_REPOSITORY,
         VERIFY_TOKEN_DOMAIN_SERVICE,
         PASSWORD_HASHER_SERVICE,
-        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
@@ -457,7 +454,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         domainEventRepository: DomainEventRepositoryInterface,
         verifyTokenService: VerifyTokenService,
         hasherService: HasherServiceInterface,
-        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: NodeClockService,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
@@ -470,7 +466,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
           domainEventRepository,
           verifyTokenService,
           hasherService,
-          requestOriginApplicationService,
           clockService,
           unitOfWork,
           loggerFactory.createLogger(ResetUserPassword.name),
@@ -483,7 +478,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         DOMAIN_EVENT_REPOSITORY,
         VERIFY_TOKEN_DOMAIN_SERVICE,
         PASSWORD_HASHER_SERVICE,
-        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
@@ -509,7 +503,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         userRepository: UserRepositoryInterface,
         sessionRepository: UserSessionRepositoryInterface,
         domainEventRepository: DomainEventRepositoryInterface,
-        requestOriginApplicationService: RequestOriginApplicationService,
         clockService: ClockServiceInterface,
         unitOfWork: UnitOfWork,
         loggerFactory: LoggerFactoryInterface,
@@ -519,7 +512,6 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
           userRepository,
           sessionRepository,
           domainEventRepository,
-          requestOriginApplicationService,
           clockService,
           unitOfWork,
           loggerFactory.createLogger(CloseUserSession.name),
@@ -530,12 +522,22 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
         USER_REPOSITORY,
         USER_SESSION_REPOSITORY,
         DOMAIN_EVENT_REPOSITORY,
-        REQUEST_ORIGIN_SERVICE,
         CLOCK_SERVICE,
         UNIT_OF_WORK,
         LOGGER_FACTORY,
         AUTH_DOMAIN_EVENT_FACTORY,
       ],
+    },
+    {
+      provide: GET_ACTIVE_SESSIONS,
+      useFactory: (
+        sessionRepository: UserSessionRepositoryInterface,
+        clockService: ClockServiceInterface,
+        loggerFactory: LoggerFactoryInterface,
+      ) => {
+        return new GetActiveSessions(sessionRepository, clockService, loggerFactory.createLogger(GetActiveSessions.name))
+      },
+      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE, LOGGER_FACTORY],
     },
     {
       provide: GET_ACTIVE_SESSIONS,
@@ -558,6 +560,8 @@ import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSessio
     RESET_USER_PASSWORD,
     LOGOUT_USER,
     GET_ACTIVE_SESSIONS,
+    CLIENT_METADATA_SERVICE,
+    REQUEST_METADATA_EXTRACTOR,
     TypeOrmModule,
   ],
 })

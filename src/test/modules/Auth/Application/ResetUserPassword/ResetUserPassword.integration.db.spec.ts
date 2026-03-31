@@ -1,6 +1,6 @@
 import { mock, mockReset } from 'jest-mock-extended'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { UserCredentialDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserCredentialDatabaseHelper'
@@ -13,7 +13,6 @@ import { ResetUserPasswordApplicationRequestDto } from '~/src/modules/Auth/Appli
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
@@ -26,7 +25,6 @@ import { PostgreSqlUserCredentialRepository } from '~/src/modules/Auth/Infrastru
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { makeRawUser } from '~/src/test/modules/User/Infrastructure/UserRawTestMaker'
@@ -42,13 +40,14 @@ import {
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 
 describe('ResetUserPassword', () => {
   const now = new Date('2026-02-19T16:46:00Z')
 
-  const validNewPassword = UserPasswordMother.valid()
-  const validOldPassword = UserPasswordMother.random()
-  const validEmail = EmailAddressMother.valid()
+  const newPassword = UserPasswordMother.valid()
+  const oldPassword = UserPasswordMother.random()
+  const email = EmailAddressMother.valid()
   const validTokenValue = VerificationTokenValueMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
@@ -68,7 +67,6 @@ describe('ResetUserPassword', () => {
   })
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
-  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
 
   const passwordHasher = new BCryptHasherService(env.SALT_ROUNDS)
   const domainEventFactory = new AuthDomainEventFactory(new NodeIdGeneratorService())
@@ -77,7 +75,6 @@ describe('ResetUserPassword', () => {
 
   beforeEach(async () => {
     mockReset(mockedResolver)
-    mockReset(mockedRequestOriginService)
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
@@ -86,18 +83,11 @@ describe('ResetUserPassword', () => {
     verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(runner.manager)
     domainEventDatabaseHelper = new DomainEventDatabaseHelper(runner.manager)
 
-    mockedRequestOriginService.process.mockResolvedValue({
-      userAgent: UserAgentMother.valid(),
-      ipHash: 'ip-hash',
-      normalizedIp: 'normalized-ip',
-      deviceLocation: null,
-    })
-
     const tokenHash = await passwordHasher.hash(validTokenValue.value)
-    const oldPasswordHash = await passwordHasher.hash(validOldPassword.value)
+    const oldPasswordHash = await passwordHasher.hash(oldPassword.value)
 
     existingRawToken = makeRawVerificationToken({
-      email: validEmail.value,
+      email: email.value,
       token_hash: tokenHash,
       purpose: VerificationTokenPurpose.resetPassword().value,
       expires_at: new Date(now.getTime() + 3600),
@@ -106,7 +96,7 @@ describe('ResetUserPassword', () => {
     })
 
     existingRawUser = makeRawUser({
-      email: validEmail.value,
+      email: email.value,
       username: UserUsernameMother.random().value,
       name: UserNameMother.random().value,
       role: UserRole.sportsman().value,
@@ -121,11 +111,10 @@ describe('ResetUserPassword', () => {
     })
 
     baseRequest = {
-      email: validEmail.value,
+      email: email.value,
       token: validTokenValue.value,
-      password: validNewPassword.value,
-      ip: '127.0.0.1',
-      userAgent: UserAgentMother.forTesting().value,
+      password: newPassword.value,
+      clientMetadata: new ClientMetadataResponseTestBuilder().build(),
     }
   })
 
@@ -137,7 +126,6 @@ describe('ResetUserPassword', () => {
       new PostgreSqlDomainEventRepository(mockedResolver),
       verifyTokenService,
       passwordHasher,
-      mockedRequestOriginService,
       new ClockServiceMock(now),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
@@ -192,11 +180,11 @@ describe('ResetUserPassword', () => {
 
       const updatedCredential = await userCredentialDatabaseHelper.findUserCredential(existingRawUser.id)
       expect(updatedCredential).not.toBeNull()
-      const isPasswordCorrect = await passwordHasher.compare(validNewPassword.value, updatedCredential!.password_hash)
+      const isPasswordCorrect = await passwordHasher.compare(newPassword.value, updatedCredential!.password_hash)
       expect(isPasswordCorrect).toBe(true)
       expect(updatedCredential!.updated_at).toEqual(now)
 
-      const updatedToken = await verificationTokenDatabaseHelper.findOneByEmail(validEmail.value)
+      const updatedToken = await verificationTokenDatabaseHelper.findOneByEmail(email.value)
       expect(updatedToken).not.toBeNull()
       expect(updatedToken!.used_at).toEqual(now)
 
@@ -211,7 +199,7 @@ describe('ResetUserPassword', () => {
   })
 
   describe('when there are errors', () => {
-    it('should return tokenNotFound error when verification token does not exist', async () => {
+    it('should return notFound error when verification token does not exist', async () => {
       await userDatabaseHelper.save(existingRawUser)
       await userCredentialDatabaseHelper.save(existingRawCredential)
 
@@ -222,16 +210,14 @@ describe('ResetUserPassword', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(baseRequest.email)),
-      )
+      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()))
 
       const credential = await userCredentialDatabaseHelper.findUserCredential(existingRawUser.id)
       expect(credential).not.toBeNull()
       expect(credential!.password_hash).toBe(existingRawCredential.password_hash)
     })
 
-    it('should return userNotFound when user does not exist', async () => {
+    it('should return notFound when user does not exist', async () => {
       await verificationTokenDatabaseHelper.save(existingRawToken)
 
       const result = await runTestWithCount({
@@ -241,9 +227,7 @@ describe('ResetUserPassword', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(baseRequest.email)),
-      )
+      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound()))
 
       const token = await verificationTokenDatabaseHelper.findById(existingRawToken.id)
       expect(token).not.toBeNull()
@@ -261,7 +245,7 @@ describe('ResetUserPassword', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.inconsistentState(existingRawUser.id))
+      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.inconsistentState())
 
       const token = await verificationTokenDatabaseHelper.findById(existingRawToken.id)
       expect(token).not.toBeNull()

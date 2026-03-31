@@ -8,7 +8,7 @@ import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserTestBuilder } from '~/src/test/modules/User/Domain/UserTestBuilder'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
@@ -120,7 +120,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.invalidInput('userId', expectedUserIdValidationError.message))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.invalidUserId(expectedUserIdValidationError.message))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -144,9 +144,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        LogoutUserApplicationError.invalidInput('sessionId', expectedSessionIdValidationError.message),
-      )
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.invalidSessionId(expectedSessionIdValidationError.message))
 
       expect(mockedUnitOfWork.runInTransaction).not.toHaveBeenCalled()
     })
@@ -164,7 +162,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userNotFound())
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -183,7 +181,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userDisabled(validUserId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.userDisabled())
 
       expect(mockedSessionRepository.findById).not.toHaveBeenCalled()
     })
@@ -202,7 +200,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound(validSessionId.value))
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionNotFound())
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
@@ -225,9 +223,7 @@ describe('LogoutUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        LogoutUserApplicationError.sessionDoesNotBelongToUser(validSessionId.value, validUserId.value),
-      )
+      expect(result['error']).toStrictEqual(LogoutUserApplicationError.sessionDoesNotBelongToUser())
 
       expect(mockedSessionRepository.save).not.toHaveBeenCalled()
     })
@@ -238,7 +234,7 @@ describe('LogoutUser', () => {
       const expiredSession = sessionBuilder.withExpiresAt(pastDate).build()
       mockedSessionRepository.findById.mockResolvedValue(expiredSession)
 
-      const expectedRevocationError = UserSessionDomainException.sessionAlreadyExpired(validSessionId.value)
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyExpired()
 
       const result = await useCase.execute(baseRequest)
 
@@ -273,7 +269,7 @@ describe('LogoutUser', () => {
       const session = sessionBuilder.build()
       mockedSessionRepository.findById.mockResolvedValue(session)
 
-      const domainException = UserSessionDomainException.sessionAlreadyRevoked(validSessionId.value)
+      const domainException = UserSessionDomainException.sessionAlreadyRevoked()
 
       jest.spyOn(session, 'revoke').mockImplementation(() => {
         throw domainException

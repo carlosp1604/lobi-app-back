@@ -6,6 +6,8 @@ export class GenerateVerificationTokenApplicationError extends Error {
 
   public static invalidEmailId = 'generate_verification_token_invalid_email'
   public static invalidVerificationTokenPurposeId = 'generate_verification_token_invalid_verification_token_purpose'
+  public static userNotFoundId = 'generate_verification_token_user_not_found'
+  public static userDisabledId = 'generate_verification_token_user_disabled'
   public static activeTokenAlreadyIssuedId = 'generate_verification_token_active_token_already_issued'
   public static emailAlreadyTakenId = 'generate_verification_token_email_already_taken'
 
@@ -15,25 +17,33 @@ export class GenerateVerificationTokenApplicationError extends Error {
     this.name = GenerateVerificationTokenApplicationError.name
   }
 
-  public static invalidEmail(email: string) {
-    return new GenerateVerificationTokenApplicationError(`Invalid email ${email}`, this.invalidEmailId)
+  public static invalidEmail(domainMessage: string) {
+    return new GenerateVerificationTokenApplicationError(domainMessage, this.invalidEmailId)
   }
 
-  public static invalidVerificationTokenPurpose(purpose: string) {
+  public static invalidVerificationTokenPurpose(domainMessage: string) {
+    return new GenerateVerificationTokenApplicationError(domainMessage, this.invalidVerificationTokenPurposeId)
+  }
+
+  public static userNotFound() {
+    return new GenerateVerificationTokenApplicationError('No user was found for the provided email address', this.userNotFoundId)
+  }
+
+  public static userDisabled() {
     return new GenerateVerificationTokenApplicationError(
-      `Invalid VerificationToken purpose ${purpose}`,
-      this.invalidVerificationTokenPurposeId,
+      'The user associated with this email address is currently disabled',
+      this.userDisabledId,
     )
   }
 
-  public static activeTokenAlreadyIssued(email: string, purpose: string) {
+  public static activeTokenAlreadyIssued() {
     return new GenerateVerificationTokenApplicationError(
-      `An active VerificationToken for ${purpose} was already issued for email ${email}`,
+      'An active verification token already exists for the requested action',
       this.activeTokenAlreadyIssuedId,
     )
   }
 
-  public static emailAlreadyTaken(email: string) {
-    return new GenerateVerificationTokenApplicationError(`Email ${email} is already taken`, this.emailAlreadyTakenId)
+  public static emailAlreadyTaken() {
+    return new GenerateVerificationTokenApplicationError('The provided email address is already registered', this.emailAlreadyTakenId)
   }
 }

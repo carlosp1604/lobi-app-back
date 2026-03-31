@@ -1,10 +1,10 @@
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { UserAgent } from '~/src/modules/Auth/Domain/ValueObject/UserAgent'
+import { DeviceInfo } from '~/src/modules/Auth/Domain/ValueObject/DeviceInfo'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTokenHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionTokenHash'
-import { UserSessionIpHash } from '~/src/modules/Auth/Domain/ValueObject/UserSessionIpHash'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { UserIpHash } from '~/src/modules/Shared/Domain/ValueObject/UserIpHash'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 
@@ -12,8 +12,8 @@ export class UserSessionTestBuilder {
   private _id = IdentifierMother.valid()
   private _userId = IdentifierMother.valid()
   private _tokenHash = UserSessionTokenHashMother.random()
-  private _ipHash: UserSessionIpHash | null = null
-  private _userAgent: UserAgent = UserAgentMother.valid()
+  private _ipHash: UserIpHash | null = null
+  private _deviceInfo: DeviceInfo = DeviceInfoMother.valid()
   private _deviceLocation: DeviceLocation | null = null
   private _revokedAt: Date | null = null
   private _expiresAt = new Date()
@@ -35,13 +35,13 @@ export class UserSessionTestBuilder {
     return this
   }
 
-  withIpHash(ipHash: UserSessionIpHash | null) {
+  withIpHash(ipHash: UserIpHash | null) {
     this._ipHash = ipHash
     return this
   }
 
-  withUserAgent(userAgent: UserAgent) {
-    this._userAgent = userAgent
+  withDeviceInfo(deviceInfo: DeviceInfo) {
+    this._deviceInfo = deviceInfo
     return this
   }
 
@@ -78,7 +78,7 @@ export class UserSessionTestBuilder {
       this._expiresAt,
       this._revokedAt,
       this._ipHash,
-      this._userAgent,
+      this._deviceInfo,
       this._deviceLocation,
       this._createdAt,
       this._updatedAt,

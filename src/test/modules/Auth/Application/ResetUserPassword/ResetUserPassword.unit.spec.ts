@@ -6,22 +6,15 @@ import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
-import {
-  RequestOriginApplicationService,
-  RequestOriginData,
-} from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { PasswordHashMother } from '~/src/test/mothers/PasswordHashMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { ResetUserPasswordApplicationRequestDto } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationRequestDto'
 import { VerificationTokenTestBuilder } from '~/src/test/modules/Auth/Domain/VerificationTokenTestBuilder'
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
@@ -36,6 +29,9 @@ import {
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
+import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 
 describe('ResetUserPassword', () => {
   const mockedUserRepository = mock<UserRepositoryInterface>()
@@ -44,7 +40,6 @@ describe('ResetUserPassword', () => {
   const mockedDomainEventRepository = mock<DomainEventRepositoryInterface>()
   const mockedVerifyTokenService = mock<VerifyTokenService>()
   const mockedHasherService = mock<HasherServiceInterface>()
-  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
   const mockedClock = mock<ClockServiceInterface>()
   const mockedLogger = mock<LoggerServiceInterface>()
   const mockedUnitOfWork = mock<UnitOfWork>()
@@ -64,14 +59,11 @@ describe('ResetUserPassword', () => {
 
   const oldPasswordHash = PasswordHashMother.valid()
   const newPasswordHash = PasswordHashMother.other()
-  const validUA = UserAgentMother.valid()
-  const validDeviceLocation = DeviceLocationMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
 
   let baseRequest: ResetUserPasswordApplicationRequestDto
   let verificationTokenBuilder: VerificationTokenTestBuilder
+  let userTestBuilder: UserTestBuilder
   let userCredentialBuilder: UserCredentialTestBuilder
-  let requestOriginData: RequestOriginData
 
   const buildUseCase = () => {
     return new ResetUserPassword(
@@ -81,7 +73,6 @@ describe('ResetUserPassword', () => {
       mockedDomainEventRepository,
       mockedVerifyTokenService,
       mockedHasherService,
-      mockedRequestOriginService,
       mockedClock,
       mockedUnitOfWork,
       mockedLogger,
@@ -97,7 +88,6 @@ describe('ResetUserPassword', () => {
     mockReset(mockedDomainEventRepository)
     mockReset(mockedVerifyTokenService)
     mockReset(mockedHasherService)
-    mockReset(mockedRequestOriginService)
     mockReset(mockedClock)
     mockReset(mockedLogger)
     mockReset(mockedUnitOfWork)
@@ -107,8 +97,7 @@ describe('ResetUserPassword', () => {
       email: validEmail.value,
       password: validNewPassword.value,
       token: validTokenValue.value,
-      ip: '8.8.8.8',
-      userAgent: validUA.value,
+      clientMetadata: new ClientMetadataResponseTestBuilder().build(),
     }
 
     verificationTokenBuilder = new VerificationTokenTestBuilder()
@@ -118,15 +107,7 @@ describe('ResetUserPassword', () => {
       .withExpiresAt(futureDate)
       .withUsedAt(null)
 
-    requestOriginData = {
-      userAgent: validUA,
-      ipHash: validIpHash.value,
-      normalizedIp: 'normalized-ip',
-      deviceLocation: validDeviceLocation,
-    }
-
     mockedClock.now.mockReturnValue(now)
-    mockedRequestOriginService.process.mockResolvedValue(requestOriginData)
     mockedHasherService.hash.mockResolvedValue(newPasswordHash.value)
     mockedHasherService.compare.mockResolvedValue(false)
 
@@ -138,12 +119,13 @@ describe('ResetUserPassword', () => {
     mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(expectedVerificationToken)
     mockedVerifyTokenService.verify.mockResolvedValue(true)
 
-    const expectedUser = new UserTestBuilder()
+    userTestBuilder = new UserTestBuilder()
       .withId(validUserId)
       .withEmail(validEmail)
       .withStatus(UserStatus.active())
       .withDeletedAt(null)
-      .build()
+
+    const expectedUser = userTestBuilder.build()
 
     userCredentialBuilder = new UserCredentialTestBuilder().withUserId(validUserId).withPasswordHash(oldPasswordHash)
     const expectedCredential = userCredentialBuilder.build()
@@ -167,25 +149,19 @@ describe('ResetUserPassword', () => {
 
       const result = await useCase.execute(baseRequest)
 
-      expect(mockedRequestOriginService.process).toHaveBeenCalledTimes(1)
-      expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
       expect(mockedUnitOfWork.runInTransaction).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.findByEmailWithLock).toHaveBeenCalledTimes(1)
       expect(mockedVerifyTokenService.verify).toHaveBeenCalledTimes(1)
       expect(mockedUserRepository.findByEmail).toHaveBeenCalledTimes(1)
       expect(mockedCredentialRepository.findByUserId).toHaveBeenCalledTimes(1)
       expect(mockedHasherService.compare).toHaveBeenCalledTimes(1)
+      expect(mockedHasherService.hash).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventFactory.createPasswordResetEvent).toHaveBeenCalledTimes(1)
       expect(mockedCredentialRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedVerificationTokenRepository.update).toHaveBeenCalledTimes(1)
       expect(mockedDomainEventRepository.save).toHaveBeenCalledTimes(1)
       expect(mockedLogger.warn).not.toHaveBeenCalled()
       expect(mockedLogger.error).not.toHaveBeenCalled()
-
-      expect(mockedRequestOriginService.process).toHaveBeenCalledWith(baseRequest.ip, baseRequest.userAgent, {
-        email: validEmail.value,
-      })
-      expect(mockedHasherService.hash).toHaveBeenCalledWith(baseRequest.password)
 
       const tokenPassedToVerify = mockedVerifyTokenService.verify.mock.calls[0][0]
       expect(usedAtAtMomentOfVerify).toBeNull()
@@ -203,12 +179,13 @@ describe('ResetUserPassword', () => {
       expect(tokenAfterUpdate.usedAt).toEqual(now)
       expect(tokenCtx).toBe(fakeContext)
 
+      expect(mockedHasherService.hash).toHaveBeenCalledWith(baseRequest.password)
       expect(mockedDomainEventFactory.createPasswordResetEvent).toHaveBeenCalledWith(
         validUserId,
         validEmail,
-        validDeviceLocation,
-        validUA,
-        validIpHash.value,
+        baseRequest.clientMetadata.deviceLocation,
+        baseRequest.clientMetadata.deviceInfo,
+        baseRequest.clientMetadata.userIpHash,
         now,
       )
 
@@ -224,62 +201,75 @@ describe('ResetUserPassword', () => {
 
   describe('when there are errors', () => {
     describe('when input data is not valid', () => {
-      it('should return error when email is invalid', async () => {
+      it('should return invalidInput error when email is invalid', async () => {
         const useCase = buildUseCase()
 
         const invalidEmail = EmailAddressMother.invalid()
         const result = await useCase.execute({ ...baseRequest, email: invalidEmail })
 
+        const expectedDomainMessageError = SharedDomainException.invalidEmailAddress(invalidEmail).message
+
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidEmail()]),
+          error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidEmail(expectedDomainMessageError)]),
         })
-        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
 
-      it('should return error when token format is invalid', async () => {
+      it('should return invalidInput error when token format is invalid', async () => {
         const useCase = buildUseCase()
 
         const invalidTokenValue = VerificationTokenValueMother.invalid()
         const result = await useCase.execute({ ...baseRequest, token: invalidTokenValue })
 
+        const expectedDomainMessageError = VerificationTokenDomainException.invalidVerificationTokenValue().message
+
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidTokenFormat()]),
+          error: ResetUserPasswordApplicationError.invalidInput([
+            ResetUserPasswordError.invalidTokenFormat(expectedDomainMessageError),
+          ]),
         })
-        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
 
-      it('should return error when password is invalid', async () => {
+      it('should return invalidInput error when password is invalid', async () => {
         const useCase = buildUseCase()
 
         const invalidPassword = UserPasswordMother.invalid()
         const result = await useCase.execute({ ...baseRequest, password: invalidPassword })
 
+        const expectedDomainMessageError = UserCredentialDomainException.invalidPasswordFormat().message
+
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidPassword()]),
+          error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidPassword(expectedDomainMessageError)]),
         })
-        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
 
-      it('should return multiple errors if multiple inputs are invalid', async () => {
+      it('should return invalidInput error when multiple inputs are invalid', async () => {
         const useCase = buildUseCase()
+
+        const invalidEmail = EmailAddressMother.invalid()
 
         const result = await useCase.execute({
           ...baseRequest,
-          email: EmailAddressMother.invalid(),
+          email: invalidEmail,
           password: UserPasswordMother.invalid(),
         })
+
+        const expectedInvalidEmailDomainMessageError = SharedDomainException.invalidEmailAddress(invalidEmail).message
+        const expectedInvalidPasswordDomainMessageError = UserCredentialDomainException.invalidPasswordFormat().message
 
         expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([
-            ResetUserPasswordError.invalidEmail(),
-            ResetUserPasswordError.invalidPassword(),
+            ResetUserPasswordError.invalidEmail(expectedInvalidEmailDomainMessageError),
+            ResetUserPasswordError.invalidPassword(expectedInvalidPasswordDomainMessageError),
           ]),
         })
-        expect(mockedRequestOriginService.process).not.toHaveBeenCalled()
+        expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
     })
 
@@ -292,24 +282,25 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(validEmail.value)),
+          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()),
         })
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
-      it('should return tokenExpired error when token is already expired', async () => {
+      it('should return invalidToken error when token is already expired', async () => {
         const expiredVerificationToken = verificationTokenBuilder.withExpiresAt(pastDate).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(expiredVerificationToken)
 
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
+
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
-
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()),
+          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired(expectedDomainErrorMessage)),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
-          error: VerificationTokenDomainException.alreadyExpired(expiredVerificationToken.id.value).message,
+          error: VerificationTokenDomainException.alreadyExpired().message,
           reason: 'Token has already expired',
           email: expiredVerificationToken.email.value,
           expiresAt: expiredVerificationToken.expiresAt,
@@ -320,19 +311,21 @@ describe('ResetUserPassword', () => {
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
-      it('should return tokenAlreadyUsed error when token is already used', async () => {
+      it('should return invalidToken error when token is already used', async () => {
         const usedVerificationToken = verificationTokenBuilder.withUsedAt(pastDate).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(usedVerificationToken)
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()),
+          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed(expectedDomainErrorMessage)),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
-          error: VerificationTokenDomainException.alreadyUsed(usedVerificationToken.id.value).message,
+          error: VerificationTokenDomainException.alreadyUsed().message,
           reason: 'Token was already used',
           email: usedVerificationToken.email.value,
           expiresAt: usedVerificationToken.expiresAt,
@@ -343,22 +336,24 @@ describe('ResetUserPassword', () => {
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
-      it('should return tokenInvalidOwner when token does not belong to user', async () => {
+      it('should return invalidToken when token does not belong to user', async () => {
         const anotherEmail = EmailAddressMother.random()
         const verificationToken = verificationTokenBuilder.withEmail(anotherEmail).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(verificationToken)
 
-        const domainException = VerificationTokenDomainException.cannotBeUsedByUser(verificationToken.id.value, validEmail.value)
+        const expectedDomainException = VerificationTokenDomainException.cannotBeUsedByUser(validEmail.value)
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()),
+          error: ResetUserPasswordApplicationError.invalidToken(
+            ResetUserPasswordError.tokenInvalidOwner(expectedDomainException.message),
+          ),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
-          error: domainException.message,
+          error: expectedDomainException.message,
           reason: 'Token belongs to a different email address',
           email: verificationToken.email.value,
           requestEmail: validEmail.value,
@@ -370,24 +365,23 @@ describe('ResetUserPassword', () => {
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
-      it('should return tokenPurposeMismatch when token cannot be used for the current operation', async () => {
+      it('should return invalidToken when token cannot be used for the current operation', async () => {
         const notResetPasswordToken = verificationTokenBuilder.withPurpose(VerificationTokenPurpose.createAccount()).build()
         mockedVerificationTokenRepository.findByEmailWithLock.mockResolvedValue(notResetPasswordToken)
 
-        const domainException = VerificationTokenDomainException.cannotBeUsedForPurpose(
-          notResetPasswordToken.id.value,
-          VerificationTokenPurpose.resetPassword().value,
-        )
+        const expectedDomainException = VerificationTokenDomainException.cannotBeUsedForPurpose()
 
         const useCase = buildUseCase()
         const result = await useCase.execute(baseRequest)
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()),
+          error: ResetUserPasswordApplicationError.invalidToken(
+            ResetUserPasswordError.tokenPurposeMismatch(expectedDomainException.message),
+          ),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
-          error: domainException.message,
+          error: expectedDomainException.message,
           reason: 'Token was not generated for password reset',
           email: notResetPasswordToken.email.value,
           expiresAt: notResetPasswordToken.expiresAt,
@@ -410,6 +404,8 @@ describe('ResetUserPassword', () => {
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: validEmail.value,
+          purpose: VerificationTokenPurpose.resetPassword().value,
+          verificationTokenId: validTokenId.value,
         })
         expect(mockedUserRepository.findByEmail).not.toHaveBeenCalled()
       })
@@ -434,7 +430,7 @@ describe('ResetUserPassword', () => {
     })
 
     describe('when user or credential issues occur', () => {
-      it('should return userNotFound error when user does not exist', async () => {
+      it('should return notFound error when user does not exist', async () => {
         mockedUserRepository.findByEmail.mockResolvedValue(null)
 
         const useCase = buildUseCase()
@@ -442,7 +438,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
+          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound()),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
           email: validEmail.value,
@@ -451,8 +447,8 @@ describe('ResetUserPassword', () => {
         expect(mockedCredentialRepository.findByUserId).not.toHaveBeenCalled()
       })
 
-      it('should return userNotFound error when user is inactive', async () => {
-        const inactiveUser = new UserTestBuilder().withEmail(validEmail).withStatus(UserStatus.deactivated()).build()
+      it('should return notFound error when user is not active', async () => {
+        const inactiveUser = userTestBuilder.withStatus(UserStatus.deactivated()).build()
         mockedUserRepository.findByEmail.mockResolvedValue(inactiveUser)
 
         const useCase = buildUseCase()
@@ -460,7 +456,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(validEmail.value)),
+          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userDisabled()),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
           email: validEmail.value,
@@ -469,7 +465,7 @@ describe('ResetUserPassword', () => {
         expect(mockedCredentialRepository.findByUserId).not.toHaveBeenCalled()
       })
 
-      it('should return inconsistentState error when active user has no credentials', async () => {
+      it('should return inconsistentState error when an active user has no credentials', async () => {
         mockedCredentialRepository.findByUserId.mockResolvedValue(null)
 
         const useCase = buildUseCase()
@@ -477,7 +473,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.inconsistentState(validUserId.value),
+          error: ResetUserPasswordApplicationError.inconsistentState(),
         })
         expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
           userId: validUserId.value,
@@ -505,20 +501,9 @@ describe('ResetUserPassword', () => {
     })
 
     describe('when infrastructure fails', () => {
-      it('should throw error when RequestOriginApplicationService fails', async () => {
-        const requestOriginError = new Error('Unexpected RequestOriginApplicationService error')
-
-        mockedRequestOriginService.process.mockImplementation(() => {
-          throw requestOriginError
-        })
-
-        const useCase = buildUseCase()
-        await expect(useCase.execute(baseRequest)).rejects.toThrow(requestOriginError)
-        expect(mockedHasherService.compare).not.toHaveBeenCalled()
-      })
-
-      it('should throw error when HasherService fails on hashing', async () => {
+      it('should throw error when HasherService fails during hashing', async () => {
         const hashingError = new Error('Unexpected hashing error')
+
         mockedHasherService.hash.mockImplementation(() => {
           throw hashingError
         })

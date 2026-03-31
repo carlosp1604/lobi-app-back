@@ -37,7 +37,7 @@ export class LogoutUser {
           reason: 'User not found',
         })
 
-        return fail(LogoutUserApplicationError.userNotFound(userId.value))
+        return fail(LogoutUserApplicationError.userNotFound())
       }
 
       if (!user.isActive()) {
@@ -46,7 +46,7 @@ export class LogoutUser {
           reason: 'User is disabled',
         })
 
-        return fail(LogoutUserApplicationError.userDisabled(userId.value))
+        return fail(LogoutUserApplicationError.userDisabled())
       }
 
       const session = await this.sessionRepository.findById(sessionId, context)
@@ -58,7 +58,7 @@ export class LogoutUser {
           reason: 'Session not found',
         })
 
-        return fail(LogoutUserApplicationError.sessionNotFound(sessionId.value))
+        return fail(LogoutUserApplicationError.sessionNotFound())
       }
 
       if (!session.userId.equals(user.id)) {
@@ -69,7 +69,7 @@ export class LogoutUser {
           reason: 'Session owner mismatch',
         })
 
-        return fail(LogoutUserApplicationError.sessionDoesNotBelongToUser(sessionId.value, userId.value))
+        return fail(LogoutUserApplicationError.sessionDoesNotBelongToUser())
       }
 
       const canRevokeResult = session.canBeRevoked(now)
@@ -106,7 +106,7 @@ export class LogoutUser {
         reason: userIdResult.error.message,
       })
 
-      return fail(LogoutUserApplicationError.invalidInput('userId', userIdResult.error.message))
+      return fail(LogoutUserApplicationError.invalidUserId(userIdResult.error.message))
     }
 
     const userId = userIdResult.value
@@ -123,7 +123,7 @@ export class LogoutUser {
         reason: sessionIdResult.error.message,
       })
 
-      return fail(LogoutUserApplicationError.invalidInput('sessionId', sessionIdResult.error.message))
+      return fail(LogoutUserApplicationError.invalidSessionId(sessionIdResult.error.message))
     }
 
     return success({

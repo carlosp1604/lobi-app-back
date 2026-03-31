@@ -10,21 +10,22 @@ import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/Type
 import { QueryRunner } from 'typeorm'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
+import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 
 describe('ValidateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
-  const futureExpiresAt = new Date(now.getTime() + 3600 * 1000)
-  const pastExpiresAt = new Date(now.getTime() - 3600 * 1000)
+  const futureDate = new Date(now.getTime() + 3600 * 1000)
+  const pastDate = new Date(now.getTime() - 3600 * 1000)
 
   const email = EmailAddressMother.random()
-  const purpose = VerificationTokenPurpose.createAccount()
+  const tokenPurpose = VerificationTokenPurpose.createAccount()
   const validTokenValue = VerificationTokenValueMother.random().value
   const wrongTokenValue = VerificationTokenValueMother.random().value
 
@@ -49,7 +50,7 @@ describe('ValidateVerificationToken', () => {
 
     baseRequest = {
       email: email.value,
-      purpose: purpose.value,
+      purpose: tokenPurpose.value,
       token: validTokenValue,
     }
   })
@@ -67,71 +68,69 @@ describe('ValidateVerificationToken', () => {
     const rawToken = makeRawVerificationToken({
       id: IdentifierMother.valid().value,
       email: email.value,
-      purpose: purpose.value,
+      purpose: tokenPurpose.value,
       token_hash: validTokenHash,
       expires_at: expiresAt,
       used_at: null,
-      created_at: new Date(now.getTime() - 10000),
+      created_at: pastDate,
     })
 
     await verificationTokenDatabaseHelper.save(rawToken)
   }
 
+  const runTestWithGuards = async (request: ValidateVerificationTokenApplicationRequestDto) => {
+    const useCase = buildUseCase()
+
+    const tokensBefore = await verificationTokenDatabaseHelper.findByEmail(request.email)
+
+    const result = await useCase.execute(request)
+
+    const tokensAfter = await verificationTokenDatabaseHelper.findByEmail(request.email)
+
+    expect(tokensBefore.length).toEqual(tokensAfter.length)
+    expect(tokensBefore).toEqual(tokensAfter)
+
+    return result
+  }
+
   describe('happy path', () => {
     it('should return success when token exists, is usable and code matches', async () => {
-      await createAndSaveToken(futureExpiresAt)
+      await createAndSaveToken(futureDate)
 
-      const useCase = buildUseCase()
+      const result = await runTestWithGuards(baseRequest)
 
-      const result = await useCase.execute(baseRequest)
-
-      expect(result).toEqual({
-        success: true,
-        value: undefined,
-      })
+      expect(result).toEqual({ success: true, value: undefined })
     })
   })
 
   describe('when there are errors', () => {
     it('should return notFound error when token does not exist in database', async () => {
-      const useCase = buildUseCase()
+      const result = await runTestWithGuards(baseRequest)
 
-      const result = await useCase.execute(baseRequest)
-
-      expect(result).toEqual({
-        success: false,
-        error: ValidateVerificationTokenError.notFound(),
-      })
+      expect(result.success).toEqual(false)
+      expect(result['error']).toStrictEqual(ValidateVerificationTokenError.notFound())
     })
 
     it('should return invalidToken error when token exists but code hash does not match', async () => {
-      await createAndSaveToken(futureExpiresAt)
+      await createAndSaveToken(futureDate)
 
-      const useCase = buildUseCase()
-      const requestWithWrongTokenValue = {
-        ...baseRequest,
-        token: wrongTokenValue,
-      }
+      const requestWithWrongTokenValue = { ...baseRequest, token: wrongTokenValue }
 
-      const result = await useCase.execute(requestWithWrongTokenValue)
+      const result = await runTestWithGuards(requestWithWrongTokenValue)
 
-      expect(result).toEqual({
-        success: false,
-        error: ValidateVerificationTokenError.invalidToken(),
-      })
+      expect(result.success).toEqual(false)
+      expect(result['error']).toStrictEqual(ValidateVerificationTokenError.invalidToken())
     })
 
     it('should return expired error when token exists but is expired', async () => {
-      await createAndSaveToken(pastExpiresAt)
+      await createAndSaveToken(pastDate)
 
-      const useCase = buildUseCase()
+      const result = await runTestWithGuards(baseRequest)
 
-      const result = await useCase.execute(baseRequest)
+      const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
 
-      expect(result).toEqual({
-        success: false,
-        error: ValidateVerificationTokenError.expired(),
-      })
+      expect(result.success).toEqual(false)
+      expect(result['error']).toStrictEqual(ValidateVerificationTokenError.expired(expectedDomainErrorMessage))
     })
   })
 })

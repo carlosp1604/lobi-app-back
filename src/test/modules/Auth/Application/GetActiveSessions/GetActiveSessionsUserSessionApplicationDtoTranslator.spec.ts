@@ -1,8 +1,8 @@
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
 import { GetActiveSessionsUserSessionApplicationDtoTranslator } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsUserSessionApplicationDtoTranslator'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { GetActiveSessionsUserSessionApplicationDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 import { DeviceLocation } from '~/src/modules/Auth/Domain/ValueObject/DeviceLocation'
 
@@ -12,14 +12,14 @@ describe('GetActiveSessionsUserSessionApplicationDtoTranslator', () => {
 
   const sessionId = IdentifierMother.valid()
   const userId = IdentifierMother.valid()
-  const userAgent = UserAgentMother.forTesting()
+  const deviceInfo = DeviceInfoMother.valid()
 
   const buildSession = (location: DeviceLocation | null) => {
     return new UserSessionTestBuilder()
       .withId(sessionId)
       .withUserId(userId)
       .withDeviceLocation(location)
-      .withUserAgent(userAgent)
+      .withDeviceInfo(deviceInfo)
       .withCreatedAt(now)
       .withExpiresAt(expiresAt)
       .build()
@@ -27,7 +27,7 @@ describe('GetActiveSessionsUserSessionApplicationDtoTranslator', () => {
 
   const assertResult = (result: GetActiveSessionsUserSessionApplicationDto, isCurrent: boolean, location: DeviceLocation | null) => {
     expect(result.id).toEqual(sessionId.value)
-    expect(result.userAgent).toEqual(userAgent.value)
+    expect(result.deviceInfo).toEqual(deviceInfo.value)
     expect(result.activeSince).toEqual(now)
     expect(result.expiresAt).toEqual(expiresAt)
     expect(result.isCurrent).toEqual(isCurrent)

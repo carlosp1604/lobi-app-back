@@ -1,6 +1,6 @@
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'

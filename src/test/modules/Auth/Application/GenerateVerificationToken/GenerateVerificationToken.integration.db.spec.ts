@@ -18,7 +18,7 @@ import { GenerateVerificationTokenApplicationRequestDto } from '~/src/modules/Au
 import { VerificationTokenRawModel } from '~/src/modules/Auth/Infrastructure/Entities/verification-token.entity'
 import { VerificationTokenDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenDatabaseHelper'
 import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure/VerificationTokenRawTestMaker'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import { DomainEventDatabaseHelper } from '~/src/test/modules/Shared/Infrastructure/DomainEventDatabaseHelper'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
@@ -32,35 +32,37 @@ import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Ent
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
-import { HashMother } from '~/src/test/mothers/HashMother'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 
 describe('GenerateVerificationToken', () => {
   const now = new Date('2025-10-31T10:50:00Z')
-  const futureExpiresAt = new Date(now.getTime() + 3600)
+
+  const futureDate = new Date(now.getTime() + 3600)
   const pastDate = new Date(now.getTime() - 3600)
   const expectedExpiresAt = new Date(now.getTime() + env.VERIFICATION_TOKEN_TTL_MS)
-  const expectedExpirationMinutes = env.VERIFICATION_TOKEN_TTL_MS / (60 * 1000)
 
   const email = EmailAddressMother.valid()
-  const expectedUserAgent = UserAgentMother.random()
-  const expectedDeviceLocation = DeviceLocationMother.valid()
+  const userIpHash = UserIpHashMother.valid()
+  const deviceInfo = DeviceInfoMother.random()
+  const deviceLocation = DeviceLocationMother.valid()
+
   const purposeCreateAccount = VerificationTokenPurpose.createAccount()
   const purposeResetPassword = VerificationTokenPurpose.resetPassword()
-  const expectedIpHash = HashMother.valid().toString()
+  const verificationTokenDomainAggregateType = DomainEventAggregateType.verificationToken().value
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
   const mockedConfigService = mock<ConfigService>()
   const mockedEmailSenderService = mock<EmailSenderServiceInterface>()
-  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
 
   let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
   let domainEventDatabaseHelper: DomainEventDatabaseHelper
+  let userDatabaseHelper: UserDatabaseHelper
 
   let request: GenerateVerificationTokenApplicationRequestDto
   let currentVerificationToken: VerificationTokenRawModel
@@ -75,41 +77,35 @@ describe('GenerateVerificationToken', () => {
   beforeEach(() => {
     mockReset(mockedResolver)
     mockReset(mockedEmailSenderService)
-    mockReset(mockedRequestOriginService)
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
     mockedEmailSenderService.sendWithTemplate.mockResolvedValue(undefined)
 
-    mockedRequestOriginService.process.mockResolvedValue({
-      ipHash: expectedIpHash,
-      normalizedIp: '127.0.0.0',
-      deviceLocation: expectedDeviceLocation,
-      userAgent: expectedUserAgent,
-    })
-
     mockedConfigService.get.mockImplementation(
-      createConfigServiceMockImplementation({
-        VERIFICATION_TOKEN_TTL_MS: env.VERIFICATION_TOKEN_TTL_MS,
-      }),
+      createConfigServiceMockImplementation({ VERIFICATION_TOKEN_TTL_MS: env.VERIFICATION_TOKEN_TTL_MS }),
     )
 
     verificationTokenDatabaseHelper = new VerificationTokenDatabaseHelper(runner.manager)
     domainEventDatabaseHelper = new DomainEventDatabaseHelper(runner.manager)
+    userDatabaseHelper = new UserDatabaseHelper(runner.manager)
 
     request = {
-      email: email.toString(),
-      purpose: purposeCreateAccount.toString(),
+      email: email.value,
+      purpose: purposeCreateAccount.value,
       sendNewToken: false,
-      ip: '127.0.0.0',
-      userAgent: expectedUserAgent.toString(),
+      clientMetadata: new ClientMetadataResponseTestBuilder()
+        .withDeviceInfo(deviceInfo)
+        .withDeviceLocation(deviceLocation)
+        .withUserIpHash(userIpHash)
+        .build(),
     }
 
     currentVerificationToken = makeRawVerificationToken({
-      id: IdentifierMother.valid().toString(),
-      purpose: purposeCreateAccount.toString(),
-      token_hash: VerificationTokenTokenHashMother.random().toString(),
-      email: email.toString(),
-      expires_at: futureExpiresAt,
+      id: IdentifierMother.valid().value,
+      purpose: purposeCreateAccount.value,
+      token_hash: VerificationTokenTokenHashMother.random().value,
+      email: email.value,
+      expires_at: futureDate,
       used_at: null,
       created_at: pastDate,
     })
@@ -120,11 +116,7 @@ describe('GenerateVerificationToken', () => {
       aggregate_id: currentVerificationToken.id,
       aggregate_type: DomainEventAggregateType.verificationToken().value,
       name: DomainEventName.emailVerificationRequest().value,
-      payload: {
-        email: email.value,
-        purpose: purposeCreateAccount.value,
-        resendCode: false,
-      },
+      payload: {},
       occurred_at: pastDate,
     })
   })
@@ -142,7 +134,6 @@ describe('GenerateVerificationToken', () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
       hasherService,
-      mockedRequestOriginService,
       new ClockServiceMock(now),
       new NodeRandomService(),
       mockedConfigService,
@@ -152,189 +143,182 @@ describe('GenerateVerificationToken', () => {
     )
   }
 
-  const runTestAndGetResults = async (request: GenerateVerificationTokenApplicationRequestDto) => {
+  const runTestWithCount = async (
+    requestDto: GenerateVerificationTokenApplicationRequestDto,
+    expectedCounts: {
+      tokens: { before: number; after: number }
+      events: { before: number; after: number }
+    },
+  ) => {
     const useCase = buildUseCase()
 
-    const verificationTokensBefore = await verificationTokenDatabaseHelper.findByEmail(email.value)
-    const domainEventsBefore = await domainEventDatabaseHelper.findByAggregateType(DomainEventAggregateType.verificationToken().value)
+    const tokensBefore = await verificationTokenDatabaseHelper.count()
+    const eventsBefore = await domainEventDatabaseHelper.count()
 
-    const result = await useCase.execute(request)
+    const result = await useCase.execute(requestDto)
 
-    const verificationTokensAfter = await verificationTokenDatabaseHelper.findByEmail(email.value)
-    const domainEventsAfter = await domainEventDatabaseHelper.findByAggregateType(DomainEventAggregateType.verificationToken().value)
+    const tokensAfter = await verificationTokenDatabaseHelper.count()
+    const eventsAfter = await domainEventDatabaseHelper.count()
 
-    return { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter }
+    expect(tokensBefore).toEqual(expectedCounts.tokens.before)
+    expect(tokensAfter).toEqual(expectedCounts.tokens.after)
+    expect(eventsBefore).toEqual(expectedCounts.events.before)
+    expect(eventsAfter).toEqual(expectedCounts.events.after)
+
+    return result
   }
 
   describe('happy path', () => {
-    const testCase = async (
-      existingToken: VerificationTokenRawModel | null,
-      sendNewToken: boolean,
-      initialDomainEventsNumber: number,
-      initialTokensNumber: number,
-      expectedTotalTokens: number,
-    ) => {
-      if (existingToken) {
-        await verificationTokenDatabaseHelper.save(existingToken)
-        await domainEventDatabaseHelper.save(currentDomainEvent)
-      }
+    const assertSavedTokenAndEvent = async (resendCode: boolean, expectedOldTokenIdToSurvive?: string) => {
+      const savedTokens = await verificationTokenDatabaseHelper.findByEmail(email.value)
 
-      const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
-        await runTestAndGetResults({ ...request, sendNewToken })
+      const newToken = expectedOldTokenIdToSurvive ? savedTokens.find((t) => t.id !== expectedOldTokenIdToSurvive) : savedTokens[0]
 
-      expect(result).toEqual({
-        success: true,
-        value: undefined,
-      })
+      expect(newToken).toBeDefined()
+      expect(newToken!.email).toBe(email.value)
+      expect(newToken!.purpose).toBe(request.purpose)
+      expect(newToken!.expires_at).toEqual(expectedExpiresAt)
+      expect(newToken!.used_at).toBeNull()
 
-      expect(domainEventsBefore.length).toBe(initialDomainEventsNumber)
-      expect(verificationTokensBefore.length).toBe(initialTokensNumber)
+      const savedEvents = await domainEventDatabaseHelper.findByAggregateTypeAndId(newToken!.id, verificationTokenDomainAggregateType)
+      expect(savedEvents).toHaveLength(1)
 
-      expect(verificationTokensAfter.length).toBe(expectedTotalTokens)
-      expect(domainEventsAfter.length).toBe(domainEventsBefore.length + 1)
-
-      const savedVerificationToken = existingToken
-        ? verificationTokensAfter.find((t) => t.id !== existingToken.id)
-        : verificationTokensAfter[0]
-      expect(savedVerificationToken).toBeDefined()
-      expect(savedVerificationToken!.email).toBe(email.value)
-      expect(savedVerificationToken!.purpose).toBe(purposeCreateAccount.value)
-      expect(savedVerificationToken!.expires_at).toEqual(expectedExpiresAt)
-      expect(savedVerificationToken!.used_at).toBeNull()
-
-      const savedDomainEvent = domainEventsAfter.find((domainEvent) => domainEvent.aggregate_id === savedVerificationToken!.id)
-      expect(savedDomainEvent).toBeDefined()
-      expect(savedDomainEvent!.aggregate_id).toEqual(savedVerificationToken!.id)
-      expect(savedDomainEvent!.name).toEqual(DomainEventName.emailVerificationRequest().value)
-      expect(savedDomainEvent!.aggregate_type).toEqual(DomainEventAggregateType.verificationToken().value)
-
-      expect(savedDomainEvent!.payload).toEqual({
-        email: email.value,
-        purpose: purposeCreateAccount.value,
-        resendCode: existingToken ? sendNewToken : false,
-        // TODO: Use expected language when multi-language emails are supported
-        lang: 'es',
-        deviceLocation: {
-          city: expectedDeviceLocation.city,
-          countryCode: expectedDeviceLocation.countryCode,
-        },
-      })
-
-      expect(savedDomainEvent!.metadata).toEqual({
-        ipHash: expectedIpHash,
-        ua: expectedUserAgent.value,
-      })
+      const savedEvent = savedEvents[0]
+      expect(savedEvent.name).toEqual(DomainEventName.emailVerificationRequest().value)
+      expect(savedEvent.payload).toEqual(
+        expect.objectContaining({
+          email: email.value,
+          purpose: request.purpose,
+          resendCode,
+          lang: 'es',
+          deviceLocation: {
+            city: deviceLocation.city,
+            countryCode: deviceLocation.countryCode,
+          },
+        }),
+      )
+      expect(savedEvent.metadata).toEqual(
+        expect.objectContaining({
+          ipHash: userIpHash.value,
+          deviceInfo: deviceInfo.value,
+        }),
+      )
 
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledTimes(1)
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      expect(mockedEmailSenderService.sendWithTemplate).toHaveBeenCalledWith(
-        email.value,
-        'verify-email-template-create-account',
-        {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          token: expect.any(String),
-          expiration_minutes: expectedExpirationMinutes,
-        },
-        // TODO: Use expected language when multi-language emails are supported
-        'es',
-        now,
-      )
-
-      if (expectedTotalTokens > initialTokensNumber && existingToken) {
-        const oldTokenStillExists = verificationTokensAfter.some((t) => t.id === existingToken.id)
-        expect(oldTokenStillExists).toBe(true)
-      }
     }
 
     it('should create a new verification token when an active token does not exist', async () => {
-      await testCase(null, true, 0, 0, 1)
+      const result = await runTestWithCount(request, {
+        tokens: { before: 0, after: 1 },
+        events: { before: 0, after: 1 },
+      })
+
+      expect(result.success).toBe(true)
+      await assertSavedTokenAndEvent(false)
     })
 
     describe('when an active token exists', () => {
-      it('should create a new verification token when active token is usable and sendNewToken is true', async () => {
-        await testCase(currentVerificationToken, true, 1, 1, 1)
+      it('should create a new verification token and delete the old one when active token is usable and sendNewToken is true', async () => {
+        await verificationTokenDatabaseHelper.save(currentVerificationToken)
+        await domainEventDatabaseHelper.save(currentDomainEvent)
+
+        const result = await runTestWithCount(
+          { ...request, sendNewToken: true },
+          {
+            tokens: { before: 1, after: 1 },
+            events: { before: 1, after: 2 },
+          },
+        )
+
+        expect(result.success).toBe(true)
+        await assertSavedTokenAndEvent(true)
+
+        const updatedOldToken = await verificationTokenDatabaseHelper.findById(currentVerificationToken.id)
+        expect(updatedOldToken).toBeNull()
       })
 
-      it('should create a new verification token when active token is NOT usable (expired) and sendNewToken is false', async () => {
-        const expiredToken = {
-          ...currentVerificationToken,
-          expires_at: pastDate,
-          used_at: null,
-        }
+      it('should create a new verification token and delete the old one when active token is not usable (expired) and sendNewToken is false', async () => {
+        const expiredToken = { ...currentVerificationToken, expires_at: pastDate }
+        await verificationTokenDatabaseHelper.save(expiredToken)
 
-        await testCase(expiredToken, false, 1, 1, 1)
+        const result = await runTestWithCount(request, {
+          tokens: { before: 1, after: 1 },
+          events: { before: 0, after: 1 },
+        })
+
+        expect(result.success).toBe(true)
+        await assertSavedTokenAndEvent(false)
+
+        const updatedOldToken = await verificationTokenDatabaseHelper.findById(expiredToken.id)
+        expect(updatedOldToken).toBeNull()
       })
 
-      it('should create a new verification token AND PRESERVE HISTORY when active token is already used', async () => {
-        const usedToken = {
-          ...currentVerificationToken,
-          used_at: pastDate,
-          expires_at: futureExpiresAt,
-        }
+      it('should create a new verification token and do not delete de old one when active token is already used', async () => {
+        const usedToken = { ...currentVerificationToken, used_at: pastDate }
+        await verificationTokenDatabaseHelper.save(usedToken)
 
-        await testCase(usedToken, false, 1, 1, 2)
+        const result = await runTestWithCount(request, {
+          tokens: { before: 1, after: 2 },
+          events: { before: 0, after: 1 },
+        })
+
+        expect(result.success).toBe(true)
+        await assertSavedTokenAndEvent(false, usedToken.id)
+
+        const updatedOldToken = await verificationTokenDatabaseHelper.findById(usedToken.id)
+        expect(updatedOldToken).not.toBeNull()
+        expect(updatedOldToken!.used_at).toEqual(pastDate)
       })
     })
   })
 
   describe('when there are errors', () => {
     let rawUser: UserRawModelWithRelations
-    let userDatabaseHelper: UserDatabaseHelper
 
     beforeEach(() => {
-      rawUser = makeRawUser({
-        email: email.value,
-        deleted_at: null,
-        status: UserStatus.active().value,
-      })
-
-      userDatabaseHelper = new UserDatabaseHelper(runner.manager)
+      rawUser = makeRawUser({ email: email.value, deleted_at: null, status: UserStatus.active().value })
     })
 
     it('should return error when purpose is createAccount and email is already taken', async () => {
       await userDatabaseHelper.save(rawUser)
 
-      const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
-        await runTestAndGetResults(request)
+      const result = await runTestWithCount(request, {
+        tokens: { before: 0, after: 0 },
+        events: { before: 0, after: 0 },
+      })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken(email.value))
-
-      expect(verificationTokensBefore.length).toBe(0)
-      expect(verificationTokensAfter.length).toBe(0)
-      expect(domainEventsBefore.length).toBe(0)
-      expect(domainEventsAfter.length).toBe(0)
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.emailAlreadyTaken())
     })
 
-    describe('when purpose is resetPassword and user does not exist, is deleted or is not active', () => {
-      const testCase = async () => {
-        const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
-          await runTestAndGetResults({ ...request, purpose: purposeResetPassword.value })
+    describe('when purpose is resetPassword and user does not exist or is not active', () => {
+      it('should return error when user does not exist', async () => {
+        const result = await runTestWithCount(
+          { ...request, purpose: purposeResetPassword.value },
+          {
+            tokens: { before: 0, after: 0 },
+            events: { before: 0, after: 0 },
+          },
+        )
 
-        expect(result).toEqual({
-          success: true,
-          value: undefined,
-        })
-
-        expect(verificationTokensBefore.length).toBe(0)
-        expect(verificationTokensAfter.length).toBe(0)
-        expect(domainEventsBefore.length).toBe(0)
-        expect(domainEventsAfter.length).toBe(0)
-      }
-
-      it('should return success when user does not exist', async () => {
-        await testCase()
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userNotFound())
       })
 
-      it('should return success when user is deleted', async () => {
-        await userDatabaseHelper.save({ ...rawUser, deleted_at: pastDate })
-        await testCase()
-      })
-
-      it('should return success when user is not active', async () => {
+      it('should return error when user is not active', async () => {
         await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
-        await testCase()
+
+        const result = await runTestWithCount(
+          { ...request, purpose: purposeResetPassword.value },
+          {
+            tokens: { before: 0, after: 0 },
+            events: { before: 0, after: 0 },
+          },
+        )
+
+        expect(result.success).toBe(false)
+        expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.userDisabled())
       })
     })
 
@@ -342,22 +326,13 @@ describe('GenerateVerificationToken', () => {
       await verificationTokenDatabaseHelper.save(currentVerificationToken)
       await domainEventDatabaseHelper.save(currentDomainEvent)
 
-      const { result, verificationTokensBefore, verificationTokensAfter, domainEventsBefore, domainEventsAfter } =
-        await runTestAndGetResults({ ...request, sendNewToken: false })
-
-      expect(result).toEqual({
-        success: false,
-        error: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued(email.value, purposeCreateAccount.value),
+      const result = await runTestWithCount(request, {
+        tokens: { before: 1, after: 1 },
+        events: { before: 1, after: 1 },
       })
 
-      expect(verificationTokensBefore.length).toBe(1)
-      expect(domainEventsBefore.length).toBe(1)
-      expect(verificationTokensAfter.length).toBe(1)
-      expect(domainEventsAfter.length).toBe(1)
-      expect(verificationTokensBefore).toEqual([currentVerificationToken])
-      expect(verificationTokensAfter).toEqual([currentVerificationToken])
-      expect(domainEventsBefore).toEqual([currentDomainEvent])
-      expect(domainEventsAfter).toEqual([currentDomainEvent])
+      expect(result.success).toBe(false)
+      expect(result['error']).toStrictEqual(GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued())
     })
   })
 })

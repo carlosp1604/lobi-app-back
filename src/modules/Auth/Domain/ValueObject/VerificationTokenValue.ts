@@ -24,7 +24,7 @@ export class VerificationTokenValue extends ValueObject<string> {
 
   static safeCreate(value: string): Result<VerificationTokenValue, VerificationTokenDomainException> {
     if (!VerificationTokenValue.isValid(value)) {
-      return fail(VerificationTokenDomainException.invalidVerificationTokenValue(value))
+      return fail(VerificationTokenDomainException.invalidVerificationTokenValue())
     }
 
     return success(new VerificationTokenValue(value))

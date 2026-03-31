@@ -4,18 +4,15 @@ import { QueryRunner } from 'typeorm'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { mock, mockReset } from 'jest-mock-extended'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { LoggerServiceMock } from '~/src/test/utils/LoggerServiceMock'
 import { TypeOrmUnitOfWork } from '~/src/modules/Shared/Infrastructure/TypeOrmUnitOfWork'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
-import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { NodeIdGeneratorService } from '~/src/modules/Shared/Infrastructure/Services/NodeIdGeneratorService'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { PostgresqlUserRepository } from '~/src/modules/User/Infrastructure/PostgreSqlUserRepository'
 import { UserSessionDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserSessionDatabaseHelper'
@@ -27,7 +24,7 @@ import { PostgreSqlUserSessionRepository } from '~/src/modules/Auth/Infrastructu
 import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastructure/PostgreSqlDomainEventRepository'
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
+import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 
 describe('CloseUserSession', () => {
   const now = new Date('2026-03-12T15:50:00.000Z')
@@ -37,8 +34,6 @@ describe('CloseUserSession', () => {
   const validUserId = IdentifierMother.valid()
   const validTargetSessionId = IdentifierMother.valid()
   const validCurrentSessionId = IdentifierMother.valid()
-  const validUserAgent = UserAgentMother.valid()
-  const validIpHash = UserSessionIpHashMother.valid()
 
   let userDatabaseHelper: UserDatabaseHelper
   let userSessionDatabaseHelper: UserSessionDatabaseHelper
@@ -58,24 +53,15 @@ describe('CloseUserSession', () => {
 
   const mockedResolver = mock<TypeOrmManagerResolver>()
   const loggerService = new LoggerServiceMock()
-  const mockedRequestOriginService = mock<RequestOriginApplicationService>()
 
   beforeEach(() => {
     mockReset(mockedResolver)
-    mockReset(mockedRequestOriginService)
 
     mockedResolver.resolve.mockReturnValue(runner.manager)
 
     userDatabaseHelper = new UserDatabaseHelper(runner.manager)
     userSessionDatabaseHelper = new UserSessionDatabaseHelper(runner.manager)
     domainEventDatabaseHelper = new DomainEventDatabaseHelper(runner.manager)
-
-    mockedRequestOriginService.process.mockResolvedValue({
-      userAgent: validUserAgent,
-      ipHash: validIpHash.value,
-      normalizedIp: '127.0.0.1',
-      deviceLocation: DeviceLocationMother.valid(),
-    })
 
     existingRawUser = makeRawUser({
       id: validUserId.value,
@@ -101,8 +87,7 @@ describe('CloseUserSession', () => {
       userId: validUserId.value,
       sessionId: validTargetSessionId.value,
       currentSessionId: validCurrentSessionId.value,
-      ip: '127.0.0.1',
-      userAgent: validUserAgent.value,
+      clientMetadata: new ClientMetadataResponseTestBuilder().build(),
     }
   })
 
@@ -111,7 +96,6 @@ describe('CloseUserSession', () => {
       new PostgresqlUserRepository(mockedResolver),
       new PostgreSqlUserSessionRepository(mockedResolver),
       new PostgreSqlDomainEventRepository(mockedResolver),
-      mockedRequestOriginService,
       new ClockServiceMock(now),
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       new TypeOrmUnitOfWork(global.dataSource),
@@ -187,7 +171,7 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.userNotFound(validUserId.value))
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.userNotFound())
     })
 
     it('should return error when session does not exist', async () => {
@@ -199,7 +183,7 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.sessionNotFound(validTargetSessionId.value))
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.sessionNotFound())
     })
 
     it('should return error when session does not belong to user', async () => {
@@ -221,9 +205,7 @@ describe('CloseUserSession', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(
-        CloseUserSessionApplicationError.sessionDoesNotBelongToUser(validTargetSessionId.value, validUserId.value),
-      )
+      expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.sessionDoesNotBelongToUser())
 
       const sessionAfter = await userSessionDatabaseHelper.findById(validTargetSessionId.value)
 
@@ -246,7 +228,7 @@ describe('CloseUserSession', () => {
         events: { before: 0, after: 0 },
       })
 
-      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked(validTargetSessionId.value)
+      const expectedRevocationError = UserSessionDomainException.sessionAlreadyRevoked()
 
       expect(result.success).toBe(false)
       expect(result['error']).toStrictEqual(CloseUserSessionApplicationError.cannotRevokeSession(expectedRevocationError.message))

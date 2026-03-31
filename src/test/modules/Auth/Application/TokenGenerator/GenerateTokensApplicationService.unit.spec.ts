@@ -2,12 +2,12 @@
 import { UserSession } from '~/src/modules/Auth/Domain/UserSession'
 import { ConfigService } from '@nestjs/config'
 import { mock, mockReset } from 'jest-mock-extended'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { UserSessionTestBuilder } from '~/src/test/modules/Auth/Domain/UserSessionTestBuilder'
-import { UserSessionIpHashMother } from '~/src/test/mothers/UserSessionIpHashMother'
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { UserSessionTokenHashMother } from '~/src/test/mothers/UserSessionTokenHashMother'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { GenerateTokensApplicationService } from '~/src/modules/Auth/Application/TokenGenerator/GenerateTokensApplicationService'
@@ -22,8 +22,8 @@ describe('GenerateTokensApplicationService', () => {
 
   const sessionId = IdentifierMother.valid()
   const userId = IdentifierMother.valid()
-  const userAgent = UserAgentMother.valid()
-  const ipHash = UserSessionIpHashMother.valid()
+  const deviceInfo = DeviceInfoMother.valid()
+  const ipHash = UserIpHashMother.valid()
   const expectedTokenHash = UserSessionTokenHashMother.random()
   const deviceLocation = DeviceLocationMother.valid()
 
@@ -61,7 +61,7 @@ describe('GenerateTokensApplicationService', () => {
 
       userSessionTestBuilder = new UserSessionTestBuilder()
         .withId(sessionId)
-        .withUserAgent(userAgent)
+        .withDeviceInfo(deviceInfo)
         .withCreatedAt(now)
         .withUpdatedAt(now)
         .withRevokedAt(null)
@@ -95,7 +95,7 @@ describe('GenerateTokensApplicationService', () => {
         expect(expectedUserSession.deviceLocation).toBeNull()
       }
 
-      expect(result.userAgent.equals(expectedUserSession.userAgent)).toBe(true)
+      expect(result.deviceInfo.equals(expectedUserSession.deviceInfo)).toBe(true)
       expect(result.tokenHash.equals(expectedUserSession.tokenHash)).toBe(true)
     }
 
@@ -109,7 +109,7 @@ describe('GenerateTokensApplicationService', () => {
     it('should call services correctly', async () => {
       const service = buildService()
 
-      await service.generate(userId, now, userAgent, null, deviceLocation)
+      await service.generate(userId, now, deviceInfo, null, deviceLocation)
 
       expect(mockedIdGenerator.generateId).toHaveBeenCalledTimes(1)
       expect(mockedConfigService.get).toHaveBeenCalledTimes(2)
@@ -132,7 +132,7 @@ describe('GenerateTokensApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.generate(userId, now, userAgent, ipHash, deviceLocation)
+      const result = await service.generate(userId, now, deviceInfo, ipHash, deviceLocation)
 
       checkResult(result)
       checkSession(result.session, expectedUserSession)
@@ -143,7 +143,7 @@ describe('GenerateTokensApplicationService', () => {
 
       const service = buildService()
 
-      const result = await service.generate(userId, now, userAgent, null, null)
+      const result = await service.generate(userId, now, deviceInfo, null, null)
 
       checkResult(result)
       checkSession(result.session, expectedUserSession)
@@ -166,7 +166,7 @@ describe('GenerateTokensApplicationService', () => {
       })
       const service = buildService()
 
-      await expect(service.generate(userId, now, userAgent, null, null)).rejects.toThrow(Error('TokenGenerator: Unexpected error'))
+      await expect(service.generate(userId, now, deviceInfo, null, null)).rejects.toThrow(Error('TokenGenerator: Unexpected error'))
     })
 
     it('should throw an error if the hasherService service fails', async () => {
@@ -179,7 +179,7 @@ describe('GenerateTokensApplicationService', () => {
       })
       const service = buildService()
 
-      await expect(service.generate(userId, now, userAgent, null, null)).rejects.toThrow(Error('HasherService: Unexpected error'))
+      await expect(service.generate(userId, now, deviceInfo, null, null)).rejects.toThrow(Error('HasherService: Unexpected error'))
     })
   })
 })

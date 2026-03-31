@@ -16,7 +16,7 @@ export class GetActiveSessionsUserSessionApplicationDtoTranslator {
       id: domain.id.value,
       deviceCountryCode,
       deviceCity,
-      userAgent: domain.userAgent.value,
+      deviceInfo: domain.deviceInfo.value,
       isCurrent: domain.id.value === currentSessionId.value,
       activeSince: domain.createdAt,
       expiresAt: domain.expiresAt,

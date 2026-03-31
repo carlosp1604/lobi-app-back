@@ -8,11 +8,9 @@ import { VerificationTokenRepositoryInterface } from '~/src/modules/Auth/Domain/
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
 import { UserCredentialRepositoryInterface } from '~/src/modules/Auth/Domain/UserCredentialRepositoryInterface'
 import { DomainEventRepositoryInterface } from '~/src/modules/Shared/Domain/DomainEventRepositoryInterface'
-import { RequestOriginApplicationService } from '~/src/modules/Auth/Application/RequestOriginApplicationService/RequestOriginApplicationService'
 import { VerifyTokenService } from '~/src/modules/Auth/Domain/VerifyTokenService'
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { VerificationTokenValue } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenValue'
-import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
 import { VerificationToken } from '~/src/modules/Auth/Domain/VerificationToken'
@@ -22,6 +20,7 @@ import {
   ResetUserPasswordError,
 } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { PasswordHash } from '~/src/modules/Auth/Domain/ValueObject/PasswordHash'
 
 type ValidatedResetPasswordInput = {
   email: EmailAddress
@@ -37,7 +36,6 @@ export class ResetUserPassword {
     private readonly domainEventRepository: DomainEventRepositoryInterface,
     private readonly verifyTokenService: VerifyTokenService,
     private readonly hasherService: HasherServiceInterface,
-    private readonly requestOriginApplicationService: RequestOriginApplicationService,
     private readonly clockService: ClockServiceInterface,
     private readonly unitOfWork: UnitOfWork,
     private readonly loggerService: LoggerServiceInterface,
@@ -55,9 +53,7 @@ export class ResetUserPassword {
 
     const { email, password, tokenValue } = inputValidationResult.value
 
-    const { userAgent, ipHash, deviceLocation } = await this.requestOriginApplicationService.process(request.ip, request.userAgent, {
-      email: email.value,
-    })
+    const { deviceInfo, userIpHash, deviceLocation } = request.clientMetadata
 
     const newPasswordHashString = await this.hasherService.hash(password.value)
     const newPasswordHash = PasswordHash.fromString(newPasswordHashString)
@@ -66,7 +62,7 @@ export class ResetUserPassword {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       if (!verificationToken) {
-        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound(email.value)))
+        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()))
       }
 
       const validateTokenResult = verificationToken.validate(now, email, VerificationTokenPurpose.resetPassword())
@@ -78,19 +74,33 @@ export class ResetUserPassword {
       const isCryptoValid = await this.verifyTokenService.verify(verificationToken, tokenValue.value)
 
       if (!isCryptoValid) {
-        this.loggerService.warn('Token cryptography verification failed', { email: verificationToken.email.value })
+        this.loggerService.warn('Token cryptography verification failed', {
+          email: verificationToken.email.value,
+          verificationTokenId: verificationToken.id.value,
+          purpose: VerificationTokenPurpose.resetPassword().value,
+        })
 
         return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()))
       }
 
       const user = await this.userRepository.findByEmail(email.value, context)
-      if (!user || !user.isActive()) {
+
+      if (!user) {
         this.loggerService.warn('Inconsistent state', {
           email: email.value,
-          reason: user ? 'User is disabled' : 'User not found',
+          reason: 'User not found',
         })
 
-        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound(email.value)))
+        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound()))
+      }
+
+      if (!user.isActive()) {
+        this.loggerService.warn('Inconsistent state', {
+          email: email.value,
+          reason: 'User is disabled',
+        })
+
+        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userDisabled()))
       }
 
       const userCredential = await this.userCredentialRepository.findByUserId(user.id.value, context)
@@ -99,7 +109,7 @@ export class ResetUserPassword {
           userId: user.id.value,
           reason: 'Active user has no credentials',
         })
-        return fail(ResetUserPasswordApplicationError.inconsistentState(user.id.value))
+        return fail(ResetUserPasswordApplicationError.inconsistentState())
       }
 
       const passwordMatchCurrentOne = await this.hasherService.compare(password.value, userCredential.passwordHash.value)
@@ -120,8 +130,8 @@ export class ResetUserPassword {
         user.id,
         user.email,
         deviceLocation,
-        userAgent,
-        ipHash,
+        deviceInfo,
+        userIpHash,
         now,
       )
 
@@ -141,17 +151,17 @@ export class ResetUserPassword {
     const emailResult = EmailAddress.safeCreate(request.email)
 
     if (!emailResult.success) {
-      inputErrors.push(ResetUserPasswordError.invalidEmail())
+      inputErrors.push(ResetUserPasswordError.invalidEmail(emailResult.error.message))
     }
 
     const tokenResult = VerificationTokenValue.safeCreate(request.token)
     if (!tokenResult.success) {
-      inputErrors.push(ResetUserPasswordError.invalidTokenFormat())
+      inputErrors.push(ResetUserPasswordError.invalidTokenFormat(tokenResult.error.message))
     }
 
     const passwordResult = UserPassword.safeCreate(request.password)
     if (!passwordResult.success) {
-      inputErrors.push(ResetUserPasswordError.invalidPassword())
+      inputErrors.push(ResetUserPasswordError.invalidPassword(passwordResult.error.message))
     }
 
     if (!emailResult.success || !tokenResult.success || !passwordResult.success) {
@@ -179,13 +189,16 @@ export class ResetUserPassword {
       error: exception.message,
     }
 
-    switch (exception.id) {
+    const exceptionId = exception.id
+    const domainMessage = exception.message
+
+    switch (exceptionId) {
       case VerificationTokenDomainException.verificationTokenAlreadyExpiredId: {
         this.loggerService.warn('Verification token validation failed', {
           ...tokenState,
           reason: 'Token has already expired',
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired()))
+        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired(domainMessage)))
       }
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId: {
@@ -193,7 +206,7 @@ export class ResetUserPassword {
           ...tokenState,
           reason: 'Token was already used',
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed()))
+        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed(domainMessage)))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId: {
@@ -202,7 +215,7 @@ export class ResetUserPassword {
           reason: 'Token belongs to a different email address',
           requestEmail: requestEmail.value,
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner()))
+        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner(domainMessage)))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId: {
@@ -210,7 +223,7 @@ export class ResetUserPassword {
           ...tokenState,
           reason: 'Token was not generated for password reset',
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch()))
+        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch(domainMessage)))
       }
 
       default: {

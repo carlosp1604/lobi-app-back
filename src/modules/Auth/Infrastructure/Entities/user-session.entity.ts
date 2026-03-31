@@ -1,6 +1,13 @@
 import { EntitySchema } from 'typeorm'
 import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 
+export interface DeviceInfoRawPayload {
+  raw: string
+  browser: { name: string | null; version: string | null }
+  os: { name: string | null; version: string | null }
+  hardware: { type: string | null; vendor: string | null; model: string | null }
+}
+
 export interface UserSessionRawModel {
   id: string
   user_id: string
@@ -8,7 +15,7 @@ export interface UserSessionRawModel {
   expires_at: Date
   revoked_at: Date | null
   ip_hash: string | null
-  user_agent: string
+  device_info: DeviceInfoRawPayload
   device_country_code: string | null
   device_city: string | null
   created_at: Date
@@ -49,9 +56,8 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
       length: 44,
       nullable: true,
     },
-    user_agent: {
-      type: String,
-      length: 512,
+    device_info: {
+      type: 'jsonb',
       nullable: false,
     },
     device_country_code: {
@@ -89,12 +95,8 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
   },
   indices: [
     {
-      name: 'idx_user_sessions_user_id',
+      name: 'index_user_sessions_user_id',
       columns: ['user_id'],
-    },
-    {
-      name: 'idx_user_sessions_expires_at',
-      columns: ['expires_at'],
     },
   ],
 })

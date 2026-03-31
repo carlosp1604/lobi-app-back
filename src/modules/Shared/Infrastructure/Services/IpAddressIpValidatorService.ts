@@ -1,5 +1,5 @@
 import ipaddr, { IPv6 } from 'ipaddr.js'
-import { IpValidatorServiceInterface } from '~/src/modules/Auth/Domain/IpValidatorServiceInterface'
+import { IpValidatorServiceInterface } from '~/src/modules/Shared/Infrastructure/Services/IpValidatorServiceInterface'
 
 export class IpAddressIpValidatorService implements IpValidatorServiceInterface {
   /**

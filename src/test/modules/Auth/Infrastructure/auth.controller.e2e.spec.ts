@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm'
 import { Test, TestingModule } from '@nestjs/testing'
 import { AuthModule } from '~/src/modules/Auth/Infrastructure/auth.module'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { UserCredentialRawWitRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-credential.entity'
@@ -22,10 +22,10 @@ import { INTERNAL_SERVER_ERROR, UNAUTHORIZED_ACCESS, VALIDATION_ERROR } from '~/
 import { UserSessionRawWithRelationships } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessionRawTestMaker'
 import {
+  CLIENT_METADATA_SERVICE,
   EMAIL_SENDER_SERVICE,
   HASHER_SERVICE,
   PASSWORD_HASHER_SERVICE,
-  REQUEST_ORIGIN_SERVICE,
   TOKEN_GENERATOR,
 } from '~/src/modules/Auth/Infrastructure/auth.tokens'
 import { TokenGeneratorApplicationServiceInterface } from '~/src/modules/Auth/Application/TokenGenerator/TokenGeneratorApplicationServiceInterface'
@@ -63,9 +63,8 @@ import { UserPasswordMother } from '~/src/test/mothers/UserPasswordMother'
 import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationError'
 import { RefreshSessionApplicationError } from '~/src/modules/Auth/Application/RefreshSession/RefreshSessionApplicationError'
 import { DeviceLocationMother } from '~/src/test/mothers/DeviceLocationMother'
-import { UserAgentMother } from '~/src/test/mothers/UserAgentMother'
-import { expectIsoDate } from '~/src/test/utils/matchers'
-import { HashMother } from '~/src/test/mothers/HashMother'
+import { DeviceInfoMother } from '~/src/test/mothers/DeviceInfoMother'
+import { expectIsoDate, expectStringOrNull } from '~/src/test/utils/matchers'
 import { VerificationTokenValueMother } from '~/src/test/mothers/VerificationTokenValueMother'
 import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/ValidateVerificationToken/ValidateVerificationTokenApplicationError'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
@@ -73,8 +72,17 @@ import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
+import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
+import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
+import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
+import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
+import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
+import { mock } from 'jest-mock-extended'
+
+import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
+import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -85,20 +93,19 @@ describe('AuthController', () => {
   let dataSource: DataSource
   let configService: ConfigService<Env, true>
 
-  /* Third-party dependant service */
-  const mockedEmailSenderService = {
+  /* Third-party dependent service */
+  const mockedEmailSenderService = mock<EmailSenderServiceInterface>({
     sendWithTemplate: jest.fn().mockResolvedValue(undefined),
-  }
+  })
 
-  /* Third-party dependant service */
-  const mockedRequestOriginService = {
+  /* Third-party dependent service */
+  const mockedClientMetadataService = mock<ClientMetadataApplicationService>({
     process: jest.fn().mockResolvedValue({
-      ipHash: HashMother.valid(),
-      normalizedIp: '127.0.0.1',
+      deviceInfo: DeviceInfoMother.valid(),
+      userIpHash: UserIpHashMother.valid(),
       deviceLocation: DeviceLocationMother.valid(),
-      userAgent: UserAgentMother.valid(),
     }),
-  }
+  })
 
   beforeAll(async () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -121,8 +128,8 @@ describe('AuthController', () => {
     })
       .overrideProvider(DataSource)
       .useValue(dataSource)
-      .overrideProvider(REQUEST_ORIGIN_SERVICE)
-      .useValue(mockedRequestOriginService)
+      .overrideProvider(CLIENT_METADATA_SERVICE)
+      .useValue(mockedClientMetadataService)
       .overrideProvider(EMAIL_SENDER_SERVICE)
       .useValue(mockedEmailSenderService)
       .compile()
@@ -152,7 +159,7 @@ describe('AuthController', () => {
     await app.close()
   })
 
-  const checkAuthCookies = (cookies: Array<string>) => {
+  const checkAuthCookiesWereSet = (cookies: Array<string>) => {
     const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
     const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
 
@@ -165,7 +172,7 @@ describe('AuthController', () => {
     expect(isBeingCleared).toBe(false)
   }
 
-  const checkClearedCookies = (cookies: Array<string>) => {
+  const checkAuthCookiesWereCleared = (cookies: Array<string>) => {
     const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
     const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
 
@@ -178,29 +185,47 @@ describe('AuthController', () => {
     expect(isRefreshCookieCleared).toBe(true)
   }
 
+  const checkAuthCookiesWereNotCleared = (cookies?: Array<string>) => {
+    if (!cookies || cookies.length === 0) {
+      expect(cookies ?? []).not.toContain('Max-Age=0')
+      return
+    }
+
+    const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+    const refreshCookieName = configService.get<string>('REFRESH_COOKIE_NAME', { infer: true })
+
+    const isAccessCookieCleared = cookies.some((cookie) => cookie.includes(`${accessCookieName}=;`) && cookie.includes('Max-Age=0'))
+    const isRefreshCookieCleared = cookies.some((cookie) => cookie.includes(`${refreshCookieName}=;`) && cookie.includes('Max-Age=0'))
+
+    expect(isAccessCookieCleared).toBe(false)
+    expect(isRefreshCookieCleared).toBe(false)
+  }
+
   describe('login', () => {
     const userId = IdentifierMother.valid().value
     const userEmail = EmailAddressMother.random().value
-    const validPassword = UserPasswordMother.valid().value
+    const userPassword = UserPasswordMother.valid().value
 
     let userDatabaseHelper: UserDatabaseHelper
     let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
+    let userSessionDatabaseHelper: UserSessionDatabaseHelper
     let rawUser: UserRawModelWithRelations
     let rawCredential: UserCredentialRawWitRelationships
 
     beforeEach(async () => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
       userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(dataSource.manager)
+      userSessionDatabaseHelper = new UserSessionDatabaseHelper(dataSource.manager)
 
       const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
-      const userPassword = await passwordHasher.hash(validPassword)
+      const passwordHash = await passwordHasher.hash(userPassword)
 
       rawCredential = makeRawUserCredential({
         user_id: userId,
         locked_until: null,
         last_login_at: null,
         failed_attempts: 0,
-        password_hash: userPassword,
+        password_hash: passwordHash,
       })
 
       rawUser = makeRawUser({
@@ -215,23 +240,25 @@ describe('AuthController', () => {
         await userDatabaseHelper.save(rawUser)
         await userCredentialDatabaseHelper.save(rawCredential)
 
-        return request(app.getHttpServer())
+        const response = await request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail, password: validPassword })
+          .send({ email: userEmail, password: userPassword })
           .expect(200)
-          .expect((response) => {
-            expect(response.body).toEqual({
-              accessToken: expect.any(String),
-              refreshToken: expect.any(String),
-              sessionId: expect.any(String),
-              accessTokenExpiresAt: expectIsoDate,
-              refreshTokenExpiresAt: expectIsoDate,
-              isNewDevice: expect.any(Boolean),
-            } as Record<string, unknown>)
 
-            const cookies = response.headers['set-cookie'] as unknown as Array<string>
-            checkAuthCookies(cookies)
-          })
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({
+          accessToken: expect.any(String),
+          refreshToken: expect.any(String),
+          sessionId: expect.any(String),
+          accessTokenExpiresAt: expectIsoDate,
+          refreshTokenExpiresAt: expectIsoDate,
+        } as Record<string, unknown>)
+
+        const cookies = response.headers['set-cookie'] as unknown as Array<string>
+        checkAuthCookiesWereSet(cookies)
+
+        const savedSession = await userSessionDatabaseHelper.findById(response.body.sessionId as string)
+        expect(savedSession).toBeDefined()
       })
     })
 
@@ -267,16 +294,19 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when password format is not valid', async () => {
+        const expectedDomainErrorMessage = UserCredentialDomainException.invalidPasswordFormat().message
+        const invalidPassword = UserPasswordMother.invalid()
+
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail, password: 'invalid-password' })
+          .send({ email: userEmail, password: invalidPassword })
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
               path: '/auth/login',
               response: {
                 code: AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
-                message: LoginUserApplicationError.invalidPasswordFormat().message,
+                message: LoginUserApplicationError.invalidPasswordFormat(expectedDomainErrorMessage).message,
               },
               statusCode: 422,
               requestId: expect.any(String),
@@ -306,20 +336,20 @@ describe('AuthController', () => {
         }
 
         it('should throw UnauthorizedException when user is not found', async () => {
-          await testCase(validPassword)
+          await testCase(userPassword)
         })
 
         it('should throw UnauthorizedException when user is deleted', async () => {
           await userDatabaseHelper.save({ ...rawUser, deleted_at: now })
 
-          await testCase(validPassword)
+          await testCase(userPassword)
         })
 
         it('should throw UnauthorizedException when user is not active', async () => {
           await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
           await userCredentialDatabaseHelper.save(rawCredential)
 
-          await testCase(validPassword)
+          await testCase(userPassword)
         })
 
         it('should throw UnauthorizedException when user password does not match', async () => {
@@ -335,7 +365,7 @@ describe('AuthController', () => {
 
         return request(app.getHttpServer())
           .post('/auth/login')
-          .send({ email: userEmail, password: validPassword })
+          .send({ email: userEmail, password: userPassword })
           .expect(500)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -396,22 +426,20 @@ describe('AuthController', () => {
         await userDatabaseHelper.save(rawUser)
         await userSessionDatabaseHelper.save(rawCurrentSession)
 
-        return request(app.getHttpServer())
-          .post('/auth/refresh')
-          .set('Cookie', `${refreshCookieName}=${inputToken}`)
-          .expect(200)
-          .expect((response) => {
-            expect(response.body).toEqual({
-              accessToken: expect.any(String),
-              refreshToken: expect.any(String),
-              sessionId: expect.any(String),
-              accessTokenExpiresAt: expectIsoDate,
-              refreshTokenExpiresAt: expectIsoDate,
-            } as Record<string, unknown>)
+        const response = await request(app.getHttpServer()).post('/auth/refresh').set('Cookie', `${refreshCookieName}=${inputToken}`)
 
-            const cookies = response.headers['set-cookie'] as unknown as Array<string>
-            checkAuthCookies(cookies)
-          })
+        expect(response.status).toBe(200)
+        expect(response.body).toEqual({
+          accessToken: expect.any(String),
+          refreshToken: expect.any(String),
+          sessionId: expect.any(String),
+          accessTokenExpiresAt: expectIsoDate,
+          refreshTokenExpiresAt: expectIsoDate,
+        } as Record<string, unknown>)
+        checkAuthCookiesWereSet(response.headers['set-cookie'] as unknown as Array<string>)
+
+        const savedSession = await userSessionDatabaseHelper.findById(response.body.sessionId as string)
+        expect(savedSession).toBeDefined()
       })
     })
 
@@ -476,9 +504,11 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when token format is not valid', async () => {
+        const invalidTokenFormat = RefreshTokenMother.invalidFormat()
+
         return request(app.getHttpServer())
           .post('/auth/refresh')
-          .set('Cookie', `${refreshCookieName}=invalid-token-format`)
+          .set('Cookie', `${refreshCookieName}=${invalidTokenFormat}`)
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -504,7 +534,7 @@ describe('AuthController', () => {
     let rawUser: UserRawModelWithRelations
     let rawCurrentVerificationToken: VerificationTokenRawModel
 
-    const validBody = { email: userEmail.value, sendNewToken: false }
+    const body = { email: userEmail.value, sendNewToken: false }
 
     beforeEach(() => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
@@ -527,16 +557,43 @@ describe('AuthController', () => {
 
     describe('happy path', () => {
       it('should return 204 for signup when user does not exist', async () => {
-        return request(app.getHttpServer()).post('/auth/verify-email/signup').send(validBody).expect(204)
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/signup').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(1)
       })
 
       it('should return 204 for reset password when user exists', async () => {
         await userDatabaseHelper.save(rawUser)
-        return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
+
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/reset').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(1)
       })
 
       it('should return 204 when user does not exist for reset password', async () => {
-        return request(app.getHttpServer()).post('/auth/verify-email/reset').send(validBody).expect(204)
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/reset').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(0)
+      })
+
+      it('should return 204 when user is not active for reset password', async () => {
+        await userDatabaseHelper.save({ ...rawUser, status: UserStatus.deactivated().value })
+
+        const result = await request(app.getHttpServer()).post('/auth/verify-email/reset').send(body)
+
+        expect(result.status).toBe(204)
+
+        const savedVerificationToken = await verificationTokenDatabaseHelper.findByEmail(body.email)
+        expect(savedVerificationToken).toHaveLength(0)
       })
     })
 
@@ -581,17 +638,17 @@ describe('AuthController', () => {
       })
 
       describe('when token is already issued', () => {
-        const testCase = async (path: string, purpose: string) => {
+        const testCase = async (path: string) => {
           return request(app.getHttpServer())
             .post(path)
-            .send(validBody)
+            .send(body)
             .expect(409)
             .expect((response) => {
               expect(response.body).toEqual({
                 path: path,
                 response: {
                   code: AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
-                  message: `An active VerificationToken for ${purpose} was already issued for email ${userEmail.value}`,
+                  message: GenerateVerificationTokenApplicationError.activeTokenAlreadyIssued().message,
                 },
                 statusCode: 409,
                 requestId: expect.any(String),
@@ -603,7 +660,7 @@ describe('AuthController', () => {
         it('should throw ConflictException for signup', async () => {
           await verificationTokenDatabaseHelper.save(rawCurrentVerificationToken)
 
-          await testCase('/auth/verify-email/signup', VerificationTokenPurpose.createAccount().value)
+          await testCase('/auth/verify-email/signup')
         })
 
         it('should throw ConflictException for reset', async () => {
@@ -613,7 +670,7 @@ describe('AuthController', () => {
             purpose: VerificationTokenPurpose.resetPassword().value,
           })
 
-          await testCase('/auth/verify-email/reset', VerificationTokenPurpose.resetPassword().value)
+          await testCase('/auth/verify-email/reset')
         })
       })
 
@@ -622,14 +679,14 @@ describe('AuthController', () => {
 
         return request(app.getHttpServer())
           .post('/auth/verify-email/signup')
-          .send(validBody)
+          .send(body)
           .expect(409)
           .expect((response) => {
             expect(response.body).toEqual({
               path: '/auth/verify-email/signup',
               response: {
                 code: AUTH_VERIFY_EMAIL_EMAIL_ALREADY_TAKEN,
-                message: `Email ${userEmail.value} is already taken`,
+                message: GenerateVerificationTokenApplicationError.emailAlreadyTaken().message,
               },
               statusCode: 409,
               requestId: expect.any(String),
@@ -707,6 +764,8 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when token purpose is not valid', async () => {
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenPurpose().message
+
         return request(app.getHttpServer())
           .post('/auth/validate-token')
           .send({
@@ -720,7 +779,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_INVALID_PURPOSE,
-                message: ValidateVerificationTokenError.invalidTokenPurpose('INVALID_PURPOSE').message,
+                message: ValidateVerificationTokenError.invalidTokenPurpose(expectedDomainErrorMessage).message,
               },
               statusCode: 422,
               requestId: expect.any(String),
@@ -730,6 +789,8 @@ describe('AuthController', () => {
       })
 
       it('should throw UnprocessableEntityException when token format is not valid', async () => {
+        const expectedDomainErrorMessage = VerificationTokenDomainException.invalidVerificationTokenValue().message
+
         return request(app.getHttpServer())
           .post('/auth/validate-token')
           .send({
@@ -743,7 +804,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_INVALID_TOKEN_FORMAT,
-                message: ValidateVerificationTokenError.invalidTokenFormat().message,
+                message: ValidateVerificationTokenError.invalidTokenFormat(expectedDomainErrorMessage).message,
               },
               statusCode: 422,
               requestId: expect.any(String),
@@ -754,6 +815,8 @@ describe('AuthController', () => {
 
       it('should throw ConflictException when token is already used', async () => {
         await verificationTokenDatabaseHelper.save({ ...rawVerificationToken, used_at: now })
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
 
         return request(app.getHttpServer())
           .post('/auth/validate-token')
@@ -768,7 +831,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_ALREADY_USED,
-                message: ValidateVerificationTokenError.alreadyUsed().message,
+                message: ValidateVerificationTokenError.alreadyUsed(expectedDomainErrorMessage).message,
               },
               statusCode: 409,
               requestId: expect.any(String),
@@ -779,6 +842,8 @@ describe('AuthController', () => {
 
       it('should throw GoneException when token is expired', async () => {
         await verificationTokenDatabaseHelper.save({ ...rawVerificationToken, expires_at: pastDate })
+
+        const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
 
         return request(app.getHttpServer())
           .post('/auth/validate-token')
@@ -793,7 +858,7 @@ describe('AuthController', () => {
               path: '/auth/validate-token',
               response: {
                 code: AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
-                message: ValidateVerificationTokenError.expired().message,
+                message: ValidateVerificationTokenError.expired(expectedDomainErrorMessage).message,
               },
               statusCode: 410,
               requestId: expect.any(String),
@@ -852,12 +917,12 @@ describe('AuthController', () => {
   })
 
   describe('signup', () => {
-    const validEmail = EmailAddressMother.random()
-    const validUsername = UserUsernameMother.random()
-    const validName = UserNameMother.random()
-    const validPassword = UserPasswordMother.valid()
-    const validTokenValue = VerificationTokenValueMother.valid()
-    const validRole = UserRoleMother.sportsman()
+    const userEmail = EmailAddressMother.random()
+    const username = UserUsernameMother.random()
+    const userName = UserNameMother.random()
+    const userPassword = UserPasswordMother.valid()
+    const tokenValue = VerificationTokenValueMother.valid()
+    const sportsmanRole = UserRoleMother.sportsman()
 
     let userDatabaseHelper: UserDatabaseHelper
     let verificationTokenDatabaseHelper: VerificationTokenDatabaseHelper
@@ -868,20 +933,20 @@ describe('AuthController', () => {
     })
 
     const getValidPayload = () => ({
-      email: validEmail.value,
-      username: validUsername.value,
-      name: validName.value,
-      password: validPassword.value,
-      token: validTokenValue.value,
-      requestedRole: validRole.value,
+      email: userEmail.value,
+      username: username.value,
+      name: userName.value,
+      password: userPassword.value,
+      token: tokenValue.value,
+      requestedRole: sportsmanRole.value,
     })
 
     const saveTokenInDatabase = async (overrides: Partial<VerificationTokenRawModel> = {}) => {
       const passwordHasher = await app.resolve<HasherServiceInterface>(PASSWORD_HASHER_SERVICE)
-      const tokenHash = await passwordHasher.hash(validTokenValue.value)
+      const tokenHash = await passwordHasher.hash(tokenValue.value)
       const rawToken = makeRawVerificationToken({
         id: IdentifierMother.valid().value,
-        email: validEmail.value,
+        email: userEmail.value,
         purpose: VerificationTokenPurpose.createAccount().value,
         expires_at: futureDate,
         used_at: null,
@@ -897,13 +962,15 @@ describe('AuthController', () => {
       it('should return 204 No Content when user is registered correctly', async () => {
         await saveTokenInDatabase()
 
-        await request(app.getHttpServer())
-          .post('/auth/signup')
-          .send(getValidPayload())
-          .expect(204)
-          .expect((response) => {
-            expect(response.body).toEqual({})
-          })
+        const result = await request(app.getHttpServer()).post('/auth/signup').send(getValidPayload())
+
+        expect(result.status).toBe(204)
+        expect(result.body).toEqual({})
+
+        const savedUser = await userDatabaseHelper.findByEmail(userEmail.value)
+        expect(savedUser).not.toBeNull()
+        expect(savedUser!.username).toBe(username.value)
+        expect(savedUser!.name).toBe(userName.value)
       })
     })
 
@@ -941,9 +1008,12 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when password format is not valid', async () => {
         await saveTokenInDatabase()
 
+        const invalidPassword = UserPasswordMother.invalid()
+        const expectedDomainErrorMessage = UserCredentialDomainException.invalidPasswordFormat().message
+
         return request(app.getHttpServer())
           .post('/auth/signup')
-          .send({ ...getValidPayload(), password: 'invalid-password' })
+          .send({ ...getValidPayload(), password: invalidPassword })
           .expect(422)
           .expect((response) => {
             expect(response.body).toEqual({
@@ -953,7 +1023,7 @@ describe('AuthController', () => {
                 errors: [
                   {
                     code: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
-                    message: CreateUserError.invalidPassword().message,
+                    message: CreateUserError.invalidPassword(expectedDomainErrorMessage).message,
                   },
                 ],
               },
@@ -971,7 +1041,7 @@ describe('AuthController', () => {
           await userDatabaseHelper.save(
             makeRawUser({
               id: IdentifierMother.valid().value,
-              email: validEmail.value,
+              email: userEmail.value,
               status: UserStatus.active().value,
             }),
           )
@@ -982,7 +1052,7 @@ describe('AuthController', () => {
             .expect(409)
             .expect((response) => {
               expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_EMAIL)
-              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedEmail(validEmail.value).message)
+              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedEmail().message)
             })
         })
 
@@ -993,7 +1063,7 @@ describe('AuthController', () => {
             makeRawUser({
               id: IdentifierMother.valid().value,
               email: EmailAddressMother.random().value,
-              username: validUsername.value,
+              username: username.value,
               status: UserStatus.active().value,
             }),
           )
@@ -1004,7 +1074,7 @@ describe('AuthController', () => {
             .expect(409)
             .expect((response) => {
               expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_USERNAME)
-              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedUsername(validUsername.value).message)
+              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedUsername().message)
             })
         })
       })
@@ -1022,9 +1092,9 @@ describe('AuthController', () => {
         })
 
         it('should throw GoneException when token is already expired', async () => {
-          await saveTokenInDatabase({
-            expires_at: pastDate,
-          })
+          await saveTokenInDatabase({ expires_at: pastDate })
+
+          const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
 
           return request(app.getHttpServer())
             .post('/auth/signup')
@@ -1032,14 +1102,14 @@ describe('AuthController', () => {
             .expect(410)
             .expect((response) => {
               expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED)
-              expect(response.body.response.message).toEqual(CreateUserError.tokenExpired().message)
+              expect(response.body.response.message).toEqual(CreateUserError.tokenExpired(expectedDomainErrorMessage).message)
             })
         })
 
         it('should throw ConflictException when token is already used', async () => {
-          await saveTokenInDatabase({
-            used_at: pastDate,
-          })
+          await saveTokenInDatabase({ used_at: pastDate })
+
+          const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
 
           return request(app.getHttpServer())
             .post('/auth/signup')
@@ -1047,7 +1117,7 @@ describe('AuthController', () => {
             .expect(409)
             .expect((response) => {
               expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_USED)
-              expect(response.body.response.message).toEqual(CreateUserError.tokenAlreadyUsed().message)
+              expect(response.body.response.message).toEqual(CreateUserError.tokenAlreadyUsed(expectedDomainErrorMessage).message)
             })
         })
 
@@ -1272,7 +1342,7 @@ describe('AuthController', () => {
             expect(response.body).toEqual({})
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
 
         const revokedSession = await userSessionDatabaseHelper.findById(sessionId.value)
@@ -1290,7 +1360,7 @@ describe('AuthController', () => {
             expect(response.body).toEqual({})
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
       })
 
@@ -1308,7 +1378,7 @@ describe('AuthController', () => {
           .expect((response) => {
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
       })
     })
@@ -1348,7 +1418,6 @@ describe('AuthController', () => {
     describe('happy path', () => {
       it('should return 204 No Content and clear cookies when closing current session', async () => {
         const { accessToken } = await saveSetupInDatabase()
-
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
         await request(app.getHttpServer())
@@ -1359,12 +1428,41 @@ describe('AuthController', () => {
             expect(response.body).toEqual({})
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
 
-        const revokedSession = await userSessionDatabaseHelper.findById(sessionId.value)
-        expect(revokedSession).not.toBeNull()
-        expect(revokedSession!.revoked_at).not.toBeNull()
+        const revokedCurrentSession = await userSessionDatabaseHelper.findById(sessionId.value)
+        expect(revokedCurrentSession).not.toBeNull()
+        expect(revokedCurrentSession!.revoked_at).not.toBeNull()
+      })
+
+      it('should return 204 No Content and not clear cookies when closing a different valid session', async () => {
+        const { accessToken } = await saveSetupInDatabase()
+
+        const otherSessionId = IdentifierMother.valid()
+        await userSessionDatabaseHelper.save(
+          makeRawSession({
+            id: otherSessionId.value,
+            user_id: userId.value,
+            revoked_at: null,
+          }),
+        )
+
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        await request(app.getHttpServer())
+          .delete(`/auth/sessions/${otherSessionId.value}`)
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
+          .expect(204)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
+          })
+
+        const revokedOtherSession = await userSessionDatabaseHelper.findById(otherSessionId.value)
+        expect(revokedOtherSession).not.toBeNull()
+        expect(revokedOtherSession!.revoked_at).not.toBeNull()
       })
     })
 
@@ -1379,13 +1477,25 @@ describe('AuthController', () => {
           .delete(`/auth/sessions/${invalidSessionId}`)
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(400)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
+          })
       })
 
       it('should throw 401 UnauthorizedException when access token is not present', async () => {
-        return request(app.getHttpServer()).delete(`/auth/sessions/${sessionId.value}`).expect(401)
+        return request(app.getHttpServer())
+          .delete(`/auth/sessions/${sessionId.value}`)
+          .expect(401)
+          .expect((response) => {
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
+          })
       })
 
-      it('should return 204 No Content and clear cookies when closing current session', async () => {
+      it('should return 204 No Content and clear cookies when closing current session but it does not exist', async () => {
         const accessToken = await tokenService.generateAccessToken(userId.value, sessionId.value, futureDate, now)
 
         await userDatabaseHelper.save(makeRawUser({ id: userId.value }))
@@ -1399,34 +1509,28 @@ describe('AuthController', () => {
           .expect((response) => {
             const cookies = response.headers['set-cookie'] as unknown as Array<string>
 
-            checkClearedCookies(cookies)
+            checkAuthCookiesWereCleared(cookies)
           })
       })
 
-      it('should return 204 No Content and not clear cookies when closing a different session', async () => {
+      it('should return 204 No Content and not clear cookies when closing a different session and it does not exist', async () => {
         const { accessToken } = await saveSetupInDatabase()
-
-        const otherSessionId = IdentifierMother.valid()
-        await userSessionDatabaseHelper.save(
-          makeRawSession({
-            id: otherSessionId.value,
-            user_id: userId.value,
-            revoked_at: null,
-          }),
-        )
-
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
+        const nonExistentSessionId = IdentifierMother.valid()
+
         return request(app.getHttpServer())
-          .delete(`/auth/sessions/${otherSessionId.value}`)
+          .delete(`/auth/sessions/${nonExistentSessionId.value}`)
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(204)
           .expect((response) => {
-            expect(response.headers['set-cookie']).toBeUndefined()
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
           })
       })
 
-      it('should return 204 No Content and NOT clear cookies when trying to close another user session', async () => {
+      it('should return 204 No Content and not clear cookies when trying to close another user session', async () => {
         const { accessToken } = await saveSetupInDatabase()
 
         const anotherUserId = IdentifierMother.valid()
@@ -1448,7 +1552,9 @@ describe('AuthController', () => {
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(204)
           .expect((response) => {
-            expect(response.headers['set-cookie']).toBeUndefined()
+            const cookies = response.headers['set-cookie'] as unknown as Array<string>
+
+            checkAuthCookiesWereNotCleared(cookies)
           })
       })
     })
@@ -1512,15 +1618,30 @@ describe('AuthController', () => {
             expect(body.sessions[0]).toEqual(
               expect.objectContaining({
                 id: expect.any(String),
-                userAgent: expect.any(String),
+                deviceInfo: {
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                  raw: expect.any(String),
+                  browser: {
+                    name: expectStringOrNull,
+                    version: expectStringOrNull,
+                  },
+                  os: {
+                    name: expectStringOrNull,
+                    version: expectStringOrNull,
+                  },
+                  hardware: {
+                    type: expectStringOrNull,
+                    vendor: expectStringOrNull,
+                    model: expectStringOrNull,
+                  },
+                },
+                deviceCountryCode: expectStringOrNull,
+                deviceCity: expectStringOrNull,
                 isCurrent: expect.any(Boolean),
                 activeSince: expectIsoDate,
                 expiresAt: expectIsoDate,
               } as Record<string, unknown>),
             )
-
-            expect(body.sessions[0]).toHaveProperty('deviceCountryCode')
-            expect(body.sessions[0]).toHaveProperty('deviceCity')
           })
       })
 

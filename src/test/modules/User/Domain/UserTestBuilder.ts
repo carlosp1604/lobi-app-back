@@ -4,10 +4,10 @@ import { UserName } from '~/src/modules/User/Domain/ValueObject/UserName'
 import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserRole } from '~/src/modules/User/Domain/ValueObject/UserRole'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { EmailAddressMother } from '~/src/test/mothers/Shared/EmailAddressMother'
+import { EmailAddressMother } from '~/src/test/mothers/Domain/Shared/EmailAddressMother'
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 
 export class UserTestBuilder {

@@ -5,7 +5,7 @@ import { makeRawSession } from '~/src/test/modules/Auth/Infrastructure/UserSessi
 import { mock, mockReset } from 'jest-mock-extended'
 import { withTransaction } from '~/src/test/utils/withTransaction'
 import { ClockServiceMock } from '~/src/test/utils/ClockServiceMock'
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
 import { UserDatabaseHelper } from '~/src/test/modules/Auth/Infrastructure/UserDatabaseHelper'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'

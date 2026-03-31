@@ -1,5 +1,3 @@
-import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
-
 export class ValidateVerificationTokenError extends Error {
   public readonly __brand = 'ValidateVerificationTokenError' as const
 
@@ -22,44 +20,42 @@ export class ValidateVerificationTokenError extends Error {
     this.name = ValidateVerificationTokenError.name
   }
 
-  public static invalidEmail(email: string) {
-    const cleanEmail = StringFormatter.formatSafe(email, 60)
-    return new ValidateVerificationTokenError(`Invalid email: ${cleanEmail}`, this.invalidEmailId)
+  public static invalidEmail(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.invalidEmailId)
   }
 
-  public static invalidTokenPurpose(purpose: string) {
-    const safePurposeSample = StringFormatter.formatSafe(purpose, 60)
-    return new ValidateVerificationTokenError(`Invalid VerificationToken purpose: ${safePurposeSample}`, this.invalidTokenPurposeId)
+  public static invalidTokenPurpose(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.invalidTokenPurposeId)
   }
 
-  public static invalidTokenFormat() {
-    return new ValidateVerificationTokenError('Invalid token format', this.invalidTokenFormatId)
+  public static invalidTokenFormat(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.invalidTokenFormatId)
   }
 
   public static notFound() {
-    return new ValidateVerificationTokenError('the verification token was not found', this.tokenNotFoundId)
-  }
-
-  public static expired() {
-    return new ValidateVerificationTokenError('The verification token has already expired', this.tokenExpiredId)
-  }
-
-  public static alreadyUsed() {
-    return new ValidateVerificationTokenError('The verification token has already been used', this.tokenAlreadyUsedId)
-  }
-
-  public static invalidOwner() {
     return new ValidateVerificationTokenError(
-      'The verification token does not belong to the provided email address',
-      this.invalidTokenOwnerId,
+      'No valid verification token was found for the provided email address',
+      this.tokenNotFoundId,
     )
   }
 
-  public static tokenPurposeMismatch() {
-    return new ValidateVerificationTokenError('The token cannot be used for the requested purpose', this.tokenPurposeMismatchId)
+  public static expired(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.tokenExpiredId)
+  }
+
+  public static alreadyUsed(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.tokenAlreadyUsedId)
+  }
+
+  public static invalidOwner(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.invalidTokenOwnerId)
+  }
+
+  public static tokenPurposeMismatch(domainMessage: string) {
+    return new ValidateVerificationTokenError(domainMessage, this.tokenPurposeMismatchId)
   }
 
   public static invalidToken() {
-    return new ValidateVerificationTokenError('The provided token code does not match the stored hash', this.invalidTokenId)
+    return new ValidateVerificationTokenError('The provided verification code is incorrect', this.invalidTokenId)
   }
 }

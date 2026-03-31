@@ -1,4 +1,4 @@
-import { IdentifierMother } from '~/src/test/mothers/Shared/IdentifierMother'
+import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { OwnerProfileRawWithRelationships } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
 
 export const makeRawOwnerProfile = (overrides: Partial<OwnerProfileRawWithRelationships> = {}): OwnerProfileRawWithRelationships => {
