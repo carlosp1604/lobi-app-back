@@ -9,6 +9,7 @@ export class SharedDomainException extends DomainException {
   public static invalidUserIpHashId = 'shared_domain_invalid_user_ip_hash'
   public static invalidSlugId = 'shared_domain_invalid_slug'
   public static invalidResourceUrlId = 'shared_domain_invalid_resource_url'
+  public static invalidLocaleId = 'shared_domain_invalid_locale'
 
   private constructor(message: string, id: string) {
     super(message, id, SharedDomainException.name)
@@ -36,5 +37,15 @@ export class SharedDomainException extends DomainException {
   public static invalidResourceUrl(resourceUrl: string) {
     const safeResourceUrlSample = StringFormatter.formatSafe(resourceUrl, 128)
     return new SharedDomainException(`${safeResourceUrlSample} is not a valid url`, this.invalidResourceUrlId)
+  }
+
+  public static invalidLocale(locale: string, supportedLocales: readonly string[]) {
+    const safeLocaleSample = StringFormatter.formatSafe(locale, 6)
+    const allowed = supportedLocales.join(', ')
+
+    return new SharedDomainException(
+      `${safeLocaleSample} is not a supported locale. Allowed locales are: [${allowed}]`,
+      this.invalidLocaleId,
+    )
   }
 }
