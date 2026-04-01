@@ -1,5 +1,8 @@
 import { DomainException } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
+import { ValidTranslatableType } from '~/src/modules/Shared/Domain/ValueObject/TranslatableType'
+import { ValidTranslatableField } from '~/src/modules/Shared/Domain/ValueObject/TranslatableField'
+import { SUPPORTED_LOCALES } from '~/src/modules/Shared/Domain/ValueObject/Locale'
 
 export class SharedDomainException extends DomainException {
   public readonly __brand = 'SharedDomainException' as const
@@ -10,6 +13,8 @@ export class SharedDomainException extends DomainException {
   public static invalidSlugId = 'shared_domain_invalid_slug'
   public static invalidResourceUrlId = 'shared_domain_invalid_resource_url'
   public static invalidLocaleId = 'shared_domain_invalid_locale'
+  public static invalidTranslatableTypeId = 'shared_domain_invalid_translatable_type'
+  public static invalidTranslatableFieldId = 'shared_domain_invalid_translatable_field'
 
   private constructor(message: string, id: string) {
     super(message, id, SharedDomainException.name)
@@ -39,13 +44,29 @@ export class SharedDomainException extends DomainException {
     return new SharedDomainException(`${safeResourceUrlSample} is not a valid url`, this.invalidResourceUrlId)
   }
 
-  public static invalidLocale(locale: string, supportedLocales: readonly string[]) {
-    const safeLocaleSample = StringFormatter.formatSafe(locale, 6)
-    const allowed = supportedLocales.join(', ')
+  public static invalidLocale() {
+    const supported = SUPPORTED_LOCALES.join(', ')
 
-    return new SharedDomainException(
-      `${safeLocaleSample} is not a supported locale. Allowed locales are: [${allowed}]`,
-      this.invalidLocaleId,
-    )
+    return new SharedDomainException(`Invalid locale. Supported locales are: [${supported}]`, this.invalidLocaleId)
+  }
+
+  public static invalidTranslatableType() {
+    const validTranslatableTypes = Object.values(ValidTranslatableType)
+      .map((translatableType) => `- ${translatableType}`)
+      .join('\n')
+
+    const message = ['Invalid translatable type. Must be one of the following:', validTranslatableTypes].join('\n')
+
+    return new SharedDomainException(message, this.invalidTranslatableTypeId)
+  }
+
+  public static invalidTranslatableField() {
+    const validTranslatableFields = Object.values(ValidTranslatableField)
+      .map((translatableField) => `- ${translatableField}`)
+      .join('\n')
+
+    const message = ['Invalid translatable field. Must be one of the following:', validTranslatableFields].join('\n')
+
+    return new SharedDomainException(message, this.invalidTranslatableFieldId)
   }
 }
