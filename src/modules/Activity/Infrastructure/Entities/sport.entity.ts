@@ -6,17 +6,10 @@ type RawTranslation = {
   content: string
 }
 
-type RawSportDefaultConfig = {
-  maxPlayers: number | null
-  minPlayers: number
-  extraSpecs: Record<string, any>
-}
-
 export interface SportRawModel {
   id: string
   slug: string
   translations: Array<RawTranslation>
-  default_config: RawSportDefaultConfig
   icon_url: string | null
   created_at: Date
   updated_at: Date
@@ -40,10 +33,6 @@ export const SportEntity = new EntitySchema<SportRawModelWithRelations>({
       nullable: false,
     },
     translations: {
-      type: 'jsonb',
-      nullable: false,
-    },
-    default_config: {
       type: 'jsonb',
       nullable: false,
     },

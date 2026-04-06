@@ -32,11 +32,6 @@ export class CreateSportsTable1771016607407 implements MigrationInterface {
             isNullable: false,
           },
           {
-            name: 'default_config',
-            type: 'jsonb',
-            isNullable: false,
-          },
-          {
             name: 'created_at',
             type: 'timestamptz',
             isNullable: false,
