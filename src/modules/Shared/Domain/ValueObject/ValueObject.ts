@@ -21,7 +21,7 @@ export abstract class ValueObject<T> {
     return this.value === vo.value
   }
 
-  toString(): string {
+  public toString(): string {
     return String(this._value)
   }
 }

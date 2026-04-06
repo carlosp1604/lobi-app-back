@@ -1,11 +1,11 @@
 import { LocaleMother } from '~/src/test/mothers/Domain/Shared/LocaleMother'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { Locale, SUPPORTED_LOCALES } from '~/src/modules/Shared/Domain/ValueObject/Locale'
+import { Locale, SupportedLocales } from '~/src/modules/Shared/Domain/ValueObject/Locale'
 
 describe('Locale', () => {
   describe('fromString', () => {
     it('should not throw error when locale is supported', () => {
-      SUPPORTED_LOCALES.forEach((validLocale) => {
+      SupportedLocales.forEach((validLocale) => {
         expect(() => Locale.fromString(validLocale)).not.toThrow()
       })
     })

@@ -1,4 +1,4 @@
-import { Locale, SUPPORTED_LOCALES } from '~/src/modules/Shared/Domain/ValueObject/Locale'
+import { Locale, SupportedLocales } from '~/src/modules/Shared/Domain/ValueObject/Locale'
 
 export class LocaleMother {
   static readonly INVALID_FORMAT_CASES = ['', 'es-ES', 'en_US', 'spanish', '12', 'ru']
@@ -8,8 +8,8 @@ export class LocaleMother {
   }
 
   static randomString(): string {
-    const randomIndex = Math.floor(Math.random() * SUPPORTED_LOCALES.length)
-    return SUPPORTED_LOCALES[randomIndex]
+    const randomIndex = Math.floor(Math.random() * SupportedLocales.length)
+    return SupportedLocales[randomIndex]
   }
 
   static random(): Locale {
