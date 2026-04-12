@@ -1,8 +1,20 @@
-import { Altitude, AltitudeUnit, SupportedAltitudeUnits } from '~/src/modules/Shared/Domain/ValueObject/Altitude'
+import { Altitude, AltitudeUnit } from '~/src/modules/Shared/Domain/ValueObject/Altitude'
+import { NumberPrecision } from '~/src/modules/Shared/Domain/NumberPrecision'
+
+export interface AltitudeMotherValidValue {
+  value: number
+  unit: AltitudeUnit
+  conversions: {
+    [k in AltitudeUnit]: number
+  }
+  formatted: {
+    [k in AltitudeUnit]: string
+  }
+}
 
 export class AltitudeMother {
-  public static readonly VALID_METERS = 3048
-  public static readonly VALID_FEET = 10000
+  public static readonly VALID_METERS = 1000
+  public static readonly VALID_FEET = 1131
   public static readonly VALID_UNIT = 'm'
 
   public static readonly INVALID_VALUES = [NaN]
@@ -12,31 +24,39 @@ export class AltitudeMother {
     return Altitude.fromProps({ value: this.VALID_METERS, unit: this.VALID_UNIT })
   }
 
-  static validMetersValue(): { value: number; unit: AltitudeUnit; expectedMeters: number } {
+  static validMetersValue(): AltitudeMotherValidValue {
+    const expectedMtoFtConversion = 3280.8399
     return {
       value: this.VALID_METERS,
       unit: 'm',
-      expectedMeters: this.VALID_METERS,
+      conversions: {
+        m: this.VALID_METERS,
+        ft: expectedMtoFtConversion,
+      },
+      formatted: {
+        m: `${this.VALID_METERS} m`,
+        ft: `${expectedMtoFtConversion} ft`,
+      },
     }
   }
 
-  static validFtValue(): { value: number; unit: AltitudeUnit; expectedMeters: number } {
+  static validFtValue(): AltitudeMotherValidValue {
+    const expectedFtToMConversion = 344.7288
     return {
-      value: this.VALID_FEET,
-      unit: 'ft',
-      expectedMeters: this.VALID_METERS,
+      value: expectedFtToMConversion,
+      unit: 'm',
+      conversions: {
+        m: expectedFtToMConversion,
+        ft: this.VALID_FEET,
+      },
+      formatted: {
+        m: `${expectedFtToMConversion} m`,
+        ft: `${this.VALID_FEET} ft`,
+      },
     }
   }
 
-  static randomValues(): { value: number; unit: AltitudeUnit } {
-    const units = [...SupportedAltitudeUnits]
-    const randomUnit = units[Math.floor(Math.random() * units.length)]
-
-    const randomValue = Math.floor(Math.random() * 10000) - 1000
-
-    return {
-      value: randomValue,
-      unit: randomUnit,
-    }
+  static randomAltitudes(): number {
+    return NumberPrecision.format(Math.floor(Math.random() * 10000) - 1000)
   }
 }

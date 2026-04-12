@@ -2,128 +2,93 @@ import { PaceMother } from '~/src/test/mothers/Domain/Shared/PaceMother'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Pace, PaceProps, SupportedPaceUnits } from '~/src/modules/Shared/Domain/ValueObject/Pace'
+import { NumericValue } from '~/src/modules/Shared/Domain/ValueObject/NumericValue'
 
-class DummyVO extends ValueObject<PaceProps> {
-  private constructor(value: PaceProps) {
-    super(value)
-  }
-
-  static fromProps(props: PaceProps) {
-    return new DummyVO(props)
-  }
-}
+class DummyVO extends ValueObject<PaceProps> {}
 
 describe('Pace', () => {
-  describe('safeCreateFromProps', () => {
-    it('should return success when pace string and unit are valid', () => {
-      const validPaceValues = Array.from({ length: 100 }, () => PaceMother.randomValues())
+  describe('safeCreate', () => {
+    it('should return success when seconds and unit are valid', () => {
+      const validSeconds = Array.from({ length: 100 }, () => PaceMother.randomSeconds())
 
-      validPaceValues.forEach((value) => {
-        const result = Pace.safeCreateFromProps({ value: value.value, unit: value.unit })
+      validSeconds.forEach((seconds) => {
+        const result = Pace.safeCreate({ value: seconds, unit: Pace.DEFAULT_UNIT })
 
         expect(result.success).toBe(true)
-        expect(result['value'].value.unit).toBe('min/km')
+        if (result.success) {
+          const pace = result.value
+          expect(pace.value.value.numericValue).toBe(seconds)
+          expect(pace.value.unit).toBe(Pace.DEFAULT_UNIT)
+        }
       })
     })
 
-    it.each(PaceMother.INVALID_FORMAT_CASES)('should return fail when format is invalid: %s', (invalidPace) => {
-      const result = Pace.safeCreateFromProps({ value: invalidPace, unit: PaceMother.VALID_UNIT })
+    it.each(PaceMother.INVALID_SECONDS)('should return fail when seconds are invalid: %s', (invalidSeconds) => {
+      const result = Pace.safeCreate({ value: invalidSeconds, unit: Pace.DEFAULT_UNIT })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidPace(invalidPace))
+      if (!result.success) {
+        expect(result.error).toStrictEqual(SharedDomainException.invalidPace(String(invalidSeconds)))
+      }
     })
 
-    it.each(PaceMother.INVALID_UNITS)('should return fail when unit is invalid: %s', (invalidUnit) => {
-      const result = Pace.safeCreateFromProps({ value: PaceMother.VALID_STRING, unit: invalidUnit })
+    it.each(PaceMother.INVALID_UNITS)('should return fail when unit is not supported: %s', (invalidUnit) => {
+      const result = Pace.safeCreate({ value: PaceMother.VALID_MIN_KM_SECONDS, unit: invalidUnit })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidUnit('Pace', invalidUnit, [...SupportedPaceUnits]))
+      if (!result.success) {
+        expect(result.error).toStrictEqual(SharedDomainException.invalidUnit('Pace', invalidUnit, [...SupportedPaceUnits]))
+      }
     })
 
-    it('should normalize to min/km correctly when', () => {
-      const validMiData = PaceMother.validMiValue()
-      const expectedStoredValues = PaceMother.validKmValue()
+    it('should normalize to min/km correctly when input is min/mi', () => {
+      const validMinMiData = PaceMother.validMinMiValue()
 
-      const paceResult = Pace.safeCreateFromProps({ value: validMiData.value, unit: validMiData.unit })
+      const paceResult = Pace.safeCreate({ value: validMinMiData.value, unit: validMinMiData.unit })
 
       expect(paceResult.success).toBe(true)
-      expect(paceResult['value'].value.value).toBe(expectedStoredValues.expectedSeconds)
-      expect(paceResult['value'].value.unit).toBe(expectedStoredValues.unit)
+      if (paceResult.success) {
+        const pace = paceResult.value
+
+        expect(pace.value.value.equals(NumericValue.fromValue(validMinMiData.value))).toBe(true)
+        expect(pace.value.unit).toBe('min/mi')
+        expect(pace.value.normalizedValue.equals(NumericValue.fromValue(validMinMiData.conversions['min/km'].long))).toBe(true)
+      }
+    })
+
+    it('should normalize to min/km correctly when input is min/km', () => {
+      const validMinKmData = PaceMother.validMinKmValue()
+
+      const paceResult = Pace.safeCreate({ value: validMinKmData.value, unit: validMinKmData.unit })
+
+      expect(paceResult.success).toBe(true)
+      if (paceResult.success) {
+        const pace = paceResult.value
+
+        expect(pace.value.value.equals(NumericValue.fromValue(validMinKmData.value))).toBe(true)
+        expect(pace.value.unit).toBe('min/km')
+        expect(pace.value.normalizedValue.equals(pace.value.value)).toBe(true)
+      }
     })
   })
 
   describe('fromProps', () => {
-    it('should not throw error when pace string and unit are valid', () => {
-      const validPaceValues = Array.from({ length: 100 }, () => PaceMother.randomValues())
+    it('should not throw error when seconds and unit are valid', () => {
+      const validSeconds = Array.from({ length: 100 }, () => PaceMother.randomSeconds())
 
-      validPaceValues.forEach((value) => {
-        expect(() => Pace.fromProps({ value: value.value, unit: value.unit })).not.toThrow()
+      validSeconds.forEach((seconds) => {
+        expect(() => Pace.fromProps({ value: seconds, unit: Pace.DEFAULT_UNIT })).not.toThrow()
       })
-    })
-
-    it.each(PaceMother.INVALID_FORMAT_CASES)('should throw error when format is invalid: %s', (invalidPace) => {
-      expect(() => Pace.fromProps({ value: invalidPace, unit: 'min/km' })).toThrow(SharedDomainException.invalidPace(invalidPace))
-    })
-
-    it.each(PaceMother.INVALID_UNITS)('should return fail when unit is invalid: %s', (invalidUnit) => {
-      expect(() => Pace.fromProps({ value: PaceMother.VALID_STRING, unit: invalidUnit })).toThrow(
-        SharedDomainException.invalidUnit('Pace', invalidUnit, [...SupportedPaceUnits]),
-      )
-    })
-  })
-
-  describe('safeCreateFromSeconds', () => {
-    it('should return success when seconds and unit are valid', () => {
-      const result = Pace.safeCreateFromSeconds(PaceMother.VALID_SECONDS, PaceMother.VALID_UNIT)
-
-      expect(result.success).toBe(true)
-      expect(result['value'].value.value).toBe(PaceMother.VALID_SECONDS)
-      expect(result['value'].value.unit).toBe('min/km')
     })
 
     it.each(PaceMother.INVALID_SECONDS)('should return fail when seconds are invalid: %s', (invalidSeconds) => {
-      const result = Pace.safeCreateFromSeconds(invalidSeconds, PaceMother.VALID_UNIT)
-
-      expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidPace(String(invalidSeconds)))
-    })
-
-    it.each(PaceMother.INVALID_UNITS)('should return fail when unit is invalid: %s', (invalidUnit) => {
-      const result = Pace.safeCreateFromSeconds(PaceMother.VALID_SECONDS, invalidUnit)
-
-      expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidUnit('Pace', invalidUnit, [...SupportedPaceUnits]))
-    })
-
-    it('should normalize to min/km correctly when', () => {
-      const validMiData = PaceMother.validMiValue()
-      const expectedStoredValues = PaceMother.validKmValue()
-
-      const paceResult = Pace.safeCreateFromSeconds(validMiData.expectedSeconds, validMiData.unit)
-
-      expect(paceResult.success).toBe(true)
-      expect(paceResult['value'].value.value).toBe(expectedStoredValues.expectedSeconds)
-      expect(paceResult['value'].value.unit).toBe(expectedStoredValues.unit)
-    })
-  })
-
-  describe('fromSeconds', () => {
-    it('should not throw when seconds and unit are valid', () => {
-      const validSeconds = Array.from({ length: 100 }, () => PaceMother.randomSeconds())
-
-      validSeconds.forEach((validSeconds) => {
-        expect(() => Pace.fromSeconds(validSeconds, PaceMother.VALID_UNIT)).not.toThrow()
-      })
-    })
-
-    it.each(PaceMother.INVALID_SECONDS)('should throw error when seconds are invalid: %s', (invalidSeconds) => {
-      expect(() => Pace.fromSeconds(invalidSeconds, PaceMother.VALID_UNIT)).toThrow(
+      expect(() => Pace.fromProps({ value: invalidSeconds, unit: Pace.DEFAULT_UNIT })).toThrow(
         SharedDomainException.invalidPace(String(invalidSeconds)),
       )
     })
 
-    it.each(PaceMother.INVALID_UNITS)('should return fail when unit is invalid: %s', (invalidUnit) => {
-      expect(() => Pace.fromSeconds(PaceMother.VALID_SECONDS, invalidUnit)).toThrow(
+    it.each(PaceMother.INVALID_UNITS)('should return fail when unit is not supported: %s', (invalidUnit) => {
+      expect(() => Pace.fromProps({ value: PaceMother.VALID_MIN_KM_SECONDS, unit: invalidUnit })).toThrow(
         SharedDomainException.invalidUnit('Pace', invalidUnit, [...SupportedPaceUnits]),
       )
     })
@@ -131,62 +96,53 @@ describe('Pace', () => {
 
   describe('toDTO', () => {
     it('should return correct DTO structure and conversions', () => {
-      const validKmData = PaceMother.validKmValue()
-      const pace = Pace.fromProps({ value: validKmData.value, unit: validKmData.unit })
+      const validMinMiData = PaceMother.validMinMiValue()
 
-      const validMiData = PaceMother.validMiValue()
+      const pace = Pace.fromProps({ value: validMinMiData.value, unit: validMinMiData.unit })
 
       const dto = pace.toDTO()
 
-      expect(dto).toStrictEqual({
-        value: validKmData.value,
-        unit: validKmData.unit,
-        seconds: validKmData.expectedSeconds,
+      expect(dto).toEqual({
+        value: validMinMiData.conversions['min/km'].long,
+        unit: 'min/km',
         conversions: {
-          'min/km': validKmData.value,
-          'min/mi': validMiData.value,
+          'min/km': validMinMiData.conversions['min/km'].short,
+          'min/mi': validMinMiData.conversions['min/mi'].short,
+        },
+        formatted: {
+          'min/km': {
+            short: validMinMiData.formatted['min/km'].short,
+            long: validMinMiData.formatted['min/km'].long,
+          },
+          'min/mi': {
+            short: validMinMiData.formatted['min/mi'].short,
+            long: validMinMiData.formatted['min/mi'].long,
+          },
         },
       })
     })
   })
 
-  describe('toString', () => {
-    it('should return formatted string with units', () => {
-      const validKmData = PaceMother.validKmValue()
-
-      const pace = Pace.fromSeconds(validKmData.expectedSeconds, validKmData.unit)
-      expect(pace.toString()).toBe(`${validKmData.value} ${validKmData.unit}`)
-    })
-  })
-
   describe('equals', () => {
-    it('should return false when valueObjects values are equal but their types are different', () => {
-      const validKmData = PaceMother.validKmValue()
+    it('should return true when both paces represent same magnitude', () => {
+      const paceKm = Pace.fromProps({ value: 1, unit: 'min/km' })
+      const paceMi = Pace.fromProps({ value: Pace.KM_TO_MI_FACTOR.numericValue, unit: 'min/mi' })
 
-      const valueA = DummyVO.fromProps({ value: validKmData.expectedSeconds, unit: validKmData.unit })
-      const valueB = Pace.fromProps({ value: validKmData.value, unit: validKmData.unit })
-
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      expect(valueB.equals(valueA)).toBe(false)
-    })
-
-    it('should return true when both paces represent the same magnitude', () => {
-      const validKmData = PaceMother.validKmValue()
-
-      const pace1 = Pace.fromSeconds(validKmData.expectedSeconds, validKmData.unit)
-      const pace2 = Pace.fromProps({ value: validKmData.value, unit: validKmData.unit })
-
-      expect(pace1.equals(pace2)).toBe(true)
+      expect(paceKm.equals(paceMi)).toBe(true)
     })
 
     it('should return false when paces represent different magnitudes', () => {
-      const validKmData = PaceMother.validKmValue()
-
-      const pace1 = Pace.fromSeconds(validKmData.expectedSeconds, validKmData.unit)
-      const pace2 = Pace.fromSeconds(validKmData.expectedSeconds + 1, validKmData.unit)
+      const pace1 = Pace.fromProps({ value: PaceMother.VALID_MIN_KM_SECONDS, unit: 'min/km' })
+      const pace2 = Pace.fromProps({ value: PaceMother.VALID_MIN_KM_SECONDS + 1, unit: 'min/km' })
 
       expect(pace1.equals(pace2)).toBe(false)
+    })
+
+    it('should return false when types are different', () => {
+      const pace = Pace.fromProps({ value: PaceMother.VALID_MIN_KM_SECONDS, unit: 'min/km' })
+      const dummy = new DummyVO(pace.value)
+
+      expect(pace.equals(dummy as unknown as Pace)).toBe(false)
     })
 
     it('should return false when comparing with null or undefined', () => {
@@ -194,6 +150,54 @@ describe('Pace', () => {
 
       expect(pace.equals(null)).toBe(false)
       expect(pace.equals(undefined)).toBe(false)
+    })
+  })
+
+  describe('toString', () => {
+    it('should return string representation in min/mi correctly', () => {
+      const validMinMiData = PaceMother.validMinMiValue()
+      const pace = Pace.fromProps({ value: validMinMiData.value, unit: validMinMiData.unit })
+
+      expect(pace.toString()).toBe(validMinMiData.formatted['min/mi'].short)
+    })
+
+    it('should return string representation in min/km correctly', () => {
+      const validMinKmData = PaceMother.validMinKmValue()
+      const pace = Pace.fromProps({ value: validMinKmData.value, unit: validMinKmData.unit })
+
+      expect(pace.toString()).toBe(validMinKmData.formatted['min/km'].short)
+    })
+  })
+
+  describe('getConfiguration', () => {
+    it('should return the correct configuration', () => {
+      const config = Pace.getConfiguration()
+
+      expect(config.defaultUnit).toBe(Pace.DEFAULT_UNIT)
+      expect(config.min).toBe(Pace.MIN_PACE.numericValue)
+      expect(config.max).toBe(Pace.MAX_PACE.numericValue)
+      expect(config.units).toContain('min/km')
+      expect(config.units).toContain('min/mi')
+    })
+  })
+
+  describe('convertTo', () => {
+    it('should convert min/mi to min/km correctly', () => {
+      const validMinMiData = PaceMother.validMinMiValue()
+
+      const pace = Pace.fromProps({ value: validMinMiData.value, unit: validMinMiData.unit })
+      const converted = pace.convertTo('min/km')
+
+      expect(converted.equals(NumericValue.fromValue(validMinMiData.conversions['min/km'].long))).toBe(true)
+    })
+
+    it('should return the same value if target unit is the same as current unit', () => {
+      const validMinKmData = PaceMother.validMinKmValue()
+
+      const pace = Pace.fromProps({ value: validMinKmData.value, unit: validMinKmData.unit })
+      const converted = pace.convertTo('min/km')
+
+      expect(converted.equals(NumericValue.fromValue(validMinKmData.value))).toBe(true)
     })
   })
 })

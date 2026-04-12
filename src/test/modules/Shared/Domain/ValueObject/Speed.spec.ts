@@ -1,107 +1,162 @@
-import { Speed, SupportedSpeedUnits } from '~/src/modules/Shared/Domain/ValueObject/Speed'
+import { Speed, SpeedProps, SupportedSpeedUnits } from '~/src/modules/Shared/Domain/ValueObject/Speed'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { SpeedMother } from '~/src/test/mothers/Domain/Shared/SpeedMother'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
+import { NumericValue } from '~/src/modules/Shared/Domain/ValueObject/NumericValue'
 
-class DummyVO extends ValueObject<{ value: number; unit: string }> {}
+class DummyVO extends ValueObject<SpeedProps> {}
 
 describe('Speed', () => {
   describe('safeCreate', () => {
     it('should return success when speed and unit are valid', () => {
-      const validSpeedValue = Array.from({ length: 100 }, () => SpeedMother.randomValues())
+      const validSpeeds = Array.from({ length: 100 }, () => SpeedMother.randomSpeed())
 
-      validSpeedValue.forEach((props) => {
-        const result = Speed.safeCreate(props)
+      validSpeeds.forEach((value) => {
+        const result = Speed.safeCreate({ value, unit: Speed.DEFAULT_UNIT })
 
         expect(result.success).toBe(true)
-        expect(result['value'].value.unit).toBe('km/h')
+        if (result.success) {
+          const speed = result.value
+          expect(speed.value.unit).toBe(Speed.DEFAULT_UNIT)
+          expect(speed.value.value.numericValue).toBe(value)
+        }
       })
     })
 
     it.each(SpeedMother.INVALID_VALUES)('should return fail when value is invalid: %s', (invalidValue) => {
-      const result = Speed.safeCreate({ value: invalidValue, unit: SpeedMother.VALID_UNIT })
+      const result = Speed.safeCreate({ value: invalidValue, unit: Speed.DEFAULT_UNIT })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidSpeed(String(invalidValue)))
+      if (!result.success) {
+        expect(result.error).toStrictEqual(SharedDomainException.invalidSpeed(String(invalidValue)))
+      }
     })
 
-    it.each(SpeedMother.INVALID_UNITS)('should return fail when unit is invalid: %s', (invalidUnit) => {
+    it.each(SpeedMother.INVALID_UNITS)('should return fail when unit is not supported: %s', (invalidUnit) => {
       const result = Speed.safeCreate({ value: SpeedMother.VALID_KMH, unit: invalidUnit })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidUnit('Speed', invalidUnit, [...SupportedSpeedUnits]))
+      if (!result.success) {
+        expect(result.error).toStrictEqual(SharedDomainException.invalidUnit('Speed', invalidUnit, [...SupportedSpeedUnits]))
+      }
+    })
+
+    it('should normalize to km/h correctly when input unit is mi/h', () => {
+      const validMphData = SpeedMother.validMphValue()
+
+      const result = Speed.safeCreate({ value: validMphData.value, unit: validMphData.unit })
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        const speed = result.value
+
+        expect(speed.value.value.equals(NumericValue.fromValue(validMphData.value))).toBe(true)
+        expect(speed.value.normalizedValue.equals(NumericValue.fromValue(validMphData.conversions['km/h'].long))).toBe(true)
+        expect(speed.value.unit).toBe('mi/h')
+      }
+    })
+
+    it('should normalize to km/h correctly when input unit is km/h', () => {
+      const validKmhData = SpeedMother.validKmhValue()
+
+      const result = Speed.safeCreate({ value: validKmhData.value, unit: validKmhData.unit })
+
+      expect(result.success).toBe(true)
+      if (result.success) {
+        const speed = result.value
+
+        expect(speed.value.value.equals(NumericValue.fromValue(validKmhData.value))).toBe(true)
+        expect(speed.value.unit).toBe('km/h')
+        expect(speed.value.normalizedValue.equals(speed.value.value)).toBe(true)
+      }
     })
   })
 
   describe('fromProps', () => {
-    it('should not throw when speed and unit are valid', () => {
-      const validSpeeds = Array.from({ length: 100 }, () => SpeedMother.randomValues())
+    it('should not throw error when speed and unit are valid', () => {
+      const validSpeeds = Array.from({ length: 100 }, () => SpeedMother.randomSpeed())
 
-      validSpeeds.forEach((props) => {
-        expect(() => Speed.fromProps(props)).not.toThrow()
+      validSpeeds.forEach((value) => {
+        expect(() => Speed.fromProps({ value, unit: Speed.DEFAULT_UNIT })).not.toThrow()
       })
     })
 
-    it.each(SpeedMother.INVALID_VALUES)('should throw error when value is invalid: %s', (invalidValue) => {
-      expect(() => Speed.fromProps({ value: invalidValue, unit: SpeedMother.VALID_UNIT })).toThrow(
+    it.each(SpeedMother.INVALID_VALUES)('should return fail when value is invalid: %s', (invalidValue) => {
+      expect(() => Speed.fromProps({ value: invalidValue, unit: Speed.DEFAULT_UNIT })).toThrow(
         SharedDomainException.invalidSpeed(String(invalidValue)),
       )
     })
 
-    it.each(SpeedMother.INVALID_UNITS)('should throw error when unit is invalid: %s', (invalidUnit) => {
+    it.each(SpeedMother.INVALID_UNITS)('should return fail when unit is not supported: %s', (invalidUnit) => {
       expect(() => Speed.fromProps({ value: SpeedMother.VALID_KMH, unit: invalidUnit })).toThrow(
         SharedDomainException.invalidUnit('Speed', invalidUnit, [...SupportedSpeedUnits]),
       )
     })
   })
 
+  describe('convertTo', () => {
+    it('should convert mi/h to km/h correctly', () => {
+      const validMphData = SpeedMother.validMphValue()
+
+      const speed = Speed.fromProps({ value: validMphData.value, unit: validMphData.unit })
+      const converted = speed.convertTo('km/h')
+
+      expect(converted.equals(NumericValue.fromValue(validMphData.conversions['km/h'].long))).toBe(true)
+    })
+
+    it('should return the same value if target unit is the same as current unit', () => {
+      const validKmhData = SpeedMother.validKmhValue()
+
+      const speed = Speed.fromProps({ value: validKmhData.value, unit: validKmhData.unit })
+      const converted = speed.convertTo('km/h')
+
+      expect(converted.equals(NumericValue.fromValue(validKmhData.value))).toBe(true)
+    })
+  })
+
   describe('toDTO', () => {
     it('should return correct DTO structure and conversions', () => {
       const validKmhData = SpeedMother.validKmhValue()
-      const validMphData = SpeedMother.validMphValue()
 
       const speed = Speed.fromProps({ value: validKmhData.value, unit: validKmhData.unit })
 
       const dto = speed.toDTO()
 
-      expect(dto).toStrictEqual({
+      expect(dto).toEqual({
         value: validKmhData.value,
-        unit: validKmhData.unit,
+        unit: 'km/h',
         conversions: {
-          'km/h': validKmhData.value,
-          'mi/h': validMphData.value,
+          'km/h': validKmhData.conversions['km/h'].short,
+          'mi/h': validKmhData.conversions['mi/h'].short,
+        },
+        formatted: {
+          'km/h': validKmhData.formatted['km/h'],
+          'mi/h': validKmhData.formatted['mi/h'],
         },
       })
     })
   })
 
   describe('equals', () => {
-    it('should return false when valueObjects values are equal but their types are different', () => {
-      const validMphData = SpeedMother.validMphValue()
-
-      const valueA = new DummyVO({ value: validMphData.value, unit: validMphData.unit })
-      const valueB = Speed.fromProps({ value: validMphData.value, unit: validMphData.unit })
-
-      expect(valueA.equals(valueB)).toBe(false)
-    })
-
     it('should return true when both speeds represent same magnitude', () => {
-      const validMphData = SpeedMother.validMphValue()
-      const validKmhData = SpeedMother.validKmhValue()
-
-      const speed1 = Speed.fromProps({ value: validMphData.value, unit: validMphData.unit })
-      const speed2 = Speed.fromProps({ value: validKmhData.value, unit: validKmhData.unit })
+      const speed1 = Speed.fromProps({ value: Speed.KM_TO_MI_FACTOR.numericValue, unit: 'km/h' })
+      const speed2 = Speed.fromProps({ value: 1, unit: 'mi/h' })
 
       expect(speed1.equals(speed2)).toBe(true)
     })
 
-    it('should return false when magnitudes are different', () => {
-      const validKmhData = SpeedMother.validKmhValue()
-
-      const speed1 = Speed.fromProps({ value: validKmhData.value, unit: validKmhData.unit })
-      const speed2 = Speed.fromProps({ value: validKmhData.value + 1, unit: validKmhData.unit })
+    it('should return false when speeds represent different magnitudes', () => {
+      const speed1 = Speed.fromProps({ value: SpeedMother.VALID_KMH, unit: 'km/h' })
+      const speed2 = Speed.fromProps({ value: SpeedMother.VALID_KMH + 1, unit: 'km/h' })
 
       expect(speed1.equals(speed2)).toBe(false)
+    })
+
+    it('should return false when types are different', () => {
+      const speed = Speed.fromProps({ value: SpeedMother.VALID_KMH, unit: 'km/h' })
+      const dummy = new DummyVO(speed.value)
+
+      expect(speed.equals(dummy as unknown as Speed)).toBe(false)
     })
 
     it('should return false when comparing with null or undefined', () => {
@@ -113,21 +168,30 @@ describe('Speed', () => {
   })
 
   describe('toString', () => {
-    it('should return string representation in km/h', () => {
-      const validKmhData = SpeedMother.validKmhValue()
-      const speed = Speed.fromProps({ value: validKmhData.value, unit: validKmhData.unit })
+    it('should return string representation in mi/h correctly', () => {
+      const validMphData = SpeedMother.validMphValue()
 
-      expect(speed.toString()).toBe(`${validKmhData.value} ${validKmhData.unit}`)
+      const speedMi = Speed.fromProps({ value: validMphData.value, unit: validMphData.unit })
+      expect(speedMi.toString()).toBe(validMphData.formatted['mi/h'])
+    })
+
+    it('should return string representation in km/h correctly', () => {
+      const validKmhData = SpeedMother.validKmhValue()
+
+      const speedKm = Speed.fromProps({ value: validKmhData.value, unit: validKmhData.unit })
+      expect(speedKm.toString()).toBe(validKmhData.formatted['km/h'])
     })
   })
 
-  it('should normalize to km/h correctly', () => {
-    const validMphData = SpeedMother.validMphValue()
-    const speed = Speed.fromProps({ value: validMphData.value, unit: validMphData.unit })
+  describe('getConfiguration', () => {
+    it('should return the correct configuration', () => {
+      const config = Speed.getConfiguration()
 
-    const expectedStoredValues = SpeedMother.validKmhValue()
-
-    expect(speed.value.value).toBe(expectedStoredValues.value)
-    expect(speed.value.unit).toBe(expectedStoredValues.unit)
+      expect(config.defaultUnit).toBe(Speed.DEFAULT_UNIT)
+      expect(config.min).toBe(0)
+      expect(config.max).toBe(2000)
+      expect(config.units).toContain('km/h')
+      expect(config.units).toContain('mi/h')
+    })
   })
 })

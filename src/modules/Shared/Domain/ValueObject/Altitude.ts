@@ -1,6 +1,7 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { NumberPrecision } from '~/src/modules/Shared/Domain/NumberPrecision'
 
 export const SupportedAltitudeUnits = ['m', 'ft'] as const
 export type AltitudeUnit = (typeof SupportedAltitudeUnits)[number]
@@ -14,6 +15,7 @@ export class Altitude extends ValueObject<AltitudeProps> {
   private __altitudeBrand: void
 
   public static readonly M_TO_FT_CONVERSION = 0.3048
+  public static readonly DEFAULT_UNIT = 'm'
 
   private constructor(props: AltitudeProps) {
     super(props)
@@ -30,9 +32,10 @@ export class Altitude extends ValueObject<AltitudeProps> {
       return fail(SharedDomainException.invalidAltitude(String(props.value)))
     }
 
-    const meters = normalizedUnit === 'ft' ? props.value * this.M_TO_FT_CONVERSION : props.value
+    const rawMeters = normalizedUnit === 'ft' ? props.value * this.M_TO_FT_CONVERSION : props.value
+    const meters = NumberPrecision.format(rawMeters)
 
-    return success(new Altitude({ value: meters, unit: 'm' }))
+    return success(new Altitude({ value: meters, unit: this.DEFAULT_UNIT }))
   }
 
   public static fromProps(props: { value: number; unit: string }): Altitude {
@@ -58,15 +61,19 @@ export class Altitude extends ValueObject<AltitudeProps> {
   }
 
   public toDTO() {
-    const feet = this._value.value / Altitude.M_TO_FT_CONVERSION
+    const feet = NumberPrecision.round(this._value.value / Altitude.M_TO_FT_CONVERSION, 4)
+    const meters = NumberPrecision.round(this._value.value, 4)
 
     return {
-      value: this._value.value,
+      value: meters,
       unit: this._value.unit,
-      meters: this._value.value,
       conversions: {
-        m: this._value.value,
+        m: meters,
         ft: feet,
+      },
+      formatted: {
+        m: `${meters} m`,
+        ft: `${feet} ft`,
       },
     }
   }

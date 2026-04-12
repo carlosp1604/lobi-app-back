@@ -22,6 +22,9 @@ export class SharedDomainException extends DomainException {
   public static invalidAltitudeId = 'shared_domain_invalid_altitude'
   public static invalidLocationId = 'shared_domain_invalid_location'
   public static invalidUnitId = 'shared_domain_invalid_unit'
+  public static invalidMagnitudeValueId = 'shared_domain_invalid_magnitude_value'
+  public static invalidMagnitudePrecisionId = 'shared_domain_invalid_magnitude_precision'
+  public static cannotDivideMagnitudeByZeroId = 'shared_domain_cannot_divide_magnitude_by_zero'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, SharedDomainException.name, context)
@@ -145,5 +148,35 @@ export class SharedDomainException extends DomainException {
       supported: supportedUnits,
       magnitude,
     })
+  }
+
+  public static invalidNumericValue(numericValue: number, minPrecision: number, maxPrecision: number, defaultPrecision: number) {
+    const safeNumericValueSample = StringFormatter.formatSafe(String(numericValue), 16)
+
+    return new SharedDomainException(`Numeric value ${safeNumericValueSample} is invalid`, this.invalidMagnitudeValueId, {
+      numericValue: safeNumericValueSample,
+      defaultPrecision,
+      maxPrecision,
+      minPrecision,
+    })
+  }
+
+  public static invalidNumericPrecision(precision: number, minPrecision: number, maxPrecision: number, defaultPrecision: number) {
+    const safePrecisionValueSample = StringFormatter.formatSafe(String(precision), 8)
+
+    return new SharedDomainException(
+      `Precision should be an integer between ${minPrecision} and ${maxPrecision}`,
+      this.invalidMagnitudePrecisionId,
+      {
+        magnitudeValue: safePrecisionValueSample,
+        defaultPrecision,
+        minPrecision,
+        maxPrecision,
+      },
+    )
+  }
+
+  public static cannotDivideMagnitudeByZero() {
+    return new SharedDomainException('Cannot divide by zero', this.cannotDivideMagnitudeByZeroId)
   }
 }

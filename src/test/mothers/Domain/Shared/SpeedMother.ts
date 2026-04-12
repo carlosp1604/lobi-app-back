@@ -1,42 +1,75 @@
-import { Speed, SpeedUnit, SupportedSpeedUnits } from '~/src/modules/Shared/Domain/ValueObject/Speed'
+import { Speed, SpeedUnit } from '~/src/modules/Shared/Domain/ValueObject/Speed'
+import { NumberPrecision } from '~/src/modules/Shared/Domain/NumberPrecision'
+
+export interface SpeedMotherValidValue {
+  value: number
+  unit: SpeedUnit
+  conversions: {
+    [k in SpeedUnit]: {
+      short: number
+      long: number
+    }
+  }
+  formatted: {
+    [k in SpeedUnit]: string
+  }
+}
 
 export class SpeedMother {
-  public static readonly VALID_MPH = 10
-  public static readonly VALID_KMH = 16.0934 // 10 * 1.60934
-  public static readonly VALID_UNIT = 'km/h'
+  public static readonly VALID_KMH = 16.0934
 
-  public static readonly INVALID_VALUES = [-1, -50, NaN]
-  public static readonly INVALID_UNITS = ['m/s', 'knots', 'mph', 'unknown']
+  public static readonly VALID_UNIT: SpeedUnit = 'km/h'
+
+  public static readonly INVALID_VALUES = [-1, -50, NaN, 2001]
+  public static readonly INVALID_UNITS = ['m/s', 'knots', 'mph', 'unknown', 'invalid']
 
   static valid(): Speed {
     return Speed.fromProps({ value: this.VALID_KMH, unit: this.VALID_UNIT })
   }
 
-  static validKmhValue(): { value: number; unit: SpeedUnit; expectedKmh: number } {
+  static validKmhValue(): SpeedMotherValidValue {
     return {
-      value: this.VALID_KMH,
+      value: 16.09344,
       unit: 'km/h',
-      expectedKmh: this.VALID_KMH,
+      conversions: {
+        'km/h': {
+          short: 16.09,
+          long: 16.09344,
+        },
+        'mi/h': {
+          short: 10,
+          long: 10,
+        },
+      },
+      formatted: {
+        'km/h': '16.09 km/h',
+        'mi/h': '10 mi/h',
+      },
     }
   }
 
-  static validMphValue(): { value: number; unit: SpeedUnit; expectedKmh: number } {
+  static validMphValue(): SpeedMotherValidValue {
     return {
-      value: this.VALID_MPH,
+      value: 10,
       unit: 'mi/h',
-      expectedKmh: this.VALID_KMH,
+      conversions: {
+        'km/h': {
+          short: 16.09,
+          long: 16.09344,
+        },
+        'mi/h': {
+          short: 10,
+          long: 10,
+        },
+      },
+      formatted: {
+        'km/h': '16.09 km/h',
+        'mi/h': '10 mi/h',
+      },
     }
   }
 
-  static randomValues(): { value: number; unit: SpeedUnit } {
-    const units = [...SupportedSpeedUnits]
-    const randomUnit = units[Math.floor(Math.random() * units.length)]
-
-    const randomValue = Math.floor(Math.random() * 100)
-
-    return {
-      value: randomValue,
-      unit: randomUnit,
-    }
+  static randomSpeed(): number {
+    return NumberPrecision.format(Math.random() * 100, 8)
   }
 }

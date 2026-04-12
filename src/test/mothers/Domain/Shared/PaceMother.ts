@@ -1,51 +1,91 @@
-import { Pace, PaceUnit, SupportedPaceUnits } from '~/src/modules/Shared/Domain/ValueObject/Pace'
+import { Pace, PaceUnit } from '~/src/modules/Shared/Domain/ValueObject/Pace'
+import { NumberPrecision } from '~/src/modules/Shared/Domain/NumberPrecision'
+
+export interface PaceMotherValidValue {
+  formatted: {
+    [k in PaceUnit]: {
+      short: string
+      long: string
+    }
+  }
+  value: number
+  unit: PaceUnit
+  conversions: {
+    [k in PaceUnit]: {
+      short: number
+      long: number
+    }
+  }
+}
 
 export class PaceMother {
-  public static readonly VALID_SECONDS = 330
-  public static readonly VALID_STRING = '05:30'
   public static readonly VALID_UNIT: PaceUnit = 'min/km'
 
-  public static readonly VALID_MI_STRING = '08:51'
+  public static readonly VALID_MIN_KM_SECONDS = 330
 
-  public static readonly INVALID_FORMAT_CASES = ['', '05:60', '05:3', '--:--', 'abc', '00:00', '-05:30']
   public static readonly INVALID_UNITS = ['km/h', 'meters', 'seconds', 'unknown']
-
   public static readonly INVALID_SECONDS = [0, -1, -500, NaN]
 
   static valid(): Pace {
-    return Pace.fromSeconds(this.VALID_SECONDS, this.VALID_UNIT)
+    return Pace.fromProps({ value: this.VALID_MIN_KM_SECONDS, unit: this.VALID_UNIT })
   }
 
-  static validMiValue(): { value: string; unit: PaceUnit; expectedSeconds: number } {
+  static validMinMiValue(): PaceMotherValidValue {
+    const expectedMinMitoMinKmRoundedConversion = 329.948
+    const expectedMinMitoMinKmConversion = 329.94810307
+
     return {
-      value: this.VALID_MI_STRING,
+      value: 531,
       unit: 'min/mi',
-      expectedSeconds: Math.round(this.VALID_SECONDS * Pace.MIN_KM_TO_MIN_MI_CONVERSION),
+      conversions: {
+        'min/mi': {
+          short: 531,
+          long: 531,
+        },
+        'min/km': {
+          short: expectedMinMitoMinKmRoundedConversion,
+          long: expectedMinMitoMinKmConversion,
+        },
+      },
+      formatted: {
+        'min/mi': {
+          short: '08:51 min/mi',
+          long: '08:51.000 min/mi',
+        },
+        'min/km': {
+          short: '05:30 min/km',
+          long: '05:29.948 min/km',
+        },
+      },
     }
   }
 
-  static validKmValue(): { value: string; unit: PaceUnit; expectedSeconds: number } {
+  static validMinKmValue(): PaceMotherValidValue {
+    const expectedMinKmToMinMiRoundedConversion = 531.082
+    const expectedMinKmToMinMiConversion = 531.08219999
     return {
-      value: this.VALID_STRING,
+      value: 330,
       unit: 'min/km',
-      expectedSeconds: this.VALID_SECONDS,
-    }
-  }
-
-  static randomValues(): { value: string; unit: PaceUnit } {
-    const reasonableMinutesRange = [3, 4, 5, 6]
-    const minSeconds = 0
-    const maxSeconds = 59
-
-    const randomMinute = reasonableMinutesRange[Math.floor(Math.random() * reasonableMinutesRange.length)]
-    const randomSecond = Math.floor(Math.random() * (maxSeconds - minSeconds + 1)) + minSeconds
-    const randomUnit = SupportedPaceUnits[Math.floor(Math.random() * SupportedPaceUnits.length)]
-
-    const formattedValue = `${randomMinute.toString().padStart(2, '0')}:${randomSecond.toString().padStart(2, '0')}`
-
-    return {
-      value: formattedValue,
-      unit: randomUnit,
+      conversions: {
+        'min/km': {
+          long: 330,
+          short: 330,
+        },
+        'min/mi': {
+          long: expectedMinKmToMinMiConversion,
+          short: expectedMinKmToMinMiRoundedConversion,
+        },
+      },
+      formatted: {
+        'min/km': {
+          short: '05:30 min/km',
+          long: '05:30.000 min/km',
+        },
+        'min/mi': {
+          short: '08:51 min/mi',
+          long: '08:51.082 min/mi',
+        },
+      },
     }
   }
 
@@ -55,8 +95,9 @@ export class PaceMother {
     const maxSeconds = 59
 
     const randomMinute = reasonableMinutesRange[Math.floor(Math.random() * reasonableMinutesRange.length)]
-    const randomSecond = Math.floor(Math.random() * (maxSeconds - minSeconds + 1)) + minSeconds
 
-    return randomMinute * 60 + randomSecond
+    const randomSecond = NumberPrecision.format(Math.random() * (maxSeconds - minSeconds + 1), 8)
+
+    return NumberPrecision.format(randomMinute * 60 + randomSecond)
   }
 }

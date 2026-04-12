@@ -8,13 +8,17 @@ class DummyVO extends ValueObject<{ value: number; unit: string }> {}
 describe('Altitude', () => {
   describe('safeCreate', () => {
     it('should return success when altitude and unit are valid', () => {
-      const validAltitudeValue = Array.from({ length: 100 }, () => AltitudeMother.randomValues())
+      const validAltitudes = Array.from({ length: 100 }, () => AltitudeMother.randomAltitudes())
 
-      validAltitudeValue.forEach((props) => {
-        const result = Altitude.safeCreate(props)
+      validAltitudes.forEach((validAltitude) => {
+        const result = Altitude.safeCreate({ value: validAltitude, unit: Altitude.DEFAULT_UNIT })
 
         expect(result.success).toBe(true)
-        expect(result['value'].value.unit).toBe('m')
+        if (result.success) {
+          const altitude = result.value
+          expect(altitude.value.unit).toBe(Altitude.DEFAULT_UNIT)
+          expect(altitude.value.value).toBe(validAltitude)
+        }
       })
     })
 
@@ -22,23 +26,35 @@ describe('Altitude', () => {
       const result = Altitude.safeCreate({ value: invalidValue, unit: AltitudeMother.VALID_UNIT })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidAltitude(String(invalidValue)))
+      if (!result.success) {
+        expect(result.error).toStrictEqual(SharedDomainException.invalidAltitude(String(invalidValue)))
+      }
     })
 
     it.each(AltitudeMother.INVALID_UNITS)('should return fail when unit is invalid: %s', (invalidUnit) => {
       const result = Altitude.safeCreate({ value: AltitudeMother.VALID_METERS, unit: invalidUnit })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(SharedDomainException.invalidUnit('Altitude', invalidUnit, [...SupportedAltitudeUnits]))
+      if (!result.success) {
+        expect(result.error).toStrictEqual(SharedDomainException.invalidUnit('Altitude', invalidUnit, [...SupportedAltitudeUnits]))
+      }
+    })
+
+    it('should normalize feet to meters correctly', () => {
+      const validFtData = AltitudeMother.validFtValue()
+      const altitude = Altitude.fromProps({ value: validFtData.conversions.ft, unit: 'ft' })
+
+      expect(altitude.value.value).toBe(validFtData.conversions.m)
+      expect(altitude.value.unit).toBe(Altitude.DEFAULT_UNIT)
     })
   })
 
-  describe('fromNumber', () => {
+  describe('fromProps', () => {
     it('should not throw when altitude and unit are valid', () => {
-      const validAltitudes = Array.from({ length: 100 }, () => AltitudeMother.randomValues())
+      const validAltitudes = Array.from({ length: 100 }, () => AltitudeMother.randomAltitudes())
 
-      validAltitudes.forEach((props) => {
-        expect(() => Altitude.fromProps(props)).not.toThrow()
+      validAltitudes.forEach((validAltitude) => {
+        expect(() => Altitude.fromProps({ value: validAltitude, unit: Altitude.DEFAULT_UNIT })).not.toThrow()
       })
     })
 
@@ -57,21 +73,17 @@ describe('Altitude', () => {
 
   describe('toDTO', () => {
     it('should return correct DTO structure and conversions', () => {
-      const metersData = AltitudeMother.validMetersValue()
-      const ftData = AltitudeMother.validFtValue()
+      const validFtData = AltitudeMother.validFtValue()
 
-      const altitude = Altitude.fromProps({ value: metersData.value, unit: metersData.unit })
+      const altitude = Altitude.fromProps({ value: validFtData.value, unit: validFtData.unit })
 
       const dto = altitude.toDTO()
 
       expect(dto).toStrictEqual({
-        value: metersData.value,
-        unit: metersData.unit,
-        meters: metersData.value,
-        conversions: {
-          m: metersData.value,
-          ft: ftData.value,
-        },
+        value: validFtData.value,
+        unit: validFtData.unit,
+        conversions: validFtData.conversions,
+        formatted: validFtData.formatted,
       })
     })
   })
@@ -88,10 +100,9 @@ describe('Altitude', () => {
 
     it('should return true when both altitudes represent same magnitude', () => {
       const validFtData = AltitudeMother.validFtValue()
-      const validMData = AltitudeMother.validMetersValue()
 
-      const altitude1 = Altitude.fromProps({ value: validFtData.value, unit: validFtData.unit })
-      const altitude2 = Altitude.fromProps({ value: validMData.value, unit: validMData.unit })
+      const altitude1 = Altitude.fromProps({ value: validFtData.conversions.ft, unit: 'ft' })
+      const altitude2 = Altitude.fromProps({ value: validFtData.conversions.m, unit: 'm' })
 
       expect(altitude1.equals(altitude2)).toBe(true)
     })
@@ -120,15 +131,5 @@ describe('Altitude', () => {
 
       expect(altitude.toString()).toBe(`${AltitudeMother.VALID_METERS} m`)
     })
-  })
-
-  it('should normalize feet to meters correctly', () => {
-    const ftData = AltitudeMother.validFtValue()
-    const altitude = Altitude.fromProps({ value: ftData.value, unit: ftData.unit })
-
-    const expectedStoredValues = AltitudeMother.validMetersValue()
-
-    expect(altitude.value.value).toBe(expectedStoredValues.value)
-    expect(altitude.value.unit).toBe(expectedStoredValues.unit)
   })
 })
