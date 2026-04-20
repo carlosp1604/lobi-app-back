@@ -1,29 +1,32 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { NumericValue } from '~/src/modules/Shared/Domain/ValueObject/NumericValue'
+import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableValueVisitorInterface'
+import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
+import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/VisitableMeasurableValueInterface'
 
 export const SupportedSpeedUnits = ['km/h', 'mi/h'] as const
 export type SpeedUnit = (typeof SupportedSpeedUnits)[number]
 
 export type SpeedProps = {
-  value: NumericValue
+  value: BoundedNumber
   unit: SpeedUnit
-  normalizedValue: NumericValue
+  normalizedValue: BoundedNumber
 }
 
 export type SpeedInputProps = {
-  value: number
+  value: string
   unit: string
 }
 
-export class Speed extends ValueObject<SpeedProps> {
+export class Speed extends ValueObject<SpeedProps> implements OrderableMagnitudeInterface<Speed>, VisitableMeasurableValueInterface {
   private __speedBrand: void
 
   public static readonly DEFAULT_UNIT: SpeedUnit = 'km/h'
-  public static readonly KM_TO_MI_FACTOR = NumericValue.fromValue(1.609344)
-  public static readonly MIN_SPEED = NumericValue.fromValue(0)
-  public static readonly MAX_SPEED = NumericValue.fromValue(2000)
+  public static readonly KM_TO_MI_FACTOR = BoundedNumber.fromString('1.609344')
+  public static readonly MIN_SPEED = BoundedNumber.fromString('0')
+  public static readonly MAX_SPEED = BoundedNumber.fromString('2000')
 
   private constructor(props: SpeedProps) {
     super(props)
@@ -38,10 +41,10 @@ export class Speed extends ValueObject<SpeedProps> {
     }
 
     const normalizedUnit = unitInput as SpeedUnit
-    const numericResult = NumericValue.safeCreate(props.value)
+    const numericResult = BoundedNumber.safeCreate(props.value)
 
     if (!numericResult.success) {
-      return fail(SharedDomainException.invalidSpeed(String(props.value)))
+      return fail(SharedDomainException.invalidSpeed(String(props.value), this.MIN_SPEED.numericValue, this.MAX_SPEED.numericValue))
     }
 
     const value = numericResult.value
@@ -52,7 +55,7 @@ export class Speed extends ValueObject<SpeedProps> {
     }
 
     if (normalizedValue.lessThan(Speed.MIN_SPEED) || normalizedValue.greaterThan(Speed.MAX_SPEED)) {
-      return fail(SharedDomainException.invalidSpeed(String(props.value)))
+      return fail(SharedDomainException.invalidSpeed(String(props.value), this.MIN_SPEED.numericValue, this.MAX_SPEED.numericValue))
     }
 
     return success(new Speed({ value, unit: normalizedUnit, normalizedValue }))
@@ -76,42 +79,31 @@ export class Speed extends ValueObject<SpeedProps> {
     return this._value.normalizedValue.equals(vo._value.normalizedValue)
   }
 
-  public convertTo(targetUnit: SpeedUnit): NumericValue {
+  public convertTo(targetUnit: SpeedUnit): BoundedNumber {
     if (this._value.unit === targetUnit) {
       return this._value.value
     }
 
-    return targetUnit === 'mi/h' ? this._value.value.divide(Speed.KM_TO_MI_FACTOR) : this._value.value.multiply(Speed.KM_TO_MI_FACTOR)
-  }
-
-  public toDTO() {
-    const speedInKmh = this.convertTo('km/h')
-    const speedInMph = this.convertTo('mi/h')
-
-    return {
-      value: speedInKmh.numericValue,
-      unit: Speed.DEFAULT_UNIT,
-      conversions: {
-        'km/h': speedInKmh.round(2),
-        'mi/h': speedInMph.round(2),
-      },
-      formatted: {
-        'km/h': `${speedInKmh.round(2)} km/h`,
-        'mi/h': `${speedInMph.round(2)} mi/h`,
-      },
+    if (targetUnit === 'mi/h') {
+      return this._value.value.divide(Speed.KM_TO_MI_FACTOR)
     }
+
+    return this._value.value.multiply(Speed.KM_TO_MI_FACTOR)
   }
 
   public toString(): string {
-    return `${this._value.value.truncate(2)} ${this._value.unit}`
+    return `${this._value.value.numericValue} ${this._value.unit}`
   }
 
-  public static getConfiguration() {
-    return {
-      defaultUnit: this.DEFAULT_UNIT,
-      min: this.MIN_SPEED.numericValue,
-      max: this.MAX_SPEED.numericValue,
-      units: SupportedSpeedUnits,
-    }
+  public isGreaterThan(anotherMagnitude: Speed): boolean {
+    return this._value.normalizedValue.greaterThan(anotherMagnitude.value.normalizedValue)
+  }
+
+  public isEqual(anotherMagnitude: Speed): boolean {
+    return this.equals(anotherMagnitude)
+  }
+
+  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
+    return visitor.visitSpeed(this)
   }
 }

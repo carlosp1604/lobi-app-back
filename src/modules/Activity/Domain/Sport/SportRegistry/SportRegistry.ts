@@ -1,12 +1,11 @@
-import { RankingLevel } from '~/src/modules/Activity/Domain/Sport/Ranking/RankingLevel'
 import { PaceCapability } from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/PaceCapability'
 import { SpeedCapability } from './Capabilities/SpeedCapability'
 import { ParticipantsSpec } from '~/src/modules/Activity/Domain/Sport/SportRegistry/Specs/ParticipantsSpec'
-import { RankingCapability } from './Capabilities/RankingCapability'
 import { DistanceCapability } from './Capabilities/DistanceCapability'
 import { LocationCapability } from './Capabilities/LocationCapability'
 import { SportSpecInterface } from '~/src/modules/Activity/Domain/Sport/SportRegistry/Specs/SportSpecInterface'
 import { SportBaseCapability } from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
+import { LocationRangeCapability } from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/LocationRangeCapability'
 
 export enum SupportedSportSlug {
   FOOTBALL = 'football',
@@ -26,15 +25,8 @@ export enum ValidSportModality {
 export type SportTemplateProps = {
   modality: ValidSportModality
   specs: Array<SportSpecInterface<any>>
-  capabilities: Array<SportBaseCapability<any>>
+  capabilities: Array<SportBaseCapability<any, any>>
 }
-
-const mvpRankingLevels = [
-  new RankingLevel('rookie-id', 'rookie', []),
-  new RankingLevel('amateur-id', 'amateur', []),
-  new RankingLevel('semi-pro-id', 'semi_pro', []),
-  new RankingLevel('pro-id', 'pro', []),
-]
 
 export const SPORT_REGISTRY_MAP: Record<SupportedSportSlug, SportTemplateProps> = {
   [SupportedSportSlug.PADEL]: {
@@ -51,7 +43,7 @@ export const SPORT_REGISTRY_MAP: Record<SupportedSportSlug, SportTemplateProps> 
         },
       }),
     ],
-    capabilities: [new RankingCapability(mvpRankingLevels), new LocationCapability()],
+    capabilities: [new LocationCapability()],
   },
 
   [SupportedSportSlug.FUTSAL]: {
@@ -68,7 +60,7 @@ export const SPORT_REGISTRY_MAP: Record<SupportedSportSlug, SportTemplateProps> 
         },
       }),
     ],
-    capabilities: [new RankingCapability(mvpRankingLevels), new LocationCapability()],
+    capabilities: [new LocationCapability()],
   },
 
   [SupportedSportSlug.TENNIS]: {
@@ -85,7 +77,7 @@ export const SPORT_REGISTRY_MAP: Record<SupportedSportSlug, SportTemplateProps> 
         },
       }),
     ],
-    capabilities: [new RankingCapability(mvpRankingLevels), new LocationCapability()],
+    capabilities: [new LocationCapability()],
   },
 
   [SupportedSportSlug.CYCLING]: {
@@ -97,7 +89,7 @@ export const SPORT_REGISTRY_MAP: Record<SupportedSportSlug, SportTemplateProps> 
         teamsModule: undefined,
       }),
     ],
-    capabilities: [new DistanceCapability(), new SpeedCapability(), new LocationCapability()],
+    capabilities: [new DistanceCapability(), new SpeedCapability(), new LocationRangeCapability()],
   },
 
   [SupportedSportSlug.FOOTBALL]: {
@@ -114,7 +106,7 @@ export const SPORT_REGISTRY_MAP: Record<SupportedSportSlug, SportTemplateProps> 
         },
       }),
     ],
-    capabilities: [new RankingCapability(mvpRankingLevels), new LocationCapability()],
+    capabilities: [new LocationCapability()],
   },
 
   [SupportedSportSlug.RUNNING]: {
@@ -125,6 +117,6 @@ export const SPORT_REGISTRY_MAP: Record<SupportedSportSlug, SportTemplateProps> 
         maxPlayersLimit: 500,
       }),
     ],
-    capabilities: [new DistanceCapability(), new PaceCapability(), new LocationCapability()],
+    capabilities: [new DistanceCapability(), new PaceCapability(), new LocationRangeCapability()],
   },
 }

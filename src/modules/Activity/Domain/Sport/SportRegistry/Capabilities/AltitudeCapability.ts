@@ -1,39 +1,88 @@
-import {
-  SportBaseCapability,
-  SportCapabilityRawData,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import { Altitude } from '~/src/modules/Shared/Domain/ValueObject/Altitude'
+import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
+import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
+import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
+import { Altitude, SupportedAltitudeUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Altitude'
+import {
+  CapabilitySchema,
+  SportBaseCapability,
+  SportCapabilityRawDataValidationError,
+} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
+import {
+  MeasurableToPresentationVisitor,
+  PresentationMeasurableValueDto,
+} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
 
 export type AltitudeCapabilityRawData = {
-  value: number
+  start: string
+  end?: string
   unit: string
 }
 
-export class AltitudeCapability implements SportBaseCapability<Altitude> {
-  public readonly flagName = 'allowAltitude'
+export class AltitudeCapability extends SportBaseCapability<MagnitudeRange<Altitude>, AltitudeCapabilityRawData> {
   public readonly capabilityName = 'altitude'
 
-  public validate(rawValue: SportCapabilityRawData): Result<Altitude, SportDomainException> {
-    const typeCheck = TypeValidator.validate<AltitudeCapabilityRawData>(rawValue, {
-      value: 'number',
+  protected validateData(data: unknown): Result<AltitudeCapabilityRawData, SportCapabilityRawDataValidationError> {
+    const typeCheck = TypeValidator.validate<AltitudeCapabilityRawData>(data, {
+      start: 'string',
+      end: { type: 'string', optional: true },
       unit: 'string',
     })
 
     if (!typeCheck.success) {
-      return fail(SportDomainException.invalidCapabilityData(this.capabilityName, typeCheck.error))
+      return fail({ errors: typeCheck.error })
     }
 
-    const payload = typeCheck.value
+    return success(typeCheck.value)
+  }
 
-    const altitudeResult = Altitude.safeCreate({ value: payload.value, unit: payload.unit })
+  protected performValidation(data: AltitudeCapabilityRawData): Result<MagnitudeRange<Altitude>, SportDomainException> {
+    const { end, start, unit } = data
 
-    if (!altitudeResult.success) {
-      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, altitudeResult.error.message))
+    const startAltitudeResult = Altitude.safeCreate({ value: start, unit })
+    if (!startAltitudeResult.success) {
+      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startAltitudeResult.error.message))
     }
 
-    return success(altitudeResult.value)
+    const startAltitude = startAltitudeResult.value
+
+    let endAltitude = startAltitude
+
+    if (end) {
+      const endAltitudeResult = Altitude.safeCreate({ value: end, unit })
+
+      if (!endAltitudeResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endAltitudeResult.error.message))
+      }
+
+      endAltitude = endAltitudeResult.value
+    }
+
+    const representationVisitor = new MeasurableToRepresentationVisitor()
+    const magnitudeRangeResult = MagnitudeRange.safeCreate(startAltitude, endAltitude, representationVisitor)
+
+    if (!magnitudeRangeResult.success) {
+      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))
+    }
+
+    return success(magnitudeRangeResult.value)
+  }
+
+  public getSchema(): CapabilitySchema {
+    return {
+      name: this.capabilityName,
+      data: {
+        type: 'range',
+        defaultUnit: Altitude.DEFAULT_UNIT,
+        min: Altitude.MIN_ALTITUDE.numericValue,
+        max: Altitude.MAX_ALTITUDE.numericValue,
+        units: SupportedAltitudeUnits,
+      },
+    }
+  }
+
+  public translate(vo: MagnitudeRange<Altitude>): PresentationMeasurableValueDto {
+    return vo.accept(new MeasurableToPresentationVisitor())
   }
 }

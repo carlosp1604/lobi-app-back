@@ -1,8 +1,8 @@
+import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Measurable/RPE'
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { Pace, SupportedPaceUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Pace'
 import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
 import {
   CapabilitySchema,
@@ -14,20 +14,18 @@ import {
   PresentationMeasurableValueDto,
 } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
 
-export type PaceCapabilityRawData = {
+export type RPECapabilityRawData = {
   start: string
   end?: string
-  unit: string
 }
 
-export class PaceCapability extends SportBaseCapability<MagnitudeRange<Pace>, PaceCapabilityRawData> {
-  public readonly capabilityName = 'pace'
+export class RPECapability extends SportBaseCapability<MagnitudeRange<RPE>, RPECapabilityRawData> {
+  public readonly capabilityName = 'rpe'
 
-  protected validateData(data: unknown): Result<PaceCapabilityRawData, SportCapabilityRawDataValidationError> {
-    const typeCheck = TypeValidator.validate<PaceCapabilityRawData>(data, {
+  protected validateData(data: unknown): Result<RPECapabilityRawData, SportCapabilityRawDataValidationError> {
+    const typeCheck = TypeValidator.validate<RPECapabilityRawData>(data, {
       start: 'string',
       end: { type: 'string', optional: true },
-      unit: 'string',
     })
 
     if (!typeCheck.success) {
@@ -37,30 +35,29 @@ export class PaceCapability extends SportBaseCapability<MagnitudeRange<Pace>, Pa
     return success(typeCheck.value)
   }
 
-  protected performValidation(data: PaceCapabilityRawData): Result<MagnitudeRange<Pace>, SportDomainException> {
-    const { end, start, unit } = data
+  protected performValidation(data: RPECapabilityRawData): Result<MagnitudeRange<RPE>, SportDomainException> {
+    const { end, start } = data
 
-    const startPaceResult = Pace.safeCreate({ value: start, unit })
-
-    if (!startPaceResult.success) {
-      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startPaceResult.error.message))
+    const startRpeResult = RPE.safeCreate(start)
+    if (!startRpeResult.success) {
+      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startRpeResult.error.message))
     }
 
-    const startPace = startPaceResult.value
-    let endPace = startPace
+    const startRpe = startRpeResult.value
+    let endRpe = startRpe
 
     if (end) {
-      const endPaceResult = Pace.safeCreate({ value: end, unit })
+      const endRpeResult = RPE.safeCreate(end)
 
-      if (!endPaceResult.success) {
-        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endPaceResult.error.message))
+      if (!endRpeResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endRpeResult.error.message))
       }
 
-      endPace = endPaceResult.value
+      endRpe = endRpeResult.value
     }
 
     const representationVisitor = new MeasurableToRepresentationVisitor()
-    const magnitudeRangeResult = MagnitudeRange.safeCreate(startPace, endPace, representationVisitor)
+    const magnitudeRangeResult = MagnitudeRange.safeCreate(startRpe, endRpe, representationVisitor)
 
     if (!magnitudeRangeResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))
@@ -74,15 +71,14 @@ export class PaceCapability extends SportBaseCapability<MagnitudeRange<Pace>, Pa
       name: this.capabilityName,
       data: {
         type: 'range',
-        defaultUnit: Pace.DEFAULT_UNIT,
-        min: Pace.MIN_PACE.numericValue,
-        max: Pace.MAX_PACE.numericValue,
-        units: SupportedPaceUnits,
+        defaultUnit: RPE.DEFAULT_UNIT,
+        min: RPE.MIN_RPE,
+        max: RPE.MAX_RPE,
       },
     }
   }
 
-  public translate(vo: MagnitudeRange<Pace>): PresentationMeasurableValueDto {
+  public translate(vo: MagnitudeRange<RPE>): PresentationMeasurableValueDto {
     return vo.accept(new MeasurableToPresentationVisitor())
   }
 }

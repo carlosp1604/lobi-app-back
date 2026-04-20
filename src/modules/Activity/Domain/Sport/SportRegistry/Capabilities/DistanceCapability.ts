@@ -1,39 +1,87 @@
-import {
-  SportBaseCapability,
-  SportCapabilityRawData,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import { Distance } from '~/src/modules/Shared/Domain/ValueObject/Distance'
+import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
+import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
+import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
+import { Distance, SupportedDistanceUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Distance'
+import {
+  CapabilitySchema,
+  SportBaseCapability,
+  SportCapabilityRawDataValidationError,
+} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
+import {
+  MeasurableToPresentationVisitor,
+  PresentationMeasurableValueDto,
+} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
 
 export type DistanceCapabilityRawData = {
-  value: number
+  start: string
+  end?: string
   unit: string
 }
 
-export class DistanceCapability implements SportBaseCapability<Distance> {
-  public readonly flagName = 'allowDistance'
+export class DistanceCapability extends SportBaseCapability<MagnitudeRange<Distance>, DistanceCapabilityRawData> {
   public readonly capabilityName = 'distance'
 
-  public validate(rawValue: SportCapabilityRawData): Result<Distance, SportDomainException> {
-    const typeCheck = TypeValidator.validate<DistanceCapabilityRawData>(rawValue, {
-      value: 'number',
+  protected validateData(data: unknown): Result<DistanceCapabilityRawData, SportCapabilityRawDataValidationError> {
+    const typeCheck = TypeValidator.validate<DistanceCapabilityRawData>(data, {
+      start: 'string',
+      end: { type: 'string', optional: true },
       unit: 'string',
     })
 
     if (!typeCheck.success) {
-      return fail(SportDomainException.invalidCapabilityData(this.capabilityName, typeCheck.error))
+      return fail({ errors: typeCheck.error })
     }
 
-    const payload = typeCheck.value
+    return success(typeCheck.value)
+  }
 
-    const distanceResult = Distance.safeCreate({ value: payload.value, unit: payload.unit })
+  protected performValidation(data: DistanceCapabilityRawData): Result<MagnitudeRange<Distance>, SportDomainException> {
+    const { end, start, unit } = data
 
-    if (!distanceResult.success) {
-      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, distanceResult.error.message))
+    const startDistanceResult = Distance.safeCreate({ value: start, unit })
+    if (!startDistanceResult.success) {
+      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startDistanceResult.error.message))
     }
 
-    return success(distanceResult.value)
+    const startDistance = startDistanceResult.value
+    let endDistance = startDistance
+
+    if (end) {
+      const endDistResult = Distance.safeCreate({ value: end, unit })
+
+      if (!endDistResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endDistResult.error.message))
+      }
+
+      endDistance = endDistResult.value
+    }
+
+    const representationVisitor = new MeasurableToRepresentationVisitor()
+    const magnitudeRangeResult = MagnitudeRange.safeCreate(startDistance, endDistance, representationVisitor)
+
+    if (!magnitudeRangeResult.success) {
+      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))
+    }
+
+    return success(magnitudeRangeResult.value)
+  }
+
+  public getSchema(): CapabilitySchema {
+    return {
+      name: this.capabilityName,
+      data: {
+        type: 'range',
+        defaultUnit: Distance.DEFAULT_UNIT,
+        min: Distance.MIN_DISTANCE.numericValue,
+        max: Distance.MAX_DISTANCE.numericValue,
+        units: SupportedDistanceUnits,
+      },
+    }
+  }
+
+  public translate(vo: MagnitudeRange<Distance>): PresentationMeasurableValueDto {
+    return vo.accept(new MeasurableToPresentationVisitor())
   }
 }

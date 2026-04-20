@@ -1,7 +1,7 @@
-import { Result } from '~/src/modules/Shared/Domain/Result'
+import { Result, fail } from '~/src/modules/Shared/Domain/Result'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 
-export interface CapabilityDTO {
+export interface CapabilitySchema {
   name: string
   data: Record<string, unknown>
 }
@@ -17,7 +17,9 @@ export abstract class SportBaseCapability<T, P> {
 
   protected abstract performValidation(data: P): Result<T, SportDomainException>
 
-  public abstract toDTO(): CapabilityDTO
+  public abstract getSchema(): CapabilitySchema
+
+  public abstract translate(vo: T): unknown
 
   public validate(data: unknown): Result<T, SportDomainException> {
     const validateDataResult = this.validateData(data)
