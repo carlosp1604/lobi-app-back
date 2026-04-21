@@ -2,8 +2,8 @@ import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
 import { Distance, SupportedDistanceUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Distance'
+import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
 import {
   CapabilitySchema,
   SportBaseCapability,
@@ -12,7 +12,7 @@ import {
 import {
   MeasurableToPresentationVisitor,
   PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
 
 export type DistanceCapabilityRawData = {
   start: string
@@ -41,6 +41,7 @@ export class DistanceCapability extends SportBaseCapability<MagnitudeRange<Dista
     const { end, start, unit } = data
 
     const startDistanceResult = Distance.safeCreate({ value: start, unit })
+
     if (!startDistanceResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startDistanceResult.error.message))
     }
@@ -49,17 +50,17 @@ export class DistanceCapability extends SportBaseCapability<MagnitudeRange<Dista
     let endDistance = startDistance
 
     if (end) {
-      const endDistResult = Distance.safeCreate({ value: end, unit })
+      const endDistanceResult = Distance.safeCreate({ value: end, unit })
 
-      if (!endDistResult.success) {
-        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endDistResult.error.message))
+      if (!endDistanceResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endDistanceResult.error.message))
       }
 
-      endDistance = endDistResult.value
+      endDistance = endDistanceResult.value
     }
 
     const representationVisitor = new MeasurableToRepresentationVisitor()
-    const magnitudeRangeResult = MagnitudeRange.safeCreate(startDistance, endDistance, representationVisitor)
+    const magnitudeRangeResult = MagnitudeRange.safeCreate({ start: startDistance, end: endDistance }, representationVisitor)
 
     if (!magnitudeRangeResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))

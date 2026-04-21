@@ -12,7 +12,7 @@ import {
 import {
   MeasurableToPresentationVisitor,
   PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
 
 export type LocationPointRaw = { lat: string; lng: string }
 

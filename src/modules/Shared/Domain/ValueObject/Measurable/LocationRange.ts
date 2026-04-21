@@ -2,8 +2,8 @@ import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Loc
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success } from '~/src/modules/Shared/Domain/Result'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableValueVisitorInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/VisitableMeasurableValueInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export type LocationRangeProps = {
   start: Location

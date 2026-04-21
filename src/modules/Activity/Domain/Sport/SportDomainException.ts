@@ -1,72 +1,64 @@
 import { DomainException, DomainExceptionContext } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
-import { SupportedSportSlug, ValidSportModality } from '~/src/modules/Activity/Domain/Sport/SportRegistry/SportRegistry'
 
 export class SportDomainException extends DomainException {
   public readonly __brand = 'SportDomainException' as const
 
-  public static invalidSportId = 'sport_domain_invalid_sport'
-  public static invalidSportModalityId = 'sport_domain_invalid_sport_modality'
-  public static incompatibleConfigurationId = 'sport_domain_incompatible_configuration'
-  public static invalidPlayersNumberId = 'sport_domain_invalid_players_number'
-  public static invalidSportConfigurationId = 'sport_domain_invalid_sport_configuration'
-
-  public static invalidCapabilityDataTypeId = 'sport_domain_invalid_capability_data_type'
   public static capabilityValidationFailedId = 'sport_domain_capability_validation_failed'
   public static specValidationFailedId = 'sport_domain_spec_validation_failed'
-
   public static invalidCapabilityDataId = 'sport_domain_invalid_capability_data'
+  public static invalidCapabilityOptionId = 'sport_domain_invalid_capability_option'
   public static invalidSpecDataId = 'sport_domain_invalid_spec_data'
+  public static invalidTeamsDataId = 'sport_domain_invalid_teams_data'
+  public static invalidParticipantsDataId = 'sport_domain_invalid_participants_data'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, SportDomainException.name, context)
   }
 
-  public static invalidSport(sport: string) {
-    const safeSportSample = StringFormatter.formatSafe(sport, 36)
-    const supportedSports = Object.values(SupportedSportSlug)
-      .map((sport) => `- ${sport}`)
-      .join('\n')
+  public static invalidIndividualParticipantsRange(minLimit: number, maxLimit: number, min?: number, max?: number) {
+    const safeMaxSample = max ? StringFormatter.formatSafe(String(max), 16) : undefined
+    const safeMinSample = min ? StringFormatter.formatSafe(String(min), 16) : undefined
 
-    const message = ['Invalid sport. Must be one of the following:', supportedSports].join('\n')
-
-    return new SportDomainException(message, this.invalidSportId, {
-      sport: safeSportSample,
-    })
-  }
-
-  public static invalidModality(modality: string) {
-    const safeModalitySample = StringFormatter.formatSafe(modality, 16)
-    const validSportModalities = Object.values(ValidSportModality)
-      .map((sportModality) => `- ${sportModality}`)
-      .join('\n')
-
-    const message = ['Invalid sport modality. Must be one of the following:', validSportModalities].join('\n')
-
-    return new SportDomainException(message, this.invalidSportModalityId, {
-      modality: safeModalitySample,
-    })
-  }
-
-  public static incompatibleConfiguration(sport: SupportedSportSlug, modality: ValidSportModality) {
     return new SportDomainException(
-      'Invalid sport configuration. Sport and modality are not compatible',
-      this.incompatibleConfigurationId,
-      {
-        sport,
-        modality,
-      },
+      `Min and max players must be an integer value between ${minLimit} and ${maxLimit}. Min players cannot exceed max`,
+      this.invalidParticipantsDataId,
+      { min: safeMinSample, max: safeMaxSample, minLimit, maxLimit },
     )
   }
 
-  public static invalidCapabilityDataType(capabilityName: string, field: string, expected: string) {
+  public static invalidTeamsRange(min: number, max: number, minLimit: number, maxLimit: number) {
     return new SportDomainException(
-      `Invalid data type for ${field} in capability ${capabilityName}. Expected: ${expected}`,
-      this.invalidCapabilityDataTypeId,
+      `Min and max teams must be an integer value between ${minLimit} and ${maxLimit}. Min teams cannot exceed max`,
+      this.invalidTeamsDataId,
+      { min, max, minLimit, maxLimit },
+    )
+  }
+
+  public static invalidTeamsMinPlayers(current: number, minRequired: number, realRequired: number) {
+    return new SportDomainException(
+      `Min players must be an integer value between ${minRequired} and ${realRequired} (minTeams * playersPerTeam)`,
+      this.invalidTeamsDataId,
+      { current, minRequired, realRequired },
+    )
+  }
+
+  public static invalidPlayersPerTeamRange(current: number, minLimit: number, maxLimit: number) {
+    return new SportDomainException(`Players per team must be between ${minLimit} and ${maxLimit}`, this.invalidTeamsDataId, {
+      current,
+      minLimit,
+      maxLimit,
+    })
+  }
+
+  public static invalidCapabilityOption(capabilityName: string, option: string, availableOptions: Array<string>) {
+    return new SportDomainException(
+      `Invalid option for ${capabilityName}. Available options: [${availableOptions.join(', ')}]`,
+      this.invalidCapabilityOptionId,
       {
         capability: capabilityName,
-        field,
-        expected,
+        current: option,
+        availableOptions,
       },
     )
   }

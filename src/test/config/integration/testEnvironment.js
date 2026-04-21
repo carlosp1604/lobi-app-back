@@ -1,14 +1,7 @@
 const { Test } = require('@nestjs/testing')
 const { TypeOrmModule } = require('@nestjs/typeorm')
 const { DataSource } = require('typeorm')
-const { UserEntity } = require('../../../modules/User/Infrastructure/Entities/user.entity')
-const { UserSessionEntity } = require('../../../modules/Auth/Infrastructure/Entities/user-session.entity')
-const { UserCredentialEntity } = require('../../../modules/Auth/Infrastructure/Entities/user-credential.entity')
-const { DomainEventEntity } = require('../../../modules/Shared/Infrastructure/Entities/domain-event.entity')
 const path = require('path')
-const { VerificationTokenEntity } = require('../../../modules/Auth/Infrastructure/Entities/verification-token.entity')
-const { OwnerProfileEntity } = require('../../../modules/User/Infrastructure/Entities/Profiles/owner-profile.entity')
-const { SportsmanProfileEntity } = require('../../../modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity')
 const NodeEnvironment = require('jest-environment-node').TestEnvironment
 
 class TestEnvironment extends NodeEnvironment {
@@ -44,8 +37,8 @@ class TestEnvironment extends NodeEnvironment {
           synchronize: false,
           migrationsRun: false,
           logging: false,
-          entities: [UserEntity, UserSessionEntity, UserCredentialEntity, DomainEventEntity, VerificationTokenEntity, OwnerProfileEntity, SportsmanProfileEntity],
-          migrations: [path.join(process.cwd(), 'dist/src/db/migrations/*.js')],
+          entities: [path.join(process.cwd()), 'dist/**/*.entity.js'],
+          migrations: [path.join(process.cwd(), 'dist/db/migrations/*.js')],
         }),
       ],
     }).compile()

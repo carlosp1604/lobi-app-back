@@ -3,7 +3,7 @@ import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurab
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { Duration, SupportedDurationUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Duration'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
+import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
 import {
   CapabilitySchema,
   SportBaseCapability,
@@ -12,11 +12,11 @@ import {
 import {
   MeasurableToPresentationVisitor,
   PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
 
 export type DurationCapabilityRawData = {
-  start: string
-  end?: string
+  start: number
+  end?: number
 }
 
 export class DurationCapability extends SportBaseCapability<MagnitudeRange<Duration>, DurationCapabilityRawData> {
@@ -24,8 +24,8 @@ export class DurationCapability extends SportBaseCapability<MagnitudeRange<Durat
 
   protected validateData(data: unknown): Result<DurationCapabilityRawData, SportCapabilityRawDataValidationError> {
     const typeCheck = TypeValidator.validate<DurationCapabilityRawData>(data, {
-      start: 'string',
-      end: { type: 'string', optional: true },
+      start: 'number',
+      end: { type: 'number', optional: true },
     })
 
     if (!typeCheck.success) {
@@ -57,7 +57,7 @@ export class DurationCapability extends SportBaseCapability<MagnitudeRange<Durat
     }
 
     const representationVisitor = new MeasurableToRepresentationVisitor()
-    const magnitudeRangeResult = MagnitudeRange.safeCreate(startDuration, endDuration, representationVisitor)
+    const magnitudeRangeResult = MagnitudeRange.safeCreate({ start: startDuration, end: endDuration }, representationVisitor)
 
     if (!magnitudeRangeResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))
@@ -72,8 +72,8 @@ export class DurationCapability extends SportBaseCapability<MagnitudeRange<Durat
       data: {
         type: 'range',
         defaultUnit: Duration.DEFAULT_UNIT,
-        min: Duration.MIN_DURATION_SECONDS.numericValue,
-        max: Duration.MAX_DURATION_SECONDS.numericValue,
+        min: Duration.MIN_DURATION_SECONDS.value,
+        max: Duration.MAX_DURATION_SECONDS.value,
         units: SupportedDurationUnits,
       },
     }

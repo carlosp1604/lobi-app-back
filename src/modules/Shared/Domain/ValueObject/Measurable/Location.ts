@@ -2,8 +2,8 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/VisitableMeasurableValueInterface'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableValueVisitorInterface'
+import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 
 export type LocationProps = {
   lat: BoundedNumber

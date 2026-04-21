@@ -8,7 +8,9 @@ import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Loc
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { LocationRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/LocationRange'
 import { MagnitudeRange, Rangeable } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableValueVisitorInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { Route } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Route'
+import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
 
 export type DisplayValue = {
   long: string
@@ -32,14 +34,20 @@ export type GeographicPoint = {
 
 export type PointDto = { kind: 'point' } & (ScalarPoint | GeographicPoint)
 
+export type CollectionDto = {
+  kind: 'collection'
+  items: Array<PointDto>
+}
+
 export type RangeDto = {
   kind: 'range'
   start: PointDto
   end: PointDto
+  average?: PointDto
   isSingleValue: boolean
 }
 
-export type PresentationMeasurableValueDto = PointDto | RangeDto
+export type PresentationMeasurableValueDto = PointDto | RangeDto | CollectionDto | null
 
 export class MeasurableToPresentationVisitor implements MeasurableValueVisitorInterface<PresentationMeasurableValueDto> {
   public visitPace(pace: Pace): PointDto {
@@ -147,7 +155,7 @@ export class MeasurableToPresentationVisitor implements MeasurableValueVisitorIn
     return {
       kind: 'point',
       type: 'scalar',
-      value: duration.value.numericValue,
+      value: duration.value.value,
       unit: 's',
       formatted: {
         s: { short: formattedSeconds, long: formattedSeconds },
@@ -175,6 +183,7 @@ export class MeasurableToPresentationVisitor implements MeasurableValueVisitorIn
       kind: 'range',
       start: range.start.accept(this) as PointDto,
       end: range.end.accept(this) as PointDto,
+      average: range.average ? (range.average.accept(this) as PointDto) : undefined,
       isSingleValue: range.isSingleValue(),
     }
   }
@@ -186,6 +195,20 @@ export class MeasurableToPresentationVisitor implements MeasurableValueVisitorIn
       lat: location.value.lat.numericValue,
       lng: location.value.lng.numericValue,
     }
+  }
+
+  public visitLocationRange(range: LocationRange): PresentationMeasurableValueDto {
+    return {
+      kind: 'range',
+      start: range.start.accept(this) as PointDto,
+      end: range.end.accept(this) as PointDto,
+      isSingleValue: range.isSingleValue(),
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public visitRoute(_route: Route): PresentationMeasurableValueDto {
+    return null
   }
 
   private formatPaceFromSeconds(magnitude: BoundedNumber, withMillis: boolean = false): string {
@@ -205,8 +228,8 @@ export class MeasurableToPresentationVisitor implements MeasurableValueVisitorIn
     return magnitude.numericValue < 0 ? `-${formatted}` : formatted
   }
 
-  private formatDurationFromSeconds(totalSeconds: BoundedNumber): string {
-    const numericValue = totalSeconds.numericValue
+  private formatDurationFromSeconds(totalSeconds: IntegerNumber): string {
+    const numericValue = totalSeconds.value
     const hours = Math.floor(numericValue / 3600)
     const minutes = Math.floor((numericValue % 3600) / 60)
     const seconds = numericValue % 60
@@ -215,14 +238,5 @@ export class MeasurableToPresentationVisitor implements MeasurableValueVisitorIn
     const s = seconds.toString().padStart(2, '0')
 
     return hours > 0 ? `${hours.toString().padStart(2, '0')}:${m}:${s}` : `${m}:${s}`
-  }
-
-  visitLocationRange(range: LocationRange): PresentationMeasurableValueDto {
-    return {
-      kind: 'range',
-      start: range.start.accept(this) as PointDto,
-      end: range.end.accept(this) as PointDto,
-      isSingleValue: range.isSingleValue(),
-    }
   }
 }

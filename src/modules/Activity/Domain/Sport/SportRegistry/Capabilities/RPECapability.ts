@@ -1,9 +1,9 @@
-import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Measurable/RPE'
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
+import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Measurable/RPE'
+import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
 import {
   CapabilitySchema,
   SportBaseCapability,
@@ -12,11 +12,12 @@ import {
 import {
   MeasurableToPresentationVisitor,
   PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
 
 export type RPECapabilityRawData = {
   start: string
   end?: string
+  average?: string
 }
 
 export class RPECapability extends SportBaseCapability<MagnitudeRange<RPE>, RPECapabilityRawData> {
@@ -26,6 +27,7 @@ export class RPECapability extends SportBaseCapability<MagnitudeRange<RPE>, RPEC
     const typeCheck = TypeValidator.validate<RPECapabilityRawData>(data, {
       start: 'string',
       end: { type: 'string', optional: true },
+      average: { type: 'string', optional: true },
     })
 
     if (!typeCheck.success) {
@@ -36,28 +38,41 @@ export class RPECapability extends SportBaseCapability<MagnitudeRange<RPE>, RPEC
   }
 
   protected performValidation(data: RPECapabilityRawData): Result<MagnitudeRange<RPE>, SportDomainException> {
-    const { end, start } = data
+    const { end, start, average } = data
 
-    const startRpeResult = RPE.safeCreate(start)
-    if (!startRpeResult.success) {
-      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startRpeResult.error.message))
+    const startRPEResult = RPE.safeCreate(start)
+
+    if (!startRPEResult.success) {
+      return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startRPEResult.error.message))
     }
 
-    const startRpe = startRpeResult.value
-    let endRpe = startRpe
+    const startRPE = startRPEResult.value
+    let endRPE = startRPE
 
     if (end) {
-      const endRpeResult = RPE.safeCreate(end)
+      const endRPEResult = RPE.safeCreate(end)
 
-      if (!endRpeResult.success) {
-        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endRpeResult.error.message))
+      if (!endRPEResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, endRPEResult.error.message))
       }
 
-      endRpe = endRpeResult.value
+      endRPE = endRPEResult.value
+    }
+
+    let averageRPE: RPE | undefined
+
+    if (average) {
+      const averageRPEResult = RPE.safeCreate(average)
+
+      if (!averageRPEResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, averageRPEResult.error.message))
+      }
+
+      averageRPE = averageRPEResult.value
     }
 
     const representationVisitor = new MeasurableToRepresentationVisitor()
-    const magnitudeRangeResult = MagnitudeRange.safeCreate(startRpe, endRpe, representationVisitor)
+    const magnitudeRangeResult = MagnitudeRange.safeCreate({ start: startRPE, end: endRPE, average: averageRPE }, representationVisitor)
 
     if (!magnitudeRangeResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))

@@ -1,5 +1,4 @@
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
-import { SupportedLocales } from '~/src/modules/Shared/Domain/ValueObject/Locale'
 import { DomainException, DomainExceptionContext } from '~/src/modules/Exception/Domain/DomainException'
 
 export class SharedDomainException extends DomainException {
@@ -20,7 +19,10 @@ export class SharedDomainException extends DomainException {
   public static invalidRPEId = 'shared_domain_invalid_rpe'
   public static invalidUnitId = 'shared_domain_invalid_unit'
   public static invalidMagnitudeRangeId = 'shared_domain_invalid_magnitude_range'
+  public static invalidAverageValueId = 'shared_domain_invalid_average_value'
   public static invalidBoundedNumberId = 'shared_domain_invalid_bounded_number'
+  public static invalidIntegerNumberId = 'shared_domain_invalid_integer_number'
+  public static invalidRouteId = 'shared_domain_invalid_route'
   public static cannotDivideMagnitudeByZeroId = 'shared_domain_cannot_divide_magnitude_by_zero'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
@@ -43,18 +45,33 @@ export class SharedDomainException extends DomainException {
 
   public static invalidSlug(slug: string) {
     const safeSlugSample = StringFormatter.formatSafe(slug, 36)
-    return new SharedDomainException(`${safeSlugSample} is not a valid slug`, this.invalidSlugId)
+
+    return new SharedDomainException(
+      'Slugs must be lowercase, alphanumeric, and may only contain hyphens (kebab-case). Spaces and special characters are not allowed',
+      this.invalidSlugId,
+      { slug: safeSlugSample },
+    )
   }
 
-  public static invalidResourceUrl(resourceUrl: string) {
+  public static invalidResourceUrl(resourceUrl: string, supportedProtocols: Array<string>) {
     const safeResourceUrlSample = StringFormatter.formatSafe(resourceUrl, 128)
-    return new SharedDomainException(`${safeResourceUrlSample} is not a valid url`, this.invalidResourceUrlId)
+    const supported = supportedProtocols.join(', ')
+
+    return new SharedDomainException(
+      `Resource URLs must be valid, absolute URLs starting with a supported protocol: [${supported}]`,
+      this.invalidResourceUrlId,
+      { resourceUrl: safeResourceUrlSample, supportedProtocols: supported },
+    )
   }
 
-  public static invalidLocale() {
-    const supported = SupportedLocales.join(', ')
+  public static invalidLocale(locale: string, supportedLocales: Array<string>) {
+    const safeLocaleSample = StringFormatter.formatSafe(locale, 6)
+    const supported = supportedLocales.join(', ')
 
-    return new SharedDomainException(`Invalid locale. Supported locales are: [${supported}]`, this.invalidLocaleId)
+    return new SharedDomainException(`Invalid locale. Supported locales are: [${supported}]`, this.invalidLocaleId, {
+      locale: safeLocaleSample,
+      supportedLocales: supported,
+    })
   }
 
   public static invalidPace(pace: string, min: number, max: number) {
@@ -77,14 +94,18 @@ export class SharedDomainException extends DomainException {
     })
   }
 
-  public static invalidDuration(duration: string, min: number, max: number) {
-    const safeDurationSample = StringFormatter.formatSafe(duration, 8)
+  public static invalidDuration(duration: number, min: number, max: number) {
+    const safeDurationSample = StringFormatter.formatSafe(String(duration), 16)
 
-    return new SharedDomainException(`Duration must be a number of seconds between ${min} and ${max}`, this.invalidDurationId, {
-      duration: safeDurationSample,
-      min,
-      max,
-    })
+    return new SharedDomainException(
+      `Duration must be an integer number of seconds between ${min} and ${max}`,
+      this.invalidDurationId,
+      {
+        duration: safeDurationSample,
+        min,
+        max,
+      },
+    )
   }
 
   public static invalidDistance(distance: string, min: number, max: number) {
@@ -147,7 +168,7 @@ export class SharedDomainException extends DomainException {
     const safeNumberSample = StringFormatter.formatSafe(String(value), 16)
 
     return new SharedDomainException(
-      `${safeNumberSample} is not a valid BoundedNumber. It must be a number between ${min} and ${max}.`,
+      `Invalid BoundedNumber. It must be a number between ${min} and ${max}`,
       this.invalidBoundedNumberId,
       {
         boundedNumber: safeNumberSample,
@@ -158,8 +179,41 @@ export class SharedDomainException extends DomainException {
     )
   }
 
+  public static invalidInteger(value: number, min: number, max: number) {
+    const safeNumberSample = StringFormatter.formatSafe(String(value), 16)
+
+    return new SharedDomainException(
+      `Invalid IntegerNumber. It must be an integer between ${min} and ${max}`,
+      this.invalidIntegerNumberId,
+      {
+        value: safeNumberSample,
+        minValue: min,
+        maxValue: max,
+      },
+    )
+  }
+
+  public static invalidRoute(min: number, max: number) {
+    return new SharedDomainException(
+      `A route must be an array of location (lat, lng) with a length between ${min} and ${max}`,
+      this.invalidRouteId,
+      {
+        minValue: min,
+        maxValue: max,
+      },
+    )
+  }
+
   public static invalidMagnitudeRange(start: string, end: string) {
     return new SharedDomainException(`Start value ${start} cannot be greater than end value ${end}`, this.invalidMagnitudeRangeId, {
+      start,
+      end,
+    })
+  }
+
+  public static invalidAverageValue(average: string, start: string, end: string) {
+    return new SharedDomainException(`Average must be a value between start: ${start} and end: ${end}`, this.invalidAverageValueId, {
+      average,
       start,
       end,
     })

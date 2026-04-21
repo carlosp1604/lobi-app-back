@@ -3,7 +3,7 @@ import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurab
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { Speed, SupportedSpeedUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Speed'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
+import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
 import {
   CapabilitySchema,
   SportBaseCapability,
@@ -12,11 +12,12 @@ import {
 import {
   MeasurableToPresentationVisitor,
   PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
 
 export type SpeedCapabilityRawData = {
   start: string
   end?: string
+  average?: string
   unit: string
 }
 
@@ -27,6 +28,7 @@ export class SpeedCapability extends SportBaseCapability<MagnitudeRange<Speed>, 
     const typeCheck = TypeValidator.validate<SpeedCapabilityRawData>(data, {
       start: 'string',
       end: { type: 'string', optional: true },
+      average: { type: 'string', optional: true },
       unit: 'string',
     })
 
@@ -38,9 +40,10 @@ export class SpeedCapability extends SportBaseCapability<MagnitudeRange<Speed>, 
   }
 
   protected performValidation(data: SpeedCapabilityRawData): Result<MagnitudeRange<Speed>, SportDomainException> {
-    const { end, start, unit } = data
+    const { end, start, average, unit } = data
 
     const startSpeedResult = Speed.safeCreate({ value: start, unit })
+
     if (!startSpeedResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, startSpeedResult.error.message))
     }
@@ -58,8 +61,23 @@ export class SpeedCapability extends SportBaseCapability<MagnitudeRange<Speed>, 
       endSpeed = endSpeedResult.value
     }
 
+    let averageSpeed: Speed | undefined
+
+    if (average) {
+      const averageSpeedResult = Speed.safeCreate({ value: average, unit })
+
+      if (!averageSpeedResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, averageSpeedResult.error.message))
+      }
+
+      averageSpeed = averageSpeedResult.value
+    }
+
     const representationVisitor = new MeasurableToRepresentationVisitor()
-    const magnitudeRangeResult = MagnitudeRange.safeCreate(startSpeed, endSpeed, representationVisitor)
+    const magnitudeRangeResult = MagnitudeRange.safeCreate(
+      { start: startSpeed, end: endSpeed, average: averageSpeed },
+      representationVisitor,
+    )
 
     if (!magnitudeRangeResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))

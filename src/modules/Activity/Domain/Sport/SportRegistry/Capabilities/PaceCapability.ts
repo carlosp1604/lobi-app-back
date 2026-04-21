@@ -3,7 +3,7 @@ import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurab
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { Pace, SupportedPaceUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Pace'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToRepresentationVisitor'
+import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
 import {
   CapabilitySchema,
   SportBaseCapability,
@@ -12,11 +12,12 @@ import {
 import {
   MeasurableToPresentationVisitor,
   PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
 
 export type PaceCapabilityRawData = {
   start: string
   end?: string
+  average?: string
   unit: string
 }
 
@@ -27,6 +28,7 @@ export class PaceCapability extends SportBaseCapability<MagnitudeRange<Pace>, Pa
     const typeCheck = TypeValidator.validate<PaceCapabilityRawData>(data, {
       start: 'string',
       end: { type: 'string', optional: true },
+      average: { type: 'string', optional: true },
       unit: 'string',
     })
 
@@ -38,7 +40,7 @@ export class PaceCapability extends SportBaseCapability<MagnitudeRange<Pace>, Pa
   }
 
   protected performValidation(data: PaceCapabilityRawData): Result<MagnitudeRange<Pace>, SportDomainException> {
-    const { end, start, unit } = data
+    const { end, start, average, unit } = data
 
     const startPaceResult = Pace.safeCreate({ value: start, unit })
 
@@ -59,8 +61,23 @@ export class PaceCapability extends SportBaseCapability<MagnitudeRange<Pace>, Pa
       endPace = endPaceResult.value
     }
 
+    let averagePace: Pace | undefined
+
+    if (average) {
+      const averagePaceResult = Pace.safeCreate({ value: average, unit })
+
+      if (!averagePaceResult.success) {
+        return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, averagePaceResult.error.message))
+      }
+
+      averagePace = averagePaceResult.value
+    }
+
     const representationVisitor = new MeasurableToRepresentationVisitor()
-    const magnitudeRangeResult = MagnitudeRange.safeCreate(startPace, endPace, representationVisitor)
+    const magnitudeRangeResult = MagnitudeRange.safeCreate(
+      { start: startPace, end: endPace, average: averagePace },
+      representationVisitor,
+    )
 
     if (!magnitudeRangeResult.success) {
       return fail(SportDomainException.capabilityValidationFailed(this.capabilityName, magnitudeRangeResult.error.message))

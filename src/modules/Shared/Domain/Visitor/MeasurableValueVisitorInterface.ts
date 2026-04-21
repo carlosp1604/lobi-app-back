@@ -7,6 +7,7 @@ import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Dur
 import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { MagnitudeRange, Rangeable } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { LocationRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/LocationRange'
+import { Route } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Route'
 
 export interface MeasurableValueVisitorInterface<R> {
   visitAltitude(altitude: Altitude): R
@@ -18,4 +19,5 @@ export interface MeasurableValueVisitorInterface<R> {
   visitMagnitudeRange(range: MagnitudeRange<Rangeable<unknown>>): R
   visitLocation(location: Location): R
   visitLocationRange(range: LocationRange): R
+  visitRoute(route: Route): R
 }

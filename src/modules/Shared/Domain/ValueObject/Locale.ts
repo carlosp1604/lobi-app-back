@@ -28,7 +28,7 @@ export class Locale extends ValueObject<string> {
     const normalized = value.trim().toLowerCase()
 
     if (!SupportedLocales.includes(normalized as SupportedLocale)) {
-      return fail(SharedDomainException.invalidLocale())
+      return fail(SharedDomainException.invalidLocale(normalized, [...SupportedLocales]))
     }
 
     return success(new Locale(normalized))

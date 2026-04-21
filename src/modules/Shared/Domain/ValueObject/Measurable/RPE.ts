@@ -1,9 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableValueVisitorInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/VisitableMeasurableValueInterface'
+import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export enum ValidRPEValue {
   ONE = '1',

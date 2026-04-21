@@ -23,17 +23,43 @@ describe('TypeValidator', () => {
     it('should validate primitive types correctly', () => {
       const schema: SchemaDefinition = {
         name: 'string',
-        age: 'number',
+        weight: 'number',
         isActive: 'boolean',
       }
 
-      const payload = { name: 'John', age: 30, isActive: true }
+      const payload = { name: 'John', weight: 87.5, isActive: true }
       const result = TypeValidator.validate(payload, schema)
 
       expect(result.success).toBe(true)
       if (result.success) {
         expect(result.value).toEqual(payload)
       }
+    })
+
+    describe('integer', () => {
+      it('should validate integer value correctly', () => {
+        const schema: SchemaDefinition = { age: 'integer' }
+
+        const payload = { age: 30 }
+        const result = TypeValidator.validate(payload, schema)
+
+        expect(result.success).toBe(true)
+        if (result.success) {
+          expect(result.value).toEqual(payload)
+        }
+      })
+
+      it('should return fail when expects an integer but a float number is given', () => {
+        const schema: SchemaDefinition = { age: 'integer' }
+
+        const payload = { age: 30.7 }
+        const result = TypeValidator.validate(payload, schema)
+
+        expect(result.success).toBe(false)
+        if (!result.success) {
+          expect(result.error).toEqual(['Invalid type at [age]. Expected: integer, Received: number'])
+        }
+      })
     })
 
     it('should return fail when a required field is missing', () => {

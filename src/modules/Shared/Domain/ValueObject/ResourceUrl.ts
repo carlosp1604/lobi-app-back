@@ -6,6 +6,7 @@ export class ResourceUrl extends ValueObject<string> {
   private __resourceUrlBrand: void
 
   public static readonly MAX_LENGTH = 2048
+  private static readonly SUPPORTED_PROTOCOLS = ['http:', 'https:']
 
   private constructor(value: string) {
     super(value)
@@ -25,7 +26,7 @@ export class ResourceUrl extends ValueObject<string> {
     const normalized = value.trim()
 
     if (!this.isValidUrl(normalized)) {
-      return fail(SharedDomainException.invalidResourceUrl(value))
+      return fail(SharedDomainException.invalidResourceUrl(value, this.SUPPORTED_PROTOCOLS))
     }
 
     return success(new ResourceUrl(normalized))
@@ -38,7 +39,7 @@ export class ResourceUrl extends ValueObject<string> {
 
     try {
       const url = new URL(value)
-      return ['http:', 'https:'].includes(url.protocol)
+      return this.SUPPORTED_PROTOCOLS.includes(url.protocol)
     } catch {
       return false
     }

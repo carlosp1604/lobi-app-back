@@ -1,6 +1,6 @@
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 
-export type AllowedType = 'string' | 'number' | 'boolean' | 'object' | 'array'
+export type AllowedType = 'string' | 'number' | 'boolean' | 'object' | 'array' | 'integer'
 
 export type ObjectRuleConfig = { type: 'object'; schema: SchemaDefinition; optional?: boolean }
 export type ArrayRuleConfig = { type: 'array'; items: SchemaRule; optional?: boolean }
@@ -56,23 +56,36 @@ export class TypeValidator {
       return
     }
 
-    const actualType = Array.isArray(value) ? 'array' : typeof value
-    if (!expectedTypes.includes(actualType as AllowedType)) {
+    const isValidType = expectedTypes.some((type) => this.checkType(value, type as AllowedType))
+
+    if (!isValidType) {
+      const actualType = Array.isArray(value) ? 'array' : typeof value
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       const expectedStr = expectedTypes.join(' | ')
       errors.push(`Invalid type at [${path}]. Expected: ${expectedStr}, Received: ${actualType}`)
       return
     }
 
-    if (actualType === 'object' && config && 'schema' in config) {
+    if (typeof value === 'object' && !Array.isArray(value) && value !== null && config && 'schema' in config) {
       this.validateObjectSchema(value as Record<string, unknown>, config.schema as SchemaDefinition, path, errors)
     }
 
-    if (actualType === 'array' && config && 'items' in config) {
-      const arrayValues = value as unknown[]
-      arrayValues.forEach((item, index) => {
+    if (Array.isArray(value) && config && 'items' in config) {
+      value.forEach((item, index) => {
         this.validateValue(item, config.items as SchemaRule, `${path}[${index}]`, errors)
       })
     }
+  }
+
+  private static checkType(value: unknown, expected: AllowedType): boolean {
+    if (expected === 'array') {
+      return Array.isArray(value)
+    }
+
+    if (expected === 'integer') {
+      return typeof value === 'number' && Number.isInteger(value)
+    }
+
+    return typeof value === expected
   }
 }

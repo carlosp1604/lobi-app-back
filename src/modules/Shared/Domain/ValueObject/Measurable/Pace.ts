@@ -2,9 +2,9 @@ import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/MeasurableValueVisitorInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/ValueObject/Visitor/VisitableMeasurableValueInterface'
+import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export const SupportedPaceUnits = ['min/km', 'min/mi'] as const
 export type PaceUnit = (typeof SupportedPaceUnits)[number]
