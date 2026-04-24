@@ -11,9 +11,56 @@ export class SportDomainException extends DomainException {
   public static invalidSpecDataId = 'sport_domain_invalid_spec_data'
   public static invalidTeamsDataId = 'sport_domain_invalid_teams_data'
   public static invalidParticipantsDataId = 'sport_domain_invalid_participants_data'
+  public static invalidSportParticipantsDefinitionId = 'sport_domain_invalid_participants_definition'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, SportDomainException.name, context)
+  }
+
+  public static invalidParticipantsDefinition(current: number, min: number, max: number) {
+    const safeParticipantsSample = StringFormatter.formatSafe(String(current), 8)
+
+    return new SportDomainException(
+      `The default players for a sport must be between ${min} and ${max}`,
+      this.invalidSportParticipantsDefinitionId,
+      { participants: safeParticipantsSample, min, max },
+    )
+  }
+
+  public static invalidTeamsDefinition(current: number, min: number, max: number) {
+    const safeTeamsSample = StringFormatter.formatSafe(String(current), 8)
+
+    return new SportDomainException(
+      `The default teams for a sport must be between ${min} and ${max}`,
+      this.invalidSportParticipantsDefinitionId,
+      {
+        teams: safeTeamsSample,
+        min,
+        max,
+      },
+    )
+  }
+
+  public static invalidPlayersPerTeamDefinition(current: number, min: number, max: number) {
+    const safePlayerPerTeamSample = StringFormatter.formatSafe(String(current), 8)
+
+    return new SportDomainException(
+      `The default players per team for a sport must be between ${min} and ${max}`,
+      this.invalidSportParticipantsDefinitionId,
+      { playersPerTeam: safePlayerPerTeamSample, min, max },
+    )
+  }
+
+  public static teamsDefinitionMismatch(currentMinPlayer: number, currentTeams: number, currentPlayersPerTeam: number) {
+    return new SportDomainException(
+      'Invalid definition: The default minimum players does not match the teams definition (teams * players per team)',
+      this.invalidSportParticipantsDefinitionId,
+      {
+        minPlayers: currentMinPlayer,
+        teams: currentTeams,
+        playersPerSide: currentPlayersPerTeam,
+      },
+    )
   }
 
   public static invalidIndividualParticipantsRange(minLimit: number, maxLimit: number, min?: number, max?: number) {
