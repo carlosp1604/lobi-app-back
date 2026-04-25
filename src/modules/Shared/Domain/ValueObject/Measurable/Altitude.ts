@@ -1,9 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export const SupportedAltitudeUnits = ['m', 'ft'] as const
@@ -13,6 +13,12 @@ export type AltitudeProps = {
   value: BoundedNumber
   unit: AltitudeUnit
   normalizedValue: BoundedNumber
+}
+
+export type AltitudePrimitiveProps = {
+  value: string
+  unit: string
+  normalizedValue: string
 }
 
 export type AltitudeInputProps = {
@@ -59,7 +65,7 @@ export class Altitude
       normalizedValue = value.multiply(Altitude.FT_TO_M_FACTOR)
     }
 
-    if (normalizedValue.lessThan(Altitude.MIN_ALTITUDE) || normalizedValue.greaterThan(Altitude.MAX_ALTITUDE)) {
+    if (normalizedValue.isLessThan(Altitude.MIN_ALTITUDE) || normalizedValue.isGreaterThan(Altitude.MAX_ALTITUDE)) {
       return fail(
         SharedDomainException.invalidAltitude(String(props.value), this.MIN_ALTITUDE.numericValue, this.MAX_ALTITUDE.numericValue),
       )
@@ -78,6 +84,20 @@ export class Altitude
     return result.value
   }
 
+  public convertTo(targetUnit: AltitudeUnit): BoundedNumber {
+    const { unit, value } = this._value
+
+    if (unit === targetUnit) {
+      return value
+    }
+
+    if (targetUnit === 'ft') {
+      return value.divide(Altitude.FT_TO_M_FACTOR)
+    }
+
+    return value.multiply(Altitude.FT_TO_M_FACTOR)
+  }
+
   public equals(vo?: Altitude | null): boolean {
     if (!vo || vo.constructor !== this.constructor) {
       return false
@@ -86,24 +106,24 @@ export class Altitude
     return this._value.normalizedValue.equals(vo._value.normalizedValue)
   }
 
-  public convertTo(targetUnit: AltitudeUnit): BoundedNumber {
-    if (this._value.unit === targetUnit) {
-      return this._value.value
-    }
+  public toString(): string {
+    const { value, unit } = this._value
 
-    if (targetUnit === 'ft') {
-      return this._value.value.divide(Altitude.FT_TO_M_FACTOR)
-    }
-
-    return this._value.value.multiply(Altitude.FT_TO_M_FACTOR)
+    return `${value.toString()} ${unit}`
   }
 
-  public toString(): string {
-    return `${this._value.value.numericValue} ${this._value.unit}`
+  public toPrimitives(): AltitudePrimitiveProps {
+    const { unit, value, normalizedValue } = this._value
+
+    return {
+      unit,
+      value: value.toPrimitives(),
+      normalizedValue: normalizedValue.toPrimitives(),
+    }
   }
 
   public isGreaterThan(anotherMagnitude: Altitude): boolean {
-    return this._value.normalizedValue.greaterThan(anotherMagnitude.value.normalizedValue)
+    return this._value.normalizedValue.isGreaterThan(anotherMagnitude.value.normalizedValue)
   }
 
   public isEqual(anotherMagnitude: Altitude): boolean {
@@ -112,5 +132,9 @@ export class Altitude
 
   public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
     return visitor.visitAltitude(this)
+  }
+
+  public get unit(): AltitudeUnit {
+    return this._value.unit
   }
 }

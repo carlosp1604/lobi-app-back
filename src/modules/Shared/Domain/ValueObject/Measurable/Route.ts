@@ -1,12 +1,17 @@
-import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, fail, success } from '~/src/modules/Shared/Domain/Result'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { Location, LocationPrimitiveProps } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export type RouteProps = {
   points: Array<Location>
+  isPublic: boolean
+}
+
+export type RoutePrimitiveProps = {
+  points: Array<LocationPrimitiveProps>
   isPublic: boolean
 }
 
@@ -50,15 +55,17 @@ export class Route extends ValueObject<RouteProps> implements VisitableMeasurabl
       return false
     }
 
-    if (this._value.isPublic !== vo._value.isPublic) {
+    const { points, isPublic } = this._value
+
+    if (isPublic !== vo._value.isPublic) {
       return false
     }
 
-    if (this._value.points.length !== vo._value.points.length) {
+    if (points.length !== vo._value.points.length) {
       return false
     }
 
-    return this._value.points.every((point, index) => point.equals(vo.points[index]))
+    return points.every((point, index) => point.equals(vo.points[index]))
   }
 
   public toString(): string {
@@ -79,5 +86,14 @@ export class Route extends ValueObject<RouteProps> implements VisitableMeasurabl
 
   public get isPublic(): boolean {
     return this._value.isPublic
+  }
+
+  public toPrimitives(): RoutePrimitiveProps {
+    const { points, isPublic } = this._value
+
+    return {
+      points: points.map((point) => point.toPrimitives()),
+      isPublic,
+    }
   }
 }

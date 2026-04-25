@@ -8,6 +8,11 @@ export interface IndividualParticipationProps {
   maxPlayers: IntegerNumber
 }
 
+export interface IndividualParticipationPrimitiveProps {
+  minPlayers: number
+  maxPlayers: number
+}
+
 export interface IndividualParticipationInputProps {
   minPlayers?: number
   maxPlayers?: number
@@ -79,18 +84,31 @@ export class IndividualParticipation extends ValueObject<IndividualParticipation
       return false
     }
 
-    return this._value.maxPlayers.isEqualTo(vo.value.maxPlayers) && this._value.minPlayers.isEqualTo(vo.value.minPlayers)
+    const { minPlayers, maxPlayers } = this._value
+
+    return maxPlayers.equals(vo._value.maxPlayers) && minPlayers.equals(vo._value.minPlayers)
   }
 
   public toString(): string {
-    return `Participants: ${this._value.minPlayers.value}-${this._value.maxPlayers.value} players`
+    const { minPlayers, maxPlayers } = this._value
+
+    return `Participants: ${minPlayers.toString()}-${maxPlayers.toString()} players`
   }
 
-  get minCapacity(): number {
-    return this._value.minPlayers.value
+  get minCapacity(): IntegerNumber {
+    return this._value.minPlayers
   }
 
-  get maxCapacity(): number {
-    return this._value.maxPlayers.value
+  get maxCapacity(): IntegerNumber {
+    return this._value.maxPlayers
+  }
+
+  public toPrimitives(): IndividualParticipationPrimitiveProps {
+    const { minPlayers, maxPlayers } = this._value
+
+    return {
+      maxPlayers: maxPlayers.toPrimitives(),
+      minPlayers: minPlayers.toPrimitives(),
+    }
   }
 }

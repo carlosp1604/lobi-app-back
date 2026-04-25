@@ -1,8 +1,8 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export type Rangeable<T> = ValueObject<unknown> & OrderableMagnitudeInterface<T> & VisitableMeasurableValueInterface
@@ -11,6 +11,13 @@ export type MagnitudeRangeProps<T> = {
   start: T
   end: T
   average?: T
+}
+
+export type MagnitudeRangePrimitiveProps = {
+  start: unknown
+  end: unknown
+  average?: unknown
+  unit: string
 }
 
 export type MagnitudeRangeInputProps<T> = {
@@ -31,16 +38,26 @@ export class MagnitudeRange<T extends Rangeable<T>>
     props: MagnitudeRangeInputProps<T>,
     formatVisitor: MeasurableValueVisitorInterface<string>,
   ): Result<MagnitudeRange<T>, SharedDomainException> {
-    if (props.start.isGreaterThan(props.end)) {
-      return fail(SharedDomainException.invalidMagnitudeRange(props.start.accept(formatVisitor), props.end.accept(formatVisitor)))
+    const { start, end, average } = props
+
+    if (start.unit !== end.unit) {
+      return fail(SharedDomainException.invalidMagnitudeRange(start.unit, end.unit))
     }
 
-    if (props.average && (props.start.isGreaterThan(props.average) || props.average.isGreaterThan(props.end))) {
+    if (average && average.unit !== start.unit) {
+      return fail(SharedDomainException.invalidMagnitudeRange(start.unit, average.unit))
+    }
+
+    if (start.isGreaterThan(end)) {
+      return fail(SharedDomainException.invalidMagnitudeRange(start.accept(formatVisitor), end.accept(formatVisitor)))
+    }
+
+    if (average && (start.isGreaterThan(average) || average.isGreaterThan(end))) {
       return fail(
         SharedDomainException.invalidAverageValue(
-          props.average.accept(formatVisitor),
-          props.start.accept(formatVisitor),
-          props.end.accept(formatVisitor),
+          average.accept(formatVisitor),
+          start.accept(formatVisitor),
+          end.accept(formatVisitor),
         ),
       )
     }
@@ -49,7 +66,15 @@ export class MagnitudeRange<T extends Rangeable<T>>
   }
 
   public toString(): string {
-    return `(${this._value.start.toString()}) - (${this._value.end.toString()})`
+    const { start, average, end } = this._value
+
+    let averageString = ''
+
+    if (average) {
+      averageString = `, avg: ${average.toString()}`
+    }
+
+    return `(${start.toString()}) - (${end.toString()})${averageString}`
   }
 
   public equals(vo?: MagnitudeRange<T> | null): boolean {
@@ -57,16 +82,18 @@ export class MagnitudeRange<T extends Rangeable<T>>
       return false
     }
 
-    const bothHaveAverage = !!this.average && !!vo.average
-    const neitherHasAverage = !this.average && !vo.average
+    const { start, average, end } = this._value
+
+    const bothHaveAverage = !!average && !!vo._value.average
+    const neitherHasAverage = !average && !vo._value.average
 
     if (!neitherHasAverage) {
-      if (!bothHaveAverage || !this.average?.equals(vo.average)) {
+      if (!bothHaveAverage || !average?.equals(vo._value.average)) {
         return false
       }
     }
 
-    return this._value.start.equals(vo.start) && this._value.end.equals(vo.end)
+    return start.equals(vo._value.start) && end.equals(vo._value.end)
   }
 
   public isSingleValue(): boolean {
@@ -77,15 +104,31 @@ export class MagnitudeRange<T extends Rangeable<T>>
     return visitor.visitMagnitudeRange(this)
   }
 
-  get start(): T {
+  public get start(): T {
     return this._value.start
   }
 
-  get end(): T {
+  public get end(): T {
     return this._value.end
   }
 
-  get average(): T | undefined {
+  public get average(): T | undefined {
     return this._value.average
+  }
+
+  public get unit(): string {
+    return this._value.start.unit
+  }
+
+  public toPrimitives(): MagnitudeRangePrimitiveProps {
+    const { start, end, average } = this._value
+    const unit = start.unit
+
+    return {
+      start: start.toPrimitives(),
+      end: end.toPrimitives(),
+      average: average ? average.toPrimitives() : undefined,
+      unit,
+    }
   }
 }

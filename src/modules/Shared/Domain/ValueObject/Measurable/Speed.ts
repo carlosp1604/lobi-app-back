@@ -1,9 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export const SupportedSpeedUnits = ['km/h', 'mi/h'] as const
@@ -13,6 +13,12 @@ export type SpeedProps = {
   value: BoundedNumber
   unit: SpeedUnit
   normalizedValue: BoundedNumber
+}
+
+export type SpeedPrimitiveProps = {
+  value: string
+  unit: string
+  normalizedValue: string
 }
 
 export type SpeedInputProps = {
@@ -54,7 +60,7 @@ export class Speed extends ValueObject<SpeedProps> implements OrderableMagnitude
       normalizedValue = value.multiply(Speed.KM_TO_MI_FACTOR)
     }
 
-    if (normalizedValue.lessThan(Speed.MIN_SPEED) || normalizedValue.greaterThan(Speed.MAX_SPEED)) {
+    if (normalizedValue.isLessThan(Speed.MIN_SPEED) || normalizedValue.isGreaterThan(Speed.MAX_SPEED)) {
       return fail(SharedDomainException.invalidSpeed(String(props.value), this.MIN_SPEED.numericValue, this.MAX_SPEED.numericValue))
     }
 
@@ -80,23 +86,27 @@ export class Speed extends ValueObject<SpeedProps> implements OrderableMagnitude
   }
 
   public convertTo(targetUnit: SpeedUnit): BoundedNumber {
-    if (this._value.unit === targetUnit) {
-      return this._value.value
+    const { unit, value } = this._value
+
+    if (unit === targetUnit) {
+      return value
     }
 
     if (targetUnit === 'mi/h') {
-      return this._value.value.divide(Speed.KM_TO_MI_FACTOR)
+      return value.divide(Speed.KM_TO_MI_FACTOR)
     }
 
-    return this._value.value.multiply(Speed.KM_TO_MI_FACTOR)
+    return value.multiply(Speed.KM_TO_MI_FACTOR)
   }
 
   public toString(): string {
-    return `${this._value.value.numericValue} ${this._value.unit}`
+    const { value, unit } = this._value
+
+    return `${value.toString()} ${unit}`
   }
 
   public isGreaterThan(anotherMagnitude: Speed): boolean {
-    return this._value.normalizedValue.greaterThan(anotherMagnitude.value.normalizedValue)
+    return this._value.normalizedValue.isGreaterThan(anotherMagnitude.value.normalizedValue)
   }
 
   public isEqual(anotherMagnitude: Speed): boolean {
@@ -105,5 +115,19 @@ export class Speed extends ValueObject<SpeedProps> implements OrderableMagnitude
 
   public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
     return visitor.visitSpeed(this)
+  }
+
+  public get unit(): SpeedUnit {
+    return this._value.unit
+  }
+
+  public toPrimitives(): SpeedPrimitiveProps {
+    const { unit, value, normalizedValue } = this._value
+
+    return {
+      unit,
+      value: value.toPrimitives(),
+      normalizedValue: normalizedValue.toPrimitives(),
+    }
   }
 }

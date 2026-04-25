@@ -1,9 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export const SupportedPaceUnits = ['min/km', 'min/mi'] as const
@@ -13,6 +13,12 @@ export type PaceProps = {
   value: BoundedNumber
   unit: PaceUnit
   normalizedValue: BoundedNumber
+}
+
+export type PacePrimitiveProps = {
+  value: string
+  unit: string
+  normalizedValue: string
 }
 
 export type PaceInputProps = {
@@ -54,7 +60,7 @@ export class Pace extends ValueObject<PaceProps> implements OrderableMagnitudeIn
       normalizedValue = magnitudeValue.divide(Pace.KM_TO_MI_FACTOR)
     }
 
-    if (normalizedValue.lessThan(Pace.MIN_PACE) || normalizedValue.greaterThan(Pace.MAX_PACE)) {
+    if (normalizedValue.isLessThan(Pace.MIN_PACE) || normalizedValue.isGreaterThan(Pace.MAX_PACE)) {
       return fail(SharedDomainException.invalidPace(String(props.value), this.MIN_PACE.numericValue, this.MAX_PACE.numericValue))
     }
 
@@ -80,23 +86,27 @@ export class Pace extends ValueObject<PaceProps> implements OrderableMagnitudeIn
   }
 
   public convertTo(targetUnit: PaceUnit): BoundedNumber {
-    if (this._value.unit === targetUnit) {
-      return this._value.value
+    const { unit, value } = this._value
+
+    if (unit === targetUnit) {
+      return value
     }
 
     if (targetUnit === 'min/mi') {
-      return this._value.value.multiply(Pace.KM_TO_MI_FACTOR)
+      return value.multiply(Pace.KM_TO_MI_FACTOR)
     }
 
-    return this._value.value.divide(Pace.KM_TO_MI_FACTOR)
+    return value.divide(Pace.KM_TO_MI_FACTOR)
   }
 
   public toString(): string {
-    return `${this._value.value.numericValue} ${this._value.unit}`
+    const { value, unit } = this._value
+
+    return `${value.toString()} ${unit}`
   }
 
   public isGreaterThan(anotherMagnitude: Pace): boolean {
-    return this._value.normalizedValue.lessThan(anotherMagnitude.value.normalizedValue)
+    return this._value.normalizedValue.isLessThan(anotherMagnitude.value.normalizedValue)
   }
 
   public isEqual(anotherMagnitude: Pace): boolean {
@@ -105,5 +115,19 @@ export class Pace extends ValueObject<PaceProps> implements OrderableMagnitudeIn
 
   public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
     return visitor.visitPace(this)
+  }
+
+  public get unit(): PaceUnit {
+    return this._value.unit
+  }
+
+  public toPrimitives(): PacePrimitiveProps {
+    const { unit, value, normalizedValue } = this._value
+
+    return {
+      unit,
+      value: value.toPrimitives(),
+      normalizedValue: normalizedValue.toPrimitives(),
+    }
   }
 }

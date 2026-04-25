@@ -23,7 +23,7 @@ export type ScalarPoint = {
   unit: string
   conversions?: Record<string, number>
   formatted: Record<string, DisplayValue>
-  format?: string | string[]
+  format?: string | Array<string>
 }
 
 export type GeographicPoint = {
@@ -45,6 +45,7 @@ export type RangeDto = {
   end: PointDto
   average?: PointDto
   isSingleValue: boolean
+  unit?: string
 }
 
 export type PresentationMeasurableValueDto = PointDto | RangeDto | CollectionDto | null
@@ -185,6 +186,7 @@ export class MeasurableToPresentationVisitor implements MeasurableValueVisitorIn
       end: range.end.accept(this) as PointDto,
       average: range.average ? (range.average.accept(this) as PointDto) : undefined,
       isSingleValue: range.isSingleValue(),
+      unit: range.unit,
     }
   }
 

@@ -1,9 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export const SupportedDistanceUnits = ['m', 'km', 'mi'] as const
@@ -13,6 +13,12 @@ export type DistanceProps = {
   value: BoundedNumber
   unit: DistanceUnit
   normalizedValue: BoundedNumber
+}
+
+export type DistancePrimitiveProps = {
+  value: string
+  unit: string
+  normalizedValue: string
 }
 
 export type DistanceInputProps = {
@@ -66,7 +72,7 @@ export class Distance
       normalizedValue = value.multiply(Distance.MI_TO_M_FACTOR)
     }
 
-    if (normalizedValue.lessThan(Distance.MIN_DISTANCE) || normalizedValue.greaterThan(Distance.MAX_DISTANCE)) {
+    if (normalizedValue.isLessThan(Distance.MIN_DISTANCE) || normalizedValue.isGreaterThan(Distance.MAX_DISTANCE)) {
       return fail(
         SharedDomainException.invalidDistance(
           String(props.value),
@@ -89,6 +95,24 @@ export class Distance
     return result.value
   }
 
+  public convertTo(targetUnit: DistanceUnit): BoundedNumber {
+    const { value, normalizedValue, unit } = this._value
+
+    if (unit === targetUnit) {
+      return value
+    }
+
+    if (targetUnit === 'm') {
+      return normalizedValue
+    }
+
+    if (targetUnit === 'km') {
+      return normalizedValue.divide(Distance.KM_TO_M_FACTOR)
+    }
+
+    return normalizedValue.divide(Distance.MI_TO_M_FACTOR)
+  }
+
   public equals(vo?: Distance | null): boolean {
     if (!vo || vo.constructor !== this.constructor) {
       return false
@@ -97,28 +121,24 @@ export class Distance
     return this._value.normalizedValue.equals(vo._value.normalizedValue)
   }
 
-  public convertTo(targetUnit: DistanceUnit): BoundedNumber {
-    if (this._value.unit === targetUnit) {
-      return this._value.value
-    }
+  public toString(): string {
+    const { value, unit } = this._value
 
-    if (targetUnit === 'm') {
-      return this._value.normalizedValue
-    }
-
-    if (targetUnit === 'km') {
-      return this._value.normalizedValue.divide(Distance.KM_TO_M_FACTOR)
-    }
-
-    return this._value.normalizedValue.divide(Distance.MI_TO_M_FACTOR)
+    return `${value.toString()} ${unit}`
   }
 
-  public toString(): string {
-    return `${this._value.value.numericValue} ${this._value.unit}`
+  public toPrimitives(): DistancePrimitiveProps {
+    const { unit, value, normalizedValue } = this._value
+
+    return {
+      unit,
+      value: value.toPrimitives(),
+      normalizedValue: normalizedValue.toPrimitives(),
+    }
   }
 
   public isGreaterThan(anotherMagnitude: Distance): boolean {
-    return this._value.normalizedValue.greaterThan(anotherMagnitude.value.normalizedValue)
+    return this._value.normalizedValue.isGreaterThan(anotherMagnitude.value.normalizedValue)
   }
 
   public isEqual(anotherMagnitude: Distance): boolean {
@@ -127,5 +147,9 @@ export class Distance
 
   public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
     return visitor.visitDistance(this)
+  }
+
+  public get unit(): DistanceUnit {
+    return this._value.unit
   }
 }

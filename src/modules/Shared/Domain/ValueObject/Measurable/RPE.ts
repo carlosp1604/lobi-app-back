@@ -20,6 +20,12 @@ export enum ValidRPEValue {
 
 export type RPEUnit = 'rpe'
 
+export type RPEPrimitiveProps = {
+  value: string
+  unit: string
+  normalizedValue: string
+}
+
 export class RPE extends ValueObject<ValidRPEValue> implements OrderableMagnitudeInterface<RPE>, VisitableMeasurableValueInterface {
   private __rpeBrand: void
 
@@ -67,5 +73,19 @@ export class RPE extends ValueObject<ValidRPEValue> implements OrderableMagnitud
 
   public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
     return visitor.visitRPE(this)
+  }
+
+  public get unit(): RPEUnit {
+    return RPE.DEFAULT_UNIT
+  }
+
+  public toPrimitives(): RPEPrimitiveProps {
+    const value = this._value
+
+    return {
+      unit: RPE.DEFAULT_UNIT,
+      value,
+      normalizedValue: value,
+    }
   }
 }

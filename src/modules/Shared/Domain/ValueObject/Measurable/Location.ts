@@ -1,9 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
+import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export type LocationProps = {
   lat: BoundedNumber
@@ -14,6 +14,8 @@ export type LocationInputProps = {
   lat: string
   lng: string
 }
+
+export type LocationPrimitiveProps = LocationInputProps
 
 export class Location extends ValueObject<LocationProps> implements VisitableMeasurableValueInterface {
   private __locationBrand: void
@@ -38,8 +40,8 @@ export class Location extends ValueObject<LocationProps> implements VisitableMea
     const lat = latResult.value
     const lng = lngResult.value
 
-    const isLatValid = lat.greaterThanOrEqual(this.MIN_LAT) && lat.lessThanOrEqual(this.MAX_LAT)
-    const isLngValid = lng.greaterThanOrEqual(this.MIN_LNG) && lng.lessThanOrEqual(this.MAX_LNG)
+    const isLatValid = lat.isGreaterThanOrEqual(this.MIN_LAT) && lat.isLessThanOrEqual(this.MAX_LAT)
+    const isLngValid = lng.isGreaterThanOrEqual(this.MIN_LNG) && lng.isLessThanOrEqual(this.MAX_LNG)
 
     if (!isLatValid || !isLngValid) {
       return fail(SharedDomainException.invalidLocation(String(props.lat), String(props.lng)))
@@ -63,14 +65,27 @@ export class Location extends ValueObject<LocationProps> implements VisitableMea
       return false
     }
 
-    return this._value.lat.equals(vo._value.lat) && this._value.lng.equals(vo._value.lng)
+    const { lat, lng } = this._value
+
+    return lat.equals(vo._value.lat) && lng.equals(vo._value.lng)
   }
 
   public toString(): string {
-    return `${this._value.lat.numericValue}, ${this._value.lng.numericValue}`
+    const { lat, lng } = this._value
+
+    return `${lat.toString()}, ${lng.toString()}`
   }
 
   public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
     return visitor.visitLocation(this)
+  }
+
+  public toPrimitives(): LocationPrimitiveProps {
+    const { lat, lng } = this._value
+
+    return {
+      lat: lat.toPrimitives(),
+      lng: lng.toPrimitives(),
+    }
   }
 }

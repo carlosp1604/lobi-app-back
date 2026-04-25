@@ -1,13 +1,19 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
+import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
+import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
-import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
 
 export const SupportedDurationUnits = ['s'] as const
 export type DurationUnit = (typeof SupportedDurationUnits)[number]
+
+export type DurationPrimitiveProps = {
+  value: number
+  unit: string
+  normalizedValue: number
+}
 
 export class Duration
   extends ValueObject<IntegerNumber>
@@ -49,8 +55,26 @@ export class Duration
     return result.value
   }
 
+  public equals(vo?: Duration | null): boolean {
+    if (!vo || vo.constructor !== this.constructor) {
+      return false
+    }
+
+    return this._value.equals(vo._value)
+  }
+
   public toString(): string {
-    return `${this._value.value} ${Duration.DEFAULT_UNIT}`
+    return `${this._value.toString()} ${Duration.DEFAULT_UNIT}`
+  }
+
+  public toPrimitives(): DurationPrimitiveProps {
+    const value = this._value
+
+    return {
+      unit: Duration.DEFAULT_UNIT,
+      value: value.toPrimitives(),
+      normalizedValue: value.toPrimitives(),
+    }
   }
 
   public isGreaterThan(anotherMagnitude: Duration): boolean {
@@ -63,5 +87,9 @@ export class Duration
 
   public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
     return visitor.visitDuration(this)
+  }
+
+  public get unit(): DurationUnit {
+    return Duration.DEFAULT_UNIT
   }
 }

@@ -1,6 +1,6 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 export class IntegerNumber extends ValueObject<number> {
   private __integerNumberBrand: void
@@ -38,15 +38,15 @@ export class IntegerNumber extends ValueObject<number> {
     return this._value < other.value
   }
 
-  public isEqualTo(other: IntegerNumber): boolean {
-    return this._value === other.value
+  public multiply(other: IntegerNumber): IntegerNumber {
+    return IntegerNumber.fromNumber(this._value * other.value)
   }
 
-  get value(): number {
+  public get value(): number {
     return this._value
   }
 
-  public toString(): string {
-    return this._value.toString()
+  public toPrimitives(): number {
+    return this._value
   }
 }
