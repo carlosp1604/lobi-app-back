@@ -16,9 +16,6 @@ export const AVAILABLE_CAPABILITIES = [
   'route',
   'rpe',
   'speed',
-  'competitive',
-  'casual',
-  'group',
 ] as const
 
 export type AvailableCapability = (typeof AVAILABLE_CAPABILITIES)[number]

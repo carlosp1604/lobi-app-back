@@ -12,6 +12,7 @@ export class SportDomainException extends DomainException {
   public static invalidTeamsDataId = 'sport_domain_invalid_teams_data'
   public static invalidParticipantsDataId = 'sport_domain_invalid_participants_data'
   public static invalidSportParticipantsDefinitionId = 'sport_domain_invalid_participants_definition'
+  public static activityConfigMismatchForSportId = 'sport_domain_activity_config_mismatch_for_sport'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, SportDomainException.name, context)
@@ -139,6 +140,25 @@ export class SportDomainException extends DomainException {
     return new SportDomainException(`Invalid spec data. Errors:\n${errors.join('\n')}`, this.invalidSpecDataId, {
       spec: specName,
       errors,
+    })
+  }
+
+  public static unsupportedCapabilities(sportId: string, unsupportedCapabilities: Array<string>, supportedCapabilities: Array<string>) {
+    return new SportDomainException(
+      `Capabilities: [${unsupportedCapabilities.join(', ')}] are not supported for selected sport. Supported capabilities are: [${supportedCapabilities.join(', ')}]`,
+      this.activityConfigMismatchForSportId,
+      {
+        sportId,
+        unsupportedCapabilities,
+        supportedCapabilities,
+      },
+    )
+  }
+
+  public static missingActivitySpec(sportId: string, specName: string) {
+    return new SportDomainException(`Missing spec: ${specName} required by selected sport`, this.activityConfigMismatchForSportId, {
+      sportId,
+      specName,
     })
   }
 }
