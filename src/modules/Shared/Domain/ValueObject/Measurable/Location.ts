@@ -1,9 +1,8 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export type LocationProps = {
   lat: BoundedNumber
@@ -17,7 +16,7 @@ export type LocationInputProps = {
 
 export type LocationPrimitiveProps = LocationInputProps
 
-export class Location extends ValueObject<LocationProps> implements VisitableMeasurableValueInterface {
+export class Location extends ValueObject<LocationProps> implements SerializableInterface<LocationPrimitiveProps> {
   private __locationBrand: void
 
   public static readonly MIN_LAT = BoundedNumber.fromString('-90')
@@ -74,10 +73,6 @@ export class Location extends ValueObject<LocationProps> implements VisitableMea
     const { lat, lng } = this._value
 
     return `${lat.toString()}, ${lng.toString()}`
-  }
-
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
-    return visitor.visitLocation(this)
   }
 
   public toPrimitives(): LocationPrimitiveProps {

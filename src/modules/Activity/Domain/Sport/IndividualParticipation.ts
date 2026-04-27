@@ -1,7 +1,8 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
-import { Result, success } from '~/src/modules/Shared/Domain/Result'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
+import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 
 export interface IndividualParticipationProps {
   minPlayers: IntegerNumber
@@ -18,8 +19,10 @@ export interface IndividualParticipationInputProps {
   maxPlayers?: number
 }
 
-export class IndividualParticipation extends ValueObject<IndividualParticipationProps> {
-  public readonly kind = 'individual'
+export class IndividualParticipation
+  extends ValueObject<IndividualParticipationProps>
+  implements SerializableInterface<IndividualParticipationPrimitiveProps>
+{
   private __individualParticipationBrand: void
 
   public static readonly MIN_PLAYERS_REQUIRED = IntegerNumber.fromNumber(2)

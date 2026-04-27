@@ -1,8 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
-import { IndividualParticipation } from '~/src/modules/Activity/Domain/Sport/IndividualParticipation'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
+import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { IndividualParticipation } from '~/src/modules/Activity/Domain/Sport/IndividualParticipation'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 
 export interface TeamParticipationProps {
   minTeams: IntegerNumber
@@ -25,8 +26,10 @@ export interface TeamParticipationInputProps {
   playersPerTeam: number
 }
 
-export class TeamParticipation extends ValueObject<TeamParticipationProps> {
-  public readonly kind = 'team'
+export class TeamParticipation
+  extends ValueObject<TeamParticipationProps>
+  implements SerializableInterface<TeamParticipationPrimitiveProps>
+{
   private __teamParticipationBrand: void
 
   public static readonly MIN_TEAMS_REQUIRED = IntegerNumber.fromNumber(2)
@@ -141,6 +144,22 @@ export class TeamParticipation extends ValueObject<TeamParticipationProps> {
 
   get maxCapacity(): IntegerNumber {
     return this._value.maxTeams.multiply(this._value.playersPerTeam)
+  }
+
+  get minTeams(): IntegerNumber {
+    return this.value.minTeams
+  }
+
+  get maxTeams(): IntegerNumber {
+    return this.value.minTeams
+  }
+
+  get playersPerTeam(): IntegerNumber {
+    return this.value.playersPerTeam
+  }
+
+  get minToPlay(): IntegerNumber {
+    return this.value.minPlayers
   }
 
   public toPrimitives(): TeamParticipationPrimitiveProps {

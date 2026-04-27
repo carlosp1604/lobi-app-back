@@ -24,8 +24,4 @@ export abstract class ValueObject<T> {
   public toString(): string {
     return String(this._value)
   }
-
-  public toPrimitives(): unknown {
-    return this._value
-  }
 }

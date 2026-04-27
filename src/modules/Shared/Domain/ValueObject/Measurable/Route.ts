@@ -1,9 +1,8 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, fail, success } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { Location, LocationPrimitiveProps } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export type RouteProps = {
   points: Array<Location>
@@ -20,7 +19,7 @@ export type RouteInputProps = {
   isPublic?: boolean
 }
 
-export class Route extends ValueObject<RouteProps> implements VisitableMeasurableValueInterface {
+export class Route extends ValueObject<RouteProps> implements SerializableInterface<RoutePrimitiveProps> {
   private __routeBrand: void
 
   public static readonly MIN_POINTS = 2
@@ -74,10 +73,6 @@ export class Route extends ValueObject<RouteProps> implements VisitableMeasurabl
     const end = this._value.points[total - 1].toString()
 
     return `${this._value.isPublic ? 'Public' : 'Private'} Route: [${total} points] From (${start}) To (${end})`
-  }
-
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
-    return visitor.visitRoute(this)
   }
 
   public get points(): Array<Location> {

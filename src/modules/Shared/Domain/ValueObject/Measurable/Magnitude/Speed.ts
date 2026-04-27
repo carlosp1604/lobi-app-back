@@ -1,10 +1,11 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
+import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/OrderableMagnitudeInterface'
+import { MagnitudeValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MagnitudeValueVisitorInterface'
+import { VisitableMagnitudeValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMagnitudeValueInterface'
 
 export const SupportedSpeedUnits = ['km/h', 'mi/h'] as const
 export type SpeedUnit = (typeof SupportedSpeedUnits)[number]
@@ -26,7 +27,10 @@ export type SpeedInputProps = {
   unit: string
 }
 
-export class Speed extends ValueObject<SpeedProps> implements OrderableMagnitudeInterface<Speed>, VisitableMeasurableValueInterface {
+export class Speed
+  extends ValueObject<SpeedProps>
+  implements OrderableMagnitudeInterface<Speed>, VisitableMagnitudeValueInterface, SerializableInterface<SpeedPrimitiveProps>
+{
   private __speedBrand: void
 
   public static readonly DEFAULT_UNIT: SpeedUnit = 'km/h'
@@ -113,7 +117,7 @@ export class Speed extends ValueObject<SpeedProps> implements OrderableMagnitude
     return this.equals(anotherMagnitude)
   }
 
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
+  public accept<R>(visitor: MagnitudeValueVisitorInterface<R>): R {
     return visitor.visitSpeed(this)
   }
 

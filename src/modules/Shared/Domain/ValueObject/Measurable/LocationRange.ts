@@ -1,9 +1,8 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
 import { Location, LocationPrimitiveProps } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
 
 export type LocationRangeProps = {
   start: Location
@@ -15,7 +14,7 @@ export type LocationRangePrimitiveProps = {
   end: LocationPrimitiveProps
 }
 
-export class LocationRange extends ValueObject<LocationRangeProps> implements VisitableMeasurableValueInterface {
+export class LocationRange extends ValueObject<LocationRangeProps> implements SerializableInterface<LocationRangePrimitiveProps> {
   private __locationRangeBrand: void
 
   private constructor(props: LocationRangeProps) {
@@ -44,10 +43,6 @@ export class LocationRange extends ValueObject<LocationRangeProps> implements Vi
     const { start, end } = this._value
 
     return start.equals(vo._value.start) && end.equals(vo._value.end)
-  }
-
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
-    return visitor.visitLocationRange(this)
   }
 
   public get start(): Location {

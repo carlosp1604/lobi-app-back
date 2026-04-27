@@ -1,11 +1,15 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
+import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/OrderableMagnitudeInterface'
+import { MagnitudeValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MagnitudeValueVisitorInterface'
+import { VisitableMagnitudeValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMagnitudeValueInterface'
 
-export type Rangeable<T> = ValueObject<unknown> & OrderableMagnitudeInterface<T> & VisitableMeasurableValueInterface
+export type Rangeable<T> = ValueObject<unknown> &
+  OrderableMagnitudeInterface<T> &
+  VisitableMagnitudeValueInterface &
+  SerializableInterface<unknown>
 
 export type MagnitudeRangeProps<T> = {
   start: T
@@ -28,7 +32,7 @@ export type MagnitudeRangeInputProps<T> = {
 
 export class MagnitudeRange<T extends Rangeable<T>>
   extends ValueObject<MagnitudeRangeProps<T>>
-  implements VisitableMeasurableValueInterface
+  implements VisitableMagnitudeValueInterface, SerializableInterface<MagnitudeRangePrimitiveProps>
 {
   private constructor(props: MagnitudeRangeProps<T>) {
     super(props)
@@ -36,7 +40,7 @@ export class MagnitudeRange<T extends Rangeable<T>>
 
   public static safeCreate<T extends Rangeable<T>>(
     props: MagnitudeRangeInputProps<T>,
-    formatVisitor: MeasurableValueVisitorInterface<string>,
+    formatVisitor: MagnitudeValueVisitorInterface<string>,
   ): Result<MagnitudeRange<T>, SharedDomainException> {
     const { start, end, average } = props
 
@@ -100,7 +104,7 @@ export class MagnitudeRange<T extends Rangeable<T>>
     return this._value.start.isEqual(this._value.end)
   }
 
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
+  public accept<R>(visitor: MagnitudeValueVisitorInterface<R>): R {
     return visitor.visitMagnitudeRange(this)
   }
 

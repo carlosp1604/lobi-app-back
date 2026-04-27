@@ -1,8 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
-export class IntegerNumber extends ValueObject<number> {
+export class IntegerNumber extends ValueObject<number> implements SerializableInterface<number> {
   private __integerNumberBrand: void
 
   public static readonly MAX_SAFE_VALUE = Number.MAX_SAFE_INTEGER

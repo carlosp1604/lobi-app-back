@@ -1,5 +1,6 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 export const SUPPORTED_PRECISIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const
@@ -10,7 +11,7 @@ export type BoundedNumberProps = {
   stringValue: string
 }
 
-export class BoundedNumber extends ValueObject<BoundedNumberProps> {
+export class BoundedNumber extends ValueObject<BoundedNumberProps> implements SerializableInterface<string> {
   private __boundedNumberBrand: void
 
   public static readonly MAX_SAFE_VALUE = 50000000
@@ -181,11 +182,11 @@ export class BoundedNumber extends ValueObject<BoundedNumberProps> {
     return parts.length > 1 ? Number(`${isNegative ? '-' : ''}0.${parts[1]}`) : Number('0.00000000')
   }
 
-  get numericValue(): number {
+  public get numericValue(): number {
     return this._value.numericValue
   }
 
-  get stringValue(): string {
+  public get stringValue(): string {
     return this._value.stringValue
   }
 

@@ -1,9 +1,10 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
-import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
+import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/OrderableMagnitudeInterface'
+import { MagnitudeValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MagnitudeValueVisitorInterface'
+import { VisitableMagnitudeValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMagnitudeValueInterface'
 
 export enum ValidRPEValue {
   ONE = '1',
@@ -26,7 +27,10 @@ export type RPEPrimitiveProps = {
   normalizedValue: string
 }
 
-export class RPE extends ValueObject<ValidRPEValue> implements OrderableMagnitudeInterface<RPE>, VisitableMeasurableValueInterface {
+export class RPE
+  extends ValueObject<ValidRPEValue>
+  implements OrderableMagnitudeInterface<RPE>, VisitableMagnitudeValueInterface, SerializableInterface<RPEPrimitiveProps>
+{
   private __rpeBrand: void
 
   public static readonly DEFAULT_UNIT: RPEUnit = 'rpe'
@@ -71,7 +75,7 @@ export class RPE extends ValueObject<ValidRPEValue> implements OrderableMagnitud
     return this.equals(anotherMagnitude)
   }
 
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
+  public accept<R>(visitor: MagnitudeValueVisitorInterface<R>): R {
     return visitor.visitRPE(this)
   }
 

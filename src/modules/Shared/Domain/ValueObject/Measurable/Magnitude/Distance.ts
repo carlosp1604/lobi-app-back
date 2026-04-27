@@ -1,10 +1,11 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/OrderableMagnitudeInterface'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
+import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/OrderableMagnitudeInterface'
+import { MagnitudeValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MagnitudeValueVisitorInterface'
+import { VisitableMagnitudeValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMagnitudeValueInterface'
 
 export const SupportedDistanceUnits = ['m', 'km', 'mi'] as const
 export type DistanceUnit = (typeof SupportedDistanceUnits)[number]
@@ -28,7 +29,7 @@ export type DistanceInputProps = {
 
 export class Distance
   extends ValueObject<DistanceProps>
-  implements OrderableMagnitudeInterface<Distance>, VisitableMeasurableValueInterface
+  implements OrderableMagnitudeInterface<Distance>, VisitableMagnitudeValueInterface, SerializableInterface<DistancePrimitiveProps>
 {
   private __distanceBrand: void
 
@@ -145,7 +146,7 @@ export class Distance
     return this.equals(anotherMagnitude)
   }
 
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
+  public accept<R>(visitor: MagnitudeValueVisitorInterface<R>): R {
     return visitor.visitDistance(this)
   }
 
