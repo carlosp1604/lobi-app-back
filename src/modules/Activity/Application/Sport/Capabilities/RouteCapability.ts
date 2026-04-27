@@ -1,18 +1,16 @@
+import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
+import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { LocationApplicationDto } from '~/src/modules/Shared/Application/DTO/LocationApplicationDto'
+import { Route, RoutePrimitiveProps } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Route'
+import { LocationApplicationDtoTranslator } from '~/src/modules/Shared/Application/Translator/LocationApplicationDtoTranslator'
 import {
   CapabilitySchema,
   SportBaseCapability,
   SportCapabilityRawDataValidationError,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import {
-  MeasurableToPresentationVisitor,
-  PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
-import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
-import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
-import { Route } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Route'
+} from '~/src/modules/Activity/Application/Sport/Capabilities/SportBaseCapability'
 
 export type RouteCapabilityRawData = {
   points: Array<{ lat: string; lng: string }>
@@ -88,7 +86,11 @@ export class RouteCapability extends SportBaseCapability<Route, RouteCapabilityR
     }
   }
 
-  public translate(vo: Route): PresentationMeasurableValueDto {
-    return vo.accept(new MeasurableToPresentationVisitor())
+  public toPrimitives(value: Route): RoutePrimitiveProps {
+    return value.toPrimitives()
+  }
+
+  public translate(value: Route): Array<LocationApplicationDto> {
+    return value.points.map((point) => new LocationApplicationDtoTranslator().translate(point))
   }
 }

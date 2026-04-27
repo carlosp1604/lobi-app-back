@@ -1,18 +1,19 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
-import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { Altitude, SupportedAltitudeUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Altitude'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
+import { MagnitudeRangeApplicationDto } from '~/src/modules/Shared/Application/DTO/MagnitudeApplicationDto'
+import { Altitude, SupportedAltitudeUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Altitude'
+import { MagnitudeToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MagnitudeToRepresentationVisitor'
+import { MagnitudeRangeApplicationDtoTranslator } from '~/src/modules/Shared/Application/Translator/MagnitudeRangeApplicationDtoTranslator'
+import {
+  MagnitudeRange,
+  MagnitudeRangePrimitiveProps,
+} from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/MagnitudeRange'
 import {
   CapabilitySchema,
   SportBaseCapability,
   SportCapabilityRawDataValidationError,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import {
-  MeasurableToPresentationVisitor,
-  PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Activity/Application/Sport/Capabilities/SportBaseCapability'
 
 export type AltitudeCapabilityRawData = {
   start: string
@@ -73,7 +74,7 @@ export class AltitudeCapability extends SportBaseCapability<MagnitudeRange<Altit
       averageAltitude = averageAltitudeResult.value
     }
 
-    const representationVisitor = new MeasurableToRepresentationVisitor()
+    const representationVisitor = new MagnitudeToRepresentationVisitor()
     const magnitudeRangeResult = MagnitudeRange.safeCreate(
       { start: startAltitude, end: endAltitude, average: averageAltitude },
       representationVisitor,
@@ -99,7 +100,11 @@ export class AltitudeCapability extends SportBaseCapability<MagnitudeRange<Altit
     }
   }
 
-  public translate(vo: MagnitudeRange<Altitude>): PresentationMeasurableValueDto {
-    return vo.accept(new MeasurableToPresentationVisitor())
+  public toPrimitives(value: MagnitudeRange<Altitude>): MagnitudeRangePrimitiveProps {
+    return value.toPrimitives()
+  }
+
+  public translate(value: MagnitudeRange<Altitude>): MagnitudeRangeApplicationDto {
+    return new MagnitudeRangeApplicationDtoTranslator().translate(value)
   }
 }

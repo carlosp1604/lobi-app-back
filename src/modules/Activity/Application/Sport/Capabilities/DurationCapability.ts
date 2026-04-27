@@ -1,18 +1,19 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
-import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { Duration, SupportedDurationUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Duration'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
+import { MagnitudeRangeApplicationDto } from '~/src/modules/Shared/Application/DTO/MagnitudeApplicationDto'
+import { Duration, SupportedDurationUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Duration'
+import { MagnitudeToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MagnitudeToRepresentationVisitor'
+import { MagnitudeRangeApplicationDtoTranslator } from '~/src/modules/Shared/Application/Translator/MagnitudeRangeApplicationDtoTranslator'
+import {
+  MagnitudeRange,
+  MagnitudeRangePrimitiveProps,
+} from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/MagnitudeRange'
 import {
   CapabilitySchema,
   SportBaseCapability,
   SportCapabilityRawDataValidationError,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import {
-  MeasurableToPresentationVisitor,
-  PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Activity/Application/Sport/Capabilities/SportBaseCapability'
 
 export type DurationCapabilityRawData = {
   start: number
@@ -56,7 +57,7 @@ export class DurationCapability extends SportBaseCapability<MagnitudeRange<Durat
       endDuration = endDurationResult.value
     }
 
-    const representationVisitor = new MeasurableToRepresentationVisitor()
+    const representationVisitor = new MagnitudeToRepresentationVisitor()
     const magnitudeRangeResult = MagnitudeRange.safeCreate({ start: startDuration, end: endDuration }, representationVisitor)
 
     if (!magnitudeRangeResult.success) {
@@ -79,7 +80,11 @@ export class DurationCapability extends SportBaseCapability<MagnitudeRange<Durat
     }
   }
 
-  public translate(vo: MagnitudeRange<Duration>): PresentationMeasurableValueDto {
-    return vo.accept(new MeasurableToPresentationVisitor())
+  public toPrimitives(value: MagnitudeRange<Duration>): MagnitudeRangePrimitiveProps {
+    return value.toPrimitives()
+  }
+
+  public translate(value: MagnitudeRange<Duration>): MagnitudeRangeApplicationDto {
+    return new MagnitudeRangeApplicationDtoTranslator().translate(value)
   }
 }

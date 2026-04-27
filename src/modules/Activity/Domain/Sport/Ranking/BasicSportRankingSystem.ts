@@ -1,7 +1,7 @@
 import { Slug } from '~/src/modules/Shared/Domain/ValueObject/Slug'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { ResourceUrl } from '~/src/modules/Shared/Domain/ValueObject/ResourceUrl'
-import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/SportRegistry/Ranking/SportRankingSystem'
+import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/SportRankingSystem'
 
 const rankingData = [
   { id: '47952670-3502-498c-8594-52623e198642', slug: 'beginner', order: 1, imageUrl: null },

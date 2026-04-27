@@ -1,18 +1,19 @@
+import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/RPE'
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
-import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Measurable/RPE'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
+import { MagnitudeRangeApplicationDto } from '~/src/modules/Shared/Application/DTO/MagnitudeApplicationDto'
+import { MagnitudeToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MagnitudeToRepresentationVisitor'
+import { MagnitudeRangeApplicationDtoTranslator } from '~/src/modules/Shared/Application/Translator/MagnitudeRangeApplicationDtoTranslator'
+import {
+  MagnitudeRange,
+  MagnitudeRangePrimitiveProps,
+} from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/MagnitudeRange'
 import {
   CapabilitySchema,
   SportBaseCapability,
   SportCapabilityRawDataValidationError,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import {
-  MeasurableToPresentationVisitor,
-  PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Activity/Application/Sport/Capabilities/SportBaseCapability'
 
 export type RPECapabilityRawData = {
   start: string
@@ -71,7 +72,7 @@ export class RPECapability extends SportBaseCapability<MagnitudeRange<RPE>, RPEC
       averageRPE = averageRPEResult.value
     }
 
-    const representationVisitor = new MeasurableToRepresentationVisitor()
+    const representationVisitor = new MagnitudeToRepresentationVisitor()
     const magnitudeRangeResult = MagnitudeRange.safeCreate({ start: startRPE, end: endRPE, average: averageRPE }, representationVisitor)
 
     if (!magnitudeRangeResult.success) {
@@ -93,7 +94,11 @@ export class RPECapability extends SportBaseCapability<MagnitudeRange<RPE>, RPEC
     }
   }
 
-  public translate(vo: MagnitudeRange<RPE>): PresentationMeasurableValueDto {
-    return vo.accept(new MeasurableToPresentationVisitor())
+  public toPrimitives(value: MagnitudeRange<RPE>): MagnitudeRangePrimitiveProps {
+    return value.toPrimitives()
+  }
+
+  public translate(value: MagnitudeRange<RPE>): MagnitudeRangeApplicationDto {
+    return new MagnitudeRangeApplicationDtoTranslator().translate(value)
   }
 }

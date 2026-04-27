@@ -1,18 +1,19 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
-import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/MagnitudeRange'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { Speed, SupportedSpeedUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Speed'
-import { MeasurableToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MeasurableToRepresentationVisitor'
+import { Speed, SupportedSpeedUnits } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Speed'
+import { MagnitudeRangeApplicationDto } from '~/src/modules/Shared/Application/DTO/MagnitudeApplicationDto'
+import { MagnitudeToRepresentationVisitor } from '~/src/modules/Shared/Domain/Visitor/MagnitudeToRepresentationVisitor'
+import { MagnitudeRangeApplicationDtoTranslator } from '~/src/modules/Shared/Application/Translator/MagnitudeRangeApplicationDtoTranslator'
+import {
+  MagnitudeRange,
+  MagnitudeRangePrimitiveProps,
+} from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/MagnitudeRange'
 import {
   CapabilitySchema,
   SportBaseCapability,
   SportCapabilityRawDataValidationError,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import {
-  MeasurableToPresentationVisitor,
-  PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Activity/Application/Sport/Capabilities/SportBaseCapability'
 
 export type SpeedCapabilityRawData = {
   start: string
@@ -73,7 +74,7 @@ export class SpeedCapability extends SportBaseCapability<MagnitudeRange<Speed>, 
       averageSpeed = averageSpeedResult.value
     }
 
-    const representationVisitor = new MeasurableToRepresentationVisitor()
+    const representationVisitor = new MagnitudeToRepresentationVisitor()
     const magnitudeRangeResult = MagnitudeRange.safeCreate(
       { start: startSpeed, end: endSpeed, average: averageSpeed },
       representationVisitor,
@@ -99,7 +100,11 @@ export class SpeedCapability extends SportBaseCapability<MagnitudeRange<Speed>, 
     }
   }
 
-  public translate(vo: MagnitudeRange<Speed>): PresentationMeasurableValueDto {
-    return vo.accept(new MeasurableToPresentationVisitor())
+  public toPrimitives(value: MagnitudeRange<Speed>): MagnitudeRangePrimitiveProps {
+    return value.toPrimitives()
+  }
+
+  public translate(value: MagnitudeRange<Speed>): MagnitudeRangeApplicationDto {
+    return new MagnitudeRangeApplicationDtoTranslator().translate(value)
   }
 }

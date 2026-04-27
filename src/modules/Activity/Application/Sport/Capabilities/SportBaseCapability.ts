@@ -1,4 +1,5 @@
 import { Result, fail } from '~/src/modules/Shared/Domain/Result'
+import { AvailableCapability } from '~/src/modules/Activity/Domain/Sport/Sport'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 
 export interface CapabilitySchema {
@@ -11,7 +12,7 @@ export interface SportCapabilityRawDataValidationError {
 }
 
 export abstract class SportBaseCapability<T, P> {
-  public abstract readonly capabilityName: string
+  public abstract readonly capabilityName: AvailableCapability
 
   protected abstract validateData(data: unknown): Result<P, SportCapabilityRawDataValidationError>
 
@@ -19,7 +20,9 @@ export abstract class SportBaseCapability<T, P> {
 
   public abstract getSchema(): CapabilitySchema
 
-  public abstract translate(vo: T): unknown
+  public abstract toPrimitives(value: T): unknown
+
+  public abstract translate(value: T): unknown
 
   public validate(data: unknown): Result<T, SportDomainException> {
     const validateDataResult = this.validateData(data)

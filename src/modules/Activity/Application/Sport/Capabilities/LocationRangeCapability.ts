@@ -1,18 +1,16 @@
 import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { BoundedNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/BoundedNumber'
-import { LocationRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/LocationRange'
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { LocationRangeApplicationDto } from '~/src/modules/Shared/Application/DTO/LocationApplicationDto'
+import { LocationRangeApplicationDtoTranslator } from '~/src/modules/Shared/Application/Translator/LocationRangeApplicationDtoTranslator'
+import { LocationRange, LocationRangePrimitiveProps } from '~/src/modules/Shared/Domain/ValueObject/Measurable/LocationRange'
 import {
   CapabilitySchema,
   SportBaseCapability,
   SportCapabilityRawDataValidationError,
-} from '~/src/modules/Activity/Domain/Sport/SportRegistry/Capabilities/SportBaseCapability'
-import {
-  MeasurableToPresentationVisitor,
-  PresentationMeasurableValueDto,
-} from '~/src/modules/Shared/Domain/Visitor/MeasurableToPresentationVisitor'
+} from '~/src/modules/Activity/Application/Sport/Capabilities/SportBaseCapability'
 
 export type LocationPointRaw = { lat: string; lng: string }
 
@@ -77,7 +75,11 @@ export class LocationRangeCapability extends SportBaseCapability<LocationRange, 
     }
   }
 
-  public translate(vo: LocationRange): PresentationMeasurableValueDto {
-    return vo.accept(new MeasurableToPresentationVisitor())
+  public toPrimitives(value: LocationRange): LocationRangePrimitiveProps {
+    return value.toPrimitives()
+  }
+
+  public translate(value: LocationRange): LocationRangeApplicationDto {
+    return new LocationRangeApplicationDtoTranslator().translate(value)
   }
 }
