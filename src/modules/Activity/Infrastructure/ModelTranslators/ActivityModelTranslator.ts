@@ -50,7 +50,7 @@ export class ActivityModelTranslator {
     }
 
     return {
-      id: domain.id.value,
+      id: domain.id.toPrimitives(),
       title: domain.title.toPrimitives(),
       description: domain.description?.toPrimitives() ?? null,
       status: domain.status.toPrimitives(),
