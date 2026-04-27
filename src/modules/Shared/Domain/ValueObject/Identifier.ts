@@ -34,4 +34,8 @@ export class Identifier extends ValueObject<string> {
   private static isValidIdentifier(value: string): boolean {
     return Identifier.REGEX.test(value)
   }
+
+  public toPrimitives(): string {
+    return this._value
+  }
 }

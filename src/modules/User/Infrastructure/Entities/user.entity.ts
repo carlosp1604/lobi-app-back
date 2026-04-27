@@ -3,6 +3,7 @@ import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entiti
 import { UserSessionRawModel } from '~/src/modules/Auth/Infrastructure/Entities/user-session.entity'
 import { SportsmanProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/sportsman-profile.entity'
 import { OwnerProfileRawModel } from '~/src/modules/User/Infrastructure/Entities/Profiles/owner-profile.entity'
+import { ActivityRawModel } from '~/src/modules/Activity/Infrastructure/Entities/activity.entity'
 
 export interface UserRawModel {
   id: string
@@ -24,6 +25,7 @@ export type UserRawModelWithRelations = UserRawModel &
     sessions: Array<UserSessionRawModel>
     sportsmanProfile: SportsmanProfileRawModel | null
     ownerProfile: OwnerProfileRawModel | null
+    activities: Array<ActivityRawModel>
   }>
 
 export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
@@ -113,6 +115,12 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
       lazy: false,
       inverseSide: 'user',
       cascade: true,
+    },
+    activities: {
+      type: 'one-to-many',
+      target: 'ActivityEntity',
+      inverseSide: 'host',
+      cascade: false,
     },
   },
 })

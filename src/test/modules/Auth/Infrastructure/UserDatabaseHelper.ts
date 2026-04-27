@@ -1,5 +1,5 @@
 import { EntityManager } from 'typeorm'
-import { UserEntity, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { UserEntity, UserRawModel, UserRawModelWithRelations } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 
 export class UserDatabaseHelper {
   constructor(private readonly entityManager: EntityManager) {}
@@ -20,7 +20,7 @@ export class UserDatabaseHelper {
     return userRepository.findOneBy({ email })
   }
 
-  public async update(id: string, dataToUpdate: Partial<UserRawModelWithRelations>) {
+  public async update(id: string, dataToUpdate: Partial<UserRawModel>) {
     const userRepository = this.entityManager.getRepository(UserEntity)
 
     await userRepository.update({ id }, dataToUpdate)

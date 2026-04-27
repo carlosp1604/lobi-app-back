@@ -19,7 +19,6 @@ export class SharedDomainException extends DomainException {
   public static invalidRPEId = 'shared_domain_invalid_rpe'
   public static invalidUnitId = 'shared_domain_invalid_unit'
   public static invalidMagnitudeRangeId = 'shared_domain_invalid_magnitude_range'
-  public static invalidAverageValueId = 'shared_domain_invalid_average_value'
   public static invalidBoundedNumberId = 'shared_domain_invalid_bounded_number'
   public static invalidIntegerNumberId = 'shared_domain_invalid_integer_number'
   public static invalidRouteId = 'shared_domain_invalid_route'
@@ -204,6 +203,17 @@ export class SharedDomainException extends DomainException {
     )
   }
 
+  public static magnitudeRangeUnitMismatch(expectedUnit: string, mismatchUnit: string) {
+    return new SharedDomainException(
+      'Magnitude range unit mismatch: All range components (start, end, average) must share the same unit',
+      this.invalidMagnitudeRangeId,
+      {
+        expectedUnit,
+        mismatchUnit,
+      },
+    )
+  }
+
   public static invalidMagnitudeRange(start: string, end: string) {
     return new SharedDomainException(`Start value ${start} cannot be greater than end value ${end}`, this.invalidMagnitudeRangeId, {
       start,
@@ -212,7 +222,7 @@ export class SharedDomainException extends DomainException {
   }
 
   public static invalidAverageValue(average: string, start: string, end: string) {
-    return new SharedDomainException(`Average must be a value between start: ${start} and end: ${end}`, this.invalidAverageValueId, {
+    return new SharedDomainException(`Average must be a value between start: ${start} and end: ${end}`, this.invalidMagnitudeRangeId, {
       average,
       start,
       end,

@@ -18,7 +18,7 @@ export async function getPostgresTestContainer(): Promise<PostgresContainerConfi
     return instance
   }
 
-  const container = await new PostgreSqlContainer('postgres:16-alpine')
+  const container = await new PostgreSqlContainer('postgis/postgis:16-3.4-alpine')
     .withDatabase(env.CONTAINER_DB)
     .withUsername(env.CONTAINER_USER)
     .withPassword(env.CONTAINER_PASSWORD)

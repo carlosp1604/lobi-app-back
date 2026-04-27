@@ -1,11 +1,17 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
-import { Result, success } from '~/src/modules/Shared/Domain/Result'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
+import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 
 export interface IndividualParticipationProps {
   minPlayers: IntegerNumber
   maxPlayers: IntegerNumber
+}
+
+export interface IndividualParticipationPrimitiveProps {
+  minPlayers: number
+  maxPlayers: number
 }
 
 export interface IndividualParticipationInputProps {
@@ -13,8 +19,10 @@ export interface IndividualParticipationInputProps {
   maxPlayers?: number
 }
 
-export class IndividualParticipation extends ValueObject<IndividualParticipationProps> {
-  public readonly kind = 'individual'
+export class IndividualParticipation
+  extends ValueObject<IndividualParticipationProps>
+  implements SerializableInterface<IndividualParticipationPrimitiveProps>
+{
   private __individualParticipationBrand: void
 
   public static readonly MIN_PLAYERS_REQUIRED = IntegerNumber.fromNumber(2)
@@ -79,18 +87,31 @@ export class IndividualParticipation extends ValueObject<IndividualParticipation
       return false
     }
 
-    return this._value.maxPlayers.isEqualTo(vo.value.maxPlayers) && this._value.minPlayers.isEqualTo(vo.value.minPlayers)
+    const { minPlayers, maxPlayers } = this._value
+
+    return maxPlayers.equals(vo._value.maxPlayers) && minPlayers.equals(vo._value.minPlayers)
   }
 
   public toString(): string {
-    return `Participants: ${this._value.minPlayers.value}-${this._value.maxPlayers.value} players`
+    const { minPlayers, maxPlayers } = this._value
+
+    return `Participants: ${minPlayers.toString()}-${maxPlayers.toString()} players`
   }
 
-  get minCapacity(): number {
-    return this._value.minPlayers.value
+  get minCapacity(): IntegerNumber {
+    return this._value.minPlayers
   }
 
-  get maxCapacity(): number {
-    return this._value.maxPlayers.value
+  get maxCapacity(): IntegerNumber {
+    return this._value.maxPlayers
+  }
+
+  public toPrimitives(): IndividualParticipationPrimitiveProps {
+    const { minPlayers, maxPlayers } = this._value
+
+    return {
+      maxPlayers: maxPlayers.toPrimitives(),
+      minPlayers: minPlayers.toPrimitives(),
+    }
   }
 }

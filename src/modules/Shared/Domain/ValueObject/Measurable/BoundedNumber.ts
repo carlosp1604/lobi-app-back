@@ -1,6 +1,7 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
 export const SUPPORTED_PRECISIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const
 export type Precision = (typeof SUPPORTED_PRECISIONS)[number]
@@ -10,7 +11,7 @@ export type BoundedNumberProps = {
   stringValue: string
 }
 
-export class BoundedNumber extends ValueObject<BoundedNumberProps> {
+export class BoundedNumber extends ValueObject<BoundedNumberProps> implements SerializableInterface<string> {
   private __boundedNumberBrand: void
 
   public static readonly MAX_SAFE_VALUE = 50000000
@@ -22,13 +23,9 @@ export class BoundedNumber extends ValueObject<BoundedNumberProps> {
 
   private static validateNumericRules(value: number): boolean {
     const isBasicValid = isFinite(value) && !isNaN(value)
-    const isPrecisionSafe = Math.abs(value) <= this.MAX_PRECISION_SAFE_VALUE
+    const isPrecisionSafe = Math.abs(value) <= this.MAX_SAFE_VALUE
 
     return isBasicValid && isPrecisionSafe
-  }
-
-  private static get MAX_PRECISION_SAFE_VALUE(): number {
-    return this.MAX_SAFE_VALUE
   }
 
   private static stringTruncate(value: string, decimals: Precision): BoundedNumberProps {
@@ -102,6 +99,10 @@ export class BoundedNumber extends ValueObject<BoundedNumberProps> {
     return this._value.numericValue === other._value.numericValue
   }
 
+  public toString(): string {
+    return this._value.stringValue
+  }
+
   public round(precision: Precision): number {
     const [integer, fraction] = this._value.stringValue.split('.')
 
@@ -155,27 +156,19 @@ export class BoundedNumber extends ValueObject<BoundedNumberProps> {
     return BoundedNumber.fromString((this._value.numericValue / other._value.numericValue).toString())
   }
 
-  public add(other: BoundedNumber): BoundedNumber {
-    return BoundedNumber.fromString((this._value.numericValue + other._value.numericValue).toString())
-  }
-
-  public subtract(other: BoundedNumber): BoundedNumber {
-    return BoundedNumber.fromString((this._value.numericValue - other._value.numericValue).toString())
-  }
-
-  public lessThan(other: BoundedNumber): boolean {
+  public isLessThan(other: BoundedNumber): boolean {
     return this._value.numericValue < other._value.numericValue
   }
 
-  public lessThanOrEqual(other: BoundedNumber): boolean {
+  public isLessThanOrEqual(other: BoundedNumber): boolean {
     return this._value.numericValue <= other._value.numericValue
   }
 
-  public greaterThan(other: BoundedNumber): boolean {
+  public isGreaterThan(other: BoundedNumber): boolean {
     return this._value.numericValue > other._value.numericValue
   }
 
-  public greaterThanOrEqual(other: BoundedNumber): boolean {
+  public isGreaterThanOrEqual(other: BoundedNumber): boolean {
     return this._value.numericValue >= other._value.numericValue
   }
 
@@ -189,11 +182,15 @@ export class BoundedNumber extends ValueObject<BoundedNumberProps> {
     return parts.length > 1 ? Number(`${isNegative ? '-' : ''}0.${parts[1]}`) : Number('0.00000000')
   }
 
-  get numericValue(): number {
+  public get numericValue(): number {
     return this._value.numericValue
   }
 
-  get stringValue(): string {
+  public get stringValue(): string {
+    return this._value.stringValue
+  }
+
+  public toPrimitives(): string {
     return this._value.stringValue
   }
 }

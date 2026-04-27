@@ -1,14 +1,22 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
-import { IndividualParticipation } from '~/src/modules/Activity/Domain/Sport/IndividualParticipation'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
+import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { IndividualParticipation } from '~/src/modules/Activity/Domain/Sport/IndividualParticipation'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
 
 export interface TeamParticipationProps {
   minTeams: IntegerNumber
   maxTeams: IntegerNumber
   minPlayers: IntegerNumber
   playersPerTeam: IntegerNumber
+}
+
+export interface TeamParticipationPrimitiveProps {
+  minTeams: number
+  maxTeams: number
+  minPlayers: number
+  playersPerTeam: number
 }
 
 export interface TeamParticipationInputProps {
@@ -18,8 +26,10 @@ export interface TeamParticipationInputProps {
   playersPerTeam: number
 }
 
-export class TeamParticipation extends ValueObject<TeamParticipationProps> {
-  public readonly kind = 'team'
+export class TeamParticipation
+  extends ValueObject<TeamParticipationProps>
+  implements SerializableInterface<TeamParticipationPrimitiveProps>
+{
   private __teamParticipationBrand: void
 
   public static readonly MIN_TEAMS_REQUIRED = IntegerNumber.fromNumber(2)
@@ -84,8 +94,7 @@ export class TeamParticipation extends ValueObject<TeamParticipationProps> {
       return this.failTeamsRange(minTeams.value, maxTeams.value)
     }
 
-    const realMinPlayersRequiredValue = minTeams.value * playersPerTeam.value
-    const realMinPlayersRequired = IntegerNumber.fromNumber(realMinPlayersRequiredValue)
+    const realMinPlayersRequired = minTeams.multiply(playersPerTeam)
 
     const minPlayersResult =
       props.minPlayers !== undefined ? IntegerNumber.safeCreate(props.minPlayers) : success(realMinPlayersRequired)
@@ -113,31 +122,54 @@ export class TeamParticipation extends ValueObject<TeamParticipationProps> {
       return false
     }
 
+    const { maxTeams, minTeams, minPlayers, playersPerTeam } = this._value
+
     return (
-      this._value.minTeams.isEqualTo(vo.value.minTeams) &&
-      this._value.maxTeams.isEqualTo(vo.value.maxTeams) &&
-      this._value.minPlayers.isEqualTo(vo.value.minPlayers) &&
-      this._value.playersPerTeam.isEqualTo(vo.value.playersPerTeam)
+      minTeams.equals(vo._value.minTeams) &&
+      maxTeams.equals(vo._value.maxTeams) &&
+      minPlayers.equals(vo._value.minPlayers) &&
+      playersPerTeam.equals(vo._value.playersPerTeam)
     )
   }
 
   public toString(): string {
-    return `Teams: ${this._value.minTeams.value}-${this._value.maxTeams.value}. Players per team: ${this._value.playersPerTeam.value}. Min to play: ${this._value.minPlayers.value}`
+    const { maxTeams, minTeams, minPlayers, playersPerTeam } = this._value
+
+    return `Teams: ${minTeams.toString()}-${maxTeams.toString()}. Players per team: ${playersPerTeam.toString()}. Min to play: ${minPlayers.value}`
   }
 
-  get minCapacity(): number {
-    return this._value.minPlayers.value
+  get minCapacity(): IntegerNumber {
+    return this._value.minPlayers
   }
 
-  get maxCapacity(): number {
-    return this._value.maxTeams.value * this._value.playersPerTeam.value
+  get maxCapacity(): IntegerNumber {
+    return this._value.maxTeams.multiply(this._value.playersPerTeam)
   }
 
-  get minTeamsValue(): number {
-    return this._value.minTeams.value
+  get minTeams(): IntegerNumber {
+    return this.value.minTeams
   }
 
-  get maxTeamsValue(): number {
-    return this._value.maxTeams.value
+  get maxTeams(): IntegerNumber {
+    return this.value.minTeams
+  }
+
+  get playersPerTeam(): IntegerNumber {
+    return this.value.playersPerTeam
+  }
+
+  get minToPlay(): IntegerNumber {
+    return this.value.minPlayers
+  }
+
+  public toPrimitives(): TeamParticipationPrimitiveProps {
+    const { maxTeams, minTeams, minPlayers, playersPerTeam } = this._value
+
+    return {
+      maxTeams: maxTeams.toPrimitives(),
+      minTeams: minTeams.toPrimitives(),
+      minPlayers: minPlayers.toPrimitives(),
+      playersPerTeam: playersPerTeam.toPrimitives(),
+    }
   }
 }

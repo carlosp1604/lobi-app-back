@@ -1,8 +1,9 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 
-export class IntegerNumber extends ValueObject<number> {
+export class IntegerNumber extends ValueObject<number> implements SerializableInterface<number> {
   private __integerNumberBrand: void
 
   public static readonly MAX_SAFE_VALUE = Number.MAX_SAFE_INTEGER
@@ -38,15 +39,15 @@ export class IntegerNumber extends ValueObject<number> {
     return this._value < other.value
   }
 
-  public isEqualTo(other: IntegerNumber): boolean {
-    return this._value === other.value
+  public multiply(other: IntegerNumber): IntegerNumber {
+    return IntegerNumber.fromNumber(this._value * other.value)
   }
 
-  get value(): number {
+  public get value(): number {
     return this._value
   }
 
-  public toString(): string {
-    return this._value.toString()
+  public toPrimitives(): number {
+    return this._value
   }
 }

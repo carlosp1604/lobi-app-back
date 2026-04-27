@@ -1,12 +1,16 @@
-import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
 import { Result, fail, success } from '~/src/modules/Shared/Domain/Result'
-import { MeasurableValueVisitorInterface } from '~/src/modules/Shared/Domain/Visitor/MeasurableValueVisitorInterface'
-import { VisitableMeasurableValueInterface } from '~/src/modules/Shared/Domain/Visitor/VisitableMeasurableValueInterface'
+import { SerializableInterface } from '~/src/modules/Shared/Domain/SerializableInterface'
+import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
+import { Location, LocationPrimitiveProps } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 
 export type RouteProps = {
   points: Array<Location>
+  isPublic: boolean
+}
+
+export type RoutePrimitiveProps = {
+  points: Array<LocationPrimitiveProps>
   isPublic: boolean
 }
 
@@ -15,7 +19,7 @@ export type RouteInputProps = {
   isPublic?: boolean
 }
 
-export class Route extends ValueObject<RouteProps> implements VisitableMeasurableValueInterface {
+export class Route extends ValueObject<RouteProps> implements SerializableInterface<RoutePrimitiveProps> {
   private __routeBrand: void
 
   public static readonly MIN_POINTS = 2
@@ -50,15 +54,17 @@ export class Route extends ValueObject<RouteProps> implements VisitableMeasurabl
       return false
     }
 
-    if (this._value.isPublic !== vo._value.isPublic) {
+    const { points, isPublic } = this._value
+
+    if (isPublic !== vo._value.isPublic) {
       return false
     }
 
-    if (this._value.points.length !== vo._value.points.length) {
+    if (points.length !== vo._value.points.length) {
       return false
     }
 
-    return this._value.points.every((point, index) => point.equals(vo.points[index]))
+    return points.every((point, index) => point.equals(vo.points[index]))
   }
 
   public toString(): string {
@@ -69,15 +75,20 @@ export class Route extends ValueObject<RouteProps> implements VisitableMeasurabl
     return `${this._value.isPublic ? 'Public' : 'Private'} Route: [${total} points] From (${start}) To (${end})`
   }
 
-  public accept<R>(visitor: MeasurableValueVisitorInterface<R>): R {
-    return visitor.visitRoute(this)
-  }
-
   public get points(): Array<Location> {
     return this._value.points
   }
 
   public get isPublic(): boolean {
     return this._value.isPublic
+  }
+
+  public toPrimitives(): RoutePrimitiveProps {
+    const { points, isPublic } = this._value
+
+    return {
+      points: points.map((point) => point.toPrimitives()),
+      isPublic,
+    }
   }
 }
