@@ -1,21 +1,16 @@
-export class SlugMother {
-  static readonly INVALID_FORMAT_CASES = [
-    '',
-    'a',
-    'slug with spaces',
-    'slug--double-dash',
-    '-slug-starts-with-dash',
-    'slug--ends-with-dash-',
-    'slug_with_underscore',
-    'slug-with-special-characters!$',
-    'a'.repeat(129),
-  ]
+import { Slug } from '~/src/modules/Shared/Domain/ValueObject/Slug'
 
-  static randomString(): string {
-    return SlugMother.randomStringWithLength(36)
+export class SlugMother {
+  static valid(): Slug {
+    return Slug.fromString('a-valid-slug')
   }
 
-  static randomStringWithLength(length: number): string {
+  static random(): Slug {
+    return Slug.fromString(SlugMother.randomString())
+  }
+
+  private static randomString(): string {
+    const length = 16
     const characters = 'abcdefghijklmnopqrstuvwxyz0123456789'
     let result = 'a'
 
