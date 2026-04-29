@@ -1,12 +1,16 @@
 import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Duration'
 import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { ActivityTitle } from '~/src/modules/Activity/Domain/ActivityTitle'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
 import { ActivityStatus } from '~/src/modules/Activity/Domain/ActivityStatus'
+import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
+import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/SportRankingSystem'
 import { ActivityDescription } from '~/src/modules/Activity/Domain/ActivityDescription'
 import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ActivityScheduledDate'
 import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ActivityValidatedConfig'
+import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 
 export class Activity {
   private constructor(
@@ -15,7 +19,7 @@ export class Activity {
     public readonly description: ActivityDescription | null,
     public readonly status: ActivityStatus,
     public readonly sportId: Identifier,
-    public readonly levelIds: Array<Identifier>,
+    public readonly levels: Array<SportRankingSystem>,
     public readonly hostId: Identifier,
     public readonly minCapacity: IntegerNumber,
     public readonly maxCapacity: IntegerNumber,
@@ -27,10 +31,12 @@ export class Activity {
     public readonly scheduledAt: ActivityScheduledDate,
     public readonly createdAt: Date,
     public readonly updatedAt: Date,
+    private _pendingDomainEvents: Array<DomainEvent> = [],
   ) {}
 
   public static create(
-    id: Identifier,
+    activityId: Identifier,
+    domainEventId: Identifier,
     title: ActivityTitle,
     description: ActivityDescription | null,
     hostId: Identifier,
@@ -47,13 +53,26 @@ export class Activity {
     const status = ActivityStatus.open()
     const currentParticipants = IntegerNumber.fromNumber(1)
 
+    const domainEvent = DomainEvent.create(
+      domainEventId,
+      DomainEventName.activityCreated(),
+      DomainEventAggregateType.activity(),
+      activityId,
+      {
+        activityId: activityId.value,
+        scheduledAt: scheduledAt.toString(),
+      },
+      {},
+      now,
+    )
+
     return new Activity(
-      id,
+      activityId,
       title,
       description,
       status,
       validatedConfig.sportId,
-      validatedConfig.getLevelIds(),
+      validatedConfig.getLevels(),
       hostId,
       capacities.min,
       capacities.max,
@@ -65,6 +84,7 @@ export class Activity {
       scheduledAt,
       now,
       now,
+      [domainEvent],
     )
   }
 
@@ -74,7 +94,7 @@ export class Activity {
     description: ActivityDescription | null,
     status: ActivityStatus,
     sportId: Identifier,
-    levelIds: Array<Identifier>,
+    levels: Array<SportRankingSystem>,
     hostId: Identifier,
     minCapacity: IntegerNumber,
     maxCapacity: IntegerNumber,
@@ -93,7 +113,7 @@ export class Activity {
       description,
       status,
       sportId,
-      levelIds,
+      levels,
       hostId,
       minCapacity,
       maxCapacity,
@@ -106,5 +126,11 @@ export class Activity {
       createdAt,
       updatedAt,
     )
+  }
+
+  public pullDomainEvents(): Array<DomainEvent> {
+    const events = [...this._pendingDomainEvents]
+    this._pendingDomainEvents = []
+    return events
   }
 }

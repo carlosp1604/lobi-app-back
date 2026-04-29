@@ -1,13 +1,12 @@
+import { SportRegistry } from '~/src/modules/Activity/Application/Sport/SportRegistry'
 import { RawActivityConfig } from '~/src/modules/Activity/Infrastructure/Entities/activity.entity'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
-import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ActivityValidatedConfig'
 import { AvailableCapability, Sport } from '~/src/modules/Activity/Domain/Sport/Sport'
-import { SportRegistry, ValidatedCapabilities, ValidatedSpecs } from '~/src/modules/Activity/Application/Sport/SportRegistry'
+import { ActivityValidatedConfig, ValidatedCapabilities, ValidatedSpecs } from '~/src/modules/Activity/Domain/ActivityValidatedConfig'
 
 export class ActivityValidatedConfigTranslator {
   public static toDomain(rawConfig: RawActivityConfig, sport: Sport): Result<ActivityValidatedConfig, Error> {
     const capabilities: ValidatedCapabilities = {}
-    const specs: ValidatedSpecs = {}
 
     for (const name of sport.capabilities) {
       const rawData = rawConfig.capabilities[name]
@@ -30,16 +29,20 @@ export class ActivityValidatedConfigTranslator {
       }
     }
 
-    if (rawConfig.specs?.participants) {
-      const participantsSpec = SportRegistry.getParticipantsSpec(sport.specs.participants)
+    if (!rawConfig.specs.participants) {
+      throw Error('Missing required spec: participants')
+    }
 
-      const result = participantsSpec.validate(rawConfig.specs.participants)
+    const participantsSpec = SportRegistry.getParticipantsSpec()
 
-      if (!result.success) {
-        return fail(Error(`Participants spec validation failed: ${result.error.message}`))
-      }
+    const result = participantsSpec.validate(rawConfig.specs.participants, sport.specs.participants)
 
-      specs.participants = result.value
+    if (!result.success) {
+      return fail(Error(`Participants spec validation failed: ${result.error.message}`))
+    }
+
+    const specs: ValidatedSpecs = {
+      participants: result.value,
     }
 
     return success(ActivityValidatedConfig.fromProps(sport, capabilities, specs))

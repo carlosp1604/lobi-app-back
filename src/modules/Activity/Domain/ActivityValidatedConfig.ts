@@ -1,18 +1,36 @@
+import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/RPE'
+import { Pace } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Pace'
+import { Route } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Route'
+import { Speed } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Speed'
+import { Altitude } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Altitude'
+import { Distance } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Distance'
 import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Duration'
 import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
+import { LocationRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/LocationRange'
 import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/MagnitudeRange'
+import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/SportRankingSystem'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
+import { ParticipationStrategy } from '~/src/modules/Activity/Domain/Sport/ParticipationStrategy'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { AvailableCapability, Sport } from '~/src/modules/Activity/Domain/Sport/Sport'
-import { ValidatedCapabilities, ValidatedSpecs } from '~/src/modules/Activity/Application/Sport/SportRegistry'
 
-export interface RawActivityConfig {
-  capabilities: Record<string, unknown>
-  specs: Record<string, unknown>
-}
+export type ValidatedCapabilities = Partial<{
+  altitude: MagnitudeRange<Altitude>
+  distance: MagnitudeRange<Distance>
+  duration: MagnitudeRange<Duration>
+  location: Location
+  location_range: LocationRange
+  pace: MagnitudeRange<Pace>
+  ranking: Array<SportRankingSystem>
+  route: Route
+  rpe: MagnitudeRange<RPE>
+  speed: MagnitudeRange<Speed>
+}>
+
+export type ValidatedSpecs = { participants: ParticipationStrategy }
 
 export interface ActivityConfig {
   capabilities: ValidatedCapabilities
@@ -24,6 +42,7 @@ export interface ActivityValidatedConfigProps {
   config: ActivityConfig
 }
 
+// TODO: Review - Move to Domain Service or Sport Factory?
 export class ActivityValidatedConfig extends ValueObject<ActivityValidatedConfigProps> {
   private __activityValidatedConfigBrand: void
 
@@ -85,8 +104,8 @@ export class ActivityValidatedConfig extends ValueObject<ActivityValidatedConfig
 
   public getCapacities(): { min: IntegerNumber; max: IntegerNumber } {
     return {
-      min: this._value.config.specs.participants!.minCapacity,
-      max: this._value.config.specs.participants!.maxCapacity,
+      min: this._value.config.specs.participants.minCapacity,
+      max: this._value.config.specs.participants.maxCapacity,
     }
   }
 
@@ -102,14 +121,14 @@ export class ActivityValidatedConfig extends ValueObject<ActivityValidatedConfig
     return this._value.config.capabilities.location ?? null
   }
 
-  public getLevelIds(): Array<Identifier> {
+  public getLevels(): Array<SportRankingSystem> {
     const ranking = this._value.config.capabilities.ranking
 
     if (!ranking) {
       return []
     }
 
-    return ranking.map((ranking) => ranking.id)
+    return ranking
   }
 
   public equals(vo?: ActivityValidatedConfig | null): boolean {

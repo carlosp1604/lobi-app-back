@@ -1,8 +1,11 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
+import { ParticipationStrategy } from '~/src/modules/Activity/Domain/Sport/ParticipationStrategy'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { SportParticipantsDefinition } from '~/src/modules/Activity/Domain/Sport/SportParticipantsDefinition'
+import { TeamParticipationConfigurationApplication } from '~/src/modules/Activity/Application/Translator/TeamParticipationConfigurationApplicationDtoTranslator'
 import { TeamParticipation, TeamParticipationPrimitiveProps } from '~/src/modules/Activity/Domain/Sport/TeamParticipation'
+import { IndividualParticipationConfigurationApplicationDtoTranslator } from '~/src/modules/Activity/Application/Translator/IndividualParticipationConfigurationApplicationDtoTranslator'
 import {
   IndividualParticipation,
   IndividualParticipationPrimitiveProps,
@@ -12,10 +15,8 @@ import {
   SportBaseSpec,
   SportSpecRawDataValidationError,
 } from '~/src/modules/Activity/Application/Sport/Specs/SportBaseSpec'
-import { IndividualParticipationConfigurationApplicationDtoTranslator } from '~/src/modules/Activity/Application/Translator/IndividualParticipationConfigurationApplicationDtoTranslator'
-import { TeamParticipationConfigurationApplication } from '~/src/modules/Activity/Application/Translator/TeamParticipationConfigurationApplicationDtoTranslator'
 
-export type ParticipantsPayload = {
+export type ParticipantsRawData = {
   minPlayersToPlay?: number
   maxPlayers?: number
   teams?: {
@@ -25,17 +26,15 @@ export type ParticipantsPayload = {
   }
 }
 
-export type ParticipationStrategy = IndividualParticipation | TeamParticipation
-
-export class ParticipantsSpec extends SportBaseSpec<ParticipationStrategy, ParticipantsPayload> {
+export class ParticipantsSpec extends SportBaseSpec<ParticipationStrategy, ParticipantsRawData> {
   public readonly specName = 'participants'
 
-  constructor(private readonly definition: SportParticipantsDefinition) {
+  constructor() {
     super()
   }
 
-  protected validateData(data: unknown): Result<ParticipantsPayload, SportSpecRawDataValidationError> {
-    const typeCheck = TypeValidator.validate<ParticipantsPayload>(data || {}, {
+  protected validateData(data: unknown): Result<ParticipantsRawData, SportSpecRawDataValidationError> {
+    const typeCheck = TypeValidator.validate<ParticipantsRawData>(data || {}, {
       minPlayersToPlay: { type: 'integer', optional: true },
       maxPlayers: { type: 'integer', optional: true },
       teams: {
@@ -56,8 +55,11 @@ export class ParticipantsSpec extends SportBaseSpec<ParticipationStrategy, Parti
     return success(typeCheck.value)
   }
 
-  protected performValidation(payload: ParticipantsPayload): Result<ParticipationStrategy, SportDomainException> {
-    const { teamsModule } = this.definition
+  protected performValidation(
+    payload: ParticipantsRawData,
+    definition: SportParticipantsDefinition,
+  ): Result<ParticipationStrategy, SportDomainException> {
+    const { teamsModule } = definition
 
     if (payload.teams || teamsModule) {
       const teamParticipationResult = TeamParticipation.safeCreate({
@@ -77,7 +79,7 @@ export class ParticipantsSpec extends SportBaseSpec<ParticipationStrategy, Parti
     }
 
     const individualParticipationResult = IndividualParticipation.safeCreate({
-      minPlayers: payload.minPlayersToPlay ?? this.definition.defaultMinPlayers,
+      minPlayers: payload.minPlayersToPlay ?? definition.defaultMinPlayers,
       maxPlayers: payload.maxPlayers,
     })
 
@@ -88,20 +90,20 @@ export class ParticipantsSpec extends SportBaseSpec<ParticipationStrategy, Parti
     return success(individualParticipationResult.value)
   }
 
-  public getSchema(): SpecSchema {
+  public getSchema(definition: SportParticipantsDefinition): SpecSchema {
     return {
       name: this.specName,
       definition: {
         type: 'participants_config',
-        isTeamSport: !!this.definition.teamsModule,
+        isTeamSport: !!definition.teamsModule,
         defaults: {
-          minPlayers: this.definition.defaultMinPlayers,
+          minPlayers: definition.defaultMinPlayers,
           teams: {
-            required: this.definition.teamsModule,
-            ...(this.definition.teamsModule
+            required: definition.teamsModule,
+            ...(definition.teamsModule
               ? {
-                  minTeams: this.definition.teamsModule.defaultTeams,
-                  playersPerSide: this.definition.teamsModule.defaultPlayersPerTeam,
+                  minTeams: definition.teamsModule.defaultTeams,
+                  playersPerSide: definition.teamsModule.defaultPlayersPerTeam,
                 }
               : {}),
           },

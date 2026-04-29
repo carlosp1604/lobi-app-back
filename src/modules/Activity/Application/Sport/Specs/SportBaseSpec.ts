@@ -16,15 +16,15 @@ export abstract class SportBaseSpec<T, P> {
 
   protected abstract validateData(data: unknown): Result<P, SportSpecRawDataValidationError>
 
-  protected abstract performValidation(data: P): Result<T, SportDomainException>
+  protected abstract performValidation(data: P, definition: unknown): Result<T, SportDomainException>
 
-  public abstract getSchema(): SpecSchema
+  public abstract getSchema(definition: unknown): SpecSchema
 
   public abstract toPrimitives(data: T): unknown
 
   public abstract translate(data: T): unknown
 
-  public validate(data: unknown): Result<T, SportDomainException> {
+  public validate(data: unknown, definition: unknown): Result<T, SportDomainException> {
     const validateDataResult = this.validateData(data)
 
     if (!validateDataResult.success) {
@@ -33,6 +33,6 @@ export abstract class SportBaseSpec<T, P> {
 
     const validatedData = validateDataResult.value
 
-    return this.performValidation(validatedData)
+    return this.performValidation(validatedData, definition)
   }
 }

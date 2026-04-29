@@ -5,6 +5,7 @@ export enum ValidDomainEventAggregateTypes {
   USER = 'user',
   VERIFICATION_TOKEN = 'verificationToken',
   USER_SESSION = 'userSession',
+  ACTIVITY = 'activity',
 }
 
 export class DomainEventAggregateType extends ValueObject<ValidDomainEventAggregateTypes> {
@@ -32,6 +33,10 @@ export class DomainEventAggregateType extends ValueObject<ValidDomainEventAggreg
 
   static userSession(): DomainEventAggregateType {
     return new DomainEventAggregateType(ValidDomainEventAggregateTypes.USER_SESSION)
+  }
+
+  static activity(): DomainEventAggregateType {
+    return new DomainEventAggregateType(ValidDomainEventAggregateTypes.ACTIVITY)
   }
 
   private isValidDomainEventAggregateType(value: string): boolean {
