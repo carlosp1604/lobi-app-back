@@ -1,5 +1,6 @@
 import { User } from '~/src/modules/User/Domain/User'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
 
@@ -27,6 +28,14 @@ export interface UserRepositoryInterface {
    * @returns The locked User entity if found, otherwise null
    */
   findByIdWithLock(id: string, context: TxContext): Promise<User | null>
+
+  /**
+   * Finds a user by ID
+   * @param id User ID
+   * @param context The transactional context
+   * @returns The User entity if found, otherwise null
+   */
+  findById(id: Identifier, context: TxContext): Promise<User | null>
 
   /**
    * Checks if a user exists by email
