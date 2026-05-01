@@ -9,7 +9,7 @@ export class SlugMother {
     return Slug.fromString(SlugMother.randomString())
   }
 
-  private static randomString(): string {
+  public static randomString(): string {
     const length = 16
     const characters = 'abcdefghijklmnopqrstuvwxyz0123456789'
     let result = 'a'
