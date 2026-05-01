@@ -68,8 +68,8 @@ export class LocationRangeCapability extends SportBaseCapability<LocationRange, 
       name: this.capabilityName,
       data: {
         type: 'range',
-        lat: { min: Location.MIN_LAT, max: Location.MAX_LAT },
-        lng: { min: Location.MIN_LNG, max: Location.MAX_LNG },
+        lat: { min: Location.MIN_LAT.numericValue, max: Location.MAX_LAT.numericValue },
+        lng: { min: Location.MIN_LNG.numericValue, max: Location.MAX_LNG.numericValue },
         precision: BoundedNumber.DEFAULT_PRECISION,
       },
     }

@@ -49,12 +49,12 @@ export class LocationCapability extends SportBaseCapability<Location, LocationCa
       name: this.capabilityName,
       data: {
         lat: {
-          min: Location.MIN_LNG,
-          max: Location.MAX_LNG,
+          min: Location.MIN_LNG.numericValue,
+          max: Location.MAX_LNG.numericValue,
         },
         lng: {
-          min: Location.MIN_LNG,
-          max: Location.MAX_LNG,
+          min: Location.MIN_LNG.numericValue,
+          max: Location.MAX_LNG.numericValue,
         },
         precision: BoundedNumber.DEFAULT_PRECISION,
       },
