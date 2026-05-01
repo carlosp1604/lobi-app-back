@@ -8,3 +8,4 @@ export const SPORT_REPOSITORY = 'SPORT_REPOSITORY'
 
 /** Use-cases **/
 export const CREATE_ACTIVITY = 'CREATE_ACTIVITY'
+export const GET_SPORTS = 'GET_SPORTS'

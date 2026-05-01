@@ -74,12 +74,12 @@ export class RouteCapability extends SportBaseCapability<Route, RouteCapabilityR
         min: Route.MIN_POINTS,
         max: Route.MAX_POINTS,
         lat: {
-          min: Location.MIN_LAT,
-          max: Location.MAX_LAT,
+          min: Location.MIN_LAT.numericValue,
+          max: Location.MAX_LAT.numericValue,
         },
         lng: {
-          min: Location.MIN_LNG,
-          max: Location.MAX_LNG,
+          min: Location.MIN_LNG.numericValue,
+          max: Location.MAX_LNG.numericValue,
         },
         precision: BoundedNumber.DEFAULT_PRECISION,
       },

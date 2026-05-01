@@ -1,4 +1,5 @@
 /* eslint @typescript-eslint/unbound-method: 0 */
+import { GetSports } from '~/src/modules/Activity/Application/GetSports/GetSports'
 import { CreateActivity } from '~/src/modules/Activity/Application/CreateActivity/CreateActivity'
 import { mock, mockReset } from 'jest-mock-extended'
 import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
@@ -7,6 +8,7 @@ import { ActivityController } from '~/src/modules/Activity/Infrastructure/activi
 import { ActivityTitleMother } from '~/src/test/mothers/Domain/Activity/ActivityTitleMother'
 import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { CreateActivityBodyDto } from '~/src/modules/Activity/Infrastructure/Dtos/create-activity-body.dto'
+import { GetSportsApplicationResponseDto } from '~/src/modules/Activity/Application/GetSports/GetSportsApplicationResponseDto'
 import { CreateActivityApplicationResponseDto } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationResponseDto'
 import { UnauthorizedException, UnprocessableEntityException, InternalServerErrorException } from '@nestjs/common'
 import {
@@ -17,19 +19,22 @@ import {
   ACTIVITY_CREATE_ACTIVITY_INVALID_INPUT,
   ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND,
 } from '~/src/modules/Activity/Infrastructure/ApiCodes'
+import { SportApplicationDto } from '~/src/modules/Activity/Application/Dto/SportApplicationDto'
 
 describe('ActivityController', () => {
   const mockedCreateActivityUseCase = mock<CreateActivity>()
+  const mockedGetSportsUseCase = mock<GetSports>()
 
   const buildController = () => {
-    return new ActivityController(mockedCreateActivityUseCase)
+    return new ActivityController(mockedCreateActivityUseCase, mockedGetSportsUseCase)
   }
 
   beforeEach(() => {
     mockReset(mockedCreateActivityUseCase)
+    mockReset(mockedGetSportsUseCase)
   })
 
-  describe('createActivity', () => {
+  describe('create', () => {
     const validUserId = IdentifierMother.validString()
     const mockAccessToken = { sub: validUserId } as JwtPayload
 
@@ -174,6 +179,46 @@ describe('ActivityController', () => {
         })
 
         await expect(controller.create(mockAccessToken, mockBody)).rejects.toThrow(unexpectedError)
+      })
+    })
+  })
+
+  describe('getSports', () => {
+    const expectedUseCaseResponse: GetSportsApplicationResponseDto = {
+      sports: [
+        {
+          id: IdentifierMother.validString(),
+          slug: 'football',
+          imageUrl: null,
+          config: { capabilities: {}, specs: {} },
+        } as unknown as SportApplicationDto,
+      ],
+      count: 1,
+    }
+
+    describe('happy path', () => {
+      beforeEach(() => {
+        mockedGetSportsUseCase.execute.mockResolvedValue(expectedUseCaseResponse)
+      })
+
+      it('should call use-case correctly and return data', async () => {
+        const controller = buildController()
+
+        const result = await controller.getSports()
+
+        expect(mockedGetSportsUseCase.execute).toHaveBeenCalledTimes(1)
+        expect(result).toEqual(expectedUseCaseResponse)
+      })
+    })
+
+    describe('when there are errors', () => {
+      it('should throw error when use-case fails with an unexpected unhandled exception', async () => {
+        const controller = buildController()
+        const unexpectedError = new Error('Database connection lost')
+
+        mockedGetSportsUseCase.execute.mockRejectedValue(unexpectedError)
+
+        await expect(controller.getSports()).rejects.toThrow(unexpectedError)
       })
     })
   })
