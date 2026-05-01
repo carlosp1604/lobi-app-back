@@ -552,6 +552,7 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
     },
   ],
   exports: [
+    USER_REPOSITORY,
     LOGIN_USER,
     REFRESH_SESSION,
     GENERATE_VERIFICATION_TOKEN,
@@ -562,6 +563,7 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
     GET_ACTIVE_SESSIONS,
     CLIENT_METADATA_SERVICE,
     REQUEST_METADATA_EXTRACTOR,
+    CLOSE_USER_SESSION,
     TypeOrmModule,
   ],
 })
