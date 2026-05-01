@@ -1,3 +1,17 @@
+import { GetSports } from '~/src/modules/Activity/Application/GetSports/GetSports'
+import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access-token.decorator'
+import { CreateActivity } from '~/src/modules/Activity/Application/CreateActivity/CreateActivity'
+import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
+import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
+import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
+import { CreateActivityBodyDto } from '~/src/modules/Activity/Infrastructure/Dtos/create-activity-body.dto'
+import { CREATE_ACTIVITY, GET_SPORTS } from '~/src/modules/Activity/Infrastructure/activity.tokens'
+import { CreateActivityApplicationError } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationError'
+import { CreateActivityApplicationRequestDto } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationRequestDto'
+import {
+  ACTIVITY_CREATE_ACTIVITY_INVALID_INPUT,
+  ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND,
+} from '~/src/modules/Activity/Infrastructure/ApiCodes'
 import {
   Body,
   Controller,
@@ -7,24 +21,16 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
   InternalServerErrorException,
+  Get,
+  Header,
 } from '@nestjs/common'
-import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
-import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access-token.decorator'
-import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
-import { CREATE_ACTIVITY } from '~/src/modules/Activity/Infrastructure/activity.tokens'
-import { CreateActivity } from '~/src/modules/Activity/Application/CreateActivity/CreateActivity'
-import { CreateActivityBodyDto } from '~/src/modules/Activity/Infrastructure/Dtos/create-activity-body.dto'
-import { CreateActivityApplicationRequestDto } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationRequestDto'
-import { CreateActivityApplicationError } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationError'
-import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
-import {
-  ACTIVITY_CREATE_ACTIVITY_INVALID_INPUT,
-  ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND,
-} from '~/src/modules/Activity/Infrastructure/ApiCodes'
 
 @Controller('activity')
 export class ActivityController {
-  constructor(@Inject(CREATE_ACTIVITY) private readonly createActivity: CreateActivity) {}
+  constructor(
+    @Inject(CREATE_ACTIVITY) private readonly createActivityUseCase: CreateActivity,
+    @Inject(GET_SPORTS) private readonly getSportsUseCase: GetSports,
+  ) {}
 
   @Post()
   @UseGuards(AccessTokenGuard)
@@ -34,7 +40,7 @@ export class ActivityController {
       userId: accessToken.sub,
     }
 
-    const result = await this.createActivity.execute(requestDto)
+    const result = await this.createActivityUseCase.execute(requestDto)
 
     if (result.success) {
       return result.value
@@ -66,5 +72,11 @@ export class ActivityController {
       default:
         throw new InternalServerErrorException(result.error)
     }
+  }
+
+  @Get('/sports')
+  @Header('Cache-Control', 'public, max-age=86400')
+  async getSports() {
+    return this.getSportsUseCase.execute()
   }
 }
