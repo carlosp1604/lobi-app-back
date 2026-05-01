@@ -229,6 +229,13 @@ export class SharedDomainException extends DomainException {
     })
   }
 
+  public static redundantAverageValue(value: string, average: string) {
+    return new SharedDomainException('Average is not needed when magnitude represents a single value', this.invalidMagnitudeRangeId, {
+      value,
+      average,
+    })
+  }
+
   public static cannotDivideByZero() {
     return new SharedDomainException('Cannot divide by zero', this.cannotDivideMagnitudeByZeroId)
   }

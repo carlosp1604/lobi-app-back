@@ -52,6 +52,10 @@ export class MagnitudeRange<T extends Rangeable<T>>
       return fail(SharedDomainException.invalidMagnitudeRange(start.unit, average.unit))
     }
 
+    if (start.equals(end) && average) {
+      return fail(SharedDomainException.redundantAverageValue(start.accept(formatVisitor), average.accept(formatVisitor)))
+    }
+
     if (start.isGreaterThan(end)) {
       return fail(SharedDomainException.invalidMagnitudeRange(start.accept(formatVisitor), end.accept(formatVisitor)))
     }
@@ -67,6 +71,19 @@ export class MagnitudeRange<T extends Rangeable<T>>
     }
 
     return success(new MagnitudeRange(props))
+  }
+
+  public static fromProps<T extends Rangeable<T>>(
+    props: MagnitudeRangeInputProps<T>,
+    formatVisitor: MagnitudeValueVisitorInterface<string>,
+  ): MagnitudeRange<T> {
+    const safeCreateResult = this.safeCreate(props, formatVisitor)
+
+    if (!safeCreateResult.success) {
+      throw safeCreateResult.error
+    }
+
+    return safeCreateResult.value
   }
 
   public toString(): string {

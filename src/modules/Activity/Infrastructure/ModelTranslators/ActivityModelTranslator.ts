@@ -19,13 +19,16 @@ export class ActivityModelTranslator {
       throw new Error(`Corrupted data detected while reconstituting activity with ID ${raw.id}. Reason: ${activityConfigResult.error}`)
     }
 
+    const activityConfig = activityConfigResult.value
+    const levels = activityConfig.getLevels()
+
     return Activity.reconstitute(
       Identifier.fromString(raw.id),
       ActivityTitle.fromString(raw.title),
       raw.description ? ActivityDescription.fromString(raw.description) : null,
       ActivityStatus.fromString(raw.status),
       Identifier.fromString(raw.sport_id),
-      raw.level_ids.map((levelId) => Identifier.fromString(levelId)),
+      levels,
       Identifier.fromString(raw.host_id),
       IntegerNumber.fromNumber(raw.min_capacity),
       IntegerNumber.fromNumber(raw.max_capacity),
@@ -55,7 +58,7 @@ export class ActivityModelTranslator {
       description: domain.description?.toPrimitives() ?? null,
       status: domain.status.toPrimitives(),
       sport_id: domain.sportId.toPrimitives(),
-      level_ids: domain.levelIds.map((levelIds) => levelIds.toPrimitives()),
+      level_ids: domain.levels.map((levels) => levels.id.toPrimitives()),
       host_id: domain.hostId.toPrimitives(),
       min_capacity: domain.minCapacity.toPrimitives(),
       max_capacity: domain.maxCapacity.toPrimitives(),

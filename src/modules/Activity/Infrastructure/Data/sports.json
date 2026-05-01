@@ -4,11 +4,11 @@
     "slug": "football",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 22,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 11 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 11 }
         }
       }
     }
@@ -18,11 +18,11 @@
     "slug": "football-7",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 14,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 7 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 7 }
         }
       }
     }
@@ -32,11 +32,11 @@
     "slug": "futsal",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 10,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 5 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 5 }
         }
       }
     }
@@ -46,11 +46,11 @@
     "slug": "beach-football",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 10,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 5 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 5 }
         }
       }
     }
@@ -60,11 +60,11 @@
     "slug": "basketball",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 10,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 5 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 5 }
         }
       }
     }
@@ -74,11 +74,11 @@
     "slug": "basketball-3",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 6,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 3 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 3 }
         }
       }
     }
@@ -88,11 +88,11 @@
     "slug": "basketball-1",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -102,11 +102,11 @@
     "slug": "volleyball",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 12,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 6 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 6 }
         }
       }
     }
@@ -116,11 +116,11 @@
     "slug": "beach-volley",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 4,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 2 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 2 }
         }
       }
     }
@@ -130,11 +130,11 @@
     "slug": "padel",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 4,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 2 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 2 }
         }
       }
     }
@@ -144,11 +144,11 @@
     "slug": "tennis",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -158,11 +158,11 @@
     "slug": "tennis-doubles",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 4,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 2 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 2 }
         }
       }
     }
@@ -172,11 +172,11 @@
     "slug": "pickleball",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -186,11 +186,11 @@
     "slug": "badminton",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -200,11 +200,11 @@
     "slug": "ping-pong",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -247,11 +247,11 @@
     "slug": "chess",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking"],
+      "capabilities": ["location", "ranking", "duration"],
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -261,7 +261,7 @@
     "slug": "yoga",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking", "rpe"],
+      "capabilities": ["location", "ranking", "duration", "rpe"],
       "specs": {
         "participants": { "defaultMinPlayers": 1 }
       }
@@ -272,7 +272,7 @@
     "slug": "functional-training",
     "image_url": null,
     "config": {
-      "capabilities": ["location", "ranking", "rpe"],
+      "capabilities": ["location", "ranking", "duration", "rpe"],
       "specs": {
         "participants": { "defaultMinPlayers": 1 }
       }

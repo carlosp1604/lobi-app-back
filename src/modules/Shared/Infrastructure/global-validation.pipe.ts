@@ -36,7 +36,7 @@ export const validationPipe = new ValidationPipe({
   forbidNonWhitelisted: true,
   transform: true,
   transformOptions: {
-    enableImplicitConversion: true,
+    enableImplicitConversion: false,
   },
   validationError: {
     target: false,

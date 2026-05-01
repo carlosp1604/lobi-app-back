@@ -12,6 +12,7 @@ import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentr
 import { RateLimitModule } from '~/src/modules/Shared/Infrastructure/rate-limit.module'
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
+import { ActivityModule } from '~/src/modules/Activity/Infrastructure/activity.module'
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.modul
     SharedModule,
     ContextModule,
     AuthModule,
+    ActivityModule,
   ],
   controllers: [AppController],
   providers: [

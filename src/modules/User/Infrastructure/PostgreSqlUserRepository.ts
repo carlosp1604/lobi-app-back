@@ -1,11 +1,12 @@
 import { User } from '~/src/modules/User/Domain/User'
+import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserEntity } from '~/src/modules/User/Infrastructure/Entities/user.entity'
+import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
+import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 import { UserModelTranslator } from '~/src/modules/User/Infrastructure/ModelTranslators/UserModelTranslator'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
-import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { UserUsername } from '~/src/modules/User/Domain/ValueObject/UserUsername'
-import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddress'
 
 export class PostgresqlUserRepository implements UserRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
@@ -66,6 +67,26 @@ export class PostgresqlUserRepository implements UserRepositoryInterface {
       .where('user.id = :id', { id })
       .setLock('pessimistic_write')
       .getOne()
+
+    if (!userEntity) {
+      return null
+    }
+
+    return UserModelTranslator.toDomain(userEntity)
+  }
+
+  /**
+   * Finds a user by ID
+   * @param id User ID
+   * @param context The transactional context
+   * @returns The User entity if found, otherwise null
+   */
+  public async findById(id: Identifier, context: TxContext): Promise<User | null> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const userRepository = entityManager.getRepository(UserEntity)
+
+    const userEntity = await userRepository.findOneBy({ id: id.value })
 
     if (!userEntity) {
       return null
