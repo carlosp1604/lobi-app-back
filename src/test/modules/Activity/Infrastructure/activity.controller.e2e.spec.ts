@@ -32,6 +32,7 @@ import { ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND } from '~/src/modules/Activity
 import { CreateActivityApplicationError } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationError'
 import { makeRawSport } from '~/src/test/modules/Activity/Infrastructure/RawSportTestMaker'
 import { SportDatabaseHelper } from '~/src/test/modules/Activity/Infrastructure/helpers/SportDatabaseHelper'
+import { SlugMother } from '~/src/test/mothers/Domain/Shared/SlugMother'
 
 describe('ActivityController', () => {
   const now = new Date()
@@ -89,7 +90,7 @@ describe('ActivityController', () => {
     await app.close()
   })
 
-  describe('createActivity', () => {
+  describe('create', () => {
     const userId = IdentifierMother.validString()
     const sessionId = IdentifierMother.validString()
     const sportId = IdentifierMother.validString()
@@ -295,6 +296,40 @@ describe('ActivityController', () => {
               timestamp: expectIsoDate,
             } as Record<string, unknown>)
           })
+      })
+    })
+  })
+
+  describe('getSports', () => {
+    let sportDatabaseHelper: SportDatabaseHelper
+
+    beforeEach(() => {
+      sportDatabaseHelper = new SportDatabaseHelper(dataSource.manager)
+    })
+
+    describe('happy path', () => {
+      it('should return 200 and a list containing the registered sports', async () => {
+        const sport1Id = IdentifierMother.validString()
+        const sport2Id = IdentifierMother.validString()
+
+        const rawSport1 = makeRawSport({ id: sport1Id, slug: SlugMother.randomString() })
+        const rawSport2 = makeRawSport({ id: sport2Id, slug: SlugMother.randomString() })
+
+        await sportDatabaseHelper.save(rawSport1)
+        await sportDatabaseHelper.save(rawSport2)
+
+        const response = await request(app.getHttpServer()).get('/activity/sports').expect(200)
+
+        expect(response.body).toEqual(
+          expect.objectContaining({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            sports: expect.arrayContaining([expect.objectContaining({ id: sport1Id }), expect.objectContaining({ id: sport2Id })]),
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            count: expect.any(Number),
+          }),
+        )
+
+        expect(response.body.count).toBeGreaterThanOrEqual(2)
       })
     })
   })
