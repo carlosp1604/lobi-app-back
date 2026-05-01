@@ -8,7 +8,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 22,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 11 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 11 }
         }
       }
     }
@@ -22,7 +22,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 14,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 7 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 7 }
         }
       }
     }
@@ -36,7 +36,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 10,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 5 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 5 }
         }
       }
     }
@@ -50,7 +50,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 10,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 5 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 5 }
         }
       }
     }
@@ -64,7 +64,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 10,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 5 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 5 }
         }
       }
     }
@@ -78,7 +78,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 6,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 3 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 3 }
         }
       }
     }
@@ -92,7 +92,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -106,7 +106,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 12,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 6 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 6 }
         }
       }
     }
@@ -120,7 +120,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 4,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 2 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 2 }
         }
       }
     }
@@ -134,7 +134,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 4,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 2 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 2 }
         }
       }
     }
@@ -148,7 +148,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -162,7 +162,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 4,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 2 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 2 }
         }
       }
     }
@@ -176,7 +176,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -190,7 +190,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -204,7 +204,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
@@ -251,7 +251,7 @@
       "specs": {
         "participants": {
           "defaultMinPlayers": 2,
-          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerSide": 1 }
+          "teamsModule": { "defaultTeams": 2, "defaultPlayersPerTeam": 1 }
         }
       }
     }
