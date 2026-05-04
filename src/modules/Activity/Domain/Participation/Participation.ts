@@ -1,6 +1,6 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { ParticipationDomainException } from '~/src/modules/Activity/Domain/ParticipationDomainException'
+import { ParticipationDomainException } from '~/src/modules/Activity/Domain/Participation/ParticipationDomainException'
 
 export class Participation {
   private constructor(

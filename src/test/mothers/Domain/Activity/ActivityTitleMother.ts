@@ -1,4 +1,4 @@
-import { ActivityTitle } from '~/src/modules/Activity/Domain/ActivityTitle'
+import { ActivityTitle } from '~/src/modules/Activity/Domain/ValueObject/ActivityTitle'
 
 export class ActivityTitleMother {
   private static VALID_STRING = 'A valid activity title ⚽'

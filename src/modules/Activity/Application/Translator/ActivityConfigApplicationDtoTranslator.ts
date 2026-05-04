@@ -1,6 +1,6 @@
 import { SportRegistry } from '~/src/modules/Activity/Application/Sport/SportRegistry'
 import { AvailableCapability } from '~/src/modules/Activity/Domain/Sport/Sport'
-import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ActivityValidatedConfig'
+import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ValueObject/ActivityValidatedConfig'
 import { ActivityConfigApplicationDto } from '~/src/modules/Activity/Application/Dto/ActivityConfigApplicationDto'
 import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
 

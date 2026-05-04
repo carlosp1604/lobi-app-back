@@ -1,15 +1,11 @@
-import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
+import { ValidUserStatuses } from '~/src/modules/Shared/Domain/ValidUserStatuses'
+import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
 
-export enum ValidUserStatus {
-  ACTIVE = 'active',
-  DEACTIVATED = 'deactivated',
-}
-
-export class UserStatus extends ValueObject<ValidUserStatus> {
+export class UserStatus extends ValueObject<ValidUserStatuses> {
   private __userStatusBrand: void
 
-  private constructor(value: ValidUserStatus) {
+  private constructor(value: ValidUserStatuses) {
     super(value)
 
     if (!this.isValidUserStatus(value)) {
@@ -18,18 +14,18 @@ export class UserStatus extends ValueObject<ValidUserStatus> {
   }
 
   static active(): UserStatus {
-    return new UserStatus(ValidUserStatus.ACTIVE)
+    return new UserStatus(ValidUserStatuses.ACTIVE)
   }
 
   static deactivated(): UserStatus {
-    return new UserStatus(ValidUserStatus.DEACTIVATED)
+    return new UserStatus(ValidUserStatuses.DEACTIVATED)
   }
 
   static fromString(value: string): UserStatus {
-    return new UserStatus(value as ValidUserStatus)
+    return new UserStatus(value as ValidUserStatuses)
   }
 
   private isValidUserStatus(value: string): boolean {
-    return Object.values(ValidUserStatus).includes(value as ValidUserStatus)
+    return Object.values(ValidUserStatuses).includes(value as ValidUserStatuses)
   }
 }

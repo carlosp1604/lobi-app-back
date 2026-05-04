@@ -1,6 +1,6 @@
 import { EntitySchema } from 'typeorm'
-import { UserRawModel } from '~/src/modules/User/Infrastructure/Entities/user.entity'
 import { SportRawModel } from '~/src/modules/Activity/Infrastructure/Entities/sport.entity'
+import { ParticipationRawModel } from '~/src/modules/Activity/Infrastructure/Entities/participation.entity'
 
 export interface RawActivityConfig {
   capabilities: Record<string, unknown>
@@ -27,7 +27,8 @@ export interface ActivityRawModel {
   updated_at: Date
 }
 
-export type ActivityRawModelWithRelations = ActivityRawModel & Partial<{ host: UserRawModel; sport: SportRawModel }>
+export type ActivityRawModelWithRelations = ActivityRawModel &
+  Partial<{ sport: SportRawModel; participations: Array<ParticipationRawModel> }>
 
 export const ActivityEntity = new EntitySchema<ActivityRawModelWithRelations>({
   name: 'ActivityEntity',
@@ -112,15 +113,6 @@ export const ActivityEntity = new EntitySchema<ActivityRawModelWithRelations>({
     },
   },
   relations: {
-    host: {
-      type: 'many-to-one',
-      target: 'UserEntity',
-      joinColumn: {
-        name: 'host_id',
-        referencedColumnName: 'id',
-      },
-      onDelete: 'CASCADE',
-    },
     sport: {
       type: 'many-to-one',
       target: 'SportEntity',
@@ -129,6 +121,12 @@ export const ActivityEntity = new EntitySchema<ActivityRawModelWithRelations>({
         referencedColumnName: 'id',
       },
       onDelete: 'CASCADE',
+    },
+    participations: {
+      type: 'one-to-many',
+      target: 'ParticipationEntity',
+      inverseSide: 'activity',
+      cascade: false,
     },
   },
   indices: [

@@ -1,5 +1,5 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { Participation } from '~/src/modules/Activity/Domain/Participation'
+import { Participation } from '~/src/modules/Activity/Domain/Participation/Participation'
 import { ParticipationRawModel } from '~/src/modules/Activity/Infrastructure/Entities/participation.entity'
 
 export class ParticipationModelTranslator {

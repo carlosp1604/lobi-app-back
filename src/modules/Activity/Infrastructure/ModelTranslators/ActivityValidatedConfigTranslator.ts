@@ -2,7 +2,11 @@ import { SportRegistry } from '~/src/modules/Activity/Application/Sport/SportReg
 import { RawActivityConfig } from '~/src/modules/Activity/Infrastructure/Entities/activity.entity'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
 import { AvailableCapability, Sport } from '~/src/modules/Activity/Domain/Sport/Sport'
-import { ActivityValidatedConfig, ValidatedCapabilities, ValidatedSpecs } from '~/src/modules/Activity/Domain/ActivityValidatedConfig'
+import {
+  ActivityValidatedConfig,
+  ValidatedCapabilities,
+  ValidatedSpecs,
+} from '~/src/modules/Activity/Domain/ValueObject/ActivityValidatedConfig'
 
 export class ActivityValidatedConfigTranslator {
   public static toDomain(rawConfig: RawActivityConfig, sport: Sport): Result<ActivityValidatedConfig, Error> {

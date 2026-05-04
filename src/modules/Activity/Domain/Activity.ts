@@ -2,14 +2,14 @@ import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Mag
 import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
-import { ActivityTitle } from '~/src/modules/Activity/Domain/ActivityTitle'
+import { ActivityTitle } from '~/src/modules/Activity/Domain/ValueObject/ActivityTitle'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
-import { ActivityStatus } from '~/src/modules/Activity/Domain/ActivityStatus'
+import { ActivityStatus } from '~/src/modules/Activity/Domain/ValueObject/ActivityStatus'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
 import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/SportRankingSystem'
-import { ActivityDescription } from '~/src/modules/Activity/Domain/ActivityDescription'
-import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ActivityScheduledDate'
-import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ActivityValidatedConfig'
+import { ActivityDescription } from '~/src/modules/Activity/Domain/ValueObject/ActivityDescription'
+import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ValueObject/ActivityScheduledDate'
+import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ValueObject/ActivityValidatedConfig'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 
 export class Activity {
@@ -132,5 +132,9 @@ export class Activity {
     const events = [...this._pendingDomainEvents]
     this._pendingDomainEvents = []
     return events
+  }
+
+  public isHostedBy(participantId: Identifier): boolean {
+    return this.hostId.equals(participantId)
   }
 }

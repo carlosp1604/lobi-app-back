@@ -1,9 +1,9 @@
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { Participation } from '~/src/modules/Activity/Domain/Participation'
+import { Participation } from '~/src/modules/Activity/Domain/Participation/Participation'
 import { ParticipationEntity } from '~/src/modules/Activity/Infrastructure/Entities/participation.entity'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { ParticipationModelTranslator } from '~/src/modules/Activity/Infrastructure/ModelTranslators/ParticipationModelTranslator'
-import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/ParticipationRepositoryInterface'
+import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/Participation/ParticipationRepositoryInterface'
 
 export class PostgreSqlParticipationRepository implements ParticipationRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
