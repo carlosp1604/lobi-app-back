@@ -1,11 +1,11 @@
 import { Activity } from '~/src/modules/Activity/Domain/Activity'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UnitOfWork } from '~/src/modules/Shared/Application/UnitOfWork'
-import { ActivityTitle } from '~/src/modules/Activity/Domain/ActivityTitle'
-import { Participation } from '~/src/modules/Activity/Domain/Participation'
+import { ActivityTitle } from '~/src/modules/Activity/Domain/ValueObject/ActivityTitle'
+import { Participation } from '~/src/modules/Activity/Domain/Participation/Participation'
 import { SportRegistry } from '~/src/modules/Activity/Application/Sport/SportRegistry'
-import { ActivityDescription } from '~/src/modules/Activity/Domain/ActivityDescription'
-import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ActivityScheduledDate'
+import { ActivityDescription } from '~/src/modules/Activity/Domain/ValueObject/ActivityDescription'
+import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ValueObject/ActivityScheduledDate'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
@@ -15,11 +15,15 @@ import { ActivityRepositoryInterface } from '~/src/modules/Activity/Domain/Activ
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { isAvailableCapability, Sport } from '~/src/modules/Activity/Domain/Sport/Sport'
 import { ActivityApplicationDtoTranslator } from '~/src/modules/Activity/Application/Translator/ActivityApplicationDtoTranslator'
-import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/ParticipationRepositoryInterface'
+import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/Participation/ParticipationRepositoryInterface'
 import { CreateActivityApplicationRequestDto } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationRequestDto'
 import { CreateActivityApplicationResponseDto } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityApplicationResponseDto'
 import { ParticipationApplicationDtoTranslator } from '~/src/modules/Activity/Application/Translator/ParticipationApplicationDtoTranslator'
-import { ActivityValidatedConfig, ValidatedCapabilities, ValidatedSpecs } from '~/src/modules/Activity/Domain/ActivityValidatedConfig'
+import {
+  ActivityValidatedConfig,
+  ValidatedCapabilities,
+  ValidatedSpecs,
+} from '~/src/modules/Activity/Domain/ValueObject/ActivityValidatedConfig'
 import {
   CreateActivityApplicationError,
   CreateActivityInputError,

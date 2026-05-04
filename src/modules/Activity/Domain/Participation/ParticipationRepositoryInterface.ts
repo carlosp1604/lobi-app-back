@@ -1,5 +1,5 @@
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
-import { Participation } from '~/src/modules/Activity/Domain/Participation'
+import { Participation } from '~/src/modules/Activity/Domain/Participation/Participation'
 
 export interface ParticipationRepositoryInterface {
   /**

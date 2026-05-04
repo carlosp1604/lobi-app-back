@@ -1,4 +1,4 @@
-import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ActivityScheduledDate'
+import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ValueObject/ActivityScheduledDate'
 
 export class ActivityScheduledDateMother {
   public static valid(now: Date): ActivityScheduledDate {

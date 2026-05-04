@@ -23,16 +23,18 @@ import { ActivityRepositoryInterface } from '~/src/modules/Activity/Domain/Activ
 import { CLOCK_SERVICE, ID_GENERATOR } from '~/src/modules/Shared/Infrastructure/shared.tokens'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
 import { PostgreSqlActivityRepository } from '~/src/modules/Activity/Infrastructure/PostgreSqlActivityRepository'
-import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/ParticipationRepositoryInterface'
+import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/Participation/ParticipationRepositoryInterface'
 import { PostgreSqlParticipationRepository } from '~/src/modules/Activity/Infrastructure/PostgreSqlParticipationRepository'
 import { TYPEORM_MANAGER_RESOLVER, UNIT_OF_WORK } from '~/src/db/config/typeorm.tokens'
 import {
   ACTIVITY_REPOSITORY,
   CREATE_ACTIVITY,
+  GET_ACTIVITY,
   GET_SPORTS,
   PARTICIPATION_REPOSITORY,
   SPORT_REPOSITORY,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
+import { GetActivity } from '~/src/modules/Activity/Application/GetActivity/GetActivity'
 
 @Module({
   imports: [
@@ -104,7 +106,14 @@ import {
       },
       inject: [SPORT_REPOSITORY],
     },
+    {
+      provide: GET_ACTIVITY,
+      useFactory: (activityRepository: ActivityRepositoryInterface) => {
+        return new GetActivity(activityRepository)
+      },
+      inject: [ACTIVITY_REPOSITORY],
+    },
   ],
-  exports: [CREATE_ACTIVITY, GET_SPORTS],
+  exports: [CREATE_ACTIVITY, GET_SPORTS, GET_ACTIVITY],
 })
 export class ActivityModule {}

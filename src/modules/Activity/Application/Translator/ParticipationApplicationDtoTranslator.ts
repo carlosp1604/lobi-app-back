@@ -1,4 +1,4 @@
-import { Participation } from '~/src/modules/Activity/Domain/Participation'
+import { Participation } from '~/src/modules/Activity/Domain/Participation/Participation'
 import { ParticipationApplicationDto } from '~/src/modules/Activity/Application/Dto/ParticipationApplicationDto'
 import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
 

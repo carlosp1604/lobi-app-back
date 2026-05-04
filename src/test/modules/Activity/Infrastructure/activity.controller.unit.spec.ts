@@ -20,18 +20,25 @@ import {
   ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND,
 } from '~/src/modules/Activity/Infrastructure/ApiCodes'
 import { SportApplicationDto } from '~/src/modules/Activity/Application/Dto/SportApplicationDto'
+import { GetActivity } from '~/src/modules/Activity/Application/GetActivity/GetActivity'
+import { ConfigService } from '@nestjs/config'
+import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 
 describe('ActivityController', () => {
   const mockedCreateActivityUseCase = mock<CreateActivity>()
   const mockedGetSportsUseCase = mock<GetSports>()
+  const mockedGetActivityUseCase = mock<GetActivity>()
+  const mockedConfigService = mock<ConfigService<Env, true>>()
 
   const buildController = () => {
-    return new ActivityController(mockedCreateActivityUseCase, mockedGetSportsUseCase)
+    return new ActivityController(mockedCreateActivityUseCase, mockedGetSportsUseCase, mockedGetActivityUseCase, mockedConfigService)
   }
 
   beforeEach(() => {
     mockReset(mockedCreateActivityUseCase)
     mockReset(mockedGetSportsUseCase)
+    mockReset(mockedGetActivityUseCase)
+    mockReset(mockedConfigService)
   })
 
   describe('create', () => {

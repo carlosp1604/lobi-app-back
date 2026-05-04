@@ -1,7 +1,8 @@
+import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { UserDomainException } from '~/src/modules/User/Domain/UserDomainException'
-import { UserStatus, ValidUserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
+import { ValidUserStatuses } from '~/src/modules/Shared/Domain/ValidUserStatuses'
 
-const validUserStatus: Array<ValidUserStatus> = Object.values(ValidUserStatus)
+const validUserStatus: Array<ValidUserStatuses> = Object.values(ValidUserStatuses)
 
 const invalidCases = ['', 'random-status', '1111', 'ACTIVATED', 'ACTIVe', 'active ', 'suspended']
 
@@ -18,9 +19,9 @@ describe('UserStatus', () => {
 
   describe('get value', () => {
     it('should store the correct value', () => {
-      const userStatusValueObject = UserStatus.fromString(ValidUserStatus.ACTIVE)
+      const userStatusValueObject = UserStatus.fromString(ValidUserStatuses.ACTIVE)
 
-      expect(userStatusValueObject.value).toBe(ValidUserStatus.ACTIVE)
+      expect(userStatusValueObject.value).toBe(ValidUserStatuses.ACTIVE)
     })
   })
 
@@ -28,7 +29,7 @@ describe('UserStatus', () => {
     it('factory should return active', () => {
       const userStatusValueObject = UserStatus.active()
 
-      expect(userStatusValueObject.value).toBe(ValidUserStatus.ACTIVE)
+      expect(userStatusValueObject.value).toBe(ValidUserStatuses.ACTIVE)
     })
   })
 
@@ -36,7 +37,7 @@ describe('UserStatus', () => {
     it('factory should return deactivated', () => {
       const userStatusValueObject = UserStatus.deactivated()
 
-      expect(userStatusValueObject.value).toBe(ValidUserStatus.DEACTIVATED)
+      expect(userStatusValueObject.value).toBe(ValidUserStatuses.DEACTIVATED)
     })
   })
 })

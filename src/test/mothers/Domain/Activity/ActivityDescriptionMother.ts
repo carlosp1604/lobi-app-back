@@ -1,4 +1,4 @@
-import { ActivityDescription } from '~/src/modules/Activity/Domain/ActivityDescription'
+import { ActivityDescription } from '~/src/modules/Activity/Domain/ValueObject/ActivityDescription'
 
 export class ActivityDescriptionMother {
   private static VALID_STRING = 'A valid activity description\nAnother line   . This is still valid 🐕'
