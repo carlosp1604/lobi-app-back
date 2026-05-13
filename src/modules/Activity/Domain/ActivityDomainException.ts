@@ -81,7 +81,7 @@ export class ActivityDomainException extends DomainException {
     allowedStatuses: Array<ValidActivityStatus>,
   ): ActivityDomainException {
     return new ActivityDomainException(
-      `The activity is not in a valid state to be joined (must be onne of the following: [${allowedStatuses.join(', ')}])`,
+      `The activity is not in a valid state to be joined. Allowed statuses to join: [${allowedStatuses.join(', ')}]`,
       this.activityDoesNotAllowJoinId,
       { activityId: activityId.value, currentStatus: currentStatus.value, allowedStatuses },
     )
