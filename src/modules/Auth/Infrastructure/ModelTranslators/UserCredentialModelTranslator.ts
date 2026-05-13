@@ -6,7 +6,7 @@ import { UserCredentialRawModel } from '~/src/modules/Auth/Infrastructure/Entiti
 export class UserCredentialModelTranslator {
   public static toDomain(raw: UserCredentialRawModel): UserCredential {
     return new UserCredential(
-      Identifier.fromString(raw.user_id),
+      Identifier.create(raw.user_id),
       PasswordHash.fromString(raw.password_hash),
       raw.failed_attempts,
       raw.locked_until,

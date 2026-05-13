@@ -16,7 +16,7 @@ export class IdentifierMother {
   ]
 
   static valid(): Identifier {
-    return Identifier.fromString(this.validString())
+    return Identifier.create(this.validString())
   }
 
   static validString() {

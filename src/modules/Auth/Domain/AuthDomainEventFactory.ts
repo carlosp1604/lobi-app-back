@@ -22,7 +22,7 @@ export class AuthDomainEventFactory {
     occurredAt: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
+      Identifier.create(this.idGeneratorService.generateId()),
       DomainEventName.successfulResetPassword(),
       DomainEventAggregateType.user(),
       userId,
@@ -39,7 +39,7 @@ export class AuthDomainEventFactory {
 
   public createSuccessfulLoginEvent(session: UserSession, now: Date): DomainEvent {
     return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
+      Identifier.create(this.idGeneratorService.generateId()),
       DomainEventName.successfulLogin(),
       DomainEventAggregateType.user(),
       session.userId,
@@ -61,7 +61,7 @@ export class AuthDomainEventFactory {
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
+      Identifier.create(this.idGeneratorService.generateId()),
       DomainEventName.failedLoginAttempt(),
       DomainEventAggregateType.user(),
       userId,
@@ -83,7 +83,7 @@ export class AuthDomainEventFactory {
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
+      Identifier.create(this.idGeneratorService.generateId()),
       DomainEventName.successfulSignup(),
       DomainEventAggregateType.user(),
       userId,
@@ -107,7 +107,7 @@ export class AuthDomainEventFactory {
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
+      Identifier.create(this.idGeneratorService.generateId()),
       DomainEventName.emailVerificationRequest(),
       DomainEventAggregateType.verificationToken(),
       verificationToken.id,
@@ -132,7 +132,7 @@ export class AuthDomainEventFactory {
     now: Date,
   ): DomainEvent {
     return DomainEvent.create(
-      Identifier.fromString(this.idGeneratorService.generateId()),
+      Identifier.create(this.idGeneratorService.generateId()),
       DomainEventName.closedSession(),
       DomainEventAggregateType.userSession(),
       targetSession.id,

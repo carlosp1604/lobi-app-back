@@ -19,6 +19,7 @@ export class SharedDomainException extends DomainException {
   public static invalidRPEId = 'shared_domain_invalid_rpe'
   public static invalidUnitId = 'shared_domain_invalid_unit'
   public static invalidMagnitudeRangeId = 'shared_domain_invalid_magnitude_range'
+  public static invalidDecimalNumberId = 'shared_domain_invalid_decimal_number'
   public static invalidBoundedNumberId = 'shared_domain_invalid_bounded_number'
   public static invalidIntegerNumberId = 'shared_domain_invalid_integer_number'
   public static invalidRouteId = 'shared_domain_invalid_route'
@@ -73,7 +74,7 @@ export class SharedDomainException extends DomainException {
     })
   }
 
-  public static invalidPace(pace: string, min: number, max: number) {
+  public static invalidPace(pace: string, min: string, max: string) {
     const safePaceSample = StringFormatter.formatSafe(pace, 6)
 
     return new SharedDomainException(`Pace must be a number of seconds between ${min} and ${max}`, this.invalidPaceId, {
@@ -83,7 +84,7 @@ export class SharedDomainException extends DomainException {
     })
   }
 
-  public static invalidSpeed(speed: string, min: number, max: number) {
+  public static invalidSpeed(speed: string, min: string, max: string) {
     const safeSpeedSample = StringFormatter.formatSafe(speed, 6)
 
     return new SharedDomainException(`Speed must be a number between ${min} and ${max}`, this.invalidSpeedId, {
@@ -93,7 +94,7 @@ export class SharedDomainException extends DomainException {
     })
   }
 
-  public static invalidDuration(duration: number, min: number, max: number) {
+  public static invalidDuration(duration: string, min: number, max: number) {
     const safeDurationSample = StringFormatter.formatSafe(String(duration), 16)
 
     return new SharedDomainException(
@@ -107,7 +108,7 @@ export class SharedDomainException extends DomainException {
     )
   }
 
-  public static invalidDistance(distance: string, min: number, max: number) {
+  public static invalidDistance(distance: string, min: string, max: string) {
     const safeDistanceSample = StringFormatter.formatSafe(distance, 16)
 
     return new SharedDomainException(`Distance must be a positive number between ${min} and ${max}`, this.invalidDistanceId, {
@@ -117,7 +118,7 @@ export class SharedDomainException extends DomainException {
     })
   }
 
-  public static invalidAltitude(altitude: string, min: number, max: number) {
+  public static invalidAltitude(altitude: string, min: string, max: string) {
     const safeAltitudeSample = StringFormatter.formatSafe(altitude, 16)
 
     return new SharedDomainException(`Altitude must be a number between ${min} and ${max}`, this.invalidAltitudeId, {
@@ -163,7 +164,15 @@ export class SharedDomainException extends DomainException {
     })
   }
 
-  public static invalidBoundedNumber(value: string, min: number, max: number, precision: number) {
+  public static invalidDecimalNumber(value: string) {
+    const safeNumberSample = StringFormatter.formatSafe(String(value), 16)
+
+    return new SharedDomainException(`${value} is not a valid decimal number`, this.invalidBoundedNumberId, {
+      decimalNumber: safeNumberSample,
+    })
+  }
+
+  public static invalidBoundedNumber(value: string, min: string, max: string, precision: number) {
     const safeNumberSample = StringFormatter.formatSafe(String(value), 16)
 
     return new SharedDomainException(
@@ -178,7 +187,7 @@ export class SharedDomainException extends DomainException {
     )
   }
 
-  public static invalidInteger(value: number, min: number, max: number) {
+  public static invalidInteger(value: string, min: number, max: number) {
     const safeNumberSample = StringFormatter.formatSafe(String(value), 16)
 
     return new SharedDomainException(

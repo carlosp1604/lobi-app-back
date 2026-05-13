@@ -7,6 +7,11 @@ export interface RawActivityConfig {
   specs: Record<string, unknown>
 }
 
+export interface RawLocation {
+  type: string
+  coordinates: Array<number>
+}
+
 export interface ActivityRawModel {
   id: string
   title: string
@@ -21,7 +26,7 @@ export interface ActivityRawModel {
   max_duration: number | null
   current_participants: number
   activity_config: RawActivityConfig
-  location: string | null
+  location: RawLocation | null
   scheduled_at: Date
   created_at: Date
   updated_at: Date

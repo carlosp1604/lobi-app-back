@@ -4,7 +4,8 @@ import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { SportEntity } from '~/src/modules/Activity/Infrastructure/Entities/sport.entity'
 import { SportModelTranslator } from '~/src/modules/Activity/Infrastructure/ModelTranslators/SportModelTranslator'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
-import { SportRepositoryInterface, SportsWithCount } from '~/src/modules/Activity/Domain/Sport/SportRepositoryInterface'
+import { SportRepositoryInterface } from '~/src/modules/Activity/Domain/Sport/SportRepositoryInterface'
+import { BasicSportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/BasicSportRankingSystem'
 
 export class PostgreSqlSportRepository implements SportRepositoryInterface {
   constructor(private readonly entityManagerResolver: TypeOrmManagerResolver) {}
@@ -26,23 +27,6 @@ export class PostgreSqlSportRepository implements SportRepositoryInterface {
       return null
     }
 
-    return SportModelTranslator.toDomain(sportEntity)
-  }
-
-  /**
-   * Get all sports along with their total count
-   * @returns SportsWithCount containing the list of sports and the total count
-   */
-  public async getAll(): Promise<SportsWithCount> {
-    const entityManager = this.entityManagerResolver.resolve()
-
-    const sportRepository = entityManager.getRepository(SportEntity)
-
-    const [sportEntities, count] = await sportRepository.findAndCount()
-
-    return {
-      sports: sportEntities.map((sportEntity) => SportModelTranslator.toDomain(sportEntity)),
-      count,
-    }
+    return SportModelTranslator.toDomain(sportEntity, BasicSportRankingSystem)
   }
 }

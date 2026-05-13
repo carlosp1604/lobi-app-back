@@ -4,6 +4,6 @@ import { ParticipantRawModel } from '~/src/modules/Activity/Infrastructure/Entit
 
 export class ParticipantModelTranslator {
   public static toDomain(raw: ParticipantRawModel): Participant {
-    return Participant.reconstitute(Identifier.fromString(raw.id), raw.status, raw.deleted_at)
+    return Participant.reconstitute(Identifier.create(raw.id), raw.status, raw.deleted_at)
   }
 }

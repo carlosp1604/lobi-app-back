@@ -1,12 +1,11 @@
-import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Duration'
-import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
+import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Duration'
+import { Location } from '~/src/modules/Shared/Domain/ValueObject/Location/Location'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { ActivityTitle } from '~/src/modules/Activity/Domain/ValueObject/ActivityTitle'
-import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
+import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Numeric/IntegerNumber'
 import { ActivityStatus } from '~/src/modules/Activity/Domain/ValueObject/ActivityStatus'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/SportRankingSystem'
 import { ActivityDescription } from '~/src/modules/Activity/Domain/ValueObject/ActivityDescription'
 import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ValueObject/ActivityScheduledDate'
 import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ValueObject/ActivityValidatedConfig'
@@ -19,7 +18,7 @@ export class Activity {
     public readonly description: ActivityDescription | null,
     public readonly status: ActivityStatus,
     public readonly sportId: Identifier,
-    public readonly levels: Array<SportRankingSystem>,
+    public readonly levels: Array<Identifier>,
     public readonly hostId: Identifier,
     public readonly minCapacity: IntegerNumber,
     public readonly maxCapacity: IntegerNumber,
@@ -36,6 +35,7 @@ export class Activity {
 
   public static create(
     activityId: Identifier,
+    sportId: Identifier,
     domainEventId: Identifier,
     title: ActivityTitle,
     description: ActivityDescription | null,
@@ -45,13 +45,12 @@ export class Activity {
     now: Date,
   ): Activity {
     const capacities = validatedConfig.getCapacities()
-    const durationRange = validatedConfig.getDurationRange()
 
-    const minDuration = durationRange ? durationRange.start : null
-    const maxDuration = durationRange ? durationRange.end : null
+    const minDuration = validatedConfig.minDuration
+    const maxDuration = validatedConfig.maxDuration
 
     const status = ActivityStatus.open()
-    const currentParticipants = IntegerNumber.fromNumber(1)
+    const currentParticipants = IntegerNumber.create(1)
 
     const domainEvent = DomainEvent.create(
       domainEventId,
@@ -71,7 +70,7 @@ export class Activity {
       title,
       description,
       status,
-      validatedConfig.sportId,
+      sportId,
       validatedConfig.getLevels(),
       hostId,
       capacities.min,
@@ -94,7 +93,7 @@ export class Activity {
     description: ActivityDescription | null,
     status: ActivityStatus,
     sportId: Identifier,
-    levels: Array<SportRankingSystem>,
+    levels: Array<Identifier>,
     hostId: Identifier,
     minCapacity: IntegerNumber,
     maxCapacity: IntegerNumber,

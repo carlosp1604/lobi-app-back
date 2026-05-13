@@ -11,16 +11,6 @@ export class Identifier extends ValueObject<string> {
     super(value)
   }
 
-  static fromString(value: string): Identifier {
-    const result = this.safeCreate(value)
-
-    if (!result.success) {
-      throw result.error
-    }
-
-    return result.value
-  }
-
   static safeCreate(value: string): Result<Identifier, SharedDomainException> {
     const normalized = value.trim()
 
@@ -29,6 +19,16 @@ export class Identifier extends ValueObject<string> {
     }
 
     return success(new Identifier(normalized))
+  }
+
+  static create(value: string): Identifier {
+    const result = this.safeCreate(value)
+
+    if (!result.success) {
+      throw result.error
+    }
+
+    return result.value
   }
 
   private static isValidIdentifier(value: string): boolean {

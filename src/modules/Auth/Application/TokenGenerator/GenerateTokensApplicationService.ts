@@ -32,7 +32,7 @@ export class GenerateTokensApplicationService {
     ipHash: UserIpHash | null,
     deviceLocation: DeviceLocation | null,
   ): Promise<GenerateTokensApplicationResponseDto> {
-    const sessionId = Identifier.fromString(this.idGeneratorService.generateId())
+    const sessionId = Identifier.create(this.idGeneratorService.generateId())
     const clearSessionToken = await this.tokenGenerator.generateSessionToken()
     const newSessionHashedToken = await this.hasherService.hash(clearSessionToken)
     const sessionHash = UserSessionTokenHash.fromString(newSessionHashedToken)

@@ -10,13 +10,13 @@ import { UserRawModel, UserRawModelWithRelations } from '~/src/modules/User/Infr
 export class UserModelTranslator {
   public static toDomain(rawModel: UserRawModelWithRelations): User {
     return new User(
-      Identifier.fromString(rawModel.id),
+      Identifier.create(rawModel.id),
       EmailAddress.fromString(rawModel.email),
       UserUsername.fromString(rawModel.username),
       UserName.fromString(rawModel.name),
       UserStatus.fromString(rawModel.status),
       UserRole.fromString(rawModel.role),
-      rawModel.user_upload_id ? Identifier.fromString(rawModel.user_upload_id) : null,
+      rawModel.user_upload_id ? Identifier.create(rawModel.user_upload_id) : null,
       rawModel.email_verified_at,
       rawModel.created_at,
       rawModel.updated_at,

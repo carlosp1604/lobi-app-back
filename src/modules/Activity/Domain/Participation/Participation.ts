@@ -6,7 +6,7 @@ export class Participation {
   private constructor(
     public readonly id: Identifier,
     public readonly activityId: Identifier,
-    public readonly userId: Identifier,
+    public readonly participantId: Identifier,
     public readonly joinedAt: Date,
     private _leftAt: Date | null,
   ) {}
@@ -15,18 +15,18 @@ export class Participation {
     return this._leftAt
   }
 
-  public static create(id: Identifier, activityId: Identifier, userId: Identifier, now: Date): Participation {
-    return new Participation(id, activityId, userId, now, null)
+  public static create(id: Identifier, activityId: Identifier, participantId: Identifier, now: Date): Participation {
+    return new Participation(id, activityId, participantId, now, null)
   }
 
   public static reconstitute(
     id: Identifier,
     activityId: Identifier,
-    userId: Identifier,
+    participantId: Identifier,
     joinedAt: Date,
     leftAt: Date | null,
   ): Participation {
-    return new Participation(id, activityId, userId, joinedAt, leftAt)
+    return new Participation(id, activityId, participantId, joinedAt, leftAt)
   }
 
   public isActive(): boolean {
@@ -45,7 +45,7 @@ export class Participation {
 
   public canLeave(): Result<void, ParticipationDomainException> {
     if (!this.isActive()) {
-      return fail(ParticipationDomainException.inactiveParticipation(this.userId.value, this.activityId.value))
+      return fail(ParticipationDomainException.inactiveParticipation(this.participantId.value, this.activityId.value))
     }
 
     return success(undefined)

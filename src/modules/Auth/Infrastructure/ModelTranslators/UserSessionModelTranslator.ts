@@ -15,8 +15,8 @@ export class UserSessionModelTranslator {
     }
 
     return new UserSession(
-      Identifier.fromString(raw.id),
-      Identifier.fromString(raw.user_id),
+      Identifier.create(raw.id),
+      Identifier.create(raw.user_id),
       UserSessionTokenHash.fromString(raw.token_hash),
       raw.expires_at,
       raw.revoked_at,

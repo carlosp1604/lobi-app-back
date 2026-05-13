@@ -8,13 +8,13 @@ describe('Identifier', () => {
     it('should not throw error when identifier is valid', () => {
       fc.assert(
         fc.property(fc.uuid(), (validIdentifier) => {
-          expect(() => Identifier.fromString(validIdentifier)).not.toThrow()
+          expect(() => Identifier.create(validIdentifier)).not.toThrow()
         }),
       )
     })
 
     it.each(IdentifierMother.INVALID_FORMAT_CASES)('should throw error when identifier is not valid: %s', (invalidIdentifier) => {
-      expect(() => Identifier.fromString(invalidIdentifier)).toThrow(SharedDomainException.invalidIdentifier(invalidIdentifier))
+      expect(() => Identifier.create(invalidIdentifier)).toThrow(SharedDomainException.invalidIdentifier(invalidIdentifier))
     })
   })
 
@@ -39,7 +39,7 @@ describe('Identifier', () => {
 
   it('should store the correct value (normalized)', () => {
     const validValue = IdentifierMother.validString()
-    const identifierValueObject = Identifier.fromString(validValue)
+    const identifierValueObject = Identifier.create(validValue)
 
     expect(identifierValueObject.value).toBe(validValue)
   })

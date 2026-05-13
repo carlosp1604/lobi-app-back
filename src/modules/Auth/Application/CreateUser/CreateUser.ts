@@ -122,17 +122,17 @@ export class CreateUser {
         return fail(CreateUserApplicationError.duplicated(errors))
       }
 
-      const userId = Identifier.fromString(this.idGeneratorService.generateId())
+      const userId = Identifier.create(this.idGeneratorService.generateId())
       const user = User.create(userId, email, username, name, userRole, now)
 
       const userCredential = UserCredential.create(userId, passwordHash, now)
 
-      const sportsmanProfileId = Identifier.fromString(this.idGeneratorService.generateId())
+      const sportsmanProfileId = Identifier.create(this.idGeneratorService.generateId())
       const sportsmanProfile = SportsmanProfile.create(sportsmanProfileId, userId, now)
 
       let ownerProfile: OwnerProfile | null = null
       if (userRole.equals(UserRole.owner())) {
-        const ownerProfileId = Identifier.fromString(this.idGeneratorService.generateId())
+        const ownerProfileId = Identifier.create(this.idGeneratorService.generateId())
         ownerProfile = OwnerProfile.create(ownerProfileId, userId, now)
       }
 

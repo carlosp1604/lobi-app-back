@@ -8,8 +8,8 @@ import { OwnerProfileContactPhone } from '~/src/modules/User/Domain/ValueObject/
 export class OwnerProfileModelTranslator {
   public static toDomain(rawModel: OwnerProfileRawModel): OwnerProfile {
     return new OwnerProfile(
-      Identifier.fromString(rawModel.id),
-      Identifier.fromString(rawModel.user_id),
+      Identifier.create(rawModel.id),
+      Identifier.create(rawModel.user_id),
       rawModel.company_name ? OwnerProfileCompanyName.fromString(rawModel.company_name) : null,
       rawModel.tax_id ? OwnerProfileTaxId.fromString(rawModel.tax_id) : null,
       rawModel.contact_phone ? OwnerProfileContactPhone.fromString(rawModel.contact_phone) : null,
