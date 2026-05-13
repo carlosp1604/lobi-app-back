@@ -1,15 +1,14 @@
 import { Activity } from '~/src/modules/Activity/Domain/Activity'
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { SpecFactory } from '~/src/modules/Activity/Domain/Config/Spec/SpecFactory'
+import { ActivityEntity } from '~/src/modules/Activity/Infrastructure/Entities/activity.entity'
+import { CapabilityFactory } from '~/src/modules/Activity/Domain/Config/Capability/CapabilityFactory'
 import { DomainEventEntity } from '~/src/modules/Shared/Infrastructure/Entities/domain-event.entity'
-import { QueryDeepPartialEntity } from 'typeorm/browser/query-builder/QueryPartialEntity'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
 import { ActivityModelTranslator } from '~/src/modules/Activity/Infrastructure/ModelTranslators/ActivityModelTranslator'
 import { DomainEventModelTranslator } from '~/src/modules/Shared/Infrastructure/ModelTranslators/DomainEventModelTranslator'
 import { ActivityRepositoryInterface } from '~/src/modules/Activity/Domain/ActivityRepositoryInterface'
-import { ActivityEntity, ActivityRawModelWithRelations } from '~/src/modules/Activity/Infrastructure/Entities/activity.entity'
-import { CapabilityFactory } from '~/src/modules/Activity/Domain/Config/Capability/CapabilityFactory'
-import { SpecFactory } from '~/src/modules/Activity/Domain/Config/Spec/SpecFactory'
 
 export class PostgreSqlActivityRepository implements ActivityRepositoryInterface {
   constructor(
@@ -30,7 +29,7 @@ export class PostgreSqlActivityRepository implements ActivityRepositoryInterface
 
     const activityRawModel = new ActivityModelTranslator(this.capabilityFactory, this.specFactory).toDatabase(activity)
 
-    await activityRepository.insert(activityRawModel as QueryDeepPartialEntity<ActivityRawModelWithRelations>)
+    await activityRepository.save(activityRawModel)
 
     const pendingDomainEvents = activity.pullDomainEvents()
 
@@ -55,6 +54,28 @@ export class PostgreSqlActivityRepository implements ActivityRepositoryInterface
     const activityRepository = entityManager.getRepository(ActivityEntity)
 
     const activityEntity = await activityRepository.findOne({ where: { id: id.value } })
+
+    if (!activityEntity) {
+      return null
+    }
+
+    return new ActivityModelTranslator(this.capabilityFactory, this.specFactory).toDomain(activityEntity)
+  }
+
+  /**
+   * Finds an activity by ID (and acquires a pessimistic lock on the row)
+   * @param id Activity ID
+   * @param context The transactional context
+   * @returns The locked Activity entity if found, otherwise null
+   */
+  public async findByIdWithLock(id: Identifier, context?: TxContext): Promise<Activity | null> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const activityEntity = await entityManager
+      .createQueryBuilder(ActivityEntity, 'activity')
+      .where('activity.id = :id', { id })
+      .setLock('pessimistic_write')
+      .getOne()
 
     if (!activityEntity) {
       return null

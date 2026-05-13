@@ -1,4 +1,5 @@
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { Participation } from '~/src/modules/Activity/Domain/Participation/Participation'
 
 export interface ParticipationRepositoryInterface {
@@ -8,4 +9,13 @@ export interface ParticipationRepositoryInterface {
    * @param context The transactional context
    */
   save(participation: Participation, context?: TxContext): Promise<void>
+
+  /**
+   * Finds a participation by its participant and activity ID
+   * @param participantId Participation owner ID
+   * @param activityId Participation activity ID
+   * @param context The transactional context
+   * @returns The Participation if found, otherwise null
+   */
+  findByParticipantAndActivityId(participantId: Identifier, activityId: Identifier, context?: TxContext): Promise<Participation | null>
 }

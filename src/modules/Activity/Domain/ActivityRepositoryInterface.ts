@@ -17,4 +17,12 @@ export interface ActivityRepositoryInterface {
    * @returns The Activity entity if found, otherwise null
    */
   findById(id: Identifier, context?: TxContext): Promise<Activity | null>
+
+  /**
+   * Finds an activity by ID (and acquires a pessimistic lock on the row)
+   * @param id Activity ID
+   * @param context The transactional context
+   * @returns The locked Activity entity if found, otherwise null
+   */
+  findByIdWithLock(id: Identifier, context?: TxContext): Promise<Activity | null>
 }
