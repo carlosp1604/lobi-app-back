@@ -1,15 +1,22 @@
+import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Numeric/IntegerNumber'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
+import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ValueObject/ActivityScheduledDate'
+import { ActivityStatus, ValidActivityStatus } from '~/src/modules/Activity/Domain/ValueObject/ActivityStatus'
 import { DomainException, DomainExceptionContext } from '~/src/modules/Exception/Domain/DomainException'
 
 export class ActivityDomainException extends DomainException {
   public readonly __brand = 'ActivityDomainException' as const
 
-  public static invalidActivityTitleId = 'activity_domain_invalid_activity_title'
-  public static invalidActivityDescriptionId = 'activity_domain_invalid_activity_description'
-  public static invalidActivityStatusId = 'activity_domain_invalid_activity_status'
-  public static invalidActivityScheduledDateId = 'activity_domain_invalid_activity_scheduled_date'
-  public static invalidSpecConfigurationId = 'activity_domain_invalid_spec_configuration'
-  public static invalidCapabilityConfigurationId = 'activity_domain_invalid_capability_configuration'
+  public static readonly invalidActivityTitleId = 'activity_domain_invalid_activity_title'
+  public static readonly invalidActivityDescriptionId = 'activity_domain_invalid_activity_description'
+  public static readonly invalidActivityStatusId = 'activity_domain_invalid_activity_status'
+  public static readonly invalidActivityScheduledDateId = 'activity_domain_invalid_activity_scheduled_date'
+  public static readonly invalidSpecConfigurationId = 'activity_domain_invalid_spec_configuration'
+  public static readonly invalidCapabilityConfigurationId = 'activity_domain_invalid_capability_configuration'
+  public static readonly activityDoesNotAllowJoinId = 'activity_domain_activity_does_not_allow_join'
+  public static readonly activityAlreadyStartedId = 'activity_domain_activity_already_started'
+  public static readonly activityIsAlreadyFullId = 'activity_domain_activity_is_already_full'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, ActivityDomainException.name, context)
@@ -65,6 +72,42 @@ export class ActivityDomainException extends DomainException {
   public static invalidCapabilityConfiguration(capabilityName: string, reason: string) {
     return new ActivityDomainException(reason, this.invalidCapabilityConfigurationId, {
       capabilityName,
+    })
+  }
+
+  public static activityDoesNotAllowJoin(
+    activityId: Identifier,
+    currentStatus: ActivityStatus,
+    allowedStatuses: Array<ValidActivityStatus>,
+  ): ActivityDomainException {
+    return new ActivityDomainException(
+      `The activity is not in a valid state to be joined (must be onne of the following: [${allowedStatuses.join(', ')}])`,
+      this.activityDoesNotAllowJoinId,
+      { activityId: activityId.value, currentStatus: currentStatus.value, allowedStatuses },
+    )
+  }
+
+  public static activityAlreadyStarted(activityId: Identifier, scheduledAt: ActivityScheduledDate, now: Date): ActivityDomainException {
+    return new ActivityDomainException(
+      'Cannot join the activity because it has already started or the join time has expired',
+      this.activityAlreadyStartedId,
+      {
+        activityId: activityId.value,
+        scheduledAt: scheduledAt.value.toISOString(),
+        now: now.toISOString(),
+      },
+    )
+  }
+
+  public static activityIsAlreadyFull(
+    activityId: Identifier,
+    currentParticipants: IntegerNumber,
+    maxCapacity: IntegerNumber,
+  ): ActivityDomainException {
+    return new ActivityDomainException('The activity has reached its maximum capacity', this.activityIsAlreadyFullId, {
+      activityId: activityId.value,
+      currentParticipants: currentParticipants.value,
+      maxCapacity: maxCapacity.value,
     })
   }
 }

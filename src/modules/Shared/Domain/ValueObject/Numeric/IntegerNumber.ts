@@ -41,15 +41,19 @@ export class IntegerNumber extends ValueObject<number> implements SerializableIn
   }
 
   public isGreaterThan(other: IntegerNumber): boolean {
-    return this._value > other.value
+    return this._value > other._value
   }
 
   public isLessThan(other: IntegerNumber): boolean {
-    return this._value < other.value
+    return this._value < other._value
   }
 
   public multiply(other: IntegerNumber): IntegerNumber {
-    return IntegerNumber.create(this._value * other.value)
+    return IntegerNumber.create(this._value * other._value)
+  }
+
+  public add(other: IntegerNumber): IntegerNumber {
+    return IntegerNumber.create(this._value + other._value)
   }
 
   public get value(): number {
