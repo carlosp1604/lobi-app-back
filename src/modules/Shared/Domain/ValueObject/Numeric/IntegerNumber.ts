@@ -44,6 +44,10 @@ export class IntegerNumber extends ValueObject<number> implements SerializableIn
     return this._value > other._value
   }
 
+  public isGreaterThanOrEqual(other: IntegerNumber): boolean {
+    return this._value >= other._value
+  }
+
   public isLessThan(other: IntegerNumber): boolean {
     return this._value < other._value
   }

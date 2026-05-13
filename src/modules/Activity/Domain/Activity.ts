@@ -191,7 +191,7 @@ export class Activity {
 
     this._pendingDomainEvents.push(participantJoinedDomainEvent)
 
-    if (this.currentParticipants.equals(this.minCapacity) && !this.status.isConfirmed()) {
+    if (this.currentParticipants.isGreaterThanOrEqual(this.minCapacity) && !this.status.isConfirmed()) {
       this._status = ActivityStatus.confirmed()
 
       const activityConfirmedDomainEvent = DomainEvent.create(
