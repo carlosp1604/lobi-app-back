@@ -1,36 +1,23 @@
-import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/RPE'
-import { Pace } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Pace'
-import { Route } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Route'
-import { Speed } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Speed'
-import { Altitude } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Altitude'
-import { Distance } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Distance'
-import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/Duration'
-import { Location } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Location'
+import { Location } from '~/src/modules/Shared/Domain/ValueObject/Location/Location'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
-import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Measurable/IntegerNumber'
-import { LocationRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/LocationRange'
-import { MagnitudeRange } from '~/src/modules/Shared/Domain/ValueObject/Measurable/Magnitude/MagnitudeRange'
-import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/SportRankingSystem'
-import { SportDomainException } from '~/src/modules/Activity/Domain/Sport/SportDomainException'
-import { ParticipationStrategy } from '~/src/modules/Activity/Domain/Sport/ParticipationStrategy'
-import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { AvailableCapability, Sport } from '~/src/modules/Activity/Domain/Sport/Sport'
+import { AvailableSpec } from '~/src/modules/Activity/Domain/Config/Spec/AvailableSpecs'
+import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Numeric/IntegerNumber'
+import { AvailableCapability } from '~/src/modules/Activity/Domain/Config/Capability/AvailableCapabilities'
+import { SpecRegistry, SpecTypeMap } from '~/src/modules/Activity/Domain/Config/Spec/SpecRegistry'
+import { CapabilityRegistry, CapabilityTypeMap } from '~/src/modules/Activity/Domain/Config/Capability/CapabilityRegistry'
 
-export type ValidatedCapabilities = Partial<{
-  altitude: MagnitudeRange<Altitude>
-  distance: MagnitudeRange<Distance>
-  duration: MagnitudeRange<Duration>
-  location: Location
-  location_range: LocationRange
-  pace: MagnitudeRange<Pace>
-  ranking: Array<SportRankingSystem>
-  route: Route
-  rpe: MagnitudeRange<RPE>
-  speed: MagnitudeRange<Speed>
-}>
+type KnownCapabilities = {
+  [K in keyof CapabilityTypeMap]?: CapabilityTypeMap[K]['instance']
+}
 
-export type ValidatedSpecs = { participants: ParticipationStrategy }
+type KnownSpecs = {
+  [K in keyof SpecTypeMap]?: SpecTypeMap[K]['instance']
+}
+
+export type ValidatedCapabilities = KnownCapabilities
+
+export type ValidatedSpecs = KnownSpecs
 
 export interface ActivityConfig {
   capabilities: ValidatedCapabilities
@@ -38,11 +25,9 @@ export interface ActivityConfig {
 }
 
 export interface ActivityValidatedConfigProps {
-  sportId: Identifier
   config: ActivityConfig
 }
 
-// TODO: Review - Move to Domain Service or Sport Factory?
 export class ActivityValidatedConfig extends ValueObject<ActivityValidatedConfigProps> {
   private __activityValidatedConfigBrand: void
 
@@ -50,40 +35,8 @@ export class ActivityValidatedConfig extends ValueObject<ActivityValidatedConfig
     super(props)
   }
 
-  public static safeCreate(
-    sport: Sport,
-    capabilities: ValidatedCapabilities,
-    specs: ValidatedSpecs,
-  ): Result<ActivityValidatedConfig, SportDomainException> {
-    const incorrectCapabilities = Object.keys(capabilities).filter(
-      (capability) => !sport.capabilities.includes(capability as AvailableCapability),
-    ) as Array<AvailableCapability>
-
-    if (incorrectCapabilities.length > 0) {
-      return fail(SportDomainException.unsupportedCapabilities(sport.id.value, incorrectCapabilities, sport.capabilities))
-    }
-
-    if (!specs.participants) {
-      return fail(SportDomainException.missingActivitySpec(sport.id.value, 'participants'))
-    }
-
-    const config = { capabilities, specs }
-
-    return success(new ActivityValidatedConfig({ sportId: sport.id, config }))
-  }
-
-  public static fromProps(sport: Sport, capabilities: ValidatedCapabilities, specs: ValidatedSpecs): ActivityValidatedConfig {
-    const activityValidatedConfigResult = this.safeCreate(sport, capabilities, specs)
-
-    if (!activityValidatedConfigResult.success) {
-      throw activityValidatedConfigResult.error
-    }
-
-    return activityValidatedConfigResult.value
-  }
-
-  public get sportId(): Identifier {
-    return this._value.sportId
+  public static create(props: ActivityValidatedConfigProps): ActivityValidatedConfig {
+    return new ActivityValidatedConfig(props)
   }
 
   public get config(): ActivityConfig {
@@ -98,37 +51,49 @@ export class ActivityValidatedConfig extends ValueObject<ActivityValidatedConfig
     return this._value.config.specs
   }
 
-  public getDurationRange(): MagnitudeRange<Duration> | null {
-    return this._value.config.capabilities.duration ?? null
+  public get minDuration() {
+    const { duration } = this._value.config.capabilities
+
+    return duration ? duration.minDuration : null
+  }
+
+  public get maxDuration() {
+    const { duration } = this._value.config.capabilities
+
+    return duration ? duration.maxDuration : null
   }
 
   public getCapacities(): { min: IntegerNumber; max: IntegerNumber } {
+    const capacitySource = this._value.config.specs.team_participants ?? this._value.config.specs.individual_participants
+
     return {
-      min: this._value.config.specs.participants.minCapacity,
-      max: this._value.config.specs.participants.maxCapacity,
+      min: capacitySource!.value.minCapacity,
+      max: capacitySource!.value.maxCapacity,
     }
   }
 
   public getLocation(): Location | null {
-    if (this._value.config.capabilities.route) {
-      return this._value.config.capabilities.route.points[0]
+    const { route, location, location_range } = this._value.config.capabilities
+
+    if (route) {
+      return route.startLocation
     }
 
-    if (this._value.config.capabilities.location_range) {
-      return this._value.config.capabilities.location_range.start
+    if (location_range) {
+      return location_range.startLocation
     }
 
-    return this._value.config.capabilities.location ?? null
+    return location ? location.location : null
   }
 
-  public getLevels(): Array<SportRankingSystem> {
-    const ranking = this._value.config.capabilities.ranking
+  public getLevels(): Array<Identifier> {
+    const { ranking } = this._value.config.capabilities
 
     if (!ranking) {
       return []
     }
 
-    return ranking
+    return ranking.value
   }
 
   public equals(vo?: ActivityValidatedConfig | null): boolean {
@@ -140,14 +105,48 @@ export class ActivityValidatedConfig extends ValueObject<ActivityValidatedConfig
       return false
     }
 
-    if (!this._value.sportId.equals(vo.value.sportId)) {
+    const thisCapabilities = this._value.config.capabilities
+    const otherCapabilities = vo._value.config.capabilities
+
+    const thisSpecs = this._value.config.specs
+    const otherSpecs = vo._value.config.specs
+
+    const thisCapabilitiesKeys = Object.keys(thisCapabilities) as Array<AvailableCapability>
+    const otherCapabilitiesKeys = Object.keys(otherCapabilities) as Array<AvailableCapability>
+
+    if (thisCapabilitiesKeys.length !== otherCapabilitiesKeys.length) {
       return false
     }
 
-    return JSON.stringify(this._value.config) === JSON.stringify(vo.value.config)
+    const thisSpecsKeys = Object.keys(thisSpecs) as Array<AvailableSpec>
+    const otherSpecsKeys = Object.keys(otherSpecs) as Array<AvailableSpec>
+
+    if (thisSpecsKeys.length !== otherSpecsKeys.length) {
+      return false
+    }
+
+    for (const key of thisCapabilitiesKeys) {
+      const thisCapability = thisCapabilities[key] as CapabilityTypeMap[typeof key]['instance']
+      const otherCapability = otherCapabilities[key]
+
+      if (!otherCapability || !CapabilityRegistry.areEqual<typeof key>(thisCapability, otherCapability)) {
+        return false
+      }
+    }
+
+    for (const key of thisSpecsKeys) {
+      const thisSpec = thisSpecs[key] as SpecTypeMap[typeof key]['instance']
+      const otherSpec = otherSpecs[key]
+
+      if (!otherSpec || !SpecRegistry.areEqual<typeof key>(thisSpec, otherSpec)) {
+        return false
+      }
+    }
+
+    return true
   }
 
   public toString(): string {
-    return `ValidatedActivityConfig(sportId: ${this._value.sportId.toString()})`
+    return 'ValidatedActivityConfig'
   }
 }

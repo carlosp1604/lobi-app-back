@@ -1,7 +1,7 @@
 import { Slug } from '~/src/modules/Shared/Domain/ValueObject/Slug'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { SportLevel } from '~/src/modules/Activity/Domain/Sport/SportLevel'
 import { ResourceUrl } from '~/src/modules/Shared/Domain/ValueObject/ResourceUrl'
-import { SportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/SportRankingSystem'
 
 const rankingData = [
   { id: '47952670-3502-498c-8594-52623e198642', slug: 'beginner', order: 1, imageUrl: null },
@@ -10,10 +10,10 @@ const rankingData = [
   { id: '9f041772-2371-460d-9b59-786524312891', slug: 'professional', order: 4, imageUrl: null },
 ]
 
-export const BasicSportRankingSystem: Array<SportRankingSystem> = rankingData.map(
+export const BasicSportRankingSystem: Array<SportLevel> = rankingData.map(
   (data) =>
-    new SportRankingSystem(
-      Identifier.fromString(data.id),
+    new SportLevel(
+      Identifier.create(data.id),
       Slug.fromString(data.slug),
       data.order,
       data.imageUrl ? ResourceUrl.fromString(data.imageUrl) : null,

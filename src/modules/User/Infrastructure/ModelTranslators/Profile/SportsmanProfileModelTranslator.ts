@@ -7,8 +7,8 @@ import { SportsmanProfileBirthDate } from '~/src/modules/User/Domain/ValueObject
 export class SportsmanProfileModelTranslator {
   public static toDomain(rawModel: SportsmanProfileRawModel, now: Date): SportsmanProfile {
     return new SportsmanProfile(
-      Identifier.fromString(rawModel.id),
-      Identifier.fromString(rawModel.user_id),
+      Identifier.create(rawModel.id),
+      Identifier.create(rawModel.user_id),
       rawModel.birth_date ? SportsmanProfileBirthDate.fromString(rawModel.birth_date, now) : null,
       rawModel.bio ? SportsmanProfileBio.fromString(rawModel.bio) : null,
       rawModel.created_at,

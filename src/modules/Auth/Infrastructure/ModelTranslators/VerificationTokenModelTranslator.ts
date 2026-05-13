@@ -8,7 +8,7 @@ import { VerificationTokenTokenHash } from '~/src/modules/Auth/Domain/ValueObjec
 export class VerificationTokenModelTranslator {
   public static toDomain(rawModel: VerificationTokenRawModel): VerificationToken {
     return new VerificationToken(
-      Identifier.fromString(rawModel.id),
+      Identifier.create(rawModel.id),
       EmailAddress.fromString(rawModel.email),
       VerificationTokenTokenHash.fromString(rawModel.token_hash),
       VerificationTokenPurpose.fromString(rawModel.purpose),

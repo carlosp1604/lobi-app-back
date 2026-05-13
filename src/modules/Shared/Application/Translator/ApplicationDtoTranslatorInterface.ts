@@ -1,3 +1,3 @@
-export interface ApplicationDtoTranslatorInterface<DomainType, DtoType> {
-  translate(domain: DomainType): DtoType
+export interface ApplicationDtoTranslatorInterface<DataType, DtoType> {
+  translate(data: DataType): DtoType
 }

@@ -1,5 +1,5 @@
-import { DomainException, DomainExceptionContext } from '~/src/modules/Exception/Domain/DomainException'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
+import { DomainException, DomainExceptionContext } from '~/src/modules/Exception/Domain/DomainException'
 
 export class ActivityDomainException extends DomainException {
   public readonly __brand = 'ActivityDomainException' as const
@@ -8,6 +8,8 @@ export class ActivityDomainException extends DomainException {
   public static invalidActivityDescriptionId = 'activity_domain_invalid_activity_description'
   public static invalidActivityStatusId = 'activity_domain_invalid_activity_status'
   public static invalidActivityScheduledDateId = 'activity_domain_invalid_activity_scheduled_date'
+  public static invalidSpecConfigurationId = 'activity_domain_invalid_spec_configuration'
+  public static invalidCapabilityConfigurationId = 'activity_domain_invalid_capability_configuration'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, ActivityDomainException.name, context)
@@ -52,5 +54,17 @@ export class ActivityDomainException extends DomainException {
       this.invalidActivityScheduledDateId,
       { current, minMinutes, maxDays },
     )
+  }
+
+  public static invalidSpecConfiguration(specName: string, reason: string) {
+    return new ActivityDomainException(reason, this.invalidSpecConfigurationId, {
+      specName,
+    })
+  }
+
+  public static invalidCapabilityConfiguration(capabilityName: string, reason: string) {
+    return new ActivityDomainException(reason, this.invalidCapabilityConfigurationId, {
+      capabilityName,
+    })
   }
 }

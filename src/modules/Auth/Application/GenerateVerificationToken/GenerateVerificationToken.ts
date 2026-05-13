@@ -139,7 +139,7 @@ export class GenerateVerificationToken {
       const verificationTokenId = this.idGeneratorService.generateId()
 
       const newVerificationToken = VerificationToken.create(
-        Identifier.fromString(verificationTokenId),
+        Identifier.create(verificationTokenId),
         email,
         tokenHash,
         verificationTokenPurpose,

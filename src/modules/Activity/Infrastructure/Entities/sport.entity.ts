@@ -2,12 +2,14 @@ import { EntitySchema } from 'typeorm'
 import { ActivityRawModel } from '~/src/modules/Activity/Infrastructure/Entities/activity.entity'
 
 export type RawSportSpecs = {
-  participants: {
+  individual_participants?: {
     defaultMinPlayers: number
-    teamsModule?: {
-      defaultTeams: number
-      defaultPlayersPerTeam: number
-    }
+    defaultMaxPlayers: number
+  }
+  team_participants?: {
+    defaultMinPlayers: number
+    defaultTeams: number
+    defaultPlayersPerTeam: number
   }
 }
 
