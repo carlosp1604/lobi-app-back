@@ -41,7 +41,7 @@ export class JoinActivityCommandError extends Error {
   }
 
   public static participantAlreadyJoined() {
-    return new JoinActivityCommandError('', this.participantAlreadyJoinedId)
+    return new JoinActivityCommandError('User has already joined to activity', this.participantAlreadyJoinedId)
   }
 
   public static activityDoesNotAllowJoin(domainMessage: string) {

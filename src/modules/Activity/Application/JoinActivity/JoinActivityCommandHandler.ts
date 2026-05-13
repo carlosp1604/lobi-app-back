@@ -20,8 +20,8 @@ type ValidateJoinActivityCommandInput = {
 
 export class JoinActivityCommandHandler {
   constructor(
-    private activityRepository: ActivityRepositoryInterface,
     private participantRepository: ParticipantRepositoryInterface,
+    private activityRepository: ActivityRepositoryInterface,
     private participationRepository: ParticipationRepositoryInterface,
     private clockService: ClockServiceInterface,
     private unitOfWork: UnitOfWork,

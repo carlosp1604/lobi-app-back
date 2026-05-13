@@ -58,7 +58,7 @@ export class ActivityModelTranslator {
 
       accumulator[specName] = this.specFactory.fromPrimitives(
         specName,
-        rawCapabilities[specName] as SpecTypeMap[typeof specName]['primitives'],
+        rawSpecs[specName] as SpecTypeMap[typeof specName]['primitives'],
       )
 
       return accumulator

@@ -73,7 +73,7 @@ export class PostgreSqlActivityRepository implements ActivityRepositoryInterface
 
     const activityEntity = await entityManager
       .createQueryBuilder(ActivityEntity, 'activity')
-      .where('activity.id = :id', { id })
+      .where('activity.id = :id', { id: id.value })
       .setLock('pessimistic_write')
       .getOne()
 
