@@ -7,12 +7,16 @@ export class Participation {
     public readonly id: Identifier,
     public readonly activityId: Identifier,
     public readonly participantId: Identifier,
-    public readonly joinedAt: Date,
+    private _joinedAt: Date,
     private _leftAt: Date | null,
   ) {}
 
   get leftAt(): Date | null {
     return this._leftAt
+  }
+
+  get joinedAt(): Date {
+    return this._joinedAt
   }
 
   public static create(id: Identifier, activityId: Identifier, participantId: Identifier, now: Date): Participation {
@@ -29,8 +33,23 @@ export class Participation {
     return new Participation(id, activityId, participantId, joinedAt, leftAt)
   }
 
-  public isActive(): boolean {
-    return this._leftAt === null
+  public canEnable(): Result<void, ParticipationDomainException> {
+    if (this._leftAt === null) {
+      return fail(ParticipationDomainException.participationIsStillActive(this.id, this.participantId))
+    }
+
+    return success(undefined)
+  }
+
+  public enable(now: Date): void {
+    const canEnableResult = this.canEnable()
+
+    if (!canEnableResult.success) {
+      throw canEnableResult.error
+    }
+
+    this._leftAt = null
+    this._joinedAt = now
   }
 
   public leave(currentTime: Date): void {
@@ -41,6 +60,10 @@ export class Participation {
     }
 
     this._leftAt = currentTime
+  }
+
+  public isActive(): boolean {
+    return this._leftAt === null
   }
 
   public canLeave(): Result<void, ParticipationDomainException> {

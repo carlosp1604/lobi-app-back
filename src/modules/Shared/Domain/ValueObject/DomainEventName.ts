@@ -9,6 +9,8 @@ export enum ValidDomainEventNames {
   SUCCESSFUL_RESET_PASSWORD = 'successfulResetPassword',
   CLOSED_SESSION = 'closedSession',
   ACTIVITY_CREATED = 'activityCreated',
+  PARTICIPANT_JOINED = 'participantJoined',
+  ACTIVITY_CONFIRMED = 'activityConfirmed',
 }
 
 export class DomainEventName extends ValueObject<ValidDomainEventNames> {
@@ -52,6 +54,14 @@ export class DomainEventName extends ValueObject<ValidDomainEventNames> {
 
   static activityCreated(): DomainEventName {
     return new DomainEventName(ValidDomainEventNames.ACTIVITY_CREATED)
+  }
+
+  static participantJoined(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.PARTICIPANT_JOINED)
+  }
+
+  static activityConfirmed(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.ACTIVITY_CONFIRMED)
   }
 
   private isValidDomainEventName(value: string): boolean {
