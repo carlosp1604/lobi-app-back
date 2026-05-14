@@ -10,9 +10,9 @@ export class LeaveActivityCommandError extends Error {
   public static readonly userNotFoundId = 'leave_activity_command_user_not_found'
   public static readonly userDisabledId = 'leave_activity_command_user_disabled'
   public static readonly userIsNotAParticipantId = 'leave_activity_command_user_is_not_a_participant'
-  public static readonly activityDoesNotAllowLeaveId = 'leave_activity_command_activity_does_not_allow_leaved'
-  public static readonly activityLeaveMarginDoesNotMeetId = 'leave_activity_command_activity_leave_margin_does_not_meet'
-  public static readonly activityConfirmedToTakePlaceId = 'leave_activity_command_activity_confirmed_to_take_place'
+  public static readonly activityStatusDoesNotAllowLeaveId = 'leave_activity_command_activity_does_not_allow_leave'
+  public static readonly activityLeaveDeadlineAlreadyPassedId = 'leave_activity_command_activity_leave_deadline_already_passed'
+  public static readonly activityAlreadyConfirmedToTakePlaceId = 'leave_activity_command_activity_already_confirmed_to_take_place'
   public static readonly activityInconsistentStateId = 'leave_activity_command_activity_activity_inconsistent_state'
 
   private constructor(message: string, id: string) {
@@ -45,16 +45,16 @@ export class LeaveActivityCommandError extends Error {
     return new LeaveActivityCommandError('User is not participating in this activity', this.userIsNotAParticipantId)
   }
 
-  public static activityDoesNotAllowLeave(domainMessage: string) {
-    return new LeaveActivityCommandError(domainMessage, this.activityDoesNotAllowLeaveId)
+  public static activityStatusDoesNotAllowLeave(domainMessage: string) {
+    return new LeaveActivityCommandError(domainMessage, this.activityStatusDoesNotAllowLeaveId)
   }
 
-  public static activityLeaveMarginDoesNotMeet(domainMessage: string) {
-    return new LeaveActivityCommandError(domainMessage, this.activityLeaveMarginDoesNotMeetId)
+  public static activityLeaveDeadlineAlreadyPassed(domainMessage: string) {
+    return new LeaveActivityCommandError(domainMessage, this.activityLeaveDeadlineAlreadyPassedId)
   }
 
-  public static activityConfirmedToTakePlace(domainMessage: string) {
-    return new LeaveActivityCommandError(domainMessage, this.activityConfirmedToTakePlaceId)
+  public static activityAlreadyConfirmedToTakePlace(domainMessage: string) {
+    return new LeaveActivityCommandError(domainMessage, this.activityAlreadyConfirmedToTakePlaceId)
   }
 
   public static activityInconsistentState() {

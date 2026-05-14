@@ -72,7 +72,7 @@ export class LeaveActivityCommandHandler {
         const exception = canBeLeftAtResult.error
 
         if (exception.id !== ActivityDomainException.hostCannotLeaveActivityId) {
-          return fail(this.mapActivityCanBeLeftException(exception))
+          return fail(this.mapActivityCanBeLeftAtException(exception))
         }
 
         const candidateHostParticipation = await this.participationRepository.findHostCandidate(activity.id, activity.hostId, context)
@@ -149,14 +149,14 @@ export class LeaveActivityCommandHandler {
     })
   }
 
-  private mapActivityCanBeLeftException(exception: ActivityDomainException): LeaveActivityCommandError {
+  private mapActivityCanBeLeftAtException(exception: ActivityDomainException): LeaveActivityCommandError {
     switch (exception.id) {
-      case ActivityDomainException.activityDoesNotAllowLeaveId:
-        return LeaveActivityCommandError.activityDoesNotAllowLeave(exception.message)
-      case ActivityDomainException.activityLeaveMarginDoesNotMeetId:
-        return LeaveActivityCommandError.activityLeaveMarginDoesNotMeet(exception.message)
-      case ActivityDomainException.activityConfirmedToTakePlaceId:
-        return LeaveActivityCommandError.activityConfirmedToTakePlace(exception.message)
+      case ActivityDomainException.activityStatusDoesNotAllowLeaveId:
+        return LeaveActivityCommandError.activityStatusDoesNotAllowLeave(exception.message)
+      case ActivityDomainException.activityLeaveDeadlineAlreadyPassedId:
+        return LeaveActivityCommandError.activityLeaveDeadlineAlreadyPassed(exception.message)
+      case ActivityDomainException.activityAlreadyConfirmedToTakePlaceId:
+        return LeaveActivityCommandError.activityAlreadyConfirmedToTakePlace(exception.message)
 
       default:
         throw exception
