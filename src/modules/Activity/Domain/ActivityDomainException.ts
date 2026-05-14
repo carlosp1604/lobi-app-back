@@ -23,6 +23,10 @@ export class ActivityDomainException extends DomainException {
   public static readonly activityAlreadyConfirmedToTakePlaceId = 'activity_domain_activity_already_confirmed_to_take_place'
   public static readonly cannotReplaceHostWithCurrentHostId = 'activity_domain_cannot_replace_host_with_current_host'
   public static readonly hostCannotLeaveActivityId = 'activity_domain_activity_host_cannot_leave_activity'
+  public static readonly onlyHostCanCancelActivityId = 'activity_domain_activity_only_host_can_cancel_activity'
+  public static readonly activityStatusDoesNotAllowCancelId = 'activity_domain_activity_status_does_not_allow_cancel'
+  public static readonly activityCannotBeCancelledWithParticipantsId =
+    'activity_domain_activity_activity_cannot_be_cancelled_with_participants'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, ActivityDomainException.name, context)
@@ -200,6 +204,44 @@ export class ActivityDomainException extends DomainException {
       {
         activityId: activityId.value,
         hostId: hostId.value,
+      },
+    )
+  }
+
+  public static onlyHostCanCancelActivity(activityId: Identifier, participantId: Identifier, hostId: Identifier) {
+    return new ActivityDomainException(
+      'Cannot cancel the activity. Only the host can perform this operation',
+      this.onlyHostCanCancelActivityId,
+      {
+        activityId: activityId.value,
+        participantId: participantId.value,
+        hostId: hostId.value,
+      },
+    )
+  }
+
+  public static activityStatusDoesNotAllowCancel(
+    activityId: Identifier,
+    currentStatus: ActivityStatus,
+    allowedStatuses: Array<ValidActivityStatus>,
+  ): ActivityDomainException {
+    return new ActivityDomainException(
+      `Cannot cancel the activity. Current status is '${currentStatus.value}', but allowed statuses are: [${allowedStatuses.join(', ')}]`,
+      this.activityStatusDoesNotAllowCancelId,
+      { activityId: activityId.value, currentStatus: currentStatus.value, allowedStatuses },
+    )
+  }
+
+  public static activityCannotBeCancelledWithParticipants(
+    activityId: Identifier,
+    currentParticipants: IntegerNumber,
+  ): ActivityDomainException {
+    return new ActivityDomainException(
+      'Cannot cancel the activity. An activity with participants cannot be cancelled',
+      this.activityCannotBeCancelledWithParticipantsId,
+      {
+        activityId: activityId.value,
+        currentParticipants: currentParticipants.value,
       },
     )
   }

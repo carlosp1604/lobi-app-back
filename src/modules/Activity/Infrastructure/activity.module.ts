@@ -35,6 +35,7 @@ import { PostgreSqlParticipationRepository } from '~/src/modules/Activity/Infras
 import { TYPEORM_MANAGER_RESOLVER, UNIT_OF_WORK } from '~/src/db/config/typeorm.tokens'
 import {
   ACTIVITY_REPOSITORY,
+  CANCEL_ACTIVITY_COMMAND_HANDLER,
   CAPABILITY_FACTORY,
   CAPABILITY_PAYLOAD_CONTRACT_FACTORY,
   CAPABILITY_TRANSLATOR_FACTORY,
@@ -52,6 +53,7 @@ import {
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
 import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
 import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
+import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
 
 @Module({
   imports: [
@@ -243,6 +245,35 @@ import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/
         ID_GENERATOR,
       ],
     },
+    {
+      provide: CANCEL_ACTIVITY_COMMAND_HANDLER,
+      useFactory: (
+        participantRepository: ParticipantRepositoryInterface,
+        activityRepository: ActivityRepositoryInterface,
+        clockService: ClockServiceInterface,
+        unitOfWork: UnitOfWork,
+        loggerFactory: LoggerFactoryInterface,
+        idGenerator: IdGeneratorServiceInterface,
+      ) => {
+        return new CancelActivityCommandHandler(
+          participantRepository,
+          activityRepository,
+          clockService,
+          unitOfWork,
+          loggerFactory.createLogger(CancelActivityCommandHandler.name),
+          idGenerator,
+        )
+      },
+      inject: [
+        PARTICIPANT_REPOSITORY,
+        ACTIVITY_REPOSITORY,
+        PARTICIPATION_REPOSITORY,
+        CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_FACTORY,
+        ID_GENERATOR,
+      ],
+    },
   ],
   exports: [
     CREATE_ACTIVITY_COMMAND_HANDLER,
@@ -250,6 +281,7 @@ import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/
     GET_ACTIVITY_QUERY_HANDLER,
     JOIN_ACTIVITY_COMMAND_HANDLER,
     LEAVE_ACTIVITY_COMMAND_HANDLER,
+    CANCEL_ACTIVITY_COMMAND_HANDLER,
   ],
 })
 export class ActivityModule {}
