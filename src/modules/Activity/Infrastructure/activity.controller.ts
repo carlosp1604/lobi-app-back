@@ -7,6 +7,7 @@ import { CreateActivityBodyDto } from '~/src/modules/Activity/Infrastructure/Dto
 import { GetSportsQueryHandler } from '~/src/modules/Activity/Application/GetSports/GetSportsQueryHandler'
 import { CreateActivityCommandError } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityCommandError'
 import {
+  CANCEL_ACTIVITY_COMMAND_HANDLER,
   CREATE_ACTIVITY_COMMAND_HANDLER,
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
@@ -14,6 +15,10 @@ import {
   LEAVE_ACTIVITY_COMMAND_HANDLER,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
 import {
+  CANCEL_ACTIVITY_ACTIVITY_NOT_FOUND,
+  CANCEL_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_CANCEL,
+  CANCEL_ACTIVITY_ACTIVITY_WITH_PARTICIPANTS_CANNOT_BE_CANCELLED,
+  CANCEL_ACTIVITY_ONLY_HOST_CAN_CANCEL_ACTIVITY,
   CREATE_ACTIVITY_INVALID_INPUT,
   CREATE_ACTIVITY_INVALID_SPORT_ID,
   CREATE_ACTIVITY_SPORT_NOT_FOUND,
@@ -46,6 +51,7 @@ import {
   ConflictException,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common'
 import { GetActivityQueryHandler } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryHandler'
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
@@ -64,6 +70,9 @@ import { JoinActivityCommandError } from '~/src/modules/Activity/Application/Joi
 import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
 import { LeaveActivityCommand } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommand'
 import { LeaveActivityCommandError } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandError'
+import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
+import { CancelActivityCommandError } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandError'
+import { CancelActivityCommand } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommand'
 
 @Controller('activity')
 export class ActivityController {
@@ -75,6 +84,7 @@ export class ActivityController {
     @Inject(GET_ACTIVITY_QUERY_HANDLER) private readonly getActivityQueryHandler: GetActivityQueryHandler,
     @Inject(JOIN_ACTIVITY_COMMAND_HANDLER) private readonly joinActivityCommandHandler: JoinActivityCommandHandler,
     @Inject(LEAVE_ACTIVITY_COMMAND_HANDLER) private readonly leaveActivityCommandHandler: LeaveActivityCommandHandler,
+    @Inject(CANCEL_ACTIVITY_COMMAND_HANDLER) private readonly cancelActivityCommandHandler: CancelActivityCommandHandler,
     @Inject(LOGGER_FACTORY) private readonly loggerFactory: LoggerFactoryInterface,
     private readonly configService: ConfigService<Env, true>,
   ) {
@@ -260,6 +270,64 @@ export class ActivityController {
       case LeaveActivityCommandError.activityAlreadyConfirmedToTakePlaceId:
         throw new ConflictException({
           code: LEAVE_ACTIVITY_ACTIVITY_ALREADY_CONFIRMED_TO_TAKE_PLACE,
+          message: error.message,
+        })
+
+      default:
+        throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async cancelActivity(@AccessToken() accessToken: JwtPayload, @Param('id') id: string) {
+    const command = new CancelActivityCommand(accessToken.sub, id)
+
+    const result = await this.cancelActivityCommandHandler.execute(command)
+
+    if (result.success) {
+      return result.value
+    }
+
+    const error = result.error
+
+    switch (error.id) {
+      case CancelActivityCommandError.invalidUserIdId: {
+        this.logInvalidUserId(accessToken, error)
+
+        throw new InternalServerErrorException(error)
+      }
+
+      case CancelActivityCommandError.userDisabledId:
+      case CancelActivityCommandError.userNotFoundId:
+        throw new UnauthorizedException({
+          code: UNAUTHORIZED_ACCESS,
+          message: 'Unauthorized access',
+        })
+
+      case CancelActivityCommandError.invalidActivityIdId:
+      case CancelActivityCommandError.activityNotFoundId:
+        throw new UnprocessableEntityException({
+          code: CANCEL_ACTIVITY_ACTIVITY_NOT_FOUND,
+          message: error.message,
+        })
+
+      case CancelActivityCommandError.onlyHostCanCancelActivityId:
+        throw new ForbiddenException({
+          code: CANCEL_ACTIVITY_ONLY_HOST_CAN_CANCEL_ACTIVITY,
+          message: error.message,
+        })
+
+      case CancelActivityCommandError.activityStatusDoesNotAllowCancelId:
+        throw new ConflictException({
+          code: CANCEL_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_CANCEL,
+          message: error.message,
+        })
+
+      case CancelActivityCommandError.activityCannotBeCancelledWithParticipantsId:
+        throw new ConflictException({
+          code: CANCEL_ACTIVITY_ACTIVITY_WITH_PARTICIPANTS_CANNOT_BE_CANCELLED,
           message: error.message,
         })
 

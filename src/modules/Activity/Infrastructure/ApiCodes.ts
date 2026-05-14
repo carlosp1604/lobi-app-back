@@ -1,3 +1,10 @@
+/** Cancel Activity command */
+export const CANCEL_ACTIVITY_ACTIVITY_NOT_FOUND = 'cancel-activity-activity-not-found'
+export const CANCEL_ACTIVITY_ACTIVITY_WITH_PARTICIPANTS_CANNOT_BE_CANCELLED =
+  'cancel-activity-activity-with-participants-cannot-be-cancelled'
+export const CANCEL_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_CANCEL = 'cancel-activity-activity-status-does-not-allow-cancel'
+export const CANCEL_ACTIVITY_ONLY_HOST_CAN_CANCEL_ACTIVITY = 'cancel-activity-only-host-can-cancel-activity'
+
 /** Create Activity command */
 export const CREATE_ACTIVITY_INVALID_INPUT = 'create-activity-invalid-input'
 export const CREATE_ACTIVITY_INVALID_SPORT_ID = 'create-activity-invalid-sport-id'
