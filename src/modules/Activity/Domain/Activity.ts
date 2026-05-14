@@ -5,12 +5,12 @@ import { DomainEvent } from '~/src/modules/Shared/Domain/DomainEvent'
 import { ActivityTitle } from '~/src/modules/Activity/Domain/ValueObject/ActivityTitle'
 import { IntegerNumber } from '~/src/modules/Shared/Domain/ValueObject/Numeric/IntegerNumber'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivityDescription } from '~/src/modules/Activity/Domain/ValueObject/ActivityDescription'
 import { ActivityScheduledDate } from '~/src/modules/Activity/Domain/ValueObject/ActivityScheduledDate'
+import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
 import { ActivityValidatedConfig } from '~/src/modules/Activity/Domain/ValueObject/ActivityValidatedConfig'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
-import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
 import { ActivityStatus, ValidActivityStatus } from '~/src/modules/Activity/Domain/ValueObject/ActivityStatus'
 
 export class Activity {
@@ -211,6 +211,22 @@ export class Activity {
     return success(undefined)
   }
 
+  public canBeCancelledBy(participantId: Identifier): Result<void, ActivityDomainException> {
+    if (!this.status.isOpen()) {
+      return fail(ActivityDomainException.activityStatusDoesNotAllowCancel(this.id, this.status, [ValidActivityStatus.OPEN]))
+    }
+
+    if (!this.isHostedBy(participantId)) {
+      return fail(ActivityDomainException.onlyHostCanCancelActivity(this.id, participantId, this.hostId))
+    }
+
+    if (!this.currentParticipants.equals(IntegerNumber.create(1))) {
+      return fail(ActivityDomainException.activityCannotBeCancelledWithParticipants(this.id, this.currentParticipants))
+    }
+
+    return success(undefined)
+  }
+
   public canReplaceHost(candidateParticipantId: Identifier): Result<void, ActivityDomainException> {
     if (this.isHostedBy(candidateParticipantId)) {
       return fail(ActivityDomainException.cannotReplaceHostWithCurrentHost(this.id, this.hostId))
@@ -311,6 +327,30 @@ export class Activity {
 
       this._pendingDomainEvents.push(activityConfirmedDomainEvent)
     }
+
+    this._updatedAt = now
+  }
+
+  public cancel(activityCancelledDomainEventId: Identifier, participantId: Identifier, now: Date): void {
+    const canBeCancelledByResult = this.canBeCancelledBy(participantId)
+
+    if (!canBeCancelledByResult.success) {
+      throw canBeCancelledByResult.error
+    }
+
+    this._status = ActivityStatus.cancelled()
+
+    const activityCancelledDomainEvent = DomainEvent.create(
+      activityCancelledDomainEventId,
+      DomainEventName.activityCancelled(),
+      DomainEventAggregateType.activity(),
+      this.id,
+      {},
+      {},
+      now,
+    )
+
+    this._pendingDomainEvents.push(activityCancelledDomainEvent)
 
     this._updatedAt = now
   }
