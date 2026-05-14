@@ -42,6 +42,7 @@ import {
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
   JOIN_ACTIVITY_COMMAND_HANDLER,
+  LEAVE_ACTIVITY_COMMAND_HANDLER,
   PARTICIPANT_REPOSITORY,
   PARTICIPATION_REPOSITORY,
   SPEC_FACTORY,
@@ -50,6 +51,7 @@ import {
   SPORT_REPOSITORY,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
 import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
+import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
 
 @Module({
   imports: [
@@ -210,7 +212,44 @@ import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/J
         ID_GENERATOR,
       ],
     },
+    {
+      provide: LEAVE_ACTIVITY_COMMAND_HANDLER,
+      useFactory: (
+        participantRepository: ParticipantRepositoryInterface,
+        activityRepository: ActivityRepositoryInterface,
+        participationRepository: ParticipationRepositoryInterface,
+        clockService: ClockServiceInterface,
+        unitOfWork: UnitOfWork,
+        loggerFactory: LoggerFactoryInterface,
+        idGenerator: IdGeneratorServiceInterface,
+      ) => {
+        return new LeaveActivityCommandHandler(
+          participantRepository,
+          activityRepository,
+          participationRepository,
+          clockService,
+          unitOfWork,
+          loggerFactory.createLogger(LeaveActivityCommandHandler.name),
+          idGenerator,
+        )
+      },
+      inject: [
+        PARTICIPANT_REPOSITORY,
+        ACTIVITY_REPOSITORY,
+        PARTICIPATION_REPOSITORY,
+        CLOCK_SERVICE,
+        UNIT_OF_WORK,
+        LOGGER_FACTORY,
+        ID_GENERATOR,
+      ],
+    },
   ],
-  exports: [CREATE_ACTIVITY_COMMAND_HANDLER, GET_SPORTS_QUERY_HANDLER, GET_ACTIVITY_QUERY_HANDLER, JOIN_ACTIVITY_COMMAND_HANDLER],
+  exports: [
+    CREATE_ACTIVITY_COMMAND_HANDLER,
+    GET_SPORTS_QUERY_HANDLER,
+    GET_ACTIVITY_QUERY_HANDLER,
+    JOIN_ACTIVITY_COMMAND_HANDLER,
+    LEAVE_ACTIVITY_COMMAND_HANDLER,
+  ],
 })
 export class ActivityModule {}
