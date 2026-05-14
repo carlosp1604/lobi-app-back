@@ -1,5 +1,6 @@
 import { TxContext } from '~/src/modules/Shared/Application/TxContext'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
+import { IsNull, Not } from 'typeorm'
 import { Participation } from '~/src/modules/Activity/Domain/Participation/Participation'
 import { ParticipationEntity } from '~/src/modules/Activity/Infrastructure/Entities/participation.entity'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
@@ -41,6 +42,36 @@ export class PostgreSqlParticipationRepository implements ParticipationRepositor
     const participationRepository = entityManager.getRepository(ParticipationEntity)
 
     const participationEntity = await participationRepository.findOneBy({ user_id: participantId.value, activity_id: activityId.value })
+
+    if (!participationEntity) {
+      return null
+    }
+
+    return ParticipationModelTranslator.toDomain(participationEntity)
+  }
+
+  /**
+   * Finds a host candidate by selecting the oldest active participant, excluding the current host
+   * @param activityId Activity ID
+   * @param hostId Current host ID to exclude
+   * @param context The transactional context
+   * @returns The Participation if found, otherwise null
+   */
+  public async findHostCandidate(activityId: Identifier, hostId: Identifier, context?: TxContext): Promise<Participation | null> {
+    const entityManager = this.entityManagerResolver.resolve(context)
+
+    const participationRepository = entityManager.getRepository(ParticipationEntity)
+
+    const participationEntity = await participationRepository.findOne({
+      where: {
+        activity_id: activityId.value,
+        user_id: Not(hostId.value),
+        left_at: IsNull(),
+      },
+      order: {
+        joined_at: 'ASC',
+      },
+    })
 
     if (!participationEntity) {
       return null

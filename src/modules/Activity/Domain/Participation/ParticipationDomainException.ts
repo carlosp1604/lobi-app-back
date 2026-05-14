@@ -4,18 +4,22 @@ import { DomainException, DomainExceptionContext } from '~/src/modules/Exception
 export class ParticipationDomainException extends DomainException {
   public readonly __brand = 'ParticipationDomainException' as const
 
-  public static readonly inactiveParticipationId = 'participation_domain_inactive_participation'
+  public static readonly participationIsAlreadyInactiveId = 'participation_domain_participation_is_already_inactive'
   public static readonly participationIsStillActiveId = 'participation_domain_participation_is_still_active'
 
   private constructor(message: string, id: string, context: DomainExceptionContext = {}) {
     super(message, id, ParticipationDomainException.name, context)
   }
 
-  public static inactiveParticipation(userId: string, activityId: string) {
-    return new ParticipationDomainException('This participation is already inactive', this.inactiveParticipationId, {
-      userId,
-      activityId,
-    })
+  public static participationIsAlreadyInactive(activityId: Identifier, participantId: Identifier) {
+    return new ParticipationDomainException(
+      'Cannot disable participation. This participation is already inactive',
+      this.participationIsAlreadyInactiveId,
+      {
+        activityId: activityId.value,
+        participantId: participantId.value,
+      },
+    )
   }
 
   public static participationIsStillActive(activityId: Identifier, participantId: Identifier) {
