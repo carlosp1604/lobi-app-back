@@ -70,19 +70,7 @@ export class JoinActivityCommandHandler {
       const canBeJoinedAtResult = activity.canBeJoinedAt(now)
 
       if (!canBeJoinedAtResult.success) {
-        const exception = canBeJoinedAtResult.error
-
-        switch (exception.id) {
-          case ActivityDomainException.activityDoesNotAllowJoinId:
-            return fail(JoinActivityCommandError.activityDoesNotAllowJoin(exception.message))
-          case ActivityDomainException.activityAlreadyStartedId:
-            return fail(JoinActivityCommandError.activityAlreadyStarted(exception.message))
-          case ActivityDomainException.activityIsAlreadyFullId:
-            return fail(JoinActivityCommandError.activityIsAlreadyFull(exception.message))
-
-          default:
-            throw exception
-        }
+        return fail(this.mapActivityCanBeJoinedAtException(canBeJoinedAtResult.error))
       }
 
       const currentParticipation = await this.participationRepository.findByParticipantAndActivityId(userId, activityId, context)
@@ -120,6 +108,22 @@ export class JoinActivityCommandHandler {
 
       return success(undefined)
     })
+  }
+
+  private mapActivityCanBeJoinedAtException(exception: ActivityDomainException): JoinActivityCommandError {
+    switch (exception.id) {
+      case ActivityDomainException.activityStatusDoesNotAllowJoinId:
+        return JoinActivityCommandError.activityStatusDoesNotAllowJoin(exception.message)
+      case ActivityDomainException.activityAlreadyStartedId:
+        return JoinActivityCommandError.activityAlreadyStarted(exception.message)
+      case ActivityDomainException.activityAlreadyFullId:
+        return JoinActivityCommandError.activityAlreadyFull(exception.message)
+      case ActivityDomainException.activityNotAvailableToJoinId:
+        return JoinActivityCommandError.activityNotAvailableToJoin(exception.message)
+
+      default:
+        throw exception
+    }
   }
 
   private validateCommand(command: JoinActivityCommand): Result<ValidatedJoinActivityCommandInput, JoinActivityCommandError> {

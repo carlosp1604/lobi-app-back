@@ -10,9 +10,10 @@ export class JoinActivityCommandError extends Error {
   public static readonly userNotFoundId = 'join_activity_command_user_not_found'
   public static readonly userDisabledId = 'join_activity_command_user_disabled'
   public static readonly participantAlreadyJoinedId = 'join_activity_command_participant_already_joined'
-  public static readonly activityDoesNotAllowJoinId = 'join_activity_command_activity_does_not_allow_join'
-  public static readonly activityIsAlreadyFullId = 'join_activity_command_activity_is_already_full'
+  public static readonly activityStatusDoesNotAllowJoinId = 'join_activity_command_activity_status_does_not_allow_join'
+  public static readonly activityAlreadyFullId = 'join_activity_command_activity_already_full'
   public static readonly activityAlreadyStartedId = 'join_activity_command_activity_already_started'
+  public static readonly activityNotAvailableToJoinId = 'join_activity_command_activity_not_available_to_join'
 
   private constructor(message: string, id: string) {
     super(message)
@@ -44,15 +45,19 @@ export class JoinActivityCommandError extends Error {
     return new JoinActivityCommandError('User has already joined to activity', this.participantAlreadyJoinedId)
   }
 
-  public static activityDoesNotAllowJoin(domainMessage: string) {
-    return new JoinActivityCommandError(domainMessage, this.activityDoesNotAllowJoinId)
+  public static activityStatusDoesNotAllowJoin(domainMessage: string) {
+    return new JoinActivityCommandError(domainMessage, this.activityStatusDoesNotAllowJoinId)
   }
 
-  public static activityIsAlreadyFull(domainMessage: string) {
-    return new JoinActivityCommandError(domainMessage, this.activityIsAlreadyFullId)
+  public static activityAlreadyFull(domainMessage: string) {
+    return new JoinActivityCommandError(domainMessage, this.activityAlreadyFullId)
   }
 
   public static activityAlreadyStarted(domainMessage: string) {
     return new JoinActivityCommandError(domainMessage, this.activityAlreadyStartedId)
+  }
+
+  public static activityNotAvailableToJoin(domainMessage: string) {
+    return new JoinActivityCommandError(domainMessage, this.activityNotAvailableToJoinId)
   }
 }
