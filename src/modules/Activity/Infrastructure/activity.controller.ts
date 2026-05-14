@@ -11,17 +11,24 @@ import {
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
   JOIN_ACTIVITY_COMMAND_HANDLER,
+  LEAVE_ACTIVITY_COMMAND_HANDLER,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
 import {
-  ACTIVITY_CREATE_ACTIVITY_INVALID_INPUT,
-  ACTIVITY_CREATE_ACTIVITY_INVALID_SPORT_ID,
-  ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND,
-  ACTIVITY_GET_ACTIVITY_ACTIVITY_NOT_FOUND,
-  ACTIVITY_JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED,
-  ACTIVITY_JOIN_ACTIVITY_ACTIVITY_DOES_NOT_ALLOW_JOIN,
-  ACTIVITY_JOIN_ACTIVITY_ACTIVITY_IS_FULL,
-  ACTIVITY_JOIN_ACTIVITY_ACTIVITY_NOT_FOUND,
-  ACTIVITY_JOIN_ACTIVITY_USER_ALREADY_JOINED,
+  CREATE_ACTIVITY_INVALID_INPUT,
+  CREATE_ACTIVITY_INVALID_SPORT_ID,
+  CREATE_ACTIVITY_SPORT_NOT_FOUND,
+  GET_ACTIVITY_ACTIVITY_NOT_FOUND,
+  JOIN_ACTIVITY_ACTIVITY_ALREADY_FULL,
+  JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED,
+  JOIN_ACTIVITY_ACTIVITY_NOT_AVAILABLE_TO_JOIN,
+  JOIN_ACTIVITY_ACTIVITY_NOT_FOUND,
+  JOIN_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_JOIN,
+  JOIN_ACTIVITY_USER_ALREADY_JOINED,
+  LEAVE_ACTIVITY_ACTIVITY_ALREADY_CONFIRMED_TO_TAKE_PLACE,
+  LEAVE_ACTIVITY_ACTIVITY_LEAVE_DEADLINE_ALREADY_PASSED,
+  LEAVE_ACTIVITY_ACTIVITY_NOT_FOUND,
+  LEAVE_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_LEAVE,
+  LEAVE_ACTIVITY_USER_IS_NOT_A_PARTICIPANT,
 } from '~/src/modules/Activity/Infrastructure/ApiCodes'
 import {
   Body,
@@ -36,18 +43,17 @@ import {
   Header,
   Param,
   NotFoundException,
-  Res,
   ConflictException,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common'
 import { GetActivityQueryHandler } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryHandler'
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
 import { GetActivityQuery } from '~/src/modules/Activity/Application/GetActivity/GetActivityQuery'
 import { GetActivityQueryError } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryError'
-import { clearCookies } from '~/src/modules/Shared/Infrastructure/CookiesHelper'
 import { ConfigService } from '@nestjs/config'
 import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
 import { StringFormatter } from '~/src/modules/Shared/Domain/StringFormatter'
-import type { FastifyReply } from 'fastify'
 import type { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import type { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 import { CreateActivityCommandHandler } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityCommandHandler'
@@ -55,6 +61,9 @@ import { CreateActivityCommand } from '~/src/modules/Activity/Application/Create
 import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
 import { JoinActivityCommand } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommand'
 import { JoinActivityCommandError } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandError'
+import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
+import { LeaveActivityCommand } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommand'
+import { LeaveActivityCommandError } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandError'
 
 @Controller('activity')
 export class ActivityController {
@@ -65,6 +74,7 @@ export class ActivityController {
     @Inject(GET_SPORTS_QUERY_HANDLER) private readonly getSportsQueryHandler: GetSportsQueryHandler,
     @Inject(GET_ACTIVITY_QUERY_HANDLER) private readonly getActivityQueryHandler: GetActivityQueryHandler,
     @Inject(JOIN_ACTIVITY_COMMAND_HANDLER) private readonly joinActivityCommandHandler: JoinActivityCommandHandler,
+    @Inject(LEAVE_ACTIVITY_COMMAND_HANDLER) private readonly leaveActivityCommandHandler: LeaveActivityCommandHandler,
     @Inject(LOGGER_FACTORY) private readonly loggerFactory: LoggerFactoryInterface,
     private readonly configService: ConfigService<Env, true>,
   ) {
@@ -89,13 +99,7 @@ export class ActivityController {
 
     switch (error.id) {
       case CreateActivityCommandError.invalidUserIdId: {
-        this.loggerService.error('Critical error', error.stack, {
-          reason: 'User ID was validated by AccessToken Guard but rejected by domain',
-          userId: StringFormatter.formatSafe(accessToken.sub, 36),
-          sessionId: StringFormatter.formatSafe(accessToken.sid, 36),
-          expiresAt: StringFormatter.formatSafe(String(accessToken.exp), 36),
-          error: error.message,
-        })
+        this.logInvalidUserId(accessToken, error)
 
         throw new InternalServerErrorException(error)
       }
@@ -109,25 +113,25 @@ export class ActivityController {
 
       case CreateActivityCommandError.invalidSportIdId:
         throw new UnprocessableEntityException({
-          code: ACTIVITY_CREATE_ACTIVITY_INVALID_SPORT_ID,
+          code: CREATE_ACTIVITY_INVALID_SPORT_ID,
           message: error.message,
         })
 
       case CreateActivityCommandError.sportNotFoundId:
         throw new UnprocessableEntityException({
-          code: ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND,
+          code: CREATE_ACTIVITY_SPORT_NOT_FOUND,
           message: error.message,
         })
 
       case CreateActivityCommandError.invalidInputId:
         throw new UnprocessableEntityException({
-          code: ACTIVITY_CREATE_ACTIVITY_INVALID_INPUT,
+          code: CREATE_ACTIVITY_INVALID_INPUT,
           message: error.message,
           errors: error.errors,
         })
 
       default:
-        throw new InternalServerErrorException(result.error)
+        throw new InternalServerErrorException(error)
     }
   }
 
@@ -146,13 +150,7 @@ export class ActivityController {
 
     switch (error.id) {
       case JoinActivityCommandError.invalidUserIdId: {
-        this.loggerService.error('Critical error', error.stack, {
-          reason: 'User ID was validated by AccessToken Guard but rejected by domain',
-          userId: StringFormatter.formatSafe(accessToken.sub, 36),
-          sessionId: StringFormatter.formatSafe(accessToken.sid, 36),
-          expiresAt: StringFormatter.formatSafe(String(accessToken.exp), 36),
-          error: error.message,
-        })
+        this.logInvalidUserId(accessToken, error)
 
         throw new InternalServerErrorException(error)
       }
@@ -164,38 +162,109 @@ export class ActivityController {
           message: 'Unauthorized access',
         })
 
+      case JoinActivityCommandError.invalidActivityIdId:
       case JoinActivityCommandError.activityNotFoundId:
         throw new UnprocessableEntityException({
-          code: ACTIVITY_JOIN_ACTIVITY_ACTIVITY_NOT_FOUND,
+          code: JOIN_ACTIVITY_ACTIVITY_NOT_FOUND,
           message: error.message,
         })
 
       case JoinActivityCommandError.participantAlreadyJoinedId:
         throw new ConflictException({
-          code: ACTIVITY_JOIN_ACTIVITY_USER_ALREADY_JOINED,
+          code: JOIN_ACTIVITY_USER_ALREADY_JOINED,
           message: error.message,
         })
 
-      case JoinActivityCommandError.activityDoesNotAllowJoinId:
+      case JoinActivityCommandError.activityStatusDoesNotAllowJoinId:
         throw new ConflictException({
-          code: ACTIVITY_JOIN_ACTIVITY_ACTIVITY_DOES_NOT_ALLOW_JOIN,
+          code: JOIN_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_JOIN,
           message: error.message,
         })
 
-      case JoinActivityCommandError.activityIsAlreadyFullId:
+      case JoinActivityCommandError.activityAlreadyFullId:
         throw new ConflictException({
-          code: ACTIVITY_JOIN_ACTIVITY_ACTIVITY_IS_FULL,
+          code: JOIN_ACTIVITY_ACTIVITY_ALREADY_FULL,
           message: error.message,
         })
 
       case JoinActivityCommandError.activityAlreadyStartedId:
         throw new ConflictException({
-          code: ACTIVITY_JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED,
+          code: JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED,
+          message: error.message,
+        })
+
+      case JoinActivityCommandError.activityNotAvailableToJoinId:
+        throw new ConflictException({
+          code: JOIN_ACTIVITY_ACTIVITY_NOT_AVAILABLE_TO_JOIN,
           message: error.message,
         })
 
       default:
-        throw new InternalServerErrorException(result.error)
+        throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Post(':id/leave')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(AccessTokenGuard)
+  async leaveActivity(@AccessToken() accessToken: JwtPayload, @Param('id') id: string) {
+    const command = new LeaveActivityCommand(accessToken.sub, id)
+
+    const result = await this.leaveActivityCommandHandler.execute(command)
+
+    if (result.success) {
+      return result.value
+    }
+
+    const error = result.error
+
+    switch (error.id) {
+      case LeaveActivityCommandError.invalidUserIdId: {
+        this.logInvalidUserId(accessToken, error)
+
+        throw new InternalServerErrorException(error)
+      }
+
+      case LeaveActivityCommandError.userDisabledId:
+      case LeaveActivityCommandError.userNotFoundId:
+        throw new UnauthorizedException({
+          code: UNAUTHORIZED_ACCESS,
+          message: 'Unauthorized access',
+        })
+
+      case LeaveActivityCommandError.invalidActivityIdId:
+      case LeaveActivityCommandError.activityNotFoundId:
+        throw new UnprocessableEntityException({
+          code: LEAVE_ACTIVITY_ACTIVITY_NOT_FOUND,
+          message: error.message,
+        })
+
+      case LeaveActivityCommandError.userIsNotAParticipantId:
+        throw new ConflictException({
+          code: LEAVE_ACTIVITY_USER_IS_NOT_A_PARTICIPANT,
+          message: error.message,
+        })
+
+      case LeaveActivityCommandError.activityStatusDoesNotAllowLeaveId:
+        throw new ConflictException({
+          code: LEAVE_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_LEAVE,
+          message: error.message,
+        })
+
+      case LeaveActivityCommandError.activityLeaveDeadlineAlreadyPassedId:
+        throw new ConflictException({
+          code: LEAVE_ACTIVITY_ACTIVITY_LEAVE_DEADLINE_ALREADY_PASSED,
+          message: error.message,
+        })
+
+      case LeaveActivityCommandError.activityAlreadyConfirmedToTakePlaceId:
+        throw new ConflictException({
+          code: LEAVE_ACTIVITY_ACTIVITY_ALREADY_CONFIRMED_TO_TAKE_PLACE,
+          message: error.message,
+        })
+
+      default:
+        throw new InternalServerErrorException(error)
     }
   }
 
@@ -208,11 +277,7 @@ export class ActivityController {
   @Get(':id')
   @OptionalAuth()
   @UseGuards(AccessTokenGuard)
-  async getActivity(
-    @AccessToken() accessToken: JwtPayload | undefined,
-    @Param('id') id: string,
-    @Res({ passthrough: true }) response: FastifyReply,
-  ) {
+  async getActivity(@AccessToken() accessToken: JwtPayload | undefined, @Param('id') id: string) {
     const userId = accessToken ? accessToken.sub : null
 
     const requestDto = new GetActivityQuery(id, userId)
@@ -226,28 +291,31 @@ export class ActivityController {
     const error = result.error
 
     switch (error.id) {
-      case GetActivityQueryError.invalidActivityIdId:
-        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-          cause: result.error,
-        })
-
       case GetActivityQueryError.invalidUserIdId: {
-        clearCookies(response, this.configService)
+        this.logInvalidUserId(accessToken!, error)
 
-        throw new UnauthorizedException({
-          code: UNAUTHORIZED_ACCESS,
-          message: 'Unauthorized access',
-        })
+        throw new InternalServerErrorException(error)
       }
 
+      case GetActivityQueryError.invalidActivityIdId:
       case GetActivityQueryError.activityNotFoundId:
         throw new NotFoundException({
-          code: ACTIVITY_GET_ACTIVITY_ACTIVITY_NOT_FOUND,
+          code: GET_ACTIVITY_ACTIVITY_NOT_FOUND,
           message: error.message,
         })
 
       default:
-        throw new InternalServerErrorException(result.error)
+        throw new InternalServerErrorException(error)
     }
+  }
+
+  private logInvalidUserId(accessToken: JwtPayload, error: Error) {
+    this.loggerService.error('Critical error', error.stack, {
+      reason: 'User ID was validated by AccessToken Guard but rejected by domain',
+      userId: StringFormatter.formatSafe(accessToken.sub, 36),
+      sessionId: StringFormatter.formatSafe(accessToken.sid, 36),
+      expiresAt: StringFormatter.formatSafe(String(accessToken.exp), 36),
+      error: error.message,
+    })
   }
 }
