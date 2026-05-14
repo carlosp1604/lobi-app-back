@@ -71,6 +71,10 @@ export class ActivityScheduledDate extends ValueObject<Date> implements Serializ
     return this._value
   }
 
+  public isPastStartTime(now: Date): boolean {
+    return now.getTime() >= this._value.getTime()
+  }
+
   public isPastJoinTolerance(now: Date): boolean {
     const expirationTimeMs = this._value.getTime() + ActivityScheduledDate.JOIN_TOLERANCE_MINUTES * 60 * 1000
     return now.getTime() > expirationTimeMs

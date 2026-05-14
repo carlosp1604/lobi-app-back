@@ -156,7 +156,7 @@ export class Activity {
   public canBeJoinedAt(now: Date): Result<void, ActivityDomainException> {
     if (!(this.status.isOpen() || this.status.isConfirmed())) {
       return fail(
-        ActivityDomainException.activityDoesNotAllowJoin(this.id, this.status, [
+        ActivityDomainException.activityStatusDoesNotAllowJoin(this.id, this.status, [
           ValidActivityStatus.OPEN,
           ValidActivityStatus.CONFIRMED,
         ]),
@@ -167,8 +167,14 @@ export class Activity {
       return fail(ActivityDomainException.activityAlreadyStarted(this.id, this.scheduledAt, now))
     }
 
+    if (!this.status.isConfirmed() && this.scheduledAt.isPastStartTime(now)) {
+      return fail(
+        ActivityDomainException.activityNotAvailableToJoin(this.id, this._currentParticipants, this.minCapacity, this.scheduledAt, now),
+      )
+    }
+
     if (this.currentParticipants.isGreaterThanOrEqual(this.maxCapacity)) {
-      return fail(ActivityDomainException.activityIsAlreadyFull(this.id, this.currentParticipants, this.maxCapacity))
+      return fail(ActivityDomainException.activityAlreadyFull(this.id, this.currentParticipants, this.maxCapacity))
     }
 
     return success(undefined)
@@ -176,12 +182,16 @@ export class Activity {
 
   public canBeLeftAt(now: Date, participantId: Identifier): Result<void, ActivityDomainException> {
     if (!this.status.isOpen()) {
-      return fail(ActivityDomainException.activityDoesNotAllowLeave(this.id, this.status, [ValidActivityStatus.OPEN]))
+      return fail(ActivityDomainException.activityStatusDoesNotAllowLeave(this.id, this.status, [ValidActivityStatus.OPEN]))
+    }
+
+    if (this.isHostedBy(participantId) && !this.hasParticipants()) {
+      return success(undefined)
     }
 
     if (this.scheduledAt.isPastLeaveMargin(now)) {
       return fail(
-        ActivityDomainException.activityLeaveMarginDoesNotMeet(
+        ActivityDomainException.activityLeaveDeadlineAlreadyPassed(
           this.id,
           this.scheduledAt,
           ActivityScheduledDate.LEAVE_TOLERANCE_MINUTES,
@@ -191,7 +201,7 @@ export class Activity {
     }
 
     if (this.currentParticipants.isGreaterThanOrEqual(this.minCapacity)) {
-      return fail(ActivityDomainException.activityConfirmedToTakePlace(this.id, this.currentParticipants, this.minCapacity))
+      return fail(ActivityDomainException.activityAlreadyConfirmedToTakePlace(this.id, this.currentParticipants, this.minCapacity))
     }
 
     if (this.isHostedBy(participantId) && this.hasParticipants()) {
@@ -230,7 +240,7 @@ export class Activity {
       this.id,
       {
         activityId: this.id.value,
-        participantsId: participantId.value,
+        participantId: participantId.value,
       },
       {},
       now,
@@ -278,7 +288,7 @@ export class Activity {
       this.id,
       {
         activityId: this.id.value,
-        participantsId: participantId.value,
+        participantId: participantId.value,
       },
       {},
       now,
