@@ -1,11 +1,22 @@
-export const ACTIVITY_CREATE_ACTIVITY_INVALID_INPUT = 'activity-create-activity-invalid-input'
-export const ACTIVITY_CREATE_ACTIVITY_INVALID_SPORT_ID = 'activity-create-activity-invalid-sport-id'
-export const ACTIVITY_CREATE_ACTIVITY_SPORT_NOT_FOUND = 'activity-create-activity-sport-not-found'
+/** Create Activity command */
+export const CREATE_ACTIVITY_INVALID_INPUT = 'create-activity-invalid-input'
+export const CREATE_ACTIVITY_INVALID_SPORT_ID = 'create-activity-invalid-sport-id'
+export const CREATE_ACTIVITY_SPORT_NOT_FOUND = 'create-activity-sport-not-found'
 
-export const ACTIVITY_GET_ACTIVITY_ACTIVITY_NOT_FOUND = 'activity-get-activity-activity-not-found'
+/** Get Activity query */
+export const GET_ACTIVITY_ACTIVITY_NOT_FOUND = 'get-activity-activity-not-found'
 
-export const ACTIVITY_JOIN_ACTIVITY_ACTIVITY_NOT_FOUND = 'activity-join-activity-activity-not-found'
-export const ACTIVITY_JOIN_ACTIVITY_USER_ALREADY_JOINED = 'activity-join-activity-user-already-joined'
-export const ACTIVITY_JOIN_ACTIVITY_ACTIVITY_DOES_NOT_ALLOW_JOIN = 'activity-join-activity-activity-does-not-allow-join'
-export const ACTIVITY_JOIN_ACTIVITY_ACTIVITY_IS_FULL = 'activity-join-activity-activity-is-full'
-export const ACTIVITY_JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED = 'activity-join-activity-activity-already-started'
+/** Join Activity command */
+export const JOIN_ACTIVITY_ACTIVITY_ALREADY_FULL = 'join-activity-activity-already-full'
+export const JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED = 'join-activity-activity-already-started'
+export const JOIN_ACTIVITY_ACTIVITY_NOT_AVAILABLE_TO_JOIN = 'join-activity-activity-not-available-to-join'
+export const JOIN_ACTIVITY_ACTIVITY_NOT_FOUND = 'join-activity-activity-not-found'
+export const JOIN_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_JOIN = 'join-activity-activity-status-does-not-allow-join'
+export const JOIN_ACTIVITY_USER_ALREADY_JOINED = 'join-activity-user-already-joined'
+
+/** Leave Activity command */
+export const LEAVE_ACTIVITY_ACTIVITY_ALREADY_CONFIRMED_TO_TAKE_PLACE = 'leave-activity-activity-already-confirmed-to-take-place'
+export const LEAVE_ACTIVITY_ACTIVITY_LEAVE_DEADLINE_ALREADY_PASSED = 'leave-activity-activity-leave-deadline-already-passed'
+export const LEAVE_ACTIVITY_ACTIVITY_NOT_FOUND = 'leave-activity-activity-not-found'
+export const LEAVE_ACTIVITY_ACTIVITY_STATUS_DOES_NOT_ALLOW_LEAVE = 'leave-activity-activity-status-does-not-allow-leave'
+export const LEAVE_ACTIVITY_USER_IS_NOT_A_PARTICIPANT = 'leave-activity-user-is-not-a-participant'

@@ -21,7 +21,7 @@ export class Activity {
     private _status: ActivityStatus,
     public readonly sportId: Identifier,
     public readonly levels: Array<Identifier>,
-    public readonly hostId: Identifier,
+    private _hostId: Identifier,
     public readonly minCapacity: IntegerNumber,
     public readonly maxCapacity: IntegerNumber,
     public readonly minDuration: Duration | null,
@@ -35,8 +35,8 @@ export class Activity {
     private _pendingDomainEvents: Array<DomainEvent> = [],
   ) {}
 
-  public get updatedAt(): Date {
-    return this._updatedAt
+  public get hostId(): Identifier {
+    return this._hostId
   }
 
   public get status(): ActivityStatus {
@@ -45,6 +45,18 @@ export class Activity {
 
   public get currentParticipants(): IntegerNumber {
     return this._currentParticipants
+  }
+
+  public get updatedAt(): Date {
+    return this._updatedAt
+  }
+
+  public isHostedBy(participantId: Identifier): boolean {
+    return this.hostId.equals(participantId)
+  }
+
+  public hasParticipants(): boolean {
+    return this._currentParticipants.isGreaterThan(IntegerNumber.create(1))
   }
 
   public static create(
@@ -144,7 +156,7 @@ export class Activity {
   public canBeJoinedAt(now: Date): Result<void, ActivityDomainException> {
     if (!(this.status.isOpen() || this.status.isConfirmed())) {
       return fail(
-        ActivityDomainException.activityDoesNotAllowJoin(this.id, this.status, [
+        ActivityDomainException.activityStatusDoesNotAllowJoin(this.id, this.status, [
           ValidActivityStatus.OPEN,
           ValidActivityStatus.CONFIRMED,
         ]),
@@ -155,11 +167,104 @@ export class Activity {
       return fail(ActivityDomainException.activityAlreadyStarted(this.id, this.scheduledAt, now))
     }
 
-    if (this.currentParticipants >= this.maxCapacity) {
-      return fail(ActivityDomainException.activityIsAlreadyFull(this.id, this.currentParticipants, this.maxCapacity))
+    if (!this.status.isConfirmed() && this.scheduledAt.isPastStartTime(now)) {
+      return fail(
+        ActivityDomainException.activityNotAvailableToJoin(this.id, this._currentParticipants, this.minCapacity, this.scheduledAt, now),
+      )
+    }
+
+    if (this.currentParticipants.isGreaterThanOrEqual(this.maxCapacity)) {
+      return fail(ActivityDomainException.activityAlreadyFull(this.id, this.currentParticipants, this.maxCapacity))
     }
 
     return success(undefined)
+  }
+
+  public canBeLeftAt(now: Date, participantId: Identifier): Result<void, ActivityDomainException> {
+    if (!this.status.isOpen()) {
+      return fail(ActivityDomainException.activityStatusDoesNotAllowLeave(this.id, this.status, [ValidActivityStatus.OPEN]))
+    }
+
+    if (this.isHostedBy(participantId) && !this.hasParticipants()) {
+      return success(undefined)
+    }
+
+    if (this.scheduledAt.isPastLeaveMargin(now)) {
+      return fail(
+        ActivityDomainException.activityLeaveDeadlineAlreadyPassed(
+          this.id,
+          this.scheduledAt,
+          ActivityScheduledDate.LEAVE_TOLERANCE_MINUTES,
+          now,
+        ),
+      )
+    }
+
+    if (this.currentParticipants.isGreaterThanOrEqual(this.minCapacity)) {
+      return fail(ActivityDomainException.activityAlreadyConfirmedToTakePlace(this.id, this.currentParticipants, this.minCapacity))
+    }
+
+    if (this.isHostedBy(participantId) && this.hasParticipants()) {
+      return fail(ActivityDomainException.hostCannotLeaveActivity(this.id, this.hostId))
+    }
+
+    return success(undefined)
+  }
+
+  public canReplaceHost(candidateParticipantId: Identifier): Result<void, ActivityDomainException> {
+    if (this.isHostedBy(candidateParticipantId)) {
+      return fail(ActivityDomainException.cannotReplaceHostWithCurrentHost(this.id, this.hostId))
+    }
+
+    return success(undefined)
+  }
+
+  public leave(
+    participantLeftDomainEventId: Identifier,
+    activityCancelledDomainEventId: Identifier,
+    participantId: Identifier,
+    now: Date,
+  ): void {
+    const canBeLeftAtResult = this.canBeLeftAt(now, participantId)
+
+    if (!canBeLeftAtResult.success) {
+      throw canBeLeftAtResult.error
+    }
+
+    this._currentParticipants = this._currentParticipants.subtract(IntegerNumber.create(1))
+
+    const participantLeftDomainEvent = DomainEvent.create(
+      participantLeftDomainEventId,
+      DomainEventName.participantLeft(),
+      DomainEventAggregateType.activity(),
+      this.id,
+      {
+        activityId: this.id.value,
+        participantId: participantId.value,
+      },
+      {},
+      now,
+    )
+
+    this._pendingDomainEvents.push(participantLeftDomainEvent)
+
+    if (this.currentParticipants.isLessThanOrEqual(IntegerNumber.create(0))) {
+      this._status = ActivityStatus.cancelled()
+
+      const activityCancelledDomainEvent = DomainEvent.create(
+        activityCancelledDomainEventId,
+        DomainEventName.activityCancelled(),
+        DomainEventAggregateType.activity(),
+        this.id,
+        {},
+        {},
+        now,
+      )
+
+      this._pendingDomainEvents.push(activityCancelledDomainEvent)
+    }
+
+    this._updatedAt = now
   }
 
   public join(
@@ -183,7 +288,7 @@ export class Activity {
       this.id,
       {
         activityId: this.id.value,
-        participantsId: participantId.value,
+        participantId: participantId.value,
       },
       {},
       now,
@@ -210,13 +315,34 @@ export class Activity {
     this._updatedAt = now
   }
 
+  public replaceHost(candidateParticipantId: Identifier, newHostDomainEventId: Identifier, now: Date): void {
+    const canReplaceHostResult = this.canReplaceHost(candidateParticipantId)
+
+    if (!canReplaceHostResult.success) {
+      throw canReplaceHostResult.error
+    }
+
+    const activityNewHostDomainEvent = DomainEvent.create(
+      newHostDomainEventId,
+      DomainEventName.newHost(),
+      DomainEventAggregateType.activity(),
+      this.id,
+      {
+        currentHost: this._hostId.value,
+        newHost: candidateParticipantId.value,
+      },
+      {},
+      now,
+    )
+
+    this._hostId = candidateParticipantId
+    this._updatedAt = now
+    this._pendingDomainEvents.push(activityNewHostDomainEvent)
+  }
+
   public pullDomainEvents(): Array<DomainEvent> {
     const events = [...this._pendingDomainEvents]
     this._pendingDomainEvents = []
     return events
-  }
-
-  public isHostedBy(participantId: Identifier): boolean {
-    return this.hostId.equals(participantId)
   }
 }

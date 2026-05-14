@@ -18,4 +18,13 @@ export interface ParticipationRepositoryInterface {
    * @returns The Participation if found, otherwise null
    */
   findByParticipantAndActivityId(participantId: Identifier, activityId: Identifier, context?: TxContext): Promise<Participation | null>
+
+  /**
+   * Finds a host candidate by selecting the oldest active participant, excluding the current host
+   * @param activityId Activity ID
+   * @param hostId Current host ID to exclude
+   * @param context The transactional context
+   * @returns The Participation if found, otherwise null
+   */
+  findHostCandidate(activityId: Identifier, hostId: Identifier, context?: TxContext): Promise<Participation | null>
 }

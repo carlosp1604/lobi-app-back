@@ -6,9 +6,10 @@ import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityD
 export class ActivityScheduledDate extends ValueObject<Date> implements SerializableInterface<Date> {
   private __activityScheduledDateBrand: void
 
-  public static readonly MIN_MARGIN_MINUTES = 30
+  public static readonly MIN_MARGIN_MINUTES = 90
   public static readonly MAX_FUTURE_DAYS = 7
   public static readonly JOIN_TOLERANCE_MINUTES = 10
+  public static readonly LEAVE_TOLERANCE_MINUTES = 60
 
   private constructor(value: Date) {
     super(value)
@@ -70,8 +71,17 @@ export class ActivityScheduledDate extends ValueObject<Date> implements Serializ
     return this._value
   }
 
+  public isPastStartTime(now: Date): boolean {
+    return now.getTime() >= this._value.getTime()
+  }
+
   public isPastJoinTolerance(now: Date): boolean {
     const expirationTimeMs = this._value.getTime() + ActivityScheduledDate.JOIN_TOLERANCE_MINUTES * 60 * 1000
+    return now.getTime() > expirationTimeMs
+  }
+
+  public isPastLeaveMargin(now: Date): boolean {
+    const expirationTimeMs = this._value.getTime() - ActivityScheduledDate.LEAVE_TOLERANCE_MINUTES * 60 * 1000
     return now.getTime() > expirationTimeMs
   }
 }

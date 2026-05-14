@@ -10,7 +10,10 @@ export enum ValidDomainEventNames {
   CLOSED_SESSION = 'closedSession',
   ACTIVITY_CREATED = 'activityCreated',
   PARTICIPANT_JOINED = 'participantJoined',
+  PARTICIPANT_LEFT = 'participantLeft',
   ACTIVITY_CONFIRMED = 'activityConfirmed',
+  ACTIVITY_CANCELLED = 'activityCancelled',
+  NEW_HOST = 'newHost',
 }
 
 export class DomainEventName extends ValueObject<ValidDomainEventNames> {
@@ -60,8 +63,20 @@ export class DomainEventName extends ValueObject<ValidDomainEventNames> {
     return new DomainEventName(ValidDomainEventNames.PARTICIPANT_JOINED)
   }
 
+  static participantLeft(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.PARTICIPANT_LEFT)
+  }
+
   static activityConfirmed(): DomainEventName {
     return new DomainEventName(ValidDomainEventNames.ACTIVITY_CONFIRMED)
+  }
+
+  static activityCancelled(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.ACTIVITY_CANCELLED)
+  }
+
+  static newHost(): DomainEventName {
+    return new DomainEventName(ValidDomainEventNames.NEW_HOST)
   }
 
   private isValidDomainEventName(value: string): boolean {

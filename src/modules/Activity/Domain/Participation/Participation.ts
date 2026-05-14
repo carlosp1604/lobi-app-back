@@ -19,6 +19,10 @@ export class Participation {
     return this._joinedAt
   }
 
+  public isActive(): boolean {
+    return this._leftAt === null
+  }
+
   public static create(id: Identifier, activityId: Identifier, participantId: Identifier, now: Date): Participation {
     return new Participation(id, activityId, participantId, now, null)
   }
@@ -34,7 +38,7 @@ export class Participation {
   }
 
   public canEnable(): Result<void, ParticipationDomainException> {
-    if (this._leftAt === null) {
+    if (this.isActive()) {
       return fail(ParticipationDomainException.participationIsStillActive(this.id, this.participantId))
     }
 
@@ -52,23 +56,19 @@ export class Participation {
     this._joinedAt = now
   }
 
-  public leave(currentTime: Date): void {
-    const canLeaveResult = this.canLeave()
+  public disable(currentTime: Date): void {
+    const canDisableResult = this.canDisable()
 
-    if (!canLeaveResult.success) {
-      throw canLeaveResult.error
+    if (!canDisableResult.success) {
+      throw canDisableResult.error
     }
 
     this._leftAt = currentTime
   }
 
-  public isActive(): boolean {
-    return this._leftAt === null
-  }
-
-  public canLeave(): Result<void, ParticipationDomainException> {
+  public canDisable(): Result<void, ParticipationDomainException> {
     if (!this.isActive()) {
-      return fail(ParticipationDomainException.inactiveParticipation(this.participantId.value, this.activityId.value))
+      return fail(ParticipationDomainException.participationIsAlreadyInactive(this.participantId, this.activityId))
     }
 
     return success(undefined)

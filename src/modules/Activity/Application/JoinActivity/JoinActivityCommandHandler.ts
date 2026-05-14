@@ -13,7 +13,7 @@ import { ParticipationDomainException } from '~/src/modules/Activity/Domain/Part
 import { ParticipantRepositoryInterface } from '~/src/modules/Activity/Domain/Participant/ParticipantRepositoryInterface'
 import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/Participation/ParticipationRepositoryInterface'
 
-type ValidateJoinActivityCommandInput = {
+type ValidatedJoinActivityCommandInput = {
   userId: Identifier
   activityId: Identifier
 }
@@ -61,7 +61,6 @@ export class JoinActivityCommandHandler {
         return fail(JoinActivityCommandError.userDisabled())
       }
 
-      // SELECT FOR UPDATE (activities table)
       const activity = await this.activityRepository.findByIdWithLock(activityId, context)
 
       if (!activity) {
@@ -71,19 +70,7 @@ export class JoinActivityCommandHandler {
       const canBeJoinedAtResult = activity.canBeJoinedAt(now)
 
       if (!canBeJoinedAtResult.success) {
-        const exception = canBeJoinedAtResult.error
-
-        switch (exception.id) {
-          case ActivityDomainException.activityDoesNotAllowJoinId:
-            return fail(JoinActivityCommandError.activityDoesNotAllowJoin(exception.message))
-          case ActivityDomainException.activityAlreadyStartedId:
-            return fail(JoinActivityCommandError.activityAlreadyStarted(exception.message))
-          case ActivityDomainException.activityIsAlreadyFullId:
-            return fail(JoinActivityCommandError.activityIsAlreadyFull(exception.message))
-
-          default:
-            throw exception
-        }
+        return fail(this.mapActivityCanBeJoinedAtException(canBeJoinedAtResult.error))
       }
 
       const currentParticipation = await this.participationRepository.findByParticipantAndActivityId(userId, activityId, context)
@@ -123,7 +110,23 @@ export class JoinActivityCommandHandler {
     })
   }
 
-  private validateCommand(command: JoinActivityCommand): Result<ValidateJoinActivityCommandInput, JoinActivityCommandError> {
+  private mapActivityCanBeJoinedAtException(exception: ActivityDomainException): JoinActivityCommandError {
+    switch (exception.id) {
+      case ActivityDomainException.activityStatusDoesNotAllowJoinId:
+        return JoinActivityCommandError.activityStatusDoesNotAllowJoin(exception.message)
+      case ActivityDomainException.activityAlreadyStartedId:
+        return JoinActivityCommandError.activityAlreadyStarted(exception.message)
+      case ActivityDomainException.activityAlreadyFullId:
+        return JoinActivityCommandError.activityAlreadyFull(exception.message)
+      case ActivityDomainException.activityNotAvailableToJoinId:
+        return JoinActivityCommandError.activityNotAvailableToJoin(exception.message)
+
+      default:
+        throw exception
+    }
+  }
+
+  private validateCommand(command: JoinActivityCommand): Result<ValidatedJoinActivityCommandInput, JoinActivityCommandError> {
     const userIdResult = Identifier.safeCreate(command.userId)
 
     if (!userIdResult.success) {

@@ -52,12 +52,20 @@ export class IntegerNumber extends ValueObject<number> implements SerializableIn
     return this._value < other._value
   }
 
+  public isLessThanOrEqual(other: IntegerNumber): boolean {
+    return this._value <= other._value
+  }
+
   public multiply(other: IntegerNumber): IntegerNumber {
     return IntegerNumber.create(this._value * other._value)
   }
 
   public add(other: IntegerNumber): IntegerNumber {
     return IntegerNumber.create(this._value + other._value)
+  }
+
+  public subtract(other: IntegerNumber): IntegerNumber {
+    return IntegerNumber.create(this._value - other._value)
   }
 
   public get value(): number {
