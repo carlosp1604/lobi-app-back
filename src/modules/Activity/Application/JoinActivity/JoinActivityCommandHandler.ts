@@ -13,7 +13,7 @@ import { ParticipationDomainException } from '~/src/modules/Activity/Domain/Part
 import { ParticipantRepositoryInterface } from '~/src/modules/Activity/Domain/Participant/ParticipantRepositoryInterface'
 import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/Participation/ParticipationRepositoryInterface'
 
-type ValidateJoinActivityCommandInput = {
+type ValidatedJoinActivityCommandInput = {
   userId: Identifier
   activityId: Identifier
 }
@@ -61,7 +61,6 @@ export class JoinActivityCommandHandler {
         return fail(JoinActivityCommandError.userDisabled())
       }
 
-      // SELECT FOR UPDATE (activities table)
       const activity = await this.activityRepository.findByIdWithLock(activityId, context)
 
       if (!activity) {
@@ -123,7 +122,7 @@ export class JoinActivityCommandHandler {
     })
   }
 
-  private validateCommand(command: JoinActivityCommand): Result<ValidateJoinActivityCommandInput, JoinActivityCommandError> {
+  private validateCommand(command: JoinActivityCommand): Result<ValidatedJoinActivityCommandInput, JoinActivityCommandError> {
     const userIdResult = Identifier.safeCreate(command.userId)
 
     if (!userIdResult.success) {
