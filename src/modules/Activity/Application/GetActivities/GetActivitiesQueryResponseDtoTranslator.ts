@@ -142,7 +142,10 @@ export class GetActivitiesQueryResponseDtoTranslator
     response.lat = activeFilters.location.lat.stringValue
     response.lng = activeFilters.location.lng.stringValue
     response.radius = activeFilters.radius.value
-    response.statuses = activeFilters.statuses.map((activityStatus) => activityStatus.value)
+
+    if (activeFilters.statuses) {
+      response.statuses = activeFilters.statuses.map((activityStatus) => activityStatus.value)
+    }
 
     if (activeFilters.levelIds) {
       response.levelIds = activeFilters.levelIds.map((identifier) => identifier.value)

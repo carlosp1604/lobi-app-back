@@ -34,7 +34,7 @@ export type GetActivitiesCriteriaQuery = {
 export type GetActivitiesCriteriaActiveFilters = {
   location: Location
   radius: IntegerNumber
-  statuses: Array<ActivityStatus>
+  statuses?: Array<ActivityStatus>
   maxDateSeconds?: IntegerNumber
   sportId?: Identifier
   hostId?: Identifier
@@ -80,7 +80,9 @@ export class GetActivitiesCriteria {
   private static readonly minMaxDateSeconds = IntegerNumber.create(900)
   private static readonly maxMaxDateSeconds = IntegerNumber.create(604800)
 
-  private static readonly defaultStatuses: Array<ActivityStatus> = [ActivityStatus.open(), ActivityStatus.confirmed()]
+  private static readonly joinableStatuses: Array<ValidActivityStatus> = [ValidActivityStatus.OPEN, ValidActivityStatus.CONFIRMED]
+  private static readonly defaultJoinableStatuses: Array<ActivityStatus> = [ActivityStatus.open(), ActivityStatus.confirmed()]
+  private static readonly allStatuses: Array<ValidActivityStatus> = Object.values(ValidActivityStatus)
 
   private static readonly minMinFreeSlots = IntegerNumber.create(1)
   private static readonly defaultMinFreeSlots = IntegerNumber.create(1)
@@ -93,7 +95,7 @@ export class GetActivitiesCriteria {
     public readonly perPage: IntegerNumber,
     public readonly sortBy: GetActivitiesCriteriaSortBy,
     public readonly sortDirection: GetActivitiesCriteriaSortDirection,
-    public readonly statuses: Array<ActivityStatus>,
+    public readonly statuses?: Array<ActivityStatus>,
     public readonly maxDateSeconds?: IntegerNumber,
     public readonly sportId?: Identifier,
     public readonly hostId?: Identifier,
@@ -165,7 +167,9 @@ export class GetActivitiesCriteria {
       query.maxDateSeconds,
     )
 
-    const statuses = this.validateStatuses(query.statuses)
+    const hasStrongFilter = Boolean(query.hostId || query.participantId)
+
+    const statuses = this.validateStatuses(hasStrongFilter, query.statuses)
 
     const sportId = this.validateIdentifier(query.sportId)
     const hostId = this.validateIdentifier(query.hostId)
@@ -307,16 +311,23 @@ export class GetActivitiesCriteria {
     return defaultValue
   }
 
-  private static validateStatuses(value?: Array<string>): Array<ActivityStatus> {
-    const defaultValue = this.defaultStatuses
+  private static validateStatuses(hasStrongFilter: boolean, value?: Array<string>): Array<ActivityStatus> | undefined {
+    const allowedStatuses = hasStrongFilter ? this.allStatuses : this.joinableStatuses
 
-    if (value === undefined || value === null || !Array.isArray(value)) {
-      return defaultValue
+    if (!value || !Array.isArray(value) || value.length === 0) {
+      return hasStrongFilter ? undefined : this.defaultJoinableStatuses
     }
 
-    return value
-      .filter((status) => Object.values(ValidActivityStatus).includes(status as ValidActivityStatus))
+    const validStatuses = value
+      .map((status) => String(status).trim().toLowerCase())
+      .filter((status) => allowedStatuses.includes(status as ValidActivityStatus))
       .map((status) => ActivityStatus.fromString(status))
+
+    if (validStatuses.length === 0) {
+      return hasStrongFilter ? undefined : this.defaultJoinableStatuses
+    }
+
+    return validStatuses
   }
 
   private static validateIdentifier(value?: string): Identifier | undefined {
@@ -333,7 +344,7 @@ export class GetActivitiesCriteria {
     return identifierResult.value
   }
 
-  private static validateIdentifierArray(value?: Array<string>): Array<Identifier> {
+  private static validateIdentifierArray(value?: Array<string>): Array<Identifier> | undefined {
     const defaultValue: Array<Identifier> = []
 
     if (value === null || value === undefined || !Array.isArray(value)) {

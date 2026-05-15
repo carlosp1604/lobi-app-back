@@ -89,8 +89,10 @@ export class GetActivitiesQueryHandler {
       whereClauses.push(`a.scheduled_at <= NOW() + ($${secondsParamIndex} * INTERVAL '1 second')`)
     }
 
-    values.push(criteria.statuses.map((s) => s.value))
-    whereClauses.push(`a.status = ANY($${values.length})`)
+    if (criteria.statuses && criteria.statuses.length > 0) {
+      values.push(criteria.statuses.map((s) => s.value))
+      whereClauses.push(`a.status = ANY($${values.length})`)
+    }
 
     if (criteria.sportId) {
       values.push(criteria.sportId.value)
