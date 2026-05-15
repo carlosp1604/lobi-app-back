@@ -100,8 +100,8 @@ export class GetActivityQueryResponseDtoTranslator
           unit: Duration.DEFAULT_UNIT,
         }),
         max: new DurationQueryDtoTranslator().translate({
-          value: String(rawData.min_duration),
-          normalizedValue: String(rawData.min_duration),
+          value: String(rawData.max_duration),
+          normalizedValue: String(rawData.max_duration),
           unit: Duration.DEFAULT_UNIT,
         }),
       }
