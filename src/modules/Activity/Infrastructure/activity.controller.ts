@@ -9,6 +9,7 @@ import { CreateActivityCommandError } from '~/src/modules/Activity/Application/C
 import {
   CANCEL_ACTIVITY_COMMAND_HANDLER,
   CREATE_ACTIVITY_COMMAND_HANDLER,
+  GET_ACTIVITIES_QUERY_HANDLER,
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
   JOIN_ACTIVITY_COMMAND_HANDLER,
@@ -22,6 +23,7 @@ import {
   CREATE_ACTIVITY_INVALID_INPUT,
   CREATE_ACTIVITY_INVALID_SPORT_ID,
   CREATE_ACTIVITY_SPORT_NOT_FOUND,
+  GET_ACTIVITIES_INVALID_PARAMS,
   GET_ACTIVITY_ACTIVITY_NOT_FOUND,
   JOIN_ACTIVITY_ACTIVITY_ALREADY_FULL,
   JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED,
@@ -52,6 +54,7 @@ import {
   HttpCode,
   HttpStatus,
   ForbiddenException,
+  Query,
 } from '@nestjs/common'
 import { GetActivityQueryHandler } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryHandler'
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
@@ -73,6 +76,9 @@ import { LeaveActivityCommandError } from '~/src/modules/Activity/Application/Le
 import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
 import { CancelActivityCommandError } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandError'
 import { CancelActivityCommand } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommand'
+import { GetActivitiesQuery } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQuery'
+import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
+import { GetActivitiesQueryError } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryError'
 
 @Controller('activity')
 export class ActivityController {
@@ -82,6 +88,7 @@ export class ActivityController {
     @Inject(CREATE_ACTIVITY_COMMAND_HANDLER) private readonly createActivityCommandHandler: CreateActivityCommandHandler,
     @Inject(GET_SPORTS_QUERY_HANDLER) private readonly getSportsQueryHandler: GetSportsQueryHandler,
     @Inject(GET_ACTIVITY_QUERY_HANDLER) private readonly getActivityQueryHandler: GetActivityQueryHandler,
+    @Inject(GET_ACTIVITIES_QUERY_HANDLER) private readonly getActivitiesQueryHandler: GetActivitiesQueryHandler,
     @Inject(JOIN_ACTIVITY_COMMAND_HANDLER) private readonly joinActivityCommandHandler: JoinActivityCommandHandler,
     @Inject(LEAVE_ACTIVITY_COMMAND_HANDLER) private readonly leaveActivityCommandHandler: LeaveActivityCommandHandler,
     @Inject(CANCEL_ACTIVITY_COMMAND_HANDLER) private readonly cancelActivityCommandHandler: CancelActivityCommandHandler,
@@ -372,6 +379,42 @@ export class ActivityController {
           message: error.message,
         })
 
+      default:
+        throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Get('')
+  @OptionalAuth()
+  @UseGuards(AccessTokenGuard)
+  async getActivities(@AccessToken() accessToken: JwtPayload | undefined, @Query() queryParams: any) {
+    const userId = accessToken ? accessToken.sub : null
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const query = new GetActivitiesQuery(userId, queryParams)
+
+    const result = await this.getActivitiesQueryHandler.execute(query)
+
+    if (result.success) {
+      return result.value
+    }
+
+    const error = result.error
+
+    switch (error.id) {
+      case GetActivitiesQueryError.invalidUserIdId: {
+        this.logInvalidUserId(accessToken!, error)
+
+        throw new InternalServerErrorException(error)
+      }
+
+      case GetActivitiesQueryError.invalidParamsId: {
+        throw new UnprocessableEntityException({
+          code: GET_ACTIVITIES_INVALID_PARAMS,
+          message: error.message,
+          errors: error.errors,
+        })
+      }
       default:
         throw new InternalServerErrorException(error)
     }

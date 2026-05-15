@@ -40,6 +40,7 @@ import {
   CAPABILITY_PAYLOAD_CONTRACT_FACTORY,
   CAPABILITY_TRANSLATOR_FACTORY,
   CREATE_ACTIVITY_COMMAND_HANDLER,
+  GET_ACTIVITIES_QUERY_HANDLER,
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
   JOIN_ACTIVITY_COMMAND_HANDLER,
@@ -54,6 +55,7 @@ import {
 import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
 import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
 import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
+import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
 
 @Module({
   imports: [
@@ -184,6 +186,13 @@ import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application
       inject: [EntityManager, CAPABILITY_TRANSLATOR_FACTORY, SPEC_TRANSLATOR_FACTORY],
     },
     {
+      provide: GET_ACTIVITIES_QUERY_HANDLER,
+      useFactory: (entityManager: EntityManager) => {
+        return new GetActivitiesQueryHandler(entityManager)
+      },
+      inject: [EntityManager],
+    },
+    {
       provide: JOIN_ACTIVITY_COMMAND_HANDLER,
       useFactory: (
         participantRepository: ParticipantRepositoryInterface,
@@ -264,21 +273,14 @@ import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application
           idGenerator,
         )
       },
-      inject: [
-        PARTICIPANT_REPOSITORY,
-        ACTIVITY_REPOSITORY,
-        PARTICIPATION_REPOSITORY,
-        CLOCK_SERVICE,
-        UNIT_OF_WORK,
-        LOGGER_FACTORY,
-        ID_GENERATOR,
-      ],
+      inject: [PARTICIPANT_REPOSITORY, ACTIVITY_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, LOGGER_FACTORY, ID_GENERATOR],
     },
   ],
   exports: [
     CREATE_ACTIVITY_COMMAND_HANDLER,
     GET_SPORTS_QUERY_HANDLER,
     GET_ACTIVITY_QUERY_HANDLER,
+    GET_ACTIVITIES_QUERY_HANDLER,
     JOIN_ACTIVITY_COMMAND_HANDLER,
     LEAVE_ACTIVITY_COMMAND_HANDLER,
     CANCEL_ACTIVITY_COMMAND_HANDLER,
