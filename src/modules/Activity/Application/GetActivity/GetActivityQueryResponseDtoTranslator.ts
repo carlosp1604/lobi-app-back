@@ -11,11 +11,11 @@ import { DurationQueryDtoTranslator } from '~/src/modules/Shared/Application/Tra
 import { LocationQueryDtoTranslator } from '~/src/modules/Shared/Application/Translator/LocationQueryDtoTranslator'
 import { GetActivityQueryResponseDto } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryResponseDto'
 import { CapabilityTranslatorFactory } from '~/src/modules/Activity/Application/Translator/Config/Capability/CapabilityTranslatorFactory'
+import { ActivityParticipationQueryDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationQueryDto'
 import { ActivityHostQueryDtoTranslator } from '~/src/modules/Activity/Application/Translator/ActivityHostQueryDtoTranslator'
 import { RankingChoiceQueryDtoTranslator } from '~/src/modules/Activity/Application/Translator/Sport/RankingChoiceQueryDtoTranslator'
 import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
 import { LocationQueryDto, MagnitudeQueryDto } from '~/src/modules/Shared/Application/DTO/MagnitudeQueryDto'
-import { ActivityParticipationQueryDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationQueryDto'
 import { ActivityParticipationQueryDtoTranslator } from '~/src/modules/Activity/Application/Translator/Participation/ActivityParticipationQueryDtoTranslator'
 
 export interface GetActivityResponseContext {
@@ -126,8 +126,8 @@ export class GetActivityQueryResponseDtoTranslator
         location,
         status: rawData.status,
         currentParticipants: rawData.current_participants,
-        scheduledAt: rawData.scheduled_at,
-        createdAt: rawData.created_at,
+        scheduledAt: rawData.scheduled_at.toISOString(),
+        createdAt: rawData.created_at.toISOString(),
         capacity: {
           min: rawData.min_capacity,
           max: rawData.max_capacity,

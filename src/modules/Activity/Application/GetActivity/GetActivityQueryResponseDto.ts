@@ -24,8 +24,8 @@ export interface ActivityDetailsQueryDto {
     readonly max: MagnitudeQueryDto
   } | null
   readonly currentParticipants: number
-  readonly createdAt: Date
-  readonly scheduledAt: Date
+  readonly createdAt: string
+  readonly scheduledAt: string
   readonly activityConfig: ActivityConfigQueryDto
   readonly levels: RankingChoiceQueryDto
 }
