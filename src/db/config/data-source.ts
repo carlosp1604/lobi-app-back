@@ -14,6 +14,7 @@ export default new DataSource({
   port: env.DATABASE_PORT,
   password: env.DATABASE_PASSWORD,
   logging: env.DATABASE_LOGGING,
+  ssl: env.DATABASE_SSL ? { rejectUnauthorized: false } : false,
   entities: ['src/**/*.entity.ts'],
   migrations: ['src/db/migrations/*.ts'],
   synchronize: false,
