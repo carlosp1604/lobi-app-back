@@ -2,7 +2,7 @@
   {
     "id": "157f7943-7f7d-45e0-8e6c-7e390c525f3c",
     "slug": "football",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/football.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -17,7 +17,7 @@
   {
     "id": "9153545d-7521-4f36-9b16-953e5e098679",
     "slug": "football-7",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/football.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -32,7 +32,7 @@
   {
     "id": "f3b0c1a2-9b1e-4e4a-9b1e-4e4a9b1e4e4a",
     "slug": "futsal",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/football.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -47,7 +47,7 @@
   {
     "id": "d2d2a4a3-7647-4933-9112-9856f675865d",
     "slug": "beach-football",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/beach-football.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -62,7 +62,7 @@
   {
     "id": "e88659e6-1aa8-4932-a65a-b4cbc22d4af2",
     "slug": "basketball",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/basketball.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -77,7 +77,7 @@
   {
     "id": "7419e7a8-8e6c-4b53-8373-199148d42d3c",
     "slug": "basketball-3",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/basketball.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -92,7 +92,7 @@
   {
     "id": "36df11c0-6fb7-4093-b9b0-3b24fab302bd",
     "slug": "basketball-1",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/basketball.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -107,7 +107,7 @@
   {
     "id": "b1679093-5755-46f5-9371-332303c737c3",
     "slug": "volleyball",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/volleyball.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -122,7 +122,7 @@
   {
     "id": "1873e351-789a-4c28-9122-12501a617631",
     "slug": "beach-volley",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/volleyball.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -137,7 +137,7 @@
   {
     "id": "d0f2f2d6-ecc7-49ff-b07c-bd471e437fa1",
     "slug": "padel",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/padel.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -152,7 +152,7 @@
   {
     "id": "8673752e-2e65-4f3b-857e-3796245d614d",
     "slug": "tennis",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/tennis.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -167,7 +167,7 @@
   {
     "id": "0873e3a1-7b9a-4c28-9122-12501a617631",
     "slug": "tennis-doubles",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/tennis.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -182,7 +182,7 @@
   {
     "id": "9762a4a3-7647-4933-9112-9856f675865d",
     "slug": "pickleball",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/pickleball.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -197,7 +197,7 @@
   {
     "id": "c1aebb5e-cdfd-4c65-b205-ea6f53041114",
     "slug": "badminton",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/badminton.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -212,7 +212,7 @@
   {
     "id": "7273e351-7b9a-4c28-9122-12501a617631",
     "slug": "ping-pong",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/ping-pong.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -227,7 +227,7 @@
   {
     "id": "f1679093-5755-46f5-9371-332303c737c3",
     "slug": "cycling",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/cycling.svg",
     "config": {
       "capabilities": ["altitude", "distance", "duration", "location_range", "pace", "ranking", "route", "rpe", "speed"],
       "specs": {
@@ -240,7 +240,7 @@
   {
     "id": "5dccb50a-1ed6-4ffe-911b-b103f0409e57",
     "slug": "running",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/running.svg",
     "config": {
       "capabilities": ["altitude", "distance", "duration", "location_range", "pace", "ranking", "route", "rpe", "speed"],
       "specs": {
@@ -253,7 +253,7 @@
   {
     "id": "7422a4a3-7647-4933-9112-9856f675865d",
     "slug": "hiking",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/hiking.svg",
     "config": {
       "capabilities": ["altitude", "distance", "duration", "location_range", "pace", "ranking", "route", "rpe", "speed"],
       "specs": {
@@ -266,7 +266,7 @@
   {
     "id": "7e3e6d63-f0f6-4d62-9c36-fe1813057033",
     "slug": "chess",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/chess.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration"],
       "specs": {
@@ -281,7 +281,7 @@
   {
     "id": "b452a4a3-7647-4933-9112-9856f675865d",
     "slug": "yoga",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/yoga.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration", "rpe"],
       "specs": {
@@ -294,7 +294,7 @@
   {
     "id": "e153545d-7521-4f36-9b16-953e5e098679",
     "slug": "functional-training",
-    "image_url": null,
+    "image_url": "https://cdn.cponton.com/static/sports/functional-training.svg",
     "config": {
       "capabilities": ["location", "ranking", "duration", "rpe"],
       "specs": {
