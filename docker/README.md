@@ -72,3 +72,28 @@ docker compose up -d
 2. Conectarse a la red externa `caddy_gateway`.
 
 3. Definir las etiquetas (`labels`) para indicarle a Caddy su dominio y su puerto interno.
+
+
+## 3. Despliegue e Infraestructura Multi-Entorno
+
+Por defecto, Docker Compose utiliza el nombre de la carpeta raíz del repositorio para identificar y agrupar los recursos de un proyecto (redes, volúmenes, imágenes y contenedores).
+
+* **Si solo se despliega un único entorno en la máquina:** El flujo estándar de Docker Compose funcionará sin problemas.
+* **Si se despliegan varios entornos en la misma máquina (p. ej., `dev` y `prod` compartiendo el mismo Droplet):** Aunque los proyectos residan en carpetas distintas en el servidor (`lobi-api-dev` y `lobi-api-prod`), al compartir el mismo nombre de servicio (`api`) en el archivo `docker-compose.prod.yml`, Docker Compose sufrirá colisiones de nombres de contenedores, redes e imágenes. Esto provocará que el despliegue de un entorno **recree y tumbe por completo** al entorno vecino.
+
+Para prevenir de forma absoluta estos conflictos y garantizar un aislamiento total a nivel de red, procesos e imágenes, **es imperativo forzar el identificador de proyecto utilizando el flag `-p` (o `--project-name`)** en cualquier comando de ciclo de vida (`up`, `down`, `logs`, etc.). Esto encapsula cada despliegue en un universo lógico totalmente estanco.
+
+### Despliegue del entorno de Desarrollo `dev`
+Ubicado en `/var/www/lobi-api-dev`:
+
+```bash
+docker compose --env-file .env -p lobi-dev -f docker/docker-compose.prod.yml up -d --build
+```
+
+### Despliegue del entorno de Desarrollo `prod`
+Ubicado en `/var/www/lobi-api-prod`:
+
+```bash
+docker compose --env-file .env -p lobi-prod -f docker/docker-compose.prod.yml up -d --build
+```
+⚠️ ***Nota Crítica de Operación:*** Si alguna vez necesitas consultar logs o tumbar un entorno específico, recuerda incluir siempre el flag del proyecto correspondiente. De lo contrario, Docker Compose no sabrá a qué entorno te refieres o intentará aplicar la acción sobre el nombre predeterminado de la carpeta, corrompiendo el estado de los contenedores.
