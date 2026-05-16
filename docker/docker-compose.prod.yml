@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   api:
     build:
@@ -7,6 +5,8 @@ services:
       dockerfile: docker/Dockerfile
       target: runner
     restart: always
+    env_file:
+      - ../.env
 
   proxy:
     image: caddy:alpine
@@ -19,7 +19,7 @@ services:
       - CERT_CRT_PATH=${CERT_CRT_PATH}
       - CERT_KEY_PATH=${CERT_KEY_PATH}
     volumes:
-      - ./docker/Caddyfile:/etc/caddy/Caddyfile
+      - ./Caddyfile:/etc/caddy/Caddyfile
       - /etc/letsencrypt:/etc/certs:ro
     depends_on:
       - api
