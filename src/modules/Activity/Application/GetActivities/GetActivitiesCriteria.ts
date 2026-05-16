@@ -106,14 +106,6 @@ export class GetActivitiesCriteria {
     public readonly levelIds?: Array<Identifier>,
   ) {}
 
-  public get offset(): number {
-    return (this.page.value - 1) * this.perPage.value
-  }
-
-  public get limit(): number {
-    return this.perPage.value
-  }
-
   public getActiveFilters(): GetActivitiesCriteriaActiveFilters {
     return {
       location: this.location,
