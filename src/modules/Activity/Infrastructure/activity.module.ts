@@ -34,12 +34,15 @@ import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/
 import { PostgreSqlParticipationRepository } from '~/src/modules/Activity/Infrastructure/PostgreSqlParticipationRepository'
 import { TYPEORM_MANAGER_RESOLVER, UNIT_OF_WORK } from '~/src/db/config/typeorm.tokens'
 import {
+  ACTIVITIES_FINDER,
+  ACTIVITY_FINDER,
   ACTIVITY_REPOSITORY,
   CANCEL_ACTIVITY_COMMAND_HANDLER,
   CAPABILITY_FACTORY,
   CAPABILITY_PAYLOAD_CONTRACT_FACTORY,
   CAPABILITY_TRANSLATOR_FACTORY,
   CREATE_ACTIVITY_COMMAND_HANDLER,
+  GET_ACTIVITIES_QUERY_HANDLER,
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
   JOIN_ACTIVITY_COMMAND_HANDLER,
@@ -50,10 +53,18 @@ import {
   SPEC_PAYLOAD_CONTRACT_FACTORY,
   SPEC_TRANSLATOR_FACTORY,
   SPORT_REPOSITORY,
+  SPORTS_FINDER,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
 import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
 import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
 import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
+import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
+import { PostgreSqlActivitiesFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivitiesFinder'
+import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/GetActivities/ActivitiesFinderInterface'
+import { PostgreSqlActivityFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivityFinder'
+import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetActivity/ActivityFinderInterface'
+import { PostgreSqlSportsFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlSportsFinder'
+import { SportsFinderInterface } from '~/src/modules/Activity/Application/GetSports/SportsFinderInterface'
 
 @Module({
   imports: [
@@ -90,6 +101,27 @@ import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application
         return new PostgreSqlSportRepository(managerResolver)
       },
       inject: [TYPEORM_MANAGER_RESOLVER],
+    },
+    {
+      provide: ACTIVITIES_FINDER,
+      useFactory: (entityManager: EntityManager) => {
+        return new PostgreSqlActivitiesFinder(entityManager)
+      },
+      inject: [EntityManager],
+    },
+    {
+      provide: ACTIVITY_FINDER,
+      useFactory: (entityManager: EntityManager) => {
+        return new PostgreSqlActivityFinder(entityManager)
+      },
+      inject: [EntityManager],
+    },
+    {
+      provide: SPORTS_FINDER,
+      useFactory: (entityManager: EntityManager) => {
+        return new PostgreSqlSportsFinder(entityManager)
+      },
+      inject: [EntityManager],
     },
     {
       provide: CAPABILITY_FACTORY,
@@ -164,24 +196,31 @@ import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application
     {
       provide: GET_SPORTS_QUERY_HANDLER,
       useFactory: (
-        entityManager: EntityManager,
+        sportsFinder: SportsFinderInterface,
         capabilityPayloadContractFactory: CapabilityPayloadContractFactory,
         specPayloadContractFactory: SpecPayloadContractFactory,
       ) => {
-        return new GetSportsQueryHandler(entityManager, capabilityPayloadContractFactory, specPayloadContractFactory)
+        return new GetSportsQueryHandler(sportsFinder, capabilityPayloadContractFactory, specPayloadContractFactory)
       },
-      inject: [EntityManager, CAPABILITY_PAYLOAD_CONTRACT_FACTORY, SPEC_PAYLOAD_CONTRACT_FACTORY],
+      inject: [SPORTS_FINDER, CAPABILITY_PAYLOAD_CONTRACT_FACTORY, SPEC_PAYLOAD_CONTRACT_FACTORY],
+    },
+    {
+      provide: GET_ACTIVITIES_QUERY_HANDLER,
+      useFactory: (activitiesFinder: ActivitiesFinderInterface) => {
+        return new GetActivitiesQueryHandler(activitiesFinder)
+      },
+      inject: [ACTIVITIES_FINDER],
     },
     {
       provide: GET_ACTIVITY_QUERY_HANDLER,
       useFactory: (
-        entityManager: EntityManager,
+        activityFinder: ActivityFinderInterface,
         capabilityTranslatorFactory: CapabilityTranslatorFactory,
         specTranslatorFactory: SpecTranslatorFactory,
       ) => {
-        return new GetActivityQueryHandler(entityManager, capabilityTranslatorFactory, specTranslatorFactory)
+        return new GetActivityQueryHandler(activityFinder, capabilityTranslatorFactory, specTranslatorFactory)
       },
-      inject: [EntityManager, CAPABILITY_TRANSLATOR_FACTORY, SPEC_TRANSLATOR_FACTORY],
+      inject: [ACTIVITY_FINDER, CAPABILITY_TRANSLATOR_FACTORY, SPEC_TRANSLATOR_FACTORY],
     },
     {
       provide: JOIN_ACTIVITY_COMMAND_HANDLER,
@@ -264,21 +303,14 @@ import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application
           idGenerator,
         )
       },
-      inject: [
-        PARTICIPANT_REPOSITORY,
-        ACTIVITY_REPOSITORY,
-        PARTICIPATION_REPOSITORY,
-        CLOCK_SERVICE,
-        UNIT_OF_WORK,
-        LOGGER_FACTORY,
-        ID_GENERATOR,
-      ],
+      inject: [PARTICIPANT_REPOSITORY, ACTIVITY_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, LOGGER_FACTORY, ID_GENERATOR],
     },
   ],
   exports: [
     CREATE_ACTIVITY_COMMAND_HANDLER,
     GET_SPORTS_QUERY_HANDLER,
     GET_ACTIVITY_QUERY_HANDLER,
+    GET_ACTIVITIES_QUERY_HANDLER,
     JOIN_ACTIVITY_COMMAND_HANDLER,
     LEAVE_ACTIVITY_COMMAND_HANDLER,
     CANCEL_ACTIVITY_COMMAND_HANDLER,

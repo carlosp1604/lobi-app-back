@@ -158,11 +158,6 @@ export class CreateActivitiesTable1776787012625 implements MigrationInterface {
 
     // GIN Indices
     await queryRunner.query(`
-      CREATE INDEX "index_activities_config_gin"
-      ON "activities" USING GIN ("activity_config" jsonb_path_ops);
-    `)
-
-    await queryRunner.query(`
       CREATE INDEX "index_activities_level_ids_gin"
         ON "activities" USING GIN ("level_ids");
     `)
@@ -201,6 +196,10 @@ export class CreateActivitiesTable1776787012625 implements MigrationInterface {
         name: 'check_activities_duration_logic',
         expression: 'min_duration IS NULL OR max_duration IS NULL OR (min_duration <= max_duration)',
       }),
+      new TableCheck({
+        name: 'check_activities_min_duration_requires_max',
+        expression: 'min_duration IS NULL OR max_duration IS NOT NULL',
+      }),
     ])
   }
 
@@ -209,7 +208,6 @@ export class CreateActivitiesTable1776787012625 implements MigrationInterface {
     await queryRunner.dropForeignKey('activities', 'foreign_key_activity_sport')
 
     await queryRunner.query('DROP INDEX IF EXISTS "index_active_activities_location"')
-    await queryRunner.query('DROP INDEX IF EXISTS "index_activities_config_gin"')
     await queryRunner.query('DROP INDEX IF EXISTS "index_activities_level_ids_gin"')
 
     await queryRunner.dropIndex('activities', 'index_activities_filters_partial')
@@ -223,6 +221,7 @@ export class CreateActivitiesTable1776787012625 implements MigrationInterface {
     await queryRunner.dropCheckConstraint('activities', 'check_activities_min_duration_non_negative')
     await queryRunner.dropCheckConstraint('activities', 'check_activities_max_duration_non_negative')
     await queryRunner.dropCheckConstraint('activities', 'check_activities_duration_logic')
+    await queryRunner.dropCheckConstraint('activities', 'check_activities_min_duration_requires_max')
 
     await queryRunner.dropTable('activities')
   }

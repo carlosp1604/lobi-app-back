@@ -87,4 +87,12 @@ export class Location extends ValueObject<LocationProps> implements Serializable
       lng: lng.toPrimitives(),
     }
   }
+
+  get lat(): BoundedNumber {
+    return this._value.lat
+  }
+
+  get lng(): BoundedNumber {
+    return this._value.lng
+  }
 }
