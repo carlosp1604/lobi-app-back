@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: runner
+    restart: always
+
+  proxy:
+    image: caddy:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - API_DOMAIN=${API_DOMAIN}
+      - CERT_CRT_PATH=${CERT_CRT_PATH}
+      - CERT_KEY_PATH=${CERT_KEY_PATH}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile
+      - /etc/letsencrypt:/etc/certs:ro
+    depends_on:
+      - api
