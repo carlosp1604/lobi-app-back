@@ -7,6 +7,8 @@ export const SPORT_REPOSITORY = 'SPORT_REPOSITORY'
 /** Queries **/
 export const ACTIVITIES_FINDER = 'ACTIVITIES_FINDER'
 export const ACTIVITY_FINDER = 'ACTIVITY_FINDER'
+export const SPORTS_FINDER = 'SPORTS_FINDER'
+
 /** Services **/
 
 /** Factories **/

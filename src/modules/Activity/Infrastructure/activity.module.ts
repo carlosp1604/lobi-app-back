@@ -53,6 +53,7 @@ import {
   SPEC_PAYLOAD_CONTRACT_FACTORY,
   SPEC_TRANSLATOR_FACTORY,
   SPORT_REPOSITORY,
+  SPORTS_FINDER,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
 import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
 import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
@@ -62,6 +63,8 @@ import { PostgreSqlActivitiesFinder } from '~/src/modules/Activity/Infrastructur
 import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/GetActivities/ActivitiesFinderInterface'
 import { PostgreSqlActivityFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivityFinder'
 import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetActivity/ActivityFinderInterface'
+import { PostgreSqlSportsFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlSportsFinder'
+import { SportsFinderInterface } from '~/src/modules/Activity/Application/GetSports/SportsFinderInterface'
 
 @Module({
   imports: [
@@ -110,6 +113,13 @@ import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetA
       provide: ACTIVITY_FINDER,
       useFactory: (entityManager: EntityManager) => {
         return new PostgreSqlActivityFinder(entityManager)
+      },
+      inject: [EntityManager],
+    },
+    {
+      provide: SPORTS_FINDER,
+      useFactory: (entityManager: EntityManager) => {
+        return new PostgreSqlSportsFinder(entityManager)
       },
       inject: [EntityManager],
     },
@@ -186,13 +196,13 @@ import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetA
     {
       provide: GET_SPORTS_QUERY_HANDLER,
       useFactory: (
-        entityManager: EntityManager,
+        sportsFinder: SportsFinderInterface,
         capabilityPayloadContractFactory: CapabilityPayloadContractFactory,
         specPayloadContractFactory: SpecPayloadContractFactory,
       ) => {
-        return new GetSportsQueryHandler(entityManager, capabilityPayloadContractFactory, specPayloadContractFactory)
+        return new GetSportsQueryHandler(sportsFinder, capabilityPayloadContractFactory, specPayloadContractFactory)
       },
-      inject: [EntityManager, CAPABILITY_PAYLOAD_CONTRACT_FACTORY, SPEC_PAYLOAD_CONTRACT_FACTORY],
+      inject: [SPORTS_FINDER, CAPABILITY_PAYLOAD_CONTRACT_FACTORY, SPEC_PAYLOAD_CONTRACT_FACTORY],
     },
     {
       provide: GET_ACTIVITIES_QUERY_HANDLER,
