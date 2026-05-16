@@ -64,7 +64,7 @@ async function bootstrap() {
   await app.register(fastifyCookie, { secret: env.COOKIE_SECRET })
   setUpSwagger(app)
 
-  await app.listen(env.PORT)
+  await app.listen({ port: env.PORT, host: '0.0.0.0' })
 }
 
 void bootstrap()
