@@ -34,6 +34,7 @@ import { ParticipationRepositoryInterface } from '~/src/modules/Activity/Domain/
 import { PostgreSqlParticipationRepository } from '~/src/modules/Activity/Infrastructure/PostgreSqlParticipationRepository'
 import { TYPEORM_MANAGER_RESOLVER, UNIT_OF_WORK } from '~/src/db/config/typeorm.tokens'
 import {
+  ACTIVITIES_FINDER,
   ACTIVITY_REPOSITORY,
   CANCEL_ACTIVITY_COMMAND_HANDLER,
   CAPABILITY_FACTORY,
@@ -56,6 +57,8 @@ import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/J
 import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
 import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
 import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
+import { PostgreSqlActivitiesFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivitiesFinder'
+import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/GetActivities/ActivitiesFinderInterface'
 
 @Module({
   imports: [
@@ -92,6 +95,13 @@ import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/Ge
         return new PostgreSqlSportRepository(managerResolver)
       },
       inject: [TYPEORM_MANAGER_RESOLVER],
+    },
+    {
+      provide: ACTIVITIES_FINDER,
+      useFactory: (entityManager: EntityManager) => {
+        return new PostgreSqlActivitiesFinder(entityManager)
+      },
+      inject: [EntityManager],
     },
     {
       provide: CAPABILITY_FACTORY,
@@ -187,10 +197,10 @@ import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/Ge
     },
     {
       provide: GET_ACTIVITIES_QUERY_HANDLER,
-      useFactory: (entityManager: EntityManager) => {
-        return new GetActivitiesQueryHandler(entityManager)
+      useFactory: (activitiesFinder: ActivitiesFinderInterface) => {
+        return new GetActivitiesQueryHandler(activitiesFinder)
       },
-      inject: [EntityManager],
+      inject: [ACTIVITIES_FINDER],
     },
     {
       provide: JOIN_ACTIVITY_COMMAND_HANDLER,
