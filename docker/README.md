@@ -1,0 +1,74 @@
+# Proxy Inverso Global con Autodescubrimiento (Caddy)
+
+Este módulo gestiona de forma centralizada el tráfico HTTP/HTTPS del servidor y genera automáticamente los certificados SSL (Let's Encrypt) para todos los entornos (`dev`, `prod`, etc.).
+
+Funciona mediante **autodescubrimiento**: Caddy escucha los eventos de Docker y, cuando levantas un entorno del proyecto, lee sus etiquetas (`labels`) y configura el dominio automáticamente sin interrumpir los demás servicios.
+
+---
+
+## 1. Infraestructura Global (Solo se hace una vez por servidor)
+
+Sigue estos pasos para preparar el servidor antes de desplegar cualquier entorno del proyecto.
+
+### Paso A: Crear la red global de Docker
+Caddy necesita una red compartida externa para poder comunicarse internamente con los contenedores de las aplicaciones. Corre este comando en la terminal de tu servidor:
+
+```bash
+docker network create caddy_gateway
+```
+
+### Paso B: Crear el archivo `docker-compose.yml` del Proxy
+Crea una carpeta aislada en tu servidor (por ejemplo, en `/var/www/caddy-gateway/`), guarda el siguiente archivo con el nombre `docker-compose.yml`:
+
+```yaml
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:2.8-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CADDY_INGRESS_NETWORKS=caddy_gateway
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - caddy_data:/data
+    restart: unless-stopped
+    networks:
+      - caddy_gateway
+    labels:
+      caddy_short_open: "{"
+      caddy.request_body: "max_size 1mb"
+      caddy_short_close: "}"
+
+      caddy.encode: "zstd gzip"
+      caddy.header: |-
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+
+networks:
+  caddy_gateway:
+    external: true
+
+volumes:
+  caddy_data:
+```
+
+### Paso C: Levantar el Proxy
+Dentro de la carpeta donde guardaste el archivo anterior (`/var/www/caddy-gateway/`), enciende el servicio:
+
+```bash
+docker compose up -d
+```
+
+## 2. Requisitos del Proyecto (Para ser aceptado por Caddy)
+   Para que el Caddy global reconozca y exponga automáticamente las instancias del proyecto (`dev` o `prod`), el archivo `docker-compose.yml` que está en la raíz de tu repositorio debe cumplir estrictamente con estos 3 requisitos:
+
+1. No incluir un servicio proxy local (el Caddy global ya hace ese trabajo).
+
+2. Conectarse a la red externa `caddy_gateway`.
+
+3. Definir las etiquetas (`labels`) para indicarle a Caddy su dominio y su puerto interno.
