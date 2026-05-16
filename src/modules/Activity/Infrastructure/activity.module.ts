@@ -35,6 +35,7 @@ import { PostgreSqlParticipationRepository } from '~/src/modules/Activity/Infras
 import { TYPEORM_MANAGER_RESOLVER, UNIT_OF_WORK } from '~/src/db/config/typeorm.tokens'
 import {
   ACTIVITIES_FINDER,
+  ACTIVITY_FINDER,
   ACTIVITY_REPOSITORY,
   CANCEL_ACTIVITY_COMMAND_HANDLER,
   CAPABILITY_FACTORY,
@@ -59,6 +60,8 @@ import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application
 import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
 import { PostgreSqlActivitiesFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivitiesFinder'
 import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/GetActivities/ActivitiesFinderInterface'
+import { PostgreSqlActivityFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivityFinder'
+import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetActivity/ActivityFinderInterface'
 
 @Module({
   imports: [
@@ -100,6 +103,13 @@ import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/Ge
       provide: ACTIVITIES_FINDER,
       useFactory: (entityManager: EntityManager) => {
         return new PostgreSqlActivitiesFinder(entityManager)
+      },
+      inject: [EntityManager],
+    },
+    {
+      provide: ACTIVITY_FINDER,
+      useFactory: (entityManager: EntityManager) => {
+        return new PostgreSqlActivityFinder(entityManager)
       },
       inject: [EntityManager],
     },
@@ -185,22 +195,22 @@ import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/Ge
       inject: [EntityManager, CAPABILITY_PAYLOAD_CONTRACT_FACTORY, SPEC_PAYLOAD_CONTRACT_FACTORY],
     },
     {
-      provide: GET_ACTIVITY_QUERY_HANDLER,
-      useFactory: (
-        entityManager: EntityManager,
-        capabilityTranslatorFactory: CapabilityTranslatorFactory,
-        specTranslatorFactory: SpecTranslatorFactory,
-      ) => {
-        return new GetActivityQueryHandler(entityManager, capabilityTranslatorFactory, specTranslatorFactory)
-      },
-      inject: [EntityManager, CAPABILITY_TRANSLATOR_FACTORY, SPEC_TRANSLATOR_FACTORY],
-    },
-    {
       provide: GET_ACTIVITIES_QUERY_HANDLER,
       useFactory: (activitiesFinder: ActivitiesFinderInterface) => {
         return new GetActivitiesQueryHandler(activitiesFinder)
       },
       inject: [ACTIVITIES_FINDER],
+    },
+    {
+      provide: GET_ACTIVITY_QUERY_HANDLER,
+      useFactory: (
+        activityFinder: ActivityFinderInterface,
+        capabilityTranslatorFactory: CapabilityTranslatorFactory,
+        specTranslatorFactory: SpecTranslatorFactory,
+      ) => {
+        return new GetActivityQueryHandler(activityFinder, capabilityTranslatorFactory, specTranslatorFactory)
+      },
+      inject: [ACTIVITY_FINDER, CAPABILITY_TRANSLATOR_FACTORY, SPEC_TRANSLATOR_FACTORY],
     },
     {
       provide: JOIN_ACTIVITY_COMMAND_HANDLER,
