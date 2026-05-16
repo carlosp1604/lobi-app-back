@@ -16,6 +16,8 @@ const CorsOriginsSchema = z
     message: 'CORS_ORIGINS cannot be empty',
   })
 
+const envBoolean = () => z.preprocess((val) => val === 'true' || val === true, z.boolean())
+
 export const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -30,7 +32,8 @@ export const EnvSchema = z
     DATABASE_USER: z.string(),
     DATABASE_PASSWORD: z.string(),
     DATABASE_NAME: z.string(),
-    DATABASE_LOGGING: z.coerce.boolean().optional().default(false),
+    DATABASE_LOGGING: envBoolean().optional().default(false),
+    DATABASE_SSL: envBoolean().optional().default(false),
 
     SENTRY_DSN: z.url().optional(),
     SENTRY_ENV: z.string().optional().default('development'),
@@ -38,7 +41,7 @@ export const EnvSchema = z
 
     CORS_ORIGINS: CorsOriginsSchema,
     BODY_LIMIT_BYTES: z.coerce.number().int().positive().default(1048576),
-    TRUST_PROXY: z.coerce.boolean().optional().default(false),
+    TRUST_PROXY: envBoolean().optional().default(false),
     RATE_MAX: z.coerce.number().int().positive().default(200),
     RATE_WINDOW_MS: z.coerce.number().int().positive().default(60000),
 
@@ -80,6 +83,8 @@ export const EnvSchema = z
     EMAIL_API_BASE_URL: z.string().trim().nonempty().nonoptional(),
     EMAIL_APP_NAME: z.string().trim().nonempty().nonoptional(),
     EMAIL_COMPANY_NAME: z.string().trim().nonempty().nonoptional(),
+
+    LOG_PRETTY: envBoolean().optional().default(false),
   })
   .transform((env) => ({
     ...env,

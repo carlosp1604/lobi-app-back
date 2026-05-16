@@ -18,15 +18,15 @@ export const LOGGER_FACTORY = 'LOGGER_FACTORY'
       useFactory: (): Logger =>
         pino({
           level: env.isProduction ? 'info' : env.isTesting ? 'silent' : 'debug',
-          transport: env.isProduction
-            ? undefined
-            : {
+          transport: env.LOG_PRETTY
+            ? {
                 target: 'pino-pretty',
                 options: {
                   colorize: true,
                   translateTime: 'SYS:standard',
                 },
-              },
+              }
+            : undefined,
         }),
     },
     {

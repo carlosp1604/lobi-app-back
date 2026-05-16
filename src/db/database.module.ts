@@ -20,6 +20,7 @@ import { Env } from '~/src/modules/Shared/Infrastructure/env.schema'
         port: configService.get('DATABASE_PORT', { infer: true }),
         password: configService.get('DATABASE_PASSWORD', { infer: true }),
         logging: configService.get('DATABASE_LOGGING', { infer: true }),
+        ssl: configService.get('DATABASE_SSL', { infer: true }) ? { rejectUnauthorized: false } : false,
         autoLoadEntities: true,
         synchronize: false,
         migrationsRun: false,

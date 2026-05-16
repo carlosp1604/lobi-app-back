@@ -44,15 +44,15 @@ const fastifyApplication = new FastifyAdapter({
       'req.body.token',
       'res.headers["set-cookie"]',
     ],
-    transport: env.isProduction
-      ? undefined
-      : {
+    transport: env.LOG_PRETTY
+      ? {
           target: 'pino-pretty',
           options: {
             colorize: true,
             translateTime: 'SYS:standard',
           },
-        },
+        }
+      : undefined,
   },
 })
 
