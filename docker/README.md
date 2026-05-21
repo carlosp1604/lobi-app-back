@@ -1,17 +1,19 @@
 # Proxy Inverso Global con Autodescubrimiento (Caddy)
 
-Este módulo gestiona de forma centralizada el tráfico HTTP/HTTPS del servidor y genera automáticamente los certificados SSL (Let's Encrypt) para todos los entornos (`dev`, `prod`, etc.).
+Es aconsejable no desplegar varios entornos en la misma máquina. Sin embargo, por diversas cuestiones, es posible que necesitemos hacerlo. Por ello, este repositorio está preparado para desplegar un Proxy Inverso Caddy para soportar diferentes entornos (`dev`, `prod`, etc.) ejecutándose en el mismo servidor
+
+Este módulo gestiona de forma centralizada el tráfico HTTP/HTTPS del servidor y genera automáticamente los certificados SSL (Let's Encrypt) para el proyecto (o los entornos configurados).
 
 Funciona mediante **autodescubrimiento**: Caddy escucha los eventos de Docker y, cuando levantas un entorno del proyecto, lee sus etiquetas (`labels`) y configura el dominio automáticamente sin interrumpir los demás servicios.
 
 ---
 
-## 1. Infraestructura Global (Solo se hace una vez por servidor)
+## 1. Infraestructura Global
 
-Sigue estos pasos para preparar el servidor antes de desplegar cualquier entorno del proyecto.
+Sigue estos pasos para preparar el servidor antes de desplegar cualquier entorno del proyecto. **Solo se hace una vez por servidor**
 
 ### Paso A: Crear la red global de Docker
-Caddy necesita una red compartida externa para poder comunicarse internamente con los contenedores de las aplicaciones. Corre este comando en la terminal de tu servidor:
+Caddy necesita una red compartida externa para poder comunicarse internamente con los contenedores de las aplicaciones. Ejecuta este comando en la terminal de tu servidor:
 
 ```bash
 docker network create caddy_gateway
@@ -64,7 +66,7 @@ Dentro de la carpeta donde guardaste el archivo anterior (`/var/www/caddy-gatewa
 docker compose up -d
 ```
 
-## 2. Requisitos del Proyecto (Para ser aceptado por Caddy)
+## 2. Requisitos del Proyecto
    Para que el Caddy global reconozca y exponga automáticamente las instancias del proyecto (`dev` o `prod`), el archivo `docker-compose.yml` que está en la raíz de tu repositorio debe cumplir estrictamente con estos 3 requisitos:
 
 1. No incluir un servicio proxy local (el Caddy global ya hace ese trabajo).
@@ -73,10 +75,13 @@ docker compose up -d
 
 3. Definir las etiquetas (`labels`) para indicarle a Caddy su dominio y su puerto interno.
 
+**IMPORTANTE:** El fichero `docker-compose.prod.yml` incluye una configuración compatible con Caddy
 
 ## 3. Despliegue e Infraestructura Multi-Entorno
 
 Por defecto, Docker Compose utiliza el nombre de la carpeta raíz del repositorio para identificar y agrupar los recursos de un proyecto (redes, volúmenes, imágenes y contenedores).
+
+⚠️ **IMPORTANTE:** Con el fin de evitar utilizar flags en los comandos de docker, tenemos que asegurarnos de configurar correctamente las variables de entorno `CONTAINER_NAME` y `COMPOSE_PROJECT_NAME`. En caso de no hacerlo, tendremos que trabajar como se indica a continuación:
 
 * **Si solo se despliega un único entorno en la máquina:** El flujo estándar de Docker Compose funcionará sin problemas.
 * **Si se despliegan varios entornos en la misma máquina (p. ej., `dev` y `prod` compartiendo el mismo Droplet):** Aunque los proyectos residan en carpetas distintas en el servidor (`lobi-api-dev` y `lobi-api-prod`), al compartir el mismo nombre de servicio (`api`) en el archivo `docker-compose.prod.yml`, Docker Compose sufrirá colisiones de nombres de contenedores, redes e imágenes. Esto provocará que el despliegue de un entorno **recree y tumbe por completo** al entorno vecino.
@@ -96,4 +101,3 @@ Ubicado en `/var/www/lobi-api-prod`:
 ```bash
 docker compose --env-file .env -p lobi-prod -f docker/docker-compose.prod.yml up -d --build
 ```
-⚠️ ***Nota Crítica de Operación:*** Si alguna vez necesitas consultar logs o tumbar un entorno específico, recuerda incluir siempre el flag del proyecto correspondiente. De lo contrario, Docker Compose no sabrá a qué entorno te refieres o intentará aplicar la acción sobre el nombre predeterminado de la carpeta, corrompiendo el estado de los contenedores.

@@ -1,6 +1,5 @@
 services:
   api:
-    image: "lobi-api:${CONTAINER_NAME}"
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -16,8 +15,8 @@ services:
     networks:
       - caddy_gateway
     labels:
-      caddy.${CONTAINER_NAME}: ${API_DOMAIN}
-      caddy.${CONTAINER_NAME}.reverse_proxy: "${CONTAINER_NAME}:${PORT}"
+      caddy: ${API_DOMAIN}
+      caddy.reverse_proxy: "${CONTAINER_NAME}:${PORT}"
 
 networks:
   caddy_gateway:
