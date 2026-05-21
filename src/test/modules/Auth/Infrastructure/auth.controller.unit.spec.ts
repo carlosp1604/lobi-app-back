@@ -87,6 +87,7 @@ import { RequestMetadataExtractorInterface } from '~/src/modules/Shared/Infrastr
 import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
 import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
+import { UserApplicationDto } from '~/src/modules/Auth/Application/Dto/UserApplicationDto'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -120,6 +121,7 @@ describe('AuthController', () => {
     accessTokenExpiresAt: new Date(baseDate.getTime() + 1000),
     refreshTokenExpiresAt: new Date(baseDate.getTime() + 10000),
     sessionId: 'expected-session-id',
+    userData: { id: 'expected-user-id' } as unknown as UserApplicationDto,
   }
 
   const assertMetadataFlowWasCalled = (request: FastifyRequest) => {
@@ -168,14 +170,14 @@ describe('AuthController', () => {
     expect(mockedResponse.setCookie).toHaveBeenCalledTimes(2)
     expect(mockedResponse.setCookie).toHaveBeenCalledWith('x-refresh-token', refreshCookieValue, {
       path: '/',
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: false,
       httpOnly: true,
       expires: new Date(baseDate.getTime() + 10000),
     })
     expect(mockedResponse.setCookie).toHaveBeenCalledWith('x-access-token', accessCookieValue, {
       path: '/',
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: false,
       httpOnly: true,
       expires: new Date(baseDate.getTime() + 1000),
@@ -190,13 +192,13 @@ describe('AuthController', () => {
     expect(mockedResponse.clearCookie).toHaveBeenCalledTimes(2)
     expect(mockedResponse.clearCookie).toHaveBeenCalledWith('x-refresh-token', {
       path: '/',
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: false,
       httpOnly: true,
     })
     expect(mockedResponse.clearCookie).toHaveBeenCalledWith('x-access-token', {
       path: '/',
-      sameSite: 'strict',
+      sameSite: 'lax',
       secure: false,
       httpOnly: true,
     })

@@ -212,6 +212,10 @@ describe('LoginUser', () => {
           accessTokenExpiresAt: expectedAccessExpiresAt,
           sessionId: expectedSessionId.value,
           refreshTokenExpiresAt: expectedRefreshExpiresAt,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          userData: expect.objectContaining({
+            id: validUserId.value,
+          }),
         },
       })
     }

@@ -167,6 +167,10 @@ describe('RefreshToken', () => {
           accessToken: 'access-jwt-token',
           accessTokenExpiresAt: expectedAccessExpiresAt,
           refreshTokenExpiresAt: expectedRefreshExpiresAt,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          userData: expect.objectContaining({
+            id: userId.value,
+          }),
         },
       })
     })
@@ -194,6 +198,10 @@ describe('RefreshToken', () => {
           accessToken: 'access-jwt-token',
           accessTokenExpiresAt: expectedAccessExpiresAt,
           refreshTokenExpiresAt: expectedRefreshExpiresAt,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          userData: expect.objectContaining({
+            id: userId.value,
+          }),
         },
       })
     })

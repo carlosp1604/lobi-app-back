@@ -15,6 +15,7 @@ import { UserSessionPolicyManagerApplicationService } from '~/src/modules/Auth/A
 import { UserSessionPolicyManagerApplicationError } from '~/src/modules/Auth/Application/UserSessionPolicyManager/UserSessionPolicyManagerApplicationError'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
+import { UserApplicationDtoTranslator } from '~/src/modules/Auth/Application/Translator/UserApplicationDtoTranslator'
 
 export class RefreshSession {
   constructor(
@@ -75,6 +76,7 @@ export class RefreshSession {
         sessionId: session.id.value,
         accessTokenExpiresAt,
         refreshTokenExpiresAt,
+        userData: UserApplicationDtoTranslator.fromDomain(user),
       })
     })
   }

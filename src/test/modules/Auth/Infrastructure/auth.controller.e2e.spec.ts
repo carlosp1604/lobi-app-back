@@ -252,6 +252,12 @@ describe('AuthController', () => {
           sessionId: expect.any(String),
           accessTokenExpiresAt: expectIsoDate,
           refreshTokenExpiresAt: expectIsoDate,
+          userData: expect.objectContaining<Record<string, unknown>>({
+            id: expect.any(String),
+            name: expect.any(String),
+            username: expect.any(String),
+            imageUrl: expectStringOrNull,
+          }),
         } as Record<string, unknown>)
 
         const cookies = response.headers['set-cookie'] as unknown as Array<string>
@@ -429,13 +435,19 @@ describe('AuthController', () => {
         const response = await request(app.getHttpServer()).post('/auth/refresh').set('Cookie', `${refreshCookieName}=${inputToken}`)
 
         expect(response.status).toBe(200)
-        expect(response.body).toEqual({
+        expect(response.body).toEqual<Record<string, unknown>>({
           accessToken: expect.any(String),
           refreshToken: expect.any(String),
           sessionId: expect.any(String),
           accessTokenExpiresAt: expectIsoDate,
           refreshTokenExpiresAt: expectIsoDate,
-        } as Record<string, unknown>)
+          userData: expect.objectContaining<Record<string, unknown>>({
+            id: expect.any(String),
+            name: expect.any(String),
+            username: expect.any(String),
+            imageUrl: expectStringOrNull,
+          }),
+        })
         checkAuthCookiesWereSet(response.headers['set-cookie'] as unknown as Array<string>)
 
         const savedSession = await userSessionDatabaseHelper.findById(response.body.sessionId as string)

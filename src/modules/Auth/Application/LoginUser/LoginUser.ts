@@ -19,6 +19,7 @@ import { EmailAddress } from '~/src/modules/Shared/Domain/ValueObject/EmailAddre
 import { UserPassword } from '~/src/modules/Auth/Domain/ValueObject/UserPassword'
 import { HasherServiceInterface } from '~/src/modules/Auth/Domain/HasherServiceInterface'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
+import { UserApplicationDtoTranslator } from '~/src/modules/Auth/Application/Translator/UserApplicationDtoTranslator'
 
 export class LoginUser {
   constructor(
@@ -116,6 +117,7 @@ export class LoginUser {
         sessionId: session.id.value,
         accessTokenExpiresAt,
         refreshTokenExpiresAt,
+        userData: UserApplicationDtoTranslator.fromDomain(user),
       })
     })
   }
