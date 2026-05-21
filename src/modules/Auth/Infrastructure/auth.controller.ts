@@ -760,7 +760,7 @@ export class AuthController {
   ) {
     const cookieBase = {
       path: '/',
-      sameSite: 'strict' as const,
+      sameSite: 'lax' as const,
       httpOnly: true,
       secure: this.configService.get('isProduction', { infer: true }),
     }
@@ -781,7 +781,7 @@ export class AuthController {
   private clearCookies(response: FastifyReply) {
     const cookieBase = {
       path: '/',
-      sameSite: 'strict' as const,
+      sameSite: 'lax' as const,
       httpOnly: true,
       secure: this.configService.get('isProduction', { infer: true }),
     }
