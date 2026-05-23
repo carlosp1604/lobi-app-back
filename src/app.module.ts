@@ -13,6 +13,7 @@ import { RateLimitModule } from '~/src/modules/Shared/Infrastructure/rate-limit.
 import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 import { ActivityModule } from '~/src/modules/Activity/Infrastructure/activity.module'
+import { UserModule } from '~/src/modules/User/Infrastructure/user.module'
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { ActivityModule } from '~/src/modules/Activity/Infrastructure/activity.m
     ContextModule,
     AuthModule,
     ActivityModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [

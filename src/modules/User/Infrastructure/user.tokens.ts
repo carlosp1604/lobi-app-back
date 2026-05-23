@@ -1,0 +1,5 @@
+/** Queries **/
+export const USER_FINDER = 'USER_FINDER'
+
+/** Query handlers **/
+export const GET_USER_PROFILE_BY_USERNAME_QUERY_HANDLER = 'GET_USER_PROFILE_BY_USERNAME_QUERY_HANDLER'
