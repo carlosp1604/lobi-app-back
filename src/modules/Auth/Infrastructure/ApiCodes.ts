@@ -36,3 +36,5 @@ export const AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED = 'auth-reset-password-token
 export const AUTH_RESET_PASSWORD_SAME_PASSWORD = 'auth-reset-password-same-password'
 
 export const AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT = 'auth-close-session-invalid-session-id-format'
+
+export const GET_USER_SECURITY_DETAILS_USER_NOT_FOUND = 'get-user-security-details-user-not-found'

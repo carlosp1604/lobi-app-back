@@ -5,7 +5,7 @@ import {
   CLOSE_USER_SESSION,
   CREATE_USER,
   GENERATE_VERIFICATION_TOKEN,
-  GET_ACTIVE_SESSIONS,
+  GET_USER_SECURITY_DETAILS_QUERY_HANDLER,
   LOGIN_USER,
   LOGOUT_USER,
   REFRESH_SESSION,
@@ -49,6 +49,7 @@ import {
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
   AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
+  GET_USER_SECURITY_DETAILS_USER_NOT_FOUND,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
 import {
   Body,
@@ -106,17 +107,22 @@ import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access
 import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
 import { OptionalAuth } from '~/src/modules/Auth/Infrastructure/Decorators/optional-auth.decorator'
-import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
-import { GetActiveSessionsApplicationRequestDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationRequestDto'
-import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
+import { GetUserSecurityDetailsQueryHandler } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryHandler'
+import { GetUserSecurityDetailsQuery } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQuery'
+import { GetUserSecurityDetailsQueryError } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryError'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationRequestDto } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationRequestDto'
 import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
 import type { RequestMetadataExtractorInterface } from '~/src/modules/Shared/Infrastructure/Services/RequestMetadataExtractorInterface'
 import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
+import { LOGGER_FACTORY } from '~/src/modules/Shared/Infrastructure/logger.module'
+import type { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
+import type { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 
 @Controller('auth')
 export class AuthController {
+  private readonly loggerService: LoggerServiceInterface
+
   constructor(
     @Inject(LOGIN_USER) private readonly loginUser: LoginUser,
     @Inject(REFRESH_SESSION) private readonly refreshSession: RefreshSession,
@@ -126,11 +132,15 @@ export class AuthController {
     @Inject(RESET_USER_PASSWORD) private readonly resetUserPassword: ResetUserPassword,
     @Inject(LOGOUT_USER) private readonly logoutUser: LogoutUser,
     @Inject(CLOSE_USER_SESSION) private readonly closeUserSession: CloseUserSession,
-    @Inject(GET_ACTIVE_SESSIONS) private readonly getActiveSessions: GetActiveSessions,
+    @Inject(GET_USER_SECURITY_DETAILS_QUERY_HANDLER)
+    private readonly getUserSecurityDetailsQueryHandler: GetUserSecurityDetailsQueryHandler,
     @Inject(REQUEST_METADATA_EXTRACTOR) private readonly requestMetadataExtractor: RequestMetadataExtractorInterface,
     @Inject(CLIENT_METADATA_SERVICE) private readonly clientMetadataService: ClientMetadataApplicationService,
+    @Inject(LOGGER_FACTORY) private readonly loggerFactory: LoggerFactoryInterface,
     private readonly configService: ConfigService<Env, true>,
-  ) {}
+  ) {
+    this.loggerService = loggerFactory.createLogger(AuthController.name)
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -684,30 +694,73 @@ export class AuthController {
     return
   }
 
-  @Get('sessions')
+  @Get('security-details')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AccessTokenGuard)
-  async activeSessions(@AccessToken() accessToken: JwtPayload) {
-    const requestDto: GetActiveSessionsApplicationRequestDto = {
-      userId: accessToken.sub,
-      currentSessionId: accessToken.sid,
-    }
+  async activeSessions(@AccessToken() accessToken: JwtPayload, @Res({ passthrough: true }) response: FastifyReply) {
+    const sessionId = accessToken.sid
+    const userId = accessToken.sub
 
-    const result = await this.getActiveSessions.execute(requestDto)
+    const query = new GetUserSecurityDetailsQuery(userId, sessionId)
 
-    if (!result.success) {
-      const errorId = result.error.id
+    const result = await this.getUserSecurityDetailsQueryHandler.execute(query)
 
-      if (errorId === GetActiveSessionsApplicationError.invalidInputId) {
-        throw new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-          cause: result.error,
+    if (result.success) {
+      const responseDto = result.value
+      const currenSessionExists = responseDto.sessions.find((session) => session.id === sessionId)
+
+      if (!currenSessionExists) {
+        this.loggerService.warn('Inconsistent state', {
+          reason: 'The user session is no longer valid (revoked or expired)',
+          userId,
+          sessionId,
+        })
+
+        this.clearCookies(response)
+
+        throw new UnauthorizedException({
+          code: UNAUTHORIZED_ACCESS,
+          message: 'Unauthorized access',
         })
       }
 
-      throw new InternalServerErrorException(result.error)
+      return responseDto
     }
 
-    return result.value
+    const error = result.error
+
+    if (
+      error.id === GetUserSecurityDetailsQueryError.invalidUserIdId ||
+      error.id === GetUserSecurityDetailsQueryError.invalidSessionIdId
+    ) {
+      this.loggerService.error('Validation mismatch', error.stack, {
+        reason: 'Controller allowed an input that domain rejected',
+        error: error.message,
+        userId,
+        sessionId,
+      })
+
+      throw new InternalServerErrorException('Validation mismatch: Controller (AuthGuard) allowed an input that domain rejected', {
+        cause: result.error,
+      })
+    }
+
+    if (error.id === GetUserSecurityDetailsQueryError.userNotFoundId) {
+      this.loggerService.warn('Inconsistent state', {
+        reason: 'Active access token presented for a deleted or inactive user',
+        userId,
+        sessionId,
+      })
+
+      this.clearCookies(response)
+
+      throw new NotFoundException({
+        code: GET_USER_SECURITY_DETAILS_USER_NOT_FOUND,
+        message: error.message,
+      })
+    }
+
+    throw new InternalServerErrorException(result.error)
   }
 
   private handleVerifyEmailError(error: GenerateVerificationTokenApplicationError) {
@@ -788,6 +841,9 @@ export class AuthController {
 
     const refreshTokenCookieName = this.configService.get('REFRESH_COOKIE_NAME', { infer: true })
     const accessTokenCookieName = this.configService.get('ACCESS_COOKIE_NAME', { infer: true })
+    const invalidatedSessionHeaderName = this.configService.get('INVALIDATED_SESSION_HEADER_NAME', { infer: true })
+
+    response.header(invalidatedSessionHeaderName, 'true')
 
     response.clearCookie(refreshTokenCookieName, {
       ...cookieBase,

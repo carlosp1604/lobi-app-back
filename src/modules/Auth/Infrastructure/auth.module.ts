@@ -13,7 +13,7 @@ import {
   EMAIL_SENDER_SERVICE,
   GENERATE_TOKENS_SERVICE,
   GENERATE_VERIFICATION_TOKEN,
-  GET_ACTIVE_SESSIONS,
+  GET_USER_SECURITY_DETAILS_QUERY_HANDLER,
   HASHER_SERVICE,
   IP_VALIDATOR,
   LOGIN_USER,
@@ -29,6 +29,7 @@ import {
   USER_CREDENTIAL_REPOSITORY,
   USER_PROFILE_REPOSITORY,
   USER_REPOSITORY,
+  USER_SECURITY_FINDER,
   USER_SESSION_POLICY_MANAGER_SERVICE,
   USER_SESSION_REPOSITORY,
   VALIDATE_VERIFICATION_TOKEN,
@@ -89,12 +90,15 @@ import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassw
 import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
-import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
+import { GetUserSecurityDetailsQueryHandler } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryHandler'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { UaParserJsUserAgentParserService } from '~/src/modules/Shared/Infrastructure/Services/UaParserJsUserAgentParserService'
 import { FastifyClientMetadataExtractor } from '~/src/modules/Shared/Infrastructure/Services/FastifyRequestMetadataResolver'
 import { UserAgentParserServiceInterface } from '~/src/modules/Shared/Infrastructure/Services/UserAgentParserServiceInterface'
 import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
+import { EntityManager } from 'typeorm'
+import { PostgreSqlUserSecurityFinder } from '~/src/modules/Auth/Infrastructure/Queries/PostgreSqlUserSecurityFinder'
+import { UserSecurityFinderInterface } from '~/src/modules/Auth/Application/GetUserSecurityDetails/UserSecurityFinderInterface'
 
 @Module({
   imports: [
@@ -260,6 +264,13 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
         return new AuthDomainEventFactory(idGeneratorService)
       },
       inject: [ID_GENERATOR],
+    },
+    {
+      provide: USER_SECURITY_FINDER,
+      useFactory: (entityManager: EntityManager) => {
+        return new PostgreSqlUserSecurityFinder(entityManager)
+      },
+      inject: [EntityManager],
     },
     {
       provide: LOGIN_USER,
@@ -529,26 +540,19 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
       ],
     },
     {
-      provide: GET_ACTIVE_SESSIONS,
+      provide: GET_USER_SECURITY_DETAILS_QUERY_HANDLER,
       useFactory: (
-        sessionRepository: UserSessionRepositoryInterface,
+        userSecurityFinder: UserSecurityFinderInterface,
         clockService: ClockServiceInterface,
         loggerFactory: LoggerFactoryInterface,
       ) => {
-        return new GetActiveSessions(sessionRepository, clockService, loggerFactory.createLogger(GetActiveSessions.name))
+        return new GetUserSecurityDetailsQueryHandler(
+          userSecurityFinder,
+          clockService,
+          loggerFactory.createLogger(GetUserSecurityDetailsQueryHandler.name),
+        )
       },
-      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE, LOGGER_FACTORY],
-    },
-    {
-      provide: GET_ACTIVE_SESSIONS,
-      useFactory: (
-        sessionRepository: UserSessionRepositoryInterface,
-        clockService: ClockServiceInterface,
-        loggerFactory: LoggerFactoryInterface,
-      ) => {
-        return new GetActiveSessions(sessionRepository, clockService, loggerFactory.createLogger(GetActiveSessions.name))
-      },
-      inject: [USER_SESSION_REPOSITORY, CLOCK_SERVICE, LOGGER_FACTORY],
+      inject: [USER_SECURITY_FINDER, CLOCK_SERVICE, LOGGER_FACTORY],
     },
   ],
   exports: [
@@ -560,7 +564,7 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
     CREATE_USER,
     RESET_USER_PASSWORD,
     LOGOUT_USER,
-    GET_ACTIVE_SESSIONS,
+    GET_USER_SECURITY_DETAILS_QUERY_HANDLER,
     CLIENT_METADATA_SERVICE,
     REQUEST_METADATA_EXTRACTOR,
     CLOSE_USER_SESSION,

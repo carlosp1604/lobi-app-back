@@ -73,7 +73,6 @@ import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
 import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
-import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
 import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
 import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/VerificationTokenDomainException'
@@ -83,6 +82,7 @@ import { mock } from 'jest-mock-extended'
 
 import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
+import { GetUserSecurityDetailsQueryResponseDto } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryResponseDto'
 
 describe('AuthController', () => {
   const now = new Date()
@@ -1572,7 +1572,7 @@ describe('AuthController', () => {
     })
   })
 
-  describe('activeSessions', () => {
+  describe('security details', () => {
     const olderDate = new Date(now.getTime() - 5000)
     const newerDate = now
 
@@ -1581,11 +1581,13 @@ describe('AuthController', () => {
     const otherSessionId = IdentifierMother.valid()
 
     let userDatabaseHelper: UserDatabaseHelper
+    let userCredentialDatabaseHelper: UserCredentialDatabaseHelper
     let userSessionDatabaseHelper: UserSessionDatabaseHelper
     let tokenService: TokenGeneratorApplicationServiceInterface
 
     beforeEach(() => {
       userDatabaseHelper = new UserDatabaseHelper(dataSource.manager)
+      userCredentialDatabaseHelper = new UserCredentialDatabaseHelper(dataSource.manager)
       userSessionDatabaseHelper = new UserSessionDatabaseHelper(dataSource.manager)
       tokenService = app.get<TokenGeneratorApplicationServiceInterface>(TOKEN_GENERATOR)
     })
@@ -1593,6 +1595,7 @@ describe('AuthController', () => {
     describe('happy path', () => {
       it('should return 200 OK and the list of active sessions', async () => {
         const rawUser = makeRawUser({ id: userId.value })
+        const rawCredential = makeRawUserCredential({ user_id: userId.value })
 
         const rawCurrentSession = makeRawSession({
           id: currentSessionId.value,
@@ -1611,6 +1614,7 @@ describe('AuthController', () => {
         })
 
         await userDatabaseHelper.save(rawUser)
+        await userCredentialDatabaseHelper.save(rawCredential)
         await userSessionDatabaseHelper.save([rawCurrentSession, rawOtherSession])
 
         const accessToken = await tokenService.generateAccessToken(userId.value, currentSessionId.value, futureDate, now)
@@ -1618,17 +1622,18 @@ describe('AuthController', () => {
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
         return request(app.getHttpServer())
-          .get('/auth/sessions')
+          .get('/auth/security-details')
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(200)
           .expect((response) => {
-            const body = response.body as GetActiveSessionsApplicationResponseDto
+            const body = response.body as GetUserSecurityDetailsQueryResponseDto
 
             expect(body.sessions).toBeDefined()
+            expect(body.credential).toBeDefined()
             expect(body.sessions).toHaveLength(2)
 
             expect(body.sessions[0]).toEqual(
-              expect.objectContaining({
+              expect.objectContaining<Record<string, unknown>>({
                 id: expect.any(String),
                 deviceInfo: {
                   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -1647,46 +1652,87 @@ describe('AuthController', () => {
                     model: expectStringOrNull,
                   },
                 },
-                deviceCountryCode: expectStringOrNull,
-                deviceCity: expectStringOrNull,
+                deviceLocation: {
+                  countryCode: expectStringOrNull,
+                  city: expectStringOrNull,
+                },
+                activeSince: <Record<string, unknown>>{
+                  quantity: expect.any(Number),
+                  unit: expect.any(String),
+                },
+                expiresAt: <Record<string, unknown>>{
+                  quantity: expect.any(Number),
+                  unit: expect.any(String),
+                },
                 isCurrent: expect.any(Boolean),
-                activeSince: expectIsoDate,
-                expiresAt: expectIsoDate,
-              } as Record<string, unknown>),
+              }),
+            )
+
+            expect(body.credential).toEqual(
+              expect.objectContaining({
+                lastModifiedAt: <Record<string, unknown>>{
+                  quantity: expect.any(Number),
+                  unit: expect.any(String),
+                },
+              }),
             )
           })
       })
 
-      it('should return 200 OK and an empty array when user has no active sessions', async () => {
+      it('should return 200 OK and only the current session when user has no other active sessions', async () => {
         await userDatabaseHelper.save(makeRawUser({ id: userId.value }))
+        await userCredentialDatabaseHelper.save(makeRawUserCredential({ user_id: userId.value }))
+
+        const rawCurrentSession = makeRawSession({
+          id: currentSessionId.value,
+          user_id: userId.value,
+          revoked_at: null,
+          expires_at: futureDate,
+          created_at: now,
+        })
+        await userSessionDatabaseHelper.save([rawCurrentSession])
 
         const accessToken = await tokenService.generateAccessToken(userId.value, currentSessionId.value, futureDate, now)
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
         return request(app.getHttpServer())
-          .get('/auth/sessions')
+          .get('/auth/security-details')
           .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(200)
           .expect((response) => {
-            const body = response.body as GetActiveSessionsApplicationResponseDto
+            const body = response.body as GetUserSecurityDetailsQueryResponseDto
 
             expect(body.sessions).toBeDefined()
-            expect(body.sessions).toEqual([])
+            expect(body.sessions).toHaveLength(1)
+            expect(body.sessions[0].isCurrent).toBe(true)
           })
       })
     })
 
     describe('when there are errors', () => {
       it('should return 401 Unauthorized when access token cookie is missing', async () => {
-        return request(app.getHttpServer()).get('/auth/sessions').expect(401)
+        return request(app.getHttpServer()).get('/auth/security-details').expect(401)
       })
 
       it('should return 401 Unauthorized when access token is invalid', async () => {
         const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
 
         return request(app.getHttpServer())
-          .get('/auth/sessions')
+          .get('/auth/security-details')
           .set('Cookie', [`${accessCookieName}=invalid.jwt.token`])
+          .expect(401)
+      })
+
+      it('should return 401 Unauthorized when the session associated with the token does not exist in the database', async () => {
+        await userDatabaseHelper.save(makeRawUser({ id: userId.value }))
+        await userCredentialDatabaseHelper.save(makeRawUserCredential({ user_id: userId.value }))
+
+        const accessToken = await tokenService.generateAccessToken(userId.value, currentSessionId.value, futureDate, now)
+        const accessCookieName = configService.get<string>('ACCESS_COOKIE_NAME', { infer: true })
+
+        return request(app.getHttpServer())
+          .get('/auth/security-details')
+          .set('Cookie', [`${accessCookieName}=${accessToken}`])
           .expect(401)
       })
     })

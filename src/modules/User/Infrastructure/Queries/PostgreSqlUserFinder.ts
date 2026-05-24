@@ -28,8 +28,7 @@ export class PostgreSqlUserFinder implements UserFinderInterface {
           sp.birth_date
         FROM users u
         INNER JOIN sportsman_profiles sp ON u.id = sp.user_id
-        WHERE u.username = $1 AND
-          u.deleted_at IS NULL AND u.status = 'active'
+        WHERE u.username = $1 AND u.deleted_at IS NULL AND u.status = 'active'
       `,
       [rawUsername],
     )

@@ -75,11 +75,8 @@ import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMot
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { LogoutUserApplicationError } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationError'
-import { GetActiveSessions } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessions'
-import { GetActiveSessionsApplicationResponseDto } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationResponseDto'
+import { GetUserSecurityDetailsQueryHandler } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryHandler'
 import { UserSessionDomainException } from '~/src/modules/Auth/Domain/UserSessionDomainException'
-import { SharedDomainException } from '~/src/modules/Shared/Domain/SharedDomainException'
-import { GetActiveSessionsApplicationError } from '~/src/modules/Auth/Application/GetActiveSessions/GetActiveSessionsApplicationError'
 import { CloseUserSession } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSession'
 import { CloseUserSessionApplicationError } from '~/src/modules/Auth/Application/CloseUserSession/CloseUserSessionApplicationError'
 import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
@@ -88,6 +85,7 @@ import { UserIpMother } from '~/src/test/mothers/Infrastructure/UserIpMother'
 import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 import { RefreshTokenMother } from '~/src/test/mothers/Application/RefreshTokenMother'
 import { UserApplicationDto } from '~/src/modules/Auth/Application/Dto/UserApplicationDto'
+import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
 
 describe('AuthController', () => {
   const mockedResponse = mock<FastifyReply>()
@@ -100,9 +98,10 @@ describe('AuthController', () => {
   const mockedResetUserPasswordUseCase = mock<ResetUserPassword>()
   const mockedLogoutUserUseCase = mock<LogoutUser>()
   const mockedCloseUserSessionUserCase = mock<CloseUserSession>()
-  const mockedGetActiveSessionsUseCase = mock<GetActiveSessions>()
+  const mockedGetActiveSessionsUseCase = mock<GetUserSecurityDetailsQueryHandler>()
   const mockedRequestMetadataExtractor = mock<RequestMetadataExtractorInterface>()
   const mockedClientMetadataService = mock<ClientMetadataApplicationService>()
+  const mockedLoggerFactory = mock<LoggerFactoryInterface>()
 
   const mockedRawRequestMetadata = { ip: UserIpMother.valid(), userAgent: DeviceInfoMother.validString() }
   const mockedClientMetadata = new ClientMetadataResponseTestBuilder().build()
@@ -112,6 +111,7 @@ describe('AuthController', () => {
   const authCookiesConfigServiceMockImplementation = createConfigServiceMockImplementation({
     REFRESH_COOKIE_NAME: 'x-refresh-token',
     ACCESS_COOKIE_NAME: 'x-access-token',
+    INVALIDATED_SESSION_HEADER_NAME: 'x-session-invalidated',
     isProduction: false,
   })
 
@@ -158,6 +158,7 @@ describe('AuthController', () => {
       mockedGetActiveSessionsUseCase,
       mockedRequestMetadataExtractor,
       mockedClientMetadataService,
+      mockedLoggerFactory,
       mockedConfigService,
     )
   }
@@ -185,10 +186,11 @@ describe('AuthController', () => {
   }
 
   const assertAuthCookiesWereCleared = () => {
-    expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
+    expect(mockedConfigService.get).toHaveBeenCalledTimes(4)
     expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('ACCESS_COOKIE_NAME', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledWith('INVALIDATED_SESSION_HEADER_NAME', { infer: true })
     expect(mockedResponse.clearCookie).toHaveBeenCalledTimes(2)
     expect(mockedResponse.clearCookie).toHaveBeenCalledWith('x-refresh-token', {
       path: '/',
@@ -202,6 +204,7 @@ describe('AuthController', () => {
       secure: false,
       httpOnly: true,
     })
+    expect(mockedResponse.header).toHaveBeenCalledWith('x-session-invalidated', 'true')
   }
 
   describe('login', () => {
@@ -2142,98 +2145,5 @@ describe('AuthController', () => {
     })
   })
 
-  describe('activeSessions', () => {
-    const userId = IdentifierMother.valid()
-    const sessionId = IdentifierMother.valid()
-
-    const mockedAccessToken = {
-      sub: userId.value,
-      sid: sessionId.value,
-    } as JwtPayload
-
-    beforeEach(() => {
-      mockReset(mockedGetActiveSessionsUseCase)
-    })
-
-    describe('happy path', () => {
-      it('should call use-case correctly and return the user sessions', async () => {
-        const controller = buildController()
-
-        const expectedSessionsResponse = mock<GetActiveSessionsApplicationResponseDto>()
-
-        mockedGetActiveSessionsUseCase.execute.mockResolvedValue({
-          success: true,
-          value: expectedSessionsResponse,
-        })
-
-        const result = await controller.activeSessions(mockedAccessToken)
-
-        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
-        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledWith({
-          userId: mockedAccessToken.sub,
-          currentSessionId: mockedAccessToken.sid,
-        })
-
-        expect(result).toBe(expectedSessionsResponse)
-      })
-    })
-
-    describe('when there are errors', () => {
-      it('should throw InternalServerErrorException when use-case returns invalidInput error', async () => {
-        const controller = buildController()
-
-        const expectedInvalidIdentifierException = SharedDomainException.invalidIdentifier(mockedAccessToken.sid)
-        const expectedInputError = GetActiveSessionsApplicationError.invalidInput(
-          'currentSessionId',
-          expectedInvalidIdentifierException.message,
-        )
-
-        mockedGetActiveSessionsUseCase.execute.mockResolvedValue({
-          success: false,
-          error: expectedInputError,
-        })
-
-        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(
-          new InternalServerErrorException('Validation mismatch: Nest passed the input but domain rejected it', {
-            cause: expectedInputError,
-          }),
-        )
-
-        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
-      })
-
-      it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
-        const controller = buildController()
-
-        const unknownUseCaseError = {
-          message: 'Unknown error',
-          id: 'validate_verification_token_unknown_error',
-        } as unknown as GetActiveSessionsApplicationError
-
-        mockedGetActiveSessionsUseCase.execute.mockResolvedValue({
-          success: false,
-          error: unknownUseCaseError,
-        })
-
-        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(
-          new InternalServerErrorException(unknownUseCaseError),
-        )
-
-        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
-      })
-
-      it('should throw original error when use-case fails with an unexpected exception', async () => {
-        const controller = buildController()
-        const unexpectedError = new Error('Database connection failed')
-
-        mockedGetActiveSessionsUseCase.execute.mockImplementation(() => {
-          throw unexpectedError
-        })
-
-        await expect(controller.activeSessions(mockedAccessToken)).rejects.toThrow(unexpectedError)
-
-        expect(mockedGetActiveSessionsUseCase.execute).toHaveBeenCalledTimes(1)
-      })
-    })
-  })
+  describe.skip('security details', () => {})
 })

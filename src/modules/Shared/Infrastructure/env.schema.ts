@@ -70,6 +70,7 @@ export const EnvSchema = z
     USER_MAX_SESSIONS: z.coerce.number().int().positive().default(6),
     ACCESS_COOKIE_NAME: z.string().trim().nonempty().default('x-access-token'),
     REFRESH_COOKIE_NAME: z.string().trim().nonempty().default('x-refresh-token'),
+    INVALIDATED_SESSION_HEADER_NAME: z.string().trim().nonempty().default('x-session-invalidated'),
     VERIFICATION_TOKEN_TTL_MS: z.coerce
       .number()
       .int()
