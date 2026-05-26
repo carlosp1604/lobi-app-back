@@ -42,7 +42,6 @@ import { PostgreSqlDomainEventRepository } from '~/src/modules/Shared/Infrastruc
 import { BCryptHasherService } from '~/src/modules/Auth/Infrastructure/Services/BCryptHasherService'
 import { JWTokenGeneratorApplicationService } from '~/src/modules/Auth/Infrastructure/Services/JWTokenGeneratorApplicationService'
 import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
-import { NoopDeviceLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/NoopDeviceLocationResolverService'
 import { IpAddressIpValidatorService } from '~/src/modules/Shared/Infrastructure/Services/IpAddressIpValidatorService'
 import { MaxSessionsPolicy } from '~/src/modules/Auth/Application/Policies/MaxUserSessionPolicy'
 import { UserRepositoryInterface } from '~/src/modules/User/Domain/UserRepositoryInterface'
@@ -99,6 +98,7 @@ import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application
 import { EntityManager } from 'typeorm'
 import { PostgreSqlUserSecurityFinder } from '~/src/modules/Auth/Infrastructure/Queries/PostgreSqlUserSecurityFinder'
 import { UserSecurityFinderInterface } from '~/src/modules/Auth/Application/GetUserSecurityDetails/UserSecurityFinderInterface'
+import { IpGuideLocationResolverService } from '~/src/modules/Auth/Infrastructure/Services/IpguideDeviceLocationResolverService'
 
 @Module({
   imports: [
@@ -182,7 +182,13 @@ import { UserSecurityFinderInterface } from '~/src/modules/Auth/Application/GetU
       },
       inject: [ConfigService],
     },
-    { provide: DEVICE_LOCATION_RESOLVER, useClass: NoopDeviceLocationResolverService },
+    {
+      provide: DEVICE_LOCATION_RESOLVER,
+      useFactory: (loggerFactory: LoggerFactoryInterface) => {
+        return new IpGuideLocationResolverService(loggerFactory.createLogger(IpGuideLocationResolverService.name))
+      },
+      inject: [LOGGER_FACTORY],
+    },
     { provide: IP_VALIDATOR, useClass: IpAddressIpValidatorService },
     { provide: UA_PARSER, useClass: UaParserJsUserAgentParserService },
     { provide: REQUEST_METADATA_EXTRACTOR, useClass: FastifyClientMetadataExtractor },

@@ -51,6 +51,7 @@
     "class-validator": "^0.14.2",
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.2",
+    "i18n-iso-countries": "^7.14.0",
     "ipaddr.js": "^2.2.0",
     "jsonwebtoken": "^9.0.2",
     "nestjs-cls": "^6.2.0",

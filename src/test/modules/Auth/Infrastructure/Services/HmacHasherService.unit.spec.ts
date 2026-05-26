@@ -2,10 +2,10 @@ import crypto, { Hash } from 'node:crypto'
 import { HmacHasherService } from '~/src/modules/Auth/Infrastructure/Services/HmacHasherService'
 
 describe('HmacHasherService', () => {
-  let svc: HmacHasherService
+  let service: HmacHasherService
 
   beforeEach(() => {
-    svc = new HmacHasherService('secret')
+    service = new HmacHasherService('secret')
   })
 
   afterEach(() => {
@@ -24,7 +24,7 @@ describe('HmacHasherService', () => {
       const expectedHmac = mockHmac(expectedBuffer)
       const createHmacSpy = jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
 
-      await svc.hash('clear')
+      await service.hash('clear')
 
       expect(createHmacSpy).toHaveBeenCalledWith('sha256', 'secret')
       expect(expectedHmac.update).toHaveBeenCalledWith('clear', 'utf8')
@@ -35,7 +35,7 @@ describe('HmacHasherService', () => {
       const expectedBuf = Buffer.from('abc')
       jest.spyOn(crypto, 'createHmac').mockReturnValue(mockHmac(expectedBuf) as unknown as Hash)
 
-      const result = await svc.hash('clear')
+      const result = await service.hash('clear')
 
       expect(result).toBe('YWJj')
     })
@@ -51,7 +51,7 @@ describe('HmacHasherService', () => {
 
       const validB64 = expectedHashedBuffer.toString('base64')
 
-      await svc.compare('clear', validB64)
+      await service.compare('clear', validB64)
 
       expect(createHmacSpy).toHaveBeenCalledWith('sha256', 'secret')
       expect(expectedHmac.update).toHaveBeenCalledWith('clear', 'utf8')
@@ -70,7 +70,7 @@ describe('HmacHasherService', () => {
 
       const validB64 = expectedHashedBuffer.toString('base64')
 
-      const result = await svc.compare('clear', validB64)
+      const result = await service.compare('clear', validB64)
 
       expect(result).toBe(true)
     })
@@ -82,7 +82,7 @@ describe('HmacHasherService', () => {
       jest.spyOn(crypto, 'createHmac').mockReturnValue(expectedHmac as unknown as Hash)
       const timingSafeEqualSpy = jest.spyOn(crypto, 'timingSafeEqual')
 
-      const result = await svc.compare('clear', 'invalid-base-64-hash')
+      const result = await service.compare('clear', 'invalid-base-64-hash')
 
       expect(timingSafeEqualSpy).toHaveBeenCalledWith(expectedHashedBuffer, expectedHashedBuffer)
       expect(result).toBe(false)
@@ -100,7 +100,7 @@ describe('HmacHasherService', () => {
 
       const validB64 = expectedHashedBuffer.toString('base64')
 
-      const result = await svc.compare('clear', validB64)
+      const result = await service.compare('clear', validB64)
 
       expect(timingSafeEqualSpy).toHaveBeenCalledWith(expectedHashedBuffer, expectedHashedBuffer)
       expect(result).toBe(false)
@@ -115,7 +115,7 @@ describe('HmacHasherService', () => {
 
       const shorterB64 = Buffer.alloc(16, 0x22).toString('base64')
 
-      const result = await svc.compare('clear', shorterB64)
+      const result = await service.compare('clear', shorterB64)
 
       expect(timingSafeEqualSpy).toHaveBeenCalledWith(expectedHashedBuffer, expectedHashedBuffer) // blinding
       expect(result).toBe(false)
@@ -130,7 +130,7 @@ describe('HmacHasherService', () => {
 
       const validB64 = expectedHashedBuffer.toString('base64')
 
-      const result = await svc.compare('clear', validB64)
+      const result = await service.compare('clear', validB64)
 
       expect(result).toBe(false)
       expect(timingSafeEqualSpy).toHaveBeenCalledWith(expectedHashedBuffer, expect.any(Buffer))

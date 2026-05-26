@@ -17,6 +17,7 @@ services:
     labels:
       caddy: ${API_DOMAIN}
       caddy.reverse_proxy: "${CONTAINER_NAME}:${PORT}"
+      caddy.reverse_proxy.header_up: "X-Forwarded-For {http.request.header.CF-Connecting-IP}"
 
 networks:
   caddy_gateway:
