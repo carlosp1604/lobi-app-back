@@ -14,6 +14,7 @@ import { env } from '~/src/modules/Shared/Infrastructure/env.loader'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 import { ActivityModule } from '~/src/modules/Activity/Infrastructure/activity.module'
 import { UserModule } from '~/src/modules/User/Infrastructure/user.module'
+import { RequestIdHeaderInterceptor } from '~/src/modules/Shared/Infrastructure/request-id-header.interceptor'
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { UserModule } from '~/src/modules/User/Infrastructure/user.module'
   providers: [
     AppService,
     SentryExceptionFilter,
+    RequestIdHeaderInterceptor,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

@@ -105,6 +105,8 @@ export class SentryExceptionFilter implements ExceptionFilter {
       return
     }
 
+    response.header('X-Request-Id', String(request.id))
+
     response.status(status).send({
       statusCode: status,
       response: safeResponse,

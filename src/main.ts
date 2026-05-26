@@ -10,6 +10,7 @@ import { LOGGER_FACTORY } from '~/src/modules/Shared/Infrastructure/logger.modul
 import { validationPipe } from '~/src/modules/Shared/Infrastructure/global-validation.pipe'
 import { SentryExceptionFilter } from '~/src/modules/Shared/Infrastructure/sentry-exception.filter'
 import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
+import { RequestIdHeaderInterceptor } from '~/src/modules/Shared/Infrastructure/request-id-header.interceptor'
 
 /**
  * This project provides only an API | CSP = off
@@ -57,6 +58,7 @@ async function bootstrap() {
 
   app.useLogger(logger)
   app.useGlobalFilters(app.get(SentryExceptionFilter))
+  app.useGlobalInterceptors(app.get(RequestIdHeaderInterceptor))
   app.useGlobalPipes(validationPipe)
 
   await setUpHelmet(app)
