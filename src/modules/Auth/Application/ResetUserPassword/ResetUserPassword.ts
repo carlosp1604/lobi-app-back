@@ -62,7 +62,7 @@ export class ResetUserPassword {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       if (!verificationToken) {
-        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()))
+        return fail(ResetUserPasswordApplicationError.tokenNotFound())
       }
 
       const validateTokenResult = verificationToken.validate(now, email, VerificationTokenPurpose.resetPassword())
@@ -80,27 +80,27 @@ export class ResetUserPassword {
           purpose: VerificationTokenPurpose.resetPassword().value,
         })
 
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()))
+        return fail(ResetUserPasswordApplicationError.invalidToken())
       }
 
       const user = await this.userRepository.findByEmail(email.value, context)
 
       if (!user) {
-        this.loggerService.warn('Inconsistent state', {
+        this.loggerService.warn('Data anomaly detected', {
           email: email.value,
-          reason: 'User not found',
+          reason: 'Attempted to consume an orphaned reset-password token for a deleted user',
         })
 
-        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound()))
+        return fail(ResetUserPasswordApplicationError.userNotFound())
       }
 
       if (!user.isActive()) {
-        this.loggerService.warn('Inconsistent state', {
+        this.loggerService.warn('Password reset rejected', {
           email: email.value,
           reason: 'User is disabled',
         })
 
-        return fail(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userDisabled()))
+        return fail(ResetUserPasswordApplicationError.userDisabled())
       }
 
       const userCredential = await this.userCredentialRepository.findByUserId(user.id.value, context)
@@ -109,7 +109,7 @@ export class ResetUserPassword {
           userId: user.id.value,
           reason: 'Active user has no credentials',
         })
-        return fail(ResetUserPasswordApplicationError.inconsistentState())
+        return fail(ResetUserPasswordApplicationError.userDoesNotHaveCredentials())
       }
 
       const passwordMatchCurrentOne = await this.hasherService.compare(password.value, userCredential.passwordHash.value)
@@ -120,7 +120,7 @@ export class ResetUserPassword {
           reason: 'The new password is the same as the current one',
         })
 
-        return fail(ResetUserPasswordApplicationError.cannotResetPassword())
+        return fail(ResetUserPasswordApplicationError.samePasswordValue())
       }
 
       userCredential.updatePasswordHash(newPasswordHash, now)
@@ -151,17 +151,17 @@ export class ResetUserPassword {
     const emailResult = EmailAddress.safeCreate(request.email)
 
     if (!emailResult.success) {
-      inputErrors.push(ResetUserPasswordError.invalidEmail(emailResult.error.message))
+      inputErrors.push(ResetUserPasswordError.validationError('email', emailResult.error.message))
     }
 
     const tokenResult = VerificationTokenValue.safeCreate(request.token)
     if (!tokenResult.success) {
-      inputErrors.push(ResetUserPasswordError.invalidTokenFormat(tokenResult.error.message))
+      inputErrors.push(ResetUserPasswordError.validationError('token', tokenResult.error.message))
     }
 
     const passwordResult = UserPassword.safeCreate(request.password)
     if (!passwordResult.success) {
-      inputErrors.push(ResetUserPasswordError.invalidPassword(passwordResult.error.message))
+      inputErrors.push(ResetUserPasswordError.validationError('password', passwordResult.error.message))
     }
 
     if (!emailResult.success || !tokenResult.success || !passwordResult.success) {
@@ -198,7 +198,7 @@ export class ResetUserPassword {
           ...tokenState,
           reason: 'Token has already expired',
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired(domainMessage)))
+        return fail(ResetUserPasswordApplicationError.tokenExpired(domainMessage))
       }
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId: {
@@ -206,7 +206,7 @@ export class ResetUserPassword {
           ...tokenState,
           reason: 'Token was already used',
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed(domainMessage)))
+        return fail(ResetUserPasswordApplicationError.tokenAlreadyUsed(domainMessage))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId: {
@@ -215,7 +215,7 @@ export class ResetUserPassword {
           reason: 'Token belongs to a different email address',
           requestEmail: requestEmail.value,
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner(domainMessage)))
+        return fail(ResetUserPasswordApplicationError.tokenInvalidOwner(domainMessage))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId: {
@@ -223,7 +223,7 @@ export class ResetUserPassword {
           ...tokenState,
           reason: 'Token was not generated for password reset',
         })
-        return fail(ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch(domainMessage)))
+        return fail(ResetUserPasswordApplicationError.tokenPurposeMismatch(domainMessage))
       }
 
       default: {

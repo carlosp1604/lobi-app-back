@@ -211,7 +211,9 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidEmail(expectedDomainMessageError)]),
+          error: ResetUserPasswordApplicationError.invalidInput([
+            ResetUserPasswordError.validationError('email', expectedDomainMessageError),
+          ]),
         })
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
@@ -227,7 +229,7 @@ describe('ResetUserPassword', () => {
         expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([
-            ResetUserPasswordError.invalidTokenFormat(expectedDomainMessageError),
+            ResetUserPasswordError.validationError('token', expectedDomainMessageError),
           ]),
         })
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
@@ -243,7 +245,9 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidInput([ResetUserPasswordError.invalidPassword(expectedDomainMessageError)]),
+          error: ResetUserPasswordApplicationError.invalidInput([
+            ResetUserPasswordError.validationError('password', expectedDomainMessageError),
+          ]),
         })
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
@@ -265,8 +269,8 @@ describe('ResetUserPassword', () => {
         expect(result).toEqual({
           success: false,
           error: ResetUserPasswordApplicationError.invalidInput([
-            ResetUserPasswordError.invalidEmail(expectedInvalidEmailDomainMessageError),
-            ResetUserPasswordError.invalidPassword(expectedInvalidPasswordDomainMessageError),
+            ResetUserPasswordError.validationError('email', expectedInvalidEmailDomainMessageError),
+            ResetUserPasswordError.validationError('password', expectedInvalidPasswordDomainMessageError),
           ]),
         })
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
@@ -282,7 +286,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()),
+          error: ResetUserPasswordApplicationError.tokenNotFound(),
         })
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
@@ -297,7 +301,7 @@ describe('ResetUserPassword', () => {
         const result = await useCase.execute(baseRequest)
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenExpired(expectedDomainErrorMessage)),
+          error: ResetUserPasswordApplicationError.tokenExpired(expectedDomainErrorMessage),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
           error: VerificationTokenDomainException.alreadyExpired().message,
@@ -322,7 +326,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenAlreadyUsed(expectedDomainErrorMessage)),
+          error: ResetUserPasswordApplicationError.tokenAlreadyUsed(expectedDomainErrorMessage),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
           error: VerificationTokenDomainException.alreadyUsed().message,
@@ -348,9 +352,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(
-            ResetUserPasswordError.tokenInvalidOwner(expectedDomainException.message),
-          ),
+          error: ResetUserPasswordApplicationError.tokenInvalidOwner(expectedDomainException.message),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
           error: expectedDomainException.message,
@@ -376,9 +378,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(
-            ResetUserPasswordError.tokenPurposeMismatch(expectedDomainException.message),
-          ),
+          error: ResetUserPasswordApplicationError.tokenPurposeMismatch(expectedDomainException.message),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Verification token validation failed', {
           error: expectedDomainException.message,
@@ -400,7 +400,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()),
+          error: ResetUserPasswordApplicationError.invalidToken(),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: validEmail.value,
@@ -430,7 +430,7 @@ describe('ResetUserPassword', () => {
     })
 
     describe('when user or credential issues occur', () => {
-      it('should return notFound error when user does not exist', async () => {
+      it('should return userNotFound error when user does not exist', async () => {
         mockedUserRepository.findByEmail.mockResolvedValue(null)
 
         const useCase = buildUseCase()
@@ -438,16 +438,16 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound()),
+          error: ResetUserPasswordApplicationError.userNotFound(),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Data anomaly detected', {
           email: validEmail.value,
-          reason: 'User not found',
+          reason: 'Attempted to consume an orphaned reset-password token for a deleted user',
         })
         expect(mockedCredentialRepository.findByUserId).not.toHaveBeenCalled()
       })
 
-      it('should return notFound error when user is not active', async () => {
+      it('should return userDisabled error when user is not active', async () => {
         const inactiveUser = userTestBuilder.withStatus(UserStatus.deactivated()).build()
         mockedUserRepository.findByEmail.mockResolvedValue(inactiveUser)
 
@@ -456,16 +456,16 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userDisabled()),
+          error: ResetUserPasswordApplicationError.userDisabled(),
         })
-        expect(mockedLogger.warn).toHaveBeenCalledWith('Inconsistent state', {
+        expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset rejected', {
           email: validEmail.value,
           reason: 'User is disabled',
         })
         expect(mockedCredentialRepository.findByUserId).not.toHaveBeenCalled()
       })
 
-      it('should return inconsistentState error when an active user has no credentials', async () => {
+      it('should return userDoesNotHaveCredentials error when an active user has no credentials', async () => {
         mockedCredentialRepository.findByUserId.mockResolvedValue(null)
 
         const useCase = buildUseCase()
@@ -473,7 +473,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.inconsistentState(),
+          error: ResetUserPasswordApplicationError.userDoesNotHaveCredentials(),
         })
         expect(mockedLogger.error).toHaveBeenCalledWith('Inconsistent state', undefined, {
           userId: validUserId.value,
@@ -490,7 +490,7 @@ describe('ResetUserPassword', () => {
 
         expect(result).toEqual({
           success: false,
-          error: ResetUserPasswordApplicationError.cannotResetPassword(),
+          error: ResetUserPasswordApplicationError.samePasswordValue(),
         })
         expect(mockedLogger.warn).toHaveBeenCalledWith('Password reset rejected', {
           reason: 'The new password is the same as the current one',

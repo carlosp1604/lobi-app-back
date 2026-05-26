@@ -547,18 +547,10 @@ import { IpGuideLocationResolverService } from '~/src/modules/Auth/Infrastructur
     },
     {
       provide: GET_USER_SECURITY_DETAILS_QUERY_HANDLER,
-      useFactory: (
-        userSecurityFinder: UserSecurityFinderInterface,
-        clockService: ClockServiceInterface,
-        loggerFactory: LoggerFactoryInterface,
-      ) => {
-        return new GetUserSecurityDetailsQueryHandler(
-          userSecurityFinder,
-          clockService,
-          loggerFactory.createLogger(GetUserSecurityDetailsQueryHandler.name),
-        )
+      useFactory: (userSecurityFinder: UserSecurityFinderInterface, clockService: ClockServiceInterface) => {
+        return new GetUserSecurityDetailsQueryHandler(userSecurityFinder, clockService)
       },
-      inject: [USER_SECURITY_FINDER, CLOCK_SERVICE, LOGGER_FACTORY],
+      inject: [USER_SECURITY_FINDER, CLOCK_SERVICE],
     },
   ],
   exports: [

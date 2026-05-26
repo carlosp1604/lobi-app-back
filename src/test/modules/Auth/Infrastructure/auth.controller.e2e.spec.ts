@@ -47,7 +47,7 @@ import {
   AUTH_CREATE_USER_TOKEN_ALREADY_USED,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
-  AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_INPUT,
   AUTH_RESET_PASSWORD_INVALID_TOKEN,
   AUTH_RESET_PASSWORD_SAME_PASSWORD,
   AUTH_VALIDATE_TOKEN_ALREADY_EXPIRED,
@@ -1249,12 +1249,23 @@ describe('AuthController', () => {
       it('should throw UnprocessableEntityException when password format is not valid', async () => {
         await saveSetupInDatabase()
 
+        const expectedDomainErrorMessage = UserCredentialDomainException.invalidPasswordFormat().message
+
         return request(app.getHttpServer())
           .post('/auth/reset-password')
           .send({ ...getValidPayload(), password: UserPasswordMother.invalid() })
           .expect(422)
           .expect((response) => {
-            expect(response.body.response.errors[0].code).toEqual(AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT)
+            expect(response.body.response.code).toEqual(AUTH_RESET_PASSWORD_INVALID_INPUT)
+            expect(response.body.response.errors).toEqual(
+              expect.arrayContaining([
+                expect.objectContaining({
+                  field: 'password',
+                  error: expectedDomainErrorMessage,
+                  type: 'validation',
+                }),
+              ]),
+            )
           })
       })
 

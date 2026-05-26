@@ -20,10 +20,8 @@ import {
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
-  AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
-  AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_INPUT,
   AUTH_RESET_PASSWORD_INVALID_TOKEN,
-  AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
   AUTH_RESET_PASSWORD_SAME_PASSWORD,
   AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
   AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
@@ -1330,96 +1328,35 @@ describe('AuthController', () => {
     })
 
     describe('when there are errors', () => {
-      type ErrorWithApiCode = {
-        error: ResetUserPasswordError
-        apiCode: string
-      }
-
-      const testInvalidInputMapping = async (errorsWithApiCode: ErrorWithApiCode | Array<ErrorWithApiCode>) => {
-        const controller = buildController()
-
+      it('should throw UnprocessableEntityException when use-case returns invalidInput error', async () => {
+        const expectedUseCaseError = ResetUserPasswordApplicationError.invalidInput([
+          ResetUserPasswordError.validationError('email', 'EMail validation failed'),
+        ])
         mockedResetUserPasswordUseCase.execute.mockResolvedValue({
           success: false,
-          error: ResetUserPasswordApplicationError.invalidInput(
-            Array.isArray(errorsWithApiCode)
-              ? errorsWithApiCode.map((errorWithApiCode) => errorWithApiCode.error)
-              : [errorsWithApiCode.error],
-          ),
+          error: expectedUseCaseError,
         })
+
+        const controller = buildController()
 
         await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
           new UnprocessableEntityException({
-            message: 'One or more fields have invalid formats',
-            errors: Array.isArray(errorsWithApiCode)
-              ? errorsWithApiCode.map((errorWithCode) => ({
-                  code: errorWithCode.apiCode,
-                  message: errorWithCode.error.message,
-                }))
-              : [
-                  {
-                    code: errorsWithApiCode.apiCode,
-                    message: errorsWithApiCode.error.message,
-                  },
-                ],
+            code: AUTH_RESET_PASSWORD_INVALID_INPUT,
+            message: expectedUseCaseError.message,
+            errors: expectedUseCaseError.errors,
           }),
         )
 
         assertMetadataFlowWasCalled(mockRequest)
-      }
-
-      describe('when input data is invalid', () => {
-        it('should throw UnprocessableEntityException for invalid email', async () => {
-          await testInvalidInputMapping({
-            error: ResetUserPasswordError.invalidEmail('Invalid domain email'),
-            apiCode: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
-          })
-        })
-
-        it('should throw UnprocessableEntityException for invalid password', async () => {
-          await testInvalidInputMapping({
-            error: ResetUserPasswordError.invalidPassword('Invalid domain password'),
-            apiCode: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
-          })
-        })
-
-        it('should throw UnprocessableEntityException for invalid token format', async () => {
-          await testInvalidInputMapping({
-            error: ResetUserPasswordError.invalidTokenFormat('Invalid domain token format'),
-            apiCode: AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
-          })
-        })
-
-        it('should throw UnprocessableEntityException for multiple input errors', async () => {
-          await testInvalidInputMapping([
-            { error: ResetUserPasswordError.invalidEmail('Invalid domain email'), apiCode: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT },
-            {
-              error: ResetUserPasswordError.invalidPassword('Invalid domain password'),
-              apiCode: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
-            },
-          ])
-        })
-
-        it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordError in invalidInput', async () => {
-          const controller = buildController()
-          const unknownError = { id: 'unknown-id', message: 'Unknown', name: 'Unknown' } as ResetUserPasswordError
-
-          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
-            success: false,
-            error: ResetUserPasswordApplicationError.invalidInput([unknownError]),
-          })
-
-          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
-          assertMetadataFlowWasCalled(mockRequest)
-        })
       })
 
       describe('when token is invalid or user not found', () => {
-        it('should throw NotFoundException when use-case returns notFound error', async () => {
+        it('should throw NotFoundException when use-case returns tokenNotFound error', async () => {
           const controller = buildController()
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()),
+            error: ResetUserPasswordApplicationError.tokenNotFound(),
           })
 
           await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
@@ -1433,17 +1370,18 @@ describe('AuthController', () => {
 
         it('should throw GoneException when use-case returns tokenExpired error', async () => {
           const controller = buildController()
-          const specificError = ResetUserPasswordError.tokenExpired('Token has already expired')
+
+          const expectedUseCaseError = ResetUserPasswordApplicationError.tokenExpired('Token has expired')
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(specificError),
+            error: expectedUseCaseError,
           })
 
           await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new GoneException({
               code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
-              message: specificError.message,
+              message: expectedUseCaseError.message,
             }),
           )
           assertMetadataFlowWasCalled(mockRequest)
@@ -1451,17 +1389,17 @@ describe('AuthController', () => {
 
         it('should throw ConflictException when use-case returns tokenAlreadyUsed error', async () => {
           const controller = buildController()
-          const specificError = ResetUserPasswordError.tokenAlreadyUsed('Token was already used')
+          const expectedUseCaseError = ResetUserPasswordApplicationError.tokenAlreadyUsed('Token already used')
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(specificError),
+            error: expectedUseCaseError,
           })
 
           await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
             new ConflictException({
               code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
-              message: specificError.message,
+              message: expectedUseCaseError.message,
             }),
           )
           assertMetadataFlowWasCalled(mockRequest)
@@ -1469,10 +1407,11 @@ describe('AuthController', () => {
 
         it('should throw NotFoundException when use-case returns tokenPurposeMismatch error', async () => {
           const controller = buildController()
+          const expectedUseCaseError = ResetUserPasswordApplicationError.tokenPurposeMismatch('Invalid purpose')
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenPurposeMismatch('Invalid purpose')),
+            error: expectedUseCaseError,
           })
 
           await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
@@ -1486,10 +1425,11 @@ describe('AuthController', () => {
 
         it('should throw NotFoundException when use-case returns tokenInvalidOwner error', async () => {
           const controller = buildController()
+          const expectedUseCaseError = ResetUserPasswordApplicationError.tokenInvalidOwner('Invalid owner')
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.tokenInvalidOwner('Invalid owner')),
+            error: expectedUseCaseError,
           })
 
           await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
@@ -1503,10 +1443,11 @@ describe('AuthController', () => {
 
         it('should throw NotFoundException when use-case return invalidToken error', async () => {
           const controller = buildController()
+          const expectedUseCaseError = ResetUserPasswordApplicationError.invalidToken()
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(ResetUserPasswordError.invalidToken()),
+            error: expectedUseCaseError,
           })
 
           await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
@@ -1518,26 +1459,49 @@ describe('AuthController', () => {
           assertMetadataFlowWasCalled(mockRequest)
         })
 
-        it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordError in invalidToken', async () => {
+        it('should throw NotFoundException when use-case return userNotFound error', async () => {
           const controller = buildController()
-          const unknownError = { id: 'unknown_token_error', name: 'Unknown', message: 'Unknown' } as ResetUserPasswordError
+          const expectedUseCaseError = ResetUserPasswordApplicationError.userNotFound()
 
           mockedResetUserPasswordUseCase.execute.mockResolvedValue({
             success: false,
-            error: ResetUserPasswordApplicationError.invalidToken(unknownError),
+            error: expectedUseCaseError,
           })
 
-          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
+          assertMetadataFlowWasCalled(mockRequest)
+        })
+
+        it('should throw NotFoundException when use-case return userDisabled error', async () => {
+          const controller = buildController()
+          const expectedUseCaseError = ResetUserPasswordApplicationError.userDisabled()
+
+          mockedResetUserPasswordUseCase.execute.mockResolvedValue({
+            success: false,
+            error: expectedUseCaseError,
+          })
+
+          await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
+            new NotFoundException({
+              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+              message: 'Invalid verification token',
+            }),
+          )
           assertMetadataFlowWasCalled(mockRequest)
         })
       })
 
-      it('should throw ConflictException for cannotResetPassword error', async () => {
+      it('should throw ConflictException when use-case returns samePasswordValue error', async () => {
         const controller = buildController()
 
         mockedResetUserPasswordUseCase.execute.mockResolvedValue({
           success: false,
-          error: ResetUserPasswordApplicationError.cannotResetPassword(),
+          error: ResetUserPasswordApplicationError.samePasswordValue(),
         })
 
         await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(
@@ -1549,19 +1513,19 @@ describe('AuthController', () => {
         assertMetadataFlowWasCalled(mockRequest)
       })
 
-      it('should throw InternalServerErrorException for inconsistentState error', async () => {
+      it('should throw InternalServerErrorException when use-case returns userDoesNotHaveCredentials error', async () => {
         const controller = buildController()
 
         mockedResetUserPasswordUseCase.execute.mockResolvedValue({
           success: false,
-          error: ResetUserPasswordApplicationError.inconsistentState(),
+          error: ResetUserPasswordApplicationError.userDoesNotHaveCredentials(),
         })
 
         await expect(controller.resetPassword(mockRequest, mockBody)).rejects.toThrow(InternalServerErrorException)
         assertMetadataFlowWasCalled(mockRequest)
       })
 
-      it('should throw InternalServerErrorException when use-case returns an unknown ResetUserPasswordApplicationError', async () => {
+      it('should throw InternalServerErrorException when use-case returns an unknown error', async () => {
         const controller = buildController()
 
         const useCaseApplicationError: ResetUserPasswordApplicationError = {

@@ -26,10 +26,8 @@ import {
   AUTH_LOGIN_INVALID_EMAIL,
   AUTH_LOGIN_INVALID_PASSWORD_FORMAT,
   AUTH_REFRESH_INVALID_TOKEN_FORMAT,
-  AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
-  AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
+  AUTH_RESET_PASSWORD_INVALID_INPUT,
   AUTH_RESET_PASSWORD_INVALID_TOKEN,
-  AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
   AUTH_RESET_PASSWORD_SAME_PASSWORD,
   AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
   AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
@@ -43,7 +41,6 @@ import {
   AUTH_VERIFY_EMAIL_INVALID_EMAIL,
   AUTH_VERIFY_EMAIL_INVALID_PURPOSE,
   AUTH_VERIFY_EMAIL_TOKEN_ALREADY_ISSUED,
-  GET_USER_SECURITY_DETAILS_USER_NOT_FOUND,
 } from '~/src/modules/Auth/Infrastructure/ApiCodes'
 import {
   Body,
@@ -90,10 +87,7 @@ import { CreateUserApplicationError } from '~/src/modules/Auth/Application/Creat
 import { ResetUserPasswordBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/reset-user-password-body.dto'
 import { ResetUserPasswordApplicationRequestDto } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationRequestDto'
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
-import {
-  ResetUserPasswordApplicationError,
-  ResetUserPasswordError,
-} from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
+import { ResetUserPasswordApplicationError } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
 import { LogoutUser } from '~/src/modules/Auth/Application/LogoutUser/LogoutUser'
 import { LogoutUserApplicationRequestDto } from '~/src/modules/Auth/Application/LogoutUser/LogoutUserApplicationRequestDto'
@@ -436,83 +430,48 @@ export class AuthController {
     const result = await this.resetUserPassword.execute(requestDto)
 
     if (!result.success) {
-      const errorId = result.error.id
+      const error = result.error
 
-      if (errorId === ResetUserPasswordApplicationError.invalidInputId) {
-        throw new UnprocessableEntityException({
-          message: 'One or more fields have invalid formats',
-          errors: result.error.errors.map((error) => {
-            switch (error.id) {
-              case ResetUserPasswordError.invalidEmailId:
-                return {
-                  code: AUTH_RESET_PASSWORD_INVALID_EMAIL_FORMAT,
-                  message: error.message,
-                }
-              case ResetUserPasswordError.invalidPasswordId:
-                return {
-                  code: AUTH_RESET_PASSWORD_INVALID_PASSWORD_FORMAT,
-                  message: error.message,
-                }
-              case ResetUserPasswordError.invalidTokenFormatId:
-                return {
-                  code: AUTH_RESET_PASSWORD_INVALID_TOKEN_FORMAT,
-                  message: error.message,
-                }
-              default:
-                throw new InternalServerErrorException(result.error)
-            }
-          }),
-        })
+      switch (error.id) {
+        case ResetUserPasswordApplicationError.invalidInputId:
+          throw new UnprocessableEntityException({
+            code: AUTH_RESET_PASSWORD_INVALID_INPUT,
+            message: error.message,
+            errors: error.errors,
+          })
+
+        case ResetUserPasswordApplicationError.tokenNotFoundId:
+        case ResetUserPasswordApplicationError.tokenPurposeMismatchId:
+        case ResetUserPasswordApplicationError.tokenInvalidOwnerId:
+        case ResetUserPasswordApplicationError.invalidVerificationTokenId:
+        case ResetUserPasswordApplicationError.userNotFoundId:
+        case ResetUserPasswordApplicationError.userDisabledId:
+          throw new NotFoundException({
+            code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
+            message: 'Invalid verification token',
+          })
+
+        case ResetUserPasswordApplicationError.tokenExpiredId:
+          throw new GoneException({
+            code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
+            message: error.message,
+          })
+
+        case ResetUserPasswordApplicationError.tokenAlreadyUsedId:
+          throw new ConflictException({
+            code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
+            message: error.message,
+          })
+
+        case ResetUserPasswordApplicationError.samePasswordValueId:
+          throw new ConflictException({
+            code: AUTH_RESET_PASSWORD_SAME_PASSWORD,
+            message: 'New password cannot be the same as the current password',
+          })
+
+        default:
+          throw new InternalServerErrorException(error)
       }
-
-      if (errorId === ResetUserPasswordApplicationError.notFoundId) {
-        throw new NotFoundException({
-          code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
-          message: 'Invalid verification token',
-        })
-      }
-
-      if (errorId === ResetUserPasswordApplicationError.invalidTokenId) {
-        const specificError = result.error.errors[0]
-
-        switch (specificError.id) {
-          case ResetUserPasswordError.tokenExpiredId:
-            throw new GoneException({
-              code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_EXPIRED,
-              message: specificError.message,
-            })
-
-          case ResetUserPasswordError.tokenAlreadyUsedId:
-            throw new ConflictException({
-              code: AUTH_RESET_PASSWORD_TOKEN_ALREADY_USED,
-              message: specificError.message,
-            })
-
-          case ResetUserPasswordError.tokenPurposeMismatchId:
-          case ResetUserPasswordError.tokenInvalidOwnerId:
-          case ResetUserPasswordError.invalidVerificationTokenId:
-            throw new NotFoundException({
-              code: AUTH_RESET_PASSWORD_INVALID_TOKEN,
-              message: 'Invalid verification token',
-            })
-
-          default:
-            throw new InternalServerErrorException(result.error)
-        }
-      }
-
-      if (errorId === ResetUserPasswordApplicationError.cannotResetPasswordId) {
-        throw new ConflictException({
-          code: AUTH_RESET_PASSWORD_SAME_PASSWORD,
-          message: 'New password cannot be the same as the current password',
-        })
-      }
-
-      if (errorId === ResetUserPasswordApplicationError.inconsistentStateId) {
-        throw new InternalServerErrorException(result.error)
-      }
-
-      throw new InternalServerErrorException(result.error)
     }
 
     return
@@ -692,9 +651,9 @@ export class AuthController {
 
       this.clearCookies(response)
 
-      throw new NotFoundException({
-        code: GET_USER_SECURITY_DETAILS_USER_NOT_FOUND,
-        message: error.message,
+      throw new UnauthorizedException({
+        code: UNAUTHORIZED_ACCESS,
+        message: 'Unauthorized access',
       })
     }
 

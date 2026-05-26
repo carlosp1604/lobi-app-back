@@ -4,7 +4,6 @@ import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
 import { GetUserSecurityDetailsQueryError } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryError'
 import { GetUserSecurityDetailsQuery } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQuery'
 import { GetUserSecurityDetailsQueryResponseDtoTranslator } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryResponseDtoTranslator'
-import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { UserSecurityFinderInterface } from '~/src/modules/Auth/Application/GetUserSecurityDetails/UserSecurityFinderInterface'
 import { GetUserSecurityDetailsQueryResponseDto } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryResponseDto'
 
@@ -17,7 +16,6 @@ export class GetUserSecurityDetailsQueryHandler {
   constructor(
     private readonly userSecurityFinder: UserSecurityFinderInterface,
     private readonly clockService: ClockServiceInterface,
-    private readonly loggerService: LoggerServiceInterface,
   ) {}
 
   async execute(

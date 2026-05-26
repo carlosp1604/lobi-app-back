@@ -35,10 +35,7 @@ import { UserStatus } from '~/src/modules/User/Domain/ValueObject/UserStatus'
 import { makeRawUserCredential } from '~/src/test/modules/Auth/Infrastructure/UserCredentialRawTestMaker'
 import { DomainEventAggregateType } from '~/src/modules/Shared/Domain/ValueObject/DomainEventAggregateType'
 import { DomainEventName } from '~/src/modules/Shared/Domain/ValueObject/DomainEventName'
-import {
-  ResetUserPasswordApplicationError,
-  ResetUserPasswordError,
-} from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
+import { ResetUserPasswordApplicationError } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationError'
 import { AuthDomainEventFactory } from '~/src/modules/Auth/Domain/AuthDomainEventFactory'
 import { ClientMetadataResponseTestBuilder } from '~/src/test/modules/Auth/Application/ClientMetadata/ClientMetadataResponseTestBuilder'
 
@@ -210,7 +207,7 @@ describe('ResetUserPassword', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.tokenNotFound()))
+      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.tokenNotFound())
 
       const credential = await userCredentialDatabaseHelper.findUserCredential(existingRawUser.id)
       expect(credential).not.toBeNull()
@@ -227,7 +224,7 @@ describe('ResetUserPassword', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.notFound(ResetUserPasswordError.userNotFound()))
+      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.userNotFound())
 
       const token = await verificationTokenDatabaseHelper.findById(existingRawToken.id)
       expect(token).not.toBeNull()
@@ -245,7 +242,7 @@ describe('ResetUserPassword', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.inconsistentState())
+      expect(result['error']).toStrictEqual(ResetUserPasswordApplicationError.userDoesNotHaveCredentials())
 
       const token = await verificationTokenDatabaseHelper.findById(existingRawToken.id)
       expect(token).not.toBeNull()
