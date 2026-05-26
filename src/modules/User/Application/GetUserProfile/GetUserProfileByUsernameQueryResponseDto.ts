@@ -4,6 +4,6 @@ export interface GetUserProfileByUsernameQueryResponseDto {
   readonly username: string
   readonly imageUrl: string | null
   readonly bio: string | null
-  readonly birthDate: Date | null
-  readonly createdAt: Date
+  readonly birthDate: string | null
+  readonly createdAt: string
 }

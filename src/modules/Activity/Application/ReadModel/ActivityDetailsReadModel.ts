@@ -27,8 +27,8 @@ export interface ActivityDetailsReadModelWithoutLevels {
   sport: SportReadModel
   host: ActivityHostReadModel | null
   current_participation: ActivityParticipationReadModel | null
-  scheduled_at: Date
-  created_at: Date
+  scheduled_at: string
+  created_at: string
 }
 
 export type ActivityDetailsReadModel = ActivityDetailsReadModelWithoutLevels & { levels: Array<SportLevelReadModel> }

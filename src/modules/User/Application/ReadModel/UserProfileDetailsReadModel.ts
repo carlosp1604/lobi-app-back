@@ -3,8 +3,8 @@ export interface UserProfileDetailsWithoutImageUrlReadModel {
   name: string
   username: string
   bio: string | null
-  birth_date: Date | null
-  created_at: Date
+  birth_date: string | null
+  created_at: string
 }
 
 export type UserProfileDetailsReadModel = UserProfileDetailsWithoutImageUrlReadModel & { image_url: string | null }

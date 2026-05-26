@@ -126,8 +126,8 @@ export class GetActivityQueryResponseDtoTranslator
         location,
         status: rawData.status,
         currentParticipants: rawData.current_participants,
-        scheduledAt: rawData.scheduled_at.toISOString(),
-        createdAt: rawData.created_at.toISOString(),
+        scheduledAt: rawData.scheduled_at,
+        createdAt: rawData.created_at,
         capacity: {
           min: rawData.min_capacity,
           max: rawData.max_capacity,

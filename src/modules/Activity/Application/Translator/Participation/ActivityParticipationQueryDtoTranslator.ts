@@ -9,7 +9,7 @@ export class ActivityParticipationQueryDtoTranslator
     return {
       id: readModel.id,
       userId: readModel.userId,
-      joinedAt: readModel.joinedAt.toISOString(),
+      joinedAt: readModel.joinedAt,
     }
   }
 }
