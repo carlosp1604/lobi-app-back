@@ -40,9 +40,8 @@ import { makeRawVerificationToken } from '~/src/test/modules/Auth/Infrastructure
 import { VerificationTokenPurpose } from '~/src/modules/Auth/Domain/ValueObject/VerificationTokenPurpose'
 import { VerificationTokenTokenHashMother } from '~/src/test/mothers/VerificationTokenTokenHashMother'
 import {
-  AUTH_CREATE_USER_DUPLICATED_EMAIL,
-  AUTH_CREATE_USER_DUPLICATED_USERNAME,
-  AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+  AUTH_CREATE_USER_DUPLICATED_DATA,
+  AUTH_CREATE_USER_INVALID_INPUT,
   AUTH_CREATE_USER_INVALID_TOKEN,
   AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
   AUTH_CREATE_USER_TOKEN_ALREADY_USED,
@@ -70,7 +69,7 @@ import { ValidateVerificationTokenError } from '~/src/modules/Auth/Application/V
 import { UserUsernameMother } from '~/src/test/mothers/UserUsernameMother'
 import { UserNameMother } from '~/src/test/mothers/UserNameMother'
 import { UserRoleMother } from '~/src/test/mothers/UserRoleMother'
-import { CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { CreateUserApplicationError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { ContextModule } from '~/src/modules/Shared/Infrastructure/context.module'
 import { IdentifierMother } from '~/src/test/mothers/Domain/Shared/IdentifierMother'
 import { UserCredentialDomainException } from '~/src/modules/Auth/Domain/UserCredentialDomainException'
@@ -993,25 +992,16 @@ describe('AuthController', () => {
           .send({ page: 5, perPage: 12 })
           .expect(400)
           .expect((response) => {
-            expect(response.body).toEqual(
-              expect.objectContaining<Record<string, unknown>>({
-                path: '/auth/signup',
-                response: {
-                  code: VALIDATION_ERROR,
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                  errors: expect.any(Object),
-                },
-                statusCode: 400,
-                requestId: expect.any(String),
-                timestamp: expectIsoDate,
-              }),
-            )
+            expect(response.body.response.code).toEqual(VALIDATION_ERROR)
+            expect(response.body.response.errors).toBeDefined()
 
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             const errorMessages = Object.keys(response.body.response.errors).join(' ')
             expect(errorMessages).toContain('email')
             expect(errorMessages).toContain('password')
             expect(errorMessages).toContain('username')
+            expect(errorMessages).toContain('token')
+            expect(errorMessages).toContain('requestedRole')
             expect(errorMessages).toContain('page')
             expect(errorMessages).toContain('perPage')
           })
@@ -1028,21 +1018,16 @@ describe('AuthController', () => {
           .send({ ...getValidPayload(), password: invalidPassword })
           .expect(422)
           .expect((response) => {
-            expect(response.body).toEqual({
-              path: '/auth/signup',
-              response: {
-                message: 'One or more fields have invalid formats',
-                errors: [
-                  {
-                    code: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
-                    message: CreateUserError.invalidPassword(expectedDomainErrorMessage).message,
-                  },
-                ],
-              },
-              statusCode: 422,
-              requestId: expect.any(String),
-              timestamp: expectIsoDate,
-            } as Record<string, unknown>)
+            expect(response.body.response.code).toEqual(AUTH_CREATE_USER_INVALID_INPUT)
+            expect(response.body.response.errors).toEqual(
+              expect.arrayContaining([
+                expect.objectContaining({
+                  field: 'password',
+                  error: expectedDomainErrorMessage,
+                  type: 'validation',
+                }),
+              ]),
+            )
           })
       })
 
@@ -1063,8 +1048,15 @@ describe('AuthController', () => {
             .send(getValidPayload())
             .expect(409)
             .expect((response) => {
-              expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_EMAIL)
-              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedEmail().message)
+              expect(response.body.response.code).toEqual(AUTH_CREATE_USER_DUPLICATED_DATA)
+              expect(response.body.response.errors).toEqual(
+                expect.arrayContaining([
+                  expect.objectContaining({
+                    field: 'email',
+                    type: 'conflict',
+                  }),
+                ]),
+              )
             })
         })
 
@@ -1085,8 +1077,15 @@ describe('AuthController', () => {
             .send(getValidPayload())
             .expect(409)
             .expect((response) => {
-              expect(response.body.response.errors[0].code).toEqual(AUTH_CREATE_USER_DUPLICATED_USERNAME)
-              expect(response.body.response.errors[0].message).toEqual(CreateUserError.duplicatedUsername().message)
+              expect(response.body.response.code).toEqual(AUTH_CREATE_USER_DUPLICATED_DATA)
+              expect(response.body.response.errors).toEqual(
+                expect.arrayContaining([
+                  expect.objectContaining({
+                    field: 'username',
+                    type: 'conflict',
+                  }),
+                ]),
+              )
             })
         })
       })
@@ -1107,6 +1106,7 @@ describe('AuthController', () => {
           await saveTokenInDatabase({ expires_at: pastDate })
 
           const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyExpired().message
+          const expectedApplicationError = CreateUserApplicationError.tokenExpired(expectedDomainErrorMessage)
 
           return request(app.getHttpServer())
             .post('/auth/signup')
@@ -1114,7 +1114,7 @@ describe('AuthController', () => {
             .expect(410)
             .expect((response) => {
               expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED)
-              expect(response.body.response.message).toEqual(CreateUserError.tokenExpired(expectedDomainErrorMessage).message)
+              expect(response.body.response.message).toEqual(expectedApplicationError.message)
             })
         })
 
@@ -1122,6 +1122,7 @@ describe('AuthController', () => {
           await saveTokenInDatabase({ used_at: pastDate })
 
           const expectedDomainErrorMessage = VerificationTokenDomainException.alreadyUsed().message
+          const expectedApplicationError = CreateUserApplicationError.tokenAlreadyUsed(expectedDomainErrorMessage)
 
           return request(app.getHttpServer())
             .post('/auth/signup')
@@ -1129,7 +1130,7 @@ describe('AuthController', () => {
             .expect(409)
             .expect((response) => {
               expect(response.body.response.code).toEqual(AUTH_CREATE_USER_TOKEN_ALREADY_USED)
-              expect(response.body.response.message).toEqual(CreateUserError.tokenAlreadyUsed(expectedDomainErrorMessage).message)
+              expect(response.body.response.message).toEqual(expectedApplicationError.message)
             })
         })
 

@@ -269,7 +269,7 @@ describe('CreateUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail()]))
+      expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicatedData([CreateUserError.conflictError('email')]))
 
       const token = await verificationTokenDatabaseHelper.findOneByEmail(existingRawUser.email)
       expect(token!.used_at).toBeNull()
@@ -290,7 +290,7 @@ describe('CreateUser', () => {
       })
 
       expect(result.success).toBe(false)
-      expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername()]))
+      expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicatedData([CreateUserError.conflictError('username')]))
 
       const token = await verificationTokenDatabaseHelper.findOneByEmail(existingRawToken.email)
       expect(token!.used_at).toBeNull()

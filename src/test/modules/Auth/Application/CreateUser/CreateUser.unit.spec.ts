@@ -296,7 +296,7 @@ describe('CreateUser', () => {
 
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidInput([CreateUserError.invalidEmail(expectedDomainErrorMessage)]),
+          CreateUserApplicationError.invalidInput([CreateUserError.validationError('email', expectedDomainErrorMessage)]),
         )
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
@@ -311,7 +311,7 @@ describe('CreateUser', () => {
 
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidInput([CreateUserError.invalidTokenFormat(expectedDomainErrorMessage)]),
+          CreateUserApplicationError.invalidInput([CreateUserError.validationError('token', expectedDomainErrorMessage)]),
         )
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
@@ -326,7 +326,7 @@ describe('CreateUser', () => {
 
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidInput([CreateUserError.invalidUsername(expectedDomainErrorMessage)]),
+          CreateUserApplicationError.invalidInput([CreateUserError.validationError('username', expectedDomainErrorMessage)]),
         )
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
@@ -341,7 +341,7 @@ describe('CreateUser', () => {
 
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidInput([CreateUserError.invalidName(expectedDomainErrorMessage)]),
+          CreateUserApplicationError.invalidInput([CreateUserError.validationError('name', expectedDomainErrorMessage)]),
         )
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
@@ -356,7 +356,7 @@ describe('CreateUser', () => {
 
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidInput([CreateUserError.invalidPassword(expectedDomainErrorMessage)]),
+          CreateUserApplicationError.invalidInput([CreateUserError.validationError('password', expectedDomainErrorMessage)]),
         )
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
@@ -371,12 +371,12 @@ describe('CreateUser', () => {
 
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidInput([CreateUserError.invalidRole(expectedDomainErrorMessage)]),
+          CreateUserApplicationError.invalidInput([CreateUserError.validationError('requestedRole', expectedDomainErrorMessage)]),
         )
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
       })
 
-      it('should return multiple errors if multiple inputs are invalid', async () => {
+      it('should return multiple errors when multiple inputs are invalid', async () => {
         const useCase = buildUseCase()
 
         const invalidEmail = EmailAddressMother.invalid()
@@ -394,8 +394,8 @@ describe('CreateUser', () => {
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
           CreateUserApplicationError.invalidInput([
-            CreateUserError.invalidEmail(expectedInvalidEmailDomainErrorMessage),
-            CreateUserError.invalidPassword(expectedInvalidPasswordDomainErrorMessage),
+            CreateUserError.validationError('email', expectedInvalidEmailDomainErrorMessage),
+            CreateUserError.validationError('password', expectedInvalidPasswordDomainErrorMessage),
           ]),
         )
         expect(mockedHasherService.hash).not.toHaveBeenCalled()
@@ -428,7 +428,7 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound()))
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.tokenNotFound())
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
 
@@ -442,9 +442,7 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired(domainException.message)),
-        )
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.tokenExpired(domainException.message))
         asserLoggerCall(domainException.message, 'Token has already expired', expiredVerificationToken)
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
@@ -459,9 +457,7 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed(domainException.message)),
-        )
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.tokenAlreadyUsed(domainException.message))
         asserLoggerCall(domainException.message, 'Token was already used', usedVerificationToken)
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
@@ -477,9 +473,7 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner(domainException.message)),
-        )
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.tokenInvalidOwner(domainException.message))
         asserLoggerCall(domainException.message, 'Token belongs to a different email address', verificationToken, {
           requestEmail: validEmail.value,
         })
@@ -496,9 +490,7 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch(domainException.message)),
-        )
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.tokenPurposeMismatch(domainException.message))
         asserLoggerCall(domainException.message, 'Token was not generated for signup', notAccountCreateVerificationToken)
         expect(mockedVerifyTokenService.verify).not.toHaveBeenCalled()
       })
@@ -510,7 +502,7 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()))
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.invalidToken())
         expect(mockedLogger.warn).toHaveBeenCalledWith('Token cryptography verification failed', {
           email: validEmail.value,
           purpose: VerificationTokenPurpose.createAccount(),
@@ -553,10 +545,9 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail()]))
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicatedData([CreateUserError.conflictError('email')]))
 
         assertLoggerCall(true, false)
-
         expect(mockedUserRepository.save).not.toHaveBeenCalled()
       })
 
@@ -567,10 +558,9 @@ describe('CreateUser', () => {
         const result = await useCase.execute(baseRequest)
 
         expect(result.success).toBe(false)
-        expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicated([CreateUserError.duplicatedUsername()]))
+        expect(result['error']).toStrictEqual(CreateUserApplicationError.duplicatedData([CreateUserError.conflictError('username')]))
 
         assertLoggerCall(false, true)
-
         expect(mockedUserRepository.save).not.toHaveBeenCalled()
       })
 
@@ -583,11 +573,13 @@ describe('CreateUser', () => {
 
         expect(result.success).toBe(false)
         expect(result['error']).toStrictEqual(
-          CreateUserApplicationError.duplicated([CreateUserError.duplicatedEmail(), CreateUserError.duplicatedUsername()]),
+          CreateUserApplicationError.duplicatedData([
+            CreateUserError.conflictError('email'),
+            CreateUserError.conflictError('username'),
+          ]),
         )
 
         assertLoggerCall(true, true)
-
         expect(mockedUserRepository.save).not.toHaveBeenCalled()
       })
     })

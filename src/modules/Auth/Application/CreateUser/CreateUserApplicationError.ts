@@ -1,116 +1,79 @@
-export class CreateUserApplicationError {
-  public readonly id: string
-  public readonly name: string
-  public readonly errors: Array<CreateUserError>
+enum CreateUserErrorType {
+  VALIDATION = 'validation',
+  CONFLICT = 'conflict',
+}
 
-  public static invalidInputId = 'create_user_application_invalid_input'
-  public static duplicatedId = 'create_user_application_duplicated'
-  public static notFoundId = 'create_user_application_not_found'
-  public static invalidTokenId = 'create_user_application_invalid_token'
+export class CreateUserError {
+  private constructor(
+    public readonly field: string,
+    public readonly error: string | Array<string>,
+    public readonly type: CreateUserErrorType,
+  ) {}
 
-  private constructor(id: string, errors: Array<CreateUserError>) {
-    this.id = id
-    this.name = CreateUserApplicationError.name
-    this.errors = errors
+  public static validationError(field: string, errorMessage: string) {
+    return new CreateUserError(field, errorMessage, CreateUserErrorType.VALIDATION)
   }
 
-  public static invalidInput(errors: Array<CreateUserError>) {
-    return new CreateUserApplicationError(this.invalidInputId, errors)
-  }
-
-  public static duplicated(errors: Array<CreateUserError>) {
-    return new CreateUserApplicationError(this.duplicatedId, errors)
-  }
-
-  public static notFound(error: CreateUserError) {
-    return new CreateUserApplicationError(this.notFoundId, [error])
-  }
-
-  public static invalidToken(error: CreateUserError) {
-    return new CreateUserApplicationError(this.invalidTokenId, [error])
+  public static conflictError(field: string) {
+    return new CreateUserError(field, 'Value is already in use', CreateUserErrorType.CONFLICT)
   }
 }
 
-export class CreateUserError extends Error {
+export class CreateUserApplicationError extends Error {
   public readonly __brand = 'CreateUserError' as const
 
   public readonly id: string
   public readonly name: string
+  public readonly errors: Array<CreateUserError> = []
 
-  public static invalidNameId = 'create_user_error_invalid_name'
-  public static invalidUsernameId = 'create_user_error_invalid_username'
-  public static invalidEmailId = 'create_user_error_invalid_email'
-  public static invalidPasswordId = 'create_user_error_invalid_password'
-  public static invalidRoleId = 'create_user_error_invalid_role'
-  public static invalidTokenFormatId = 'create_user_error_invalid_token_format'
+  public static invalidInputId = 'create_user_invalid_input'
+  public static duplicatedDataId = 'create_user_duplicated_data'
   public static tokenNotFoundId = 'create_user_error_token_not_found'
-  public static duplicatedEmailId = 'create_user_error_duplicated_email'
-  public static duplicatedUsernameId = 'create_user_error_duplicated_username'
   public static invalidVerificationTokenId = 'create_user_error_invalid_verification_token'
   public static tokenExpiredId = 'create_user_error_token_expired'
   public static tokenAlreadyUsedId = 'create_user_error_token_already_used'
   public static tokenInvalidOwnerId = 'create_user_error_token_invalid_owner'
   public static tokenPurposeMismatchId = 'create_user_error_token_purpose_mismatch'
 
-  private constructor(message: string, id: string) {
+  private constructor(message: string, id: string, errors?: Array<CreateUserError>) {
     super(message)
     this.id = id
-    this.name = CreateUserError.name
+    this.name = CreateUserApplicationError.name
+
+    if (errors) {
+      this.errors = errors
+    }
   }
 
-  public static invalidName(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.invalidNameId)
+  public static invalidInput(errors: Array<CreateUserError>) {
+    return new CreateUserApplicationError('Input data is not valid to perform this operation', this.invalidInputId, errors)
   }
 
-  public static invalidUsername(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.invalidUsernameId)
-  }
-
-  public static invalidEmail(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.invalidEmailId)
-  }
-
-  public static invalidPassword(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.invalidPasswordId)
-  }
-
-  public static invalidRole(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.invalidRoleId)
-  }
-
-  public static invalidTokenFormat(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.invalidTokenFormatId)
+  public static duplicatedData(errors: Array<CreateUserError>) {
+    return new CreateUserApplicationError('Input data is not available to perform this operation', this.duplicatedDataId, errors)
   }
 
   public static tokenNotFound() {
-    return new CreateUserError('No valid verification token was found for the provided email address', this.tokenNotFoundId)
-  }
-
-  public static duplicatedEmail() {
-    return new CreateUserError('The provided email address is already registered', this.duplicatedEmailId)
-  }
-
-  public static duplicatedUsername() {
-    return new CreateUserError('The provided username is already taken', this.duplicatedUsernameId)
+    return new CreateUserApplicationError('No valid verification token was found for the provided email address', this.tokenNotFoundId)
   }
 
   public static invalidToken() {
-    return new CreateUserError('The provided verification code is incorrect', this.invalidVerificationTokenId)
+    return new CreateUserApplicationError('The provided verification code is incorrect', this.invalidVerificationTokenId)
   }
 
   public static tokenExpired(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.tokenExpiredId)
+    return new CreateUserApplicationError(domainMessage, this.tokenExpiredId)
   }
 
   public static tokenAlreadyUsed(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.tokenAlreadyUsedId)
+    return new CreateUserApplicationError(domainMessage, this.tokenAlreadyUsedId)
   }
 
   public static tokenInvalidOwner(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.tokenInvalidOwnerId)
+    return new CreateUserApplicationError(domainMessage, this.tokenInvalidOwnerId)
   }
 
   public static tokenPurposeMismatch(domainMessage: string) {
-    return new CreateUserError(domainMessage, this.tokenPurposeMismatchId)
+    return new CreateUserApplicationError(domainMessage, this.tokenPurposeMismatchId)
   }
 }

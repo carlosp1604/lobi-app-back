@@ -18,15 +18,9 @@ import { LoginUserApplicationError } from '~/src/modules/Auth/Application/LoginU
 import { LoginUserApplicationRequestDto } from '~/src/modules/Auth/Application/LoginUser/LoginUserApplicationRequestDto'
 import {
   AUTH_CLOSE_SESSION_INVALID_SESSION_ID_FORMAT,
-  AUTH_CREATE_USER_DUPLICATED_EMAIL,
-  AUTH_CREATE_USER_DUPLICATED_USERNAME,
-  AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
-  AUTH_CREATE_USER_INVALID_NAME_FORMAT,
-  AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
+  AUTH_CREATE_USER_DUPLICATED_DATA,
+  AUTH_CREATE_USER_INVALID_INPUT,
   AUTH_CREATE_USER_INVALID_TOKEN,
-  AUTH_CREATE_USER_INVALID_TOKEN_FORMAT,
-  AUTH_CREATE_USER_INVALID_USER_ROLE,
-  AUTH_CREATE_USER_INVALID_USERNAME_FORMAT,
   AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
   AUTH_CREATE_USER_TOKEN_ALREADY_USED,
   AUTH_LOGIN_INVALID_EMAIL,
@@ -92,7 +86,7 @@ import { ValidateTokenBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/val
 import { CreateUser } from '~/src/modules/Auth/Application/CreateUser/CreateUser'
 import { CreateUserBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/create-user-body.dto'
 import { CreateUserApplicationRequestDto } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationRequestDto'
-import { CreateUserApplicationError, CreateUserError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
+import { CreateUserApplicationError } from '~/src/modules/Auth/Application/CreateUser/CreateUserApplicationError'
 import { ResetUserPasswordBodyDto } from '~/src/modules/Auth/Infrastructure/Dtos/reset-user-password-body.dto'
 import { ResetUserPasswordApplicationRequestDto } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPasswordApplicationRequestDto'
 import { ResetUserPassword } from '~/src/modules/Auth/Application/ResetUserPassword/ResetUserPassword'
@@ -373,106 +367,50 @@ export class AuthController {
     const result = await this.createUser.execute(requestDto)
 
     if (!result.success) {
-      const errorId = result.error.id
+      const { id: errorId, message: errorMessage, errors } = result.error
+
+      const obfuscatedErrors = [
+        CreateUserApplicationError.tokenNotFoundId,
+        CreateUserApplicationError.tokenPurposeMismatchId,
+        CreateUserApplicationError.tokenInvalidOwnerId,
+        CreateUserApplicationError.invalidVerificationTokenId,
+      ]
 
       if (errorId === CreateUserApplicationError.invalidInputId) {
         throw new UnprocessableEntityException({
-          message: 'One or more fields have invalid formats',
-          errors: result.error.errors.map((createUserError) => {
-            switch (createUserError.id) {
-              case CreateUserError.invalidUsernameId:
-                return {
-                  code: AUTH_CREATE_USER_INVALID_USERNAME_FORMAT,
-                  message: createUserError.message,
-                }
-              case CreateUserError.invalidEmailId:
-                return {
-                  code: AUTH_CREATE_USER_INVALID_EMAIL_FORMAT,
-                  message: createUserError.message,
-                }
-              case CreateUserError.invalidPasswordId:
-                return {
-                  code: AUTH_CREATE_USER_INVALID_PASSWORD_FORMAT,
-                  message: createUserError.message,
-                }
-              case CreateUserError.invalidTokenFormatId:
-                return {
-                  code: AUTH_CREATE_USER_INVALID_TOKEN_FORMAT,
-                  message: createUserError.message,
-                }
-              case CreateUserError.invalidNameId:
-                return {
-                  code: AUTH_CREATE_USER_INVALID_NAME_FORMAT,
-                  message: createUserError.message,
-                }
-              case CreateUserError.invalidRoleId:
-                return {
-                  code: AUTH_CREATE_USER_INVALID_USER_ROLE,
-                  message: createUserError.message,
-                }
-              default:
-                throw new InternalServerErrorException(result.error)
-            }
-          }),
+          code: AUTH_CREATE_USER_INVALID_INPUT,
+          message: errorMessage,
+          errors,
         })
       }
 
-      if (errorId === CreateUserApplicationError.duplicatedId) {
+      if (errorId === CreateUserApplicationError.duplicatedDataId) {
         throw new ConflictException({
-          message: 'Some provided data is already in use',
-          errors: result.error.errors.map((createUserError) => {
-            switch (createUserError.id) {
-              case CreateUserError.duplicatedEmailId:
-                return {
-                  code: AUTH_CREATE_USER_DUPLICATED_EMAIL,
-                  message: createUserError.message,
-                }
-              case CreateUserError.duplicatedUsernameId:
-                return {
-                  code: AUTH_CREATE_USER_DUPLICATED_USERNAME,
-                  message: createUserError.message,
-                }
-              default:
-                throw new InternalServerErrorException(result.error)
-            }
-          }),
+          code: AUTH_CREATE_USER_DUPLICATED_DATA,
+          message: errorMessage,
+          errors,
         })
       }
 
-      if (errorId === CreateUserApplicationError.notFoundId) {
+      if (obfuscatedErrors.includes(errorId)) {
         throw new NotFoundException({
           code: AUTH_CREATE_USER_INVALID_TOKEN,
           message: 'Invalid verification token',
         })
       }
 
-      if (errorId === CreateUserApplicationError.invalidTokenId) {
-        const specificError = result.error.errors[0]
+      if (errorId === CreateUserApplicationError.tokenExpiredId) {
+        throw new GoneException({
+          code: AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
+          message: errorMessage,
+        })
+      }
 
-        switch (specificError.id) {
-          case CreateUserError.tokenExpiredId:
-            throw new GoneException({
-              code: AUTH_CREATE_USER_TOKEN_ALREADY_EXPIRED,
-              message: specificError.message,
-            })
-
-          case CreateUserError.tokenAlreadyUsedId:
-            throw new ConflictException({
-              code: AUTH_CREATE_USER_TOKEN_ALREADY_USED,
-              message: specificError.message,
-            })
-
-          case CreateUserError.tokenPurposeMismatchId:
-          case CreateUserError.tokenInvalidOwnerId:
-          case CreateUserError.invalidVerificationTokenId:
-            throw new NotFoundException({
-              code: AUTH_CREATE_USER_INVALID_TOKEN,
-              message: 'Invalid verification token',
-            })
-
-          default:
-            throw new InternalServerErrorException(result.error)
-        }
+      if (errorId === CreateUserApplicationError.tokenAlreadyUsedId) {
+        throw new ConflictException({
+          code: AUTH_CREATE_USER_TOKEN_ALREADY_USED,
+          message: errorMessage,
+        })
       }
 
       throw new InternalServerErrorException(result.error)

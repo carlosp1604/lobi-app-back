@@ -74,7 +74,7 @@ export class CreateUser {
       const verificationToken = await this.verificationTokenRepository.findByEmailWithLock(email.value, context)
 
       if (!verificationToken) {
-        return fail(CreateUserApplicationError.notFound(CreateUserError.tokenNotFound()))
+        return fail(CreateUserApplicationError.tokenNotFound())
       }
 
       const createAccountVerificationTokenPurpose = VerificationTokenPurpose.createAccount()
@@ -93,7 +93,7 @@ export class CreateUser {
           purpose: createAccountVerificationTokenPurpose,
         })
 
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.invalidToken()))
+        return fail(CreateUserApplicationError.invalidToken())
       }
 
       const [emailExists, usernameExists] = await Promise.all([
@@ -113,13 +113,13 @@ export class CreateUser {
         const errors: Array<CreateUserError> = []
 
         if (emailExists) {
-          errors.push(CreateUserError.duplicatedEmail())
+          errors.push(CreateUserError.conflictError('email'))
         }
         if (usernameExists) {
-          errors.push(CreateUserError.duplicatedUsername())
+          errors.push(CreateUserError.conflictError('username'))
         }
 
-        return fail(CreateUserApplicationError.duplicated(errors))
+        return fail(CreateUserApplicationError.duplicatedData(errors))
       }
 
       const userId = Identifier.create(this.idGeneratorService.generateId())
@@ -168,32 +168,32 @@ export class CreateUser {
     const emailResult = EmailAddress.safeCreate(request.email)
 
     if (!emailResult.success) {
-      inputErrors.push(CreateUserError.invalidEmail(emailResult.error.message))
+      inputErrors.push(CreateUserError.validationError('email', emailResult.error.message))
     }
 
     const tokenResult = VerificationTokenValue.safeCreate(request.token)
     if (!tokenResult.success) {
-      inputErrors.push(CreateUserError.invalidTokenFormat(tokenResult.error.message))
+      inputErrors.push(CreateUserError.validationError('token', tokenResult.error.message))
     }
 
     const usernameResult = UserUsername.safeCreate(request.username)
     if (!usernameResult.success) {
-      inputErrors.push(CreateUserError.invalidUsername(usernameResult.error.message))
+      inputErrors.push(CreateUserError.validationError('username', usernameResult.error.message))
     }
 
     const nameResult = UserName.safeCreate(request.name)
     if (!nameResult.success) {
-      inputErrors.push(CreateUserError.invalidName(nameResult.error.message))
+      inputErrors.push(CreateUserError.validationError('name', nameResult.error.message))
     }
 
     const passwordResult = UserPassword.safeCreate(request.password)
     if (!passwordResult.success) {
-      inputErrors.push(CreateUserError.invalidPassword(passwordResult.error.message))
+      inputErrors.push(CreateUserError.validationError('password', passwordResult.error.message))
     }
 
     const roleResult = UserRole.safeCreate(request.requestedRole)
     if (!roleResult.success) {
-      inputErrors.push(CreateUserError.invalidRole(roleResult.error.message))
+      inputErrors.push(CreateUserError.validationError('requestedRole', roleResult.error.message))
     }
 
     if (
@@ -240,7 +240,7 @@ export class CreateUser {
           ...tokenState,
           reason: 'Token has already expired',
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenExpired(domainMessage)))
+        return fail(CreateUserApplicationError.tokenExpired(domainMessage))
       }
 
       case VerificationTokenDomainException.verificationTokenAlreadyUsedId: {
@@ -248,7 +248,7 @@ export class CreateUser {
           ...tokenState,
           reason: 'Token was already used',
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenAlreadyUsed(domainMessage)))
+        return fail(CreateUserApplicationError.tokenAlreadyUsed(domainMessage))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedByUserId: {
@@ -257,7 +257,7 @@ export class CreateUser {
           reason: 'Token belongs to a different email address',
           requestEmail: requestEmail.value,
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenInvalidOwner(domainMessage)))
+        return fail(CreateUserApplicationError.tokenInvalidOwner(domainMessage))
       }
 
       case VerificationTokenDomainException.verificationTokenCannotBeUsedForPurposeId: {
@@ -265,7 +265,7 @@ export class CreateUser {
           ...tokenState,
           reason: 'Token was not generated for signup',
         })
-        return fail(CreateUserApplicationError.invalidToken(CreateUserError.tokenPurposeMismatch(domainMessage)))
+        return fail(CreateUserApplicationError.tokenPurposeMismatch(domainMessage))
       }
 
       default:
