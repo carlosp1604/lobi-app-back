@@ -43,7 +43,6 @@ export const VerificationTokenEntity = new EntitySchema<VerificationTokenRawMode
     created_at: {
       type: 'timestamptz',
       nullable: false,
-      default: () => 'now()',
     },
   },
 })

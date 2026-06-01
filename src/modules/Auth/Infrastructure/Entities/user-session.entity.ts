@@ -72,13 +72,11 @@ export const UserSessionEntity = new EntitySchema<UserSessionRawWithRelationship
     },
     created_at: {
       type: 'timestamptz',
-      createDate: true,
-      default: () => 'now()',
+      nullable: false,
     },
     updated_at: {
       type: 'timestamptz',
-      updateDate: true,
-      default: () => 'now()',
+      nullable: false,
     },
   },
   relations: {

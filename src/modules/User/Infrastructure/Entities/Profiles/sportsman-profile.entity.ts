@@ -37,14 +37,10 @@ export const SportsmanProfileEntity = new EntitySchema<SportsmanProfileRawWithRe
     created_at: {
       type: 'timestamptz',
       nullable: false,
-      default: () => 'now()',
-      createDate: true,
     },
     updated_at: {
       type: 'timestamptz',
       nullable: false,
-      default: () => 'now()',
-      updateDate: true,
     },
   },
   relations: {

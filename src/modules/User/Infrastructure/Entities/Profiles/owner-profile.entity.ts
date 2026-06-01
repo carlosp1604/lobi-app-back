@@ -45,14 +45,10 @@ export const OwnerProfileEntity = new EntitySchema<OwnerProfileRawWithRelationsh
     created_at: {
       type: 'timestamptz',
       nullable: false,
-      default: () => 'now()',
-      createDate: true,
     },
     updated_at: {
       type: 'timestamptz',
       nullable: false,
-      default: () => 'now()',
-      updateDate: true,
     },
   },
   relations: {

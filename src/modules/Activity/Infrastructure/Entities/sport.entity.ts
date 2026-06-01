@@ -59,14 +59,10 @@ export const SportEntity = new EntitySchema<SportRawModelWithRelations>({
     created_at: {
       type: 'timestamptz',
       nullable: false,
-      createDate: true,
-      default: () => 'now()',
     },
     updated_at: {
       type: 'timestamptz',
       nullable: false,
-      updateDate: true,
-      default: () => 'now()',
     },
   },
   relations: {

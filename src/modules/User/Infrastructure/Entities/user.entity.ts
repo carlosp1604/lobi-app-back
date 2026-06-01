@@ -71,13 +71,11 @@ export const UserEntity = new EntitySchema<UserRawModelWithRelations>({
     },
     created_at: {
       type: 'timestamptz',
-      createDate: true,
-      default: () => 'now()',
+      nullable: false,
     },
     updated_at: {
       type: 'timestamptz',
-      updateDate: true,
-      default: () => 'now()',
+      nullable: false,
     },
     deleted_at: {
       type: 'timestamptz',

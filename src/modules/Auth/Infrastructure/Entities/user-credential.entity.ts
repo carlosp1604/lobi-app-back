@@ -42,12 +42,10 @@ export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelatio
     created_at: {
       type: 'timestamptz',
       nullable: false,
-      default: () => 'now()',
     },
     updated_at: {
       type: 'timestamptz',
       nullable: false,
-      default: () => 'now()',
     },
   },
   relations: {
