@@ -15,16 +15,12 @@ export class GetActivitiesQueryInputError {
     return new GetActivitiesQueryInputError(param, errorMessage, GetActivitiesQueryInputErrorType.VALIDATION)
   }
 
-  public static unsupportedError(param: string): GetActivitiesQueryInputError {
-    return new GetActivitiesQueryInputError(param, 'Provided parameter is not supported', GetActivitiesQueryInputErrorType.UNSUPPORTED)
+  public static unsupportedError(param: string, errorMessage: string | Array<string>): GetActivitiesQueryInputError {
+    return new GetActivitiesQueryInputError(param, errorMessage, GetActivitiesQueryInputErrorType.UNSUPPORTED)
   }
 
-  public static missingError(param: string): GetActivitiesQueryInputError {
-    return new GetActivitiesQueryInputError(
-      param,
-      'Parameter was not provided but is required',
-      GetActivitiesQueryInputErrorType.MISSING,
-    )
+  public static missingError(param: string, errorMessage: string | Array<string>): GetActivitiesQueryInputError {
+    return new GetActivitiesQueryInputError(param, errorMessage, GetActivitiesQueryInputErrorType.MISSING)
   }
 }
 

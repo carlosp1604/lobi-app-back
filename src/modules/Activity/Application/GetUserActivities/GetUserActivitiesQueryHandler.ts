@@ -1,28 +1,28 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { GetActivitiesQuery } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQuery'
+import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
+import { GetActivitiesCriteria } from '~/src/modules/Activity/Application/Shared/GetActivitiesCriteria'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
+import { GetUserActivitiesQuery } from '~/src/modules/Activity/Application/GetUserActivities/GetUserActivitiesQuery'
 import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/Shared/ActivitiesFinderInterface'
 import { GetActivitiesQueryResponseDto } from '~/src/modules/Activity/Application/Shared/GetActivitiesQueryResponseDto'
 import { GetActivitiesQueryResponseDtoTranslator } from '~/src/modules/Activity/Application/Shared/GetActivitiesQueryResponseDtoTranslator'
-import { GetActivitiesCriteria } from '~/src/modules/Activity/Application/Shared/GetActivitiesCriteria'
 import {
-  GetActivitiesQueryError,
-  GetActivitiesQueryInputError,
-} from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryError'
-import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
+  GetUserActivitiesQueryError,
+  GetUserActivitiesQueryInputError,
+} from '~/src/modules/Activity/Application/GetUserActivities/GetUserActivitiesQueryError'
 
 type ValidatedQuery = {
   userId: Identifier | null
   criteria: GetActivitiesCriteria
 }
 
-export class GetActivitiesQueryHandler {
+export class GetUserActivitiesQueryHandler {
   constructor(
     private readonly activitiesFinder: ActivitiesFinderInterface,
     private readonly clockService: ClockServiceInterface,
   ) {}
 
-  public async execute(query: GetActivitiesQuery): Promise<Result<GetActivitiesQueryResponseDto, GetActivitiesQueryError>> {
+  public async execute(query: GetUserActivitiesQuery): Promise<Result<GetActivitiesQueryResponseDto, GetUserActivitiesQueryError>> {
     const validatedQueryResult = this.validateQueryData(query)
 
     if (!validatedQueryResult.success) {
@@ -44,35 +44,35 @@ export class GetActivitiesQueryHandler {
     )
   }
 
-  private validateQueryData(query: GetActivitiesQuery): Result<ValidatedQuery, GetActivitiesQueryError> {
+  private validateQueryData(query: GetUserActivitiesQuery): Result<ValidatedQuery, GetUserActivitiesQueryError> {
     let userId: Identifier | null = null
 
     if (query.userId) {
       const userIdResult = Identifier.safeCreate(query.userId)
 
       if (!userIdResult.success) {
-        return fail(GetActivitiesQueryError.invalidUserId(userIdResult.error.message))
+        return fail(GetUserActivitiesQueryError.invalidUserId(userIdResult.error.message))
       }
 
       userId = userIdResult.value
     }
 
-    const criteriaResult = GetActivitiesCriteria.fromQuery(query.params)
+    const criteriaResult = GetActivitiesCriteria.fromUserQuery(query.params)
 
     if (!criteriaResult.success) {
       const inputErrors = criteriaResult.error.errors.map((err) => {
         switch (err.type) {
           case 'missing':
-            return GetActivitiesQueryInputError.missingError(err.param, err.message)
+            return GetUserActivitiesQueryInputError.missingError(err.param, err.message)
           case 'unsupported':
-            return GetActivitiesQueryInputError.unsupportedError(err.param, err.message)
+            return GetUserActivitiesQueryInputError.unsupportedError(err.param, err.message)
           case 'validation':
           default:
-            return GetActivitiesQueryInputError.validationError(err.param, err.message)
+            return GetUserActivitiesQueryInputError.validationError(err.param, err.message)
         }
       })
 
-      return fail(GetActivitiesQueryError.invalidParams(inputErrors))
+      return fail(GetUserActivitiesQueryError.invalidParams(inputErrors))
     }
 
     const criteria = criteriaResult.value

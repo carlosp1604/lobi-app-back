@@ -14,19 +14,30 @@ import { ParticipationEntity } from '~/src/modules/Activity/Infrastructure/Entit
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { GetSportsQueryHandler } from '~/src/modules/Activity/Application/GetSports/GetSportsQueryHandler'
 import { SpecTranslatorFactory } from '~/src/modules/Activity/Application/Translator/Config/Spec/SpecTranslatorFactory'
+import { SportsFinderInterface } from '~/src/modules/Activity/Application/GetSports/SportsFinderInterface'
 import { LoggerFactoryInterface } from '~/src/modules/Shared/Domain/LoggerFactoryInterface'
+import { PostgreSqlSportsFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlSportsFinder'
 import { TypeOrmManagerResolver } from '~/src/modules/Shared/Infrastructure/TypeOrmManagerResolver'
+import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetActivity/ActivityFinderInterface'
 import { GetActivityQueryHandler } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryHandler'
+import { PostgreSqlActivityFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivityFinder'
 import { SportRepositoryInterface } from '~/src/modules/Activity/Domain/Sport/SportRepositoryInterface'
+import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/Shared/ActivitiesFinderInterface'
+import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
 import { PostgreSqlSportRepository } from '~/src/modules/Activity/Infrastructure/PostgreSqlSportRepository'
+import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
+import { PostgreSqlActivitiesFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivitiesFinder'
 import { SpecPayloadContractFactory } from '~/src/modules/Activity/Application/Config/Spec/SpecPayloadContractFactory'
 import { ActivityRepositoryInterface } from '~/src/modules/Activity/Domain/ActivityRepositoryInterface'
 import { CapabilityTranslatorFactory } from '~/src/modules/Activity/Application/Translator/Config/Capability/CapabilityTranslatorFactory'
 import { CLOCK_SERVICE, ID_GENERATOR } from '~/src/modules/Shared/Infrastructure/shared.tokens'
 import { IdGeneratorServiceInterface } from '~/src/modules/Shared/Domain/IdGeneratorServiceInterface'
+import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
+import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
 import { CreateActivityCommandHandler } from '~/src/modules/Activity/Application/CreateActivity/CreateActivityCommandHandler'
 import { PostgreSqlActivityRepository } from '~/src/modules/Activity/Infrastructure/PostgreSqlActivityRepository'
 import { LOGGER_FACTORY, LoggerModule } from '~/src/modules/Shared/Infrastructure/logger.module'
+import { GetUserActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetUserActivities/GetUserActivitiesQueryHandler'
 import { ParticipantRepositoryInterface } from '~/src/modules/Activity/Domain/Participant/ParticipantRepositoryInterface'
 import { PostgreSqlParticipantRepository } from '~/src/modules/Activity/Infrastructure/PostgreSqlParticipantRepository'
 import { CapabilityPayloadContractFactory } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractFactory'
@@ -45,6 +56,7 @@ import {
   GET_ACTIVITIES_QUERY_HANDLER,
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
+  GET_USER_ACTIVITIES_QUERY_HANDLER,
   JOIN_ACTIVITY_COMMAND_HANDLER,
   LEAVE_ACTIVITY_COMMAND_HANDLER,
   PARTICIPANT_REPOSITORY,
@@ -55,16 +67,6 @@ import {
   SPORT_REPOSITORY,
   SPORTS_FINDER,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
-import { JoinActivityCommandHandler } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandHandler'
-import { LeaveActivityCommandHandler } from '~/src/modules/Activity/Application/LeaveActivity/LeaveActivityCommandHandler'
-import { CancelActivityCommandHandler } from '~/src/modules/Activity/Application/CancelActivity/CancelActivityCommandHandler'
-import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
-import { PostgreSqlActivitiesFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivitiesFinder'
-import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/GetActivities/ActivitiesFinderInterface'
-import { PostgreSqlActivityFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlActivityFinder'
-import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetActivity/ActivityFinderInterface'
-import { PostgreSqlSportsFinder } from '~/src/modules/Activity/Infrastructure/Queries/PostgreSqlSportsFinder'
-import { SportsFinderInterface } from '~/src/modules/Activity/Application/GetSports/SportsFinderInterface'
 
 @Module({
   imports: [
@@ -206,10 +208,17 @@ import { SportsFinderInterface } from '~/src/modules/Activity/Application/GetSpo
     },
     {
       provide: GET_ACTIVITIES_QUERY_HANDLER,
-      useFactory: (activitiesFinder: ActivitiesFinderInterface) => {
-        return new GetActivitiesQueryHandler(activitiesFinder)
+      useFactory: (activitiesFinder: ActivitiesFinderInterface, clockService: ClockServiceInterface) => {
+        return new GetActivitiesQueryHandler(activitiesFinder, clockService)
       },
-      inject: [ACTIVITIES_FINDER],
+      inject: [ACTIVITIES_FINDER, CLOCK_SERVICE],
+    },
+    {
+      provide: GET_USER_ACTIVITIES_QUERY_HANDLER,
+      useFactory: (activitiesFinder: ActivitiesFinderInterface, clockService: ClockServiceInterface) => {
+        return new GetUserActivitiesQueryHandler(activitiesFinder, clockService)
+      },
+      inject: [ACTIVITIES_FINDER, CLOCK_SERVICE],
     },
     {
       provide: GET_ACTIVITY_QUERY_HANDLER,
@@ -311,6 +320,7 @@ import { SportsFinderInterface } from '~/src/modules/Activity/Application/GetSpo
     GET_SPORTS_QUERY_HANDLER,
     GET_ACTIVITY_QUERY_HANDLER,
     GET_ACTIVITIES_QUERY_HANDLER,
+    GET_USER_ACTIVITIES_QUERY_HANDLER,
     JOIN_ACTIVITY_COMMAND_HANDLER,
     LEAVE_ACTIVITY_COMMAND_HANDLER,
     CANCEL_ACTIVITY_COMMAND_HANDLER,

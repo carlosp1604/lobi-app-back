@@ -14,13 +14,13 @@ import { ActivityParticipationQueryDtoTranslator } from '~/src/modules/Activity/
 import {
   GetActivitiesCriteria,
   GetActivitiesCriteriaActiveFilters,
-} from '~/src/modules/Activity/Application/GetActivities/GetActivitiesCriteria'
+} from '~/src/modules/Activity/Application/Shared/GetActivitiesCriteria'
 import {
   ActivityListItemQueryDto,
   GetActivitiesQueryActiveFiltersDto,
   GetActivitiesQueryResponseDto,
   TeamConfigQueryDto,
-} from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryResponseDto'
+} from '~/src/modules/Activity/Application/Shared/GetActivitiesQueryResponseDto'
 
 export interface GetActivitiesResponseContext {
   activityList: ActivityListReadModel
@@ -139,9 +139,16 @@ export class GetActivitiesQueryResponseDtoTranslator
   private translateFilters(activeFilters: GetActivitiesCriteriaActiveFilters): GetActivitiesQueryActiveFiltersDto {
     const response: GetActivitiesQueryActiveFiltersDto = {}
 
-    response.lat = activeFilters.location.lat.stringValue
-    response.lng = activeFilters.location.lng.stringValue
-    response.radius = activeFilters.radius.value
+    if (activeFilters.location) {
+      response.location = {
+        lat: activeFilters.location.lat.stringValue,
+        lng: activeFilters.location.lng.stringValue,
+      }
+    }
+
+    if (activeFilters.radius) {
+      response.radius = activeFilters.radius.value
+    }
 
     if (activeFilters.statuses) {
       response.statuses = activeFilters.statuses.map((activityStatus) => activityStatus.value)

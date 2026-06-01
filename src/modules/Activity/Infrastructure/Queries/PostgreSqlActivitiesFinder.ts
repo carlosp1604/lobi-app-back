@@ -1,13 +1,13 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { EntityManager } from 'typeorm'
 import { SportLevelReadModel } from '~/src/modules/Activity/Application/ReadModel/Sport/SportLevelReadModel'
-import { GetActivitiesCriteria } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesCriteria'
+import { GetActivitiesCriteria } from '~/src/modules/Activity/Application/Shared/GetActivitiesCriteria'
 import { BasicSportRankingSystem } from '~/src/modules/Activity/Domain/Sport/Ranking/BasicSportRankingSystem'
-import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/GetActivities/ActivitiesFinderInterface'
+import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/Shared/ActivitiesFinderInterface'
 import {
+  ActivityListReadModel,
   ActivityListItemReadModel,
   ActivityListItemReadModelWithoutLevels,
-  ActivityListReadModel,
 } from '~/src/modules/Activity/Application/ReadModel/ActivityListReadModel'
 
 export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
@@ -18,27 +18,33 @@ export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
    * If a User ID is provided, it includes the user's relationship context for each activity
    * @param criteria Criteria to apply to the search
    * @param userId User ID
+   * @param now The current date to evaluate temporal filters
    * @returns ActivityListReadModel with the results
    */
-  public async find(criteria: GetActivitiesCriteria, userId: Identifier | null): Promise<ActivityListReadModel> {
+  public async find(criteria: GetActivitiesCriteria, userId: Identifier | null, now: Date): Promise<ActivityListReadModel> {
     const values: any[] = []
 
     values.push(userId?.value ?? null)
 
     const whereClauses: string[] = []
 
-    values.push(criteria.location.value.lng.stringValue, criteria.location.value.lat.stringValue, criteria.radius.value)
-    whereClauses.push(
-      `ST_DWithin(a.location::geography, ST_SetSRID(ST_MakePoint($${values.length - 2}, $${values.length - 1}), 4326)::geography, $${values.length})`,
-    )
+    if (criteria.location && criteria.radius) {
+      values.push(criteria.location.value.lng.stringValue, criteria.location.value.lat.stringValue, criteria.radius.value)
+      whereClauses.push(
+        `ST_DWithin(a.location::geography, ST_SetSRID(ST_MakePoint($${values.length - 2}, $${values.length - 1}), 4326)::geography, $${values.length})`,
+      )
+    }
 
     if (criteria.maxDateSeconds) {
+      values.push(now)
+      const nowParamIndex = values.length
+
       values.push(criteria.maxDateSeconds.value)
       const secondsParamIndex = values.length
 
-      whereClauses.push('a.scheduled_at >= NOW()')
+      whereClauses.push(`a.scheduled_at >= $${nowParamIndex}::timestamptz`)
 
-      whereClauses.push(`a.scheduled_at <= NOW() + ($${secondsParamIndex} * INTERVAL '1 second')`)
+      whereClauses.push(`a.scheduled_at <= $${nowParamIndex}::timestamptz + ($${secondsParamIndex} * INTERVAL '1 second')`)
     }
 
     if (criteria.statuses && criteria.statuses.length > 0) {
@@ -51,14 +57,16 @@ export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
       whereClauses.push(`a.sport_id = $${values.length}`)
     }
 
+    const userClauses: string[] = []
+
     if (criteria.hostId) {
       values.push(criteria.hostId.value)
-      whereClauses.push(`a.host_id = $${values.length}`)
+      userClauses.push(`a.host_id = $${values.length}`)
     }
 
     if (criteria.participantId) {
       values.push(criteria.participantId.value)
-      whereClauses.push(`
+      userClauses.push(`
         EXISTS (
           SELECT 1
           FROM participations p
@@ -67,6 +75,10 @@ export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
             AND p.left_at IS NULL
         )
       `)
+    }
+
+    if (userClauses.length > 0) {
+      whereClauses.push(`(${userClauses.join(' OR ')})`)
     }
 
     if (criteria.minDuration) {

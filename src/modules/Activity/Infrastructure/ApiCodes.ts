@@ -13,6 +13,9 @@ export const CREATE_ACTIVITY_SPORT_NOT_FOUND = 'create-activity-sport-not-found'
 /** Get Activities query */
 export const GET_ACTIVITIES_INVALID_PARAMS = 'get-activities-invalid-params'
 
+/** Get User Activities query */
+export const GET_USER_ACTIVITIES_INVALID_PARAMS = 'get-user-activities-invalid-params'
+
 /** Get Activity query */
 export const GET_ACTIVITY_ACTIVITY_NOT_FOUND = 'get-activity-activity-not-found'
 

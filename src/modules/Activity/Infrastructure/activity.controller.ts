@@ -12,6 +12,7 @@ import {
   GET_ACTIVITIES_QUERY_HANDLER,
   GET_ACTIVITY_QUERY_HANDLER,
   GET_SPORTS_QUERY_HANDLER,
+  GET_USER_ACTIVITIES_QUERY_HANDLER,
   JOIN_ACTIVITY_COMMAND_HANDLER,
   LEAVE_ACTIVITY_COMMAND_HANDLER,
 } from '~/src/modules/Activity/Infrastructure/activity.tokens'
@@ -25,6 +26,7 @@ import {
   CREATE_ACTIVITY_SPORT_NOT_FOUND,
   GET_ACTIVITIES_INVALID_PARAMS,
   GET_ACTIVITY_ACTIVITY_NOT_FOUND,
+  GET_USER_ACTIVITIES_INVALID_PARAMS,
   JOIN_ACTIVITY_ACTIVITY_ALREADY_FULL,
   JOIN_ACTIVITY_ACTIVITY_ALREADY_STARTED,
   JOIN_ACTIVITY_ACTIVITY_NOT_AVAILABLE_TO_JOIN,
@@ -79,8 +81,11 @@ import { CancelActivityCommand } from '~/src/modules/Activity/Application/Cancel
 import { GetActivitiesQuery } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQuery'
 import { GetActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryHandler'
 import { GetActivitiesQueryError } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryError'
+import { GetUserActivitiesQueryHandler } from '~/src/modules/Activity/Application/GetUserActivities/GetUserActivitiesQueryHandler'
+import { GetUserActivitiesQuery } from '~/src/modules/Activity/Application/GetUserActivities/GetUserActivitiesQuery'
+import { GetUserActivitiesQueryError } from '~/src/modules/Activity/Application/GetUserActivities/GetUserActivitiesQueryError'
 
-@Controller('activity')
+@Controller('activities')
 export class ActivityController {
   private readonly loggerService: LoggerServiceInterface
 
@@ -89,6 +94,7 @@ export class ActivityController {
     @Inject(GET_SPORTS_QUERY_HANDLER) private readonly getSportsQueryHandler: GetSportsQueryHandler,
     @Inject(GET_ACTIVITY_QUERY_HANDLER) private readonly getActivityQueryHandler: GetActivityQueryHandler,
     @Inject(GET_ACTIVITIES_QUERY_HANDLER) private readonly getActivitiesQueryHandler: GetActivitiesQueryHandler,
+    @Inject(GET_USER_ACTIVITIES_QUERY_HANDLER) private readonly getUserActivitiesQueryHandler: GetUserActivitiesQueryHandler,
     @Inject(JOIN_ACTIVITY_COMMAND_HANDLER) private readonly joinActivityCommandHandler: JoinActivityCommandHandler,
     @Inject(LEAVE_ACTIVITY_COMMAND_HANDLER) private readonly leaveActivityCommandHandler: LeaveActivityCommandHandler,
     @Inject(CANCEL_ACTIVITY_COMMAND_HANDLER) private readonly cancelActivityCommandHandler: CancelActivityCommandHandler,
@@ -411,6 +417,42 @@ export class ActivityController {
       case GetActivitiesQueryError.invalidParamsId: {
         throw new UnprocessableEntityException({
           code: GET_ACTIVITIES_INVALID_PARAMS,
+          message: error.message,
+          errors: error.errors,
+        })
+      }
+      default:
+        throw new InternalServerErrorException(error)
+    }
+  }
+
+  @Get('/history')
+  @OptionalAuth()
+  @UseGuards(AccessTokenGuard)
+  async getUserActivities(@AccessToken() accessToken: JwtPayload | undefined, @Query() queryParams: any) {
+    const userId = accessToken ? accessToken.sub : null
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const query = new GetUserActivitiesQuery(userId, queryParams)
+
+    const result = await this.getUserActivitiesQueryHandler.execute(query)
+
+    if (result.success) {
+      return result.value
+    }
+
+    const error = result.error
+
+    switch (error.id) {
+      case GetUserActivitiesQueryError.invalidUserIdId: {
+        this.logInvalidUserId(accessToken!, error)
+
+        throw new InternalServerErrorException(error)
+      }
+
+      case GetUserActivitiesQueryError.invalidParamsId: {
+        throw new UnprocessableEntityException({
+          code: GET_USER_ACTIVITIES_INVALID_PARAMS,
           message: error.message,
           errors: error.errors,
         })

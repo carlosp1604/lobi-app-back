@@ -12,28 +12,9 @@ export const GetActivitiesCriteriaValidSortBy = ['date', 'capacity', 'level'] as
 export type GetActivitiesCriteriaSortDirection = (typeof GetActivitiesCriteriaValidSortDirection)[number]
 export type GetActivitiesCriteriaSortBy = (typeof GetActivitiesCriteriaValidSortBy)[number]
 
-export type GetActivitiesCriteriaQuery = {
-  lat: string
-  lng: string
-  radius?: string
-  page?: string
-  perPage?: string
-  sortBy?: string
-  sortDirection?: string
-  maxDateSeconds?: string
-  statuses?: Array<string>
-  sportId?: string
-  hostId?: string
-  participantId?: string
-  minDuration?: string
-  maxDuration?: string
-  minFreeSlots?: string
-  levelIds?: Array<string>
-}
-
 export type GetActivitiesCriteriaActiveFilters = {
-  location: Location
-  radius: IntegerNumber
+  location?: Location
+  radius?: IntegerNumber
   statuses?: Array<ActivityStatus>
   maxDateSeconds?: IntegerNumber
   sportId?: Identifier
@@ -55,13 +36,46 @@ export type GetActivitiesCriteriaPagination = {
 export type CriteriaParamError = {
   param: string
   message: string
+  type: 'validation' | 'missing' | 'unsupported'
 }
 
 export type GetActivitiesCriteriaError = {
   errors: Array<CriteriaParamError>
 }
 
+export type GetActivitiesCriteriaQuery = Record<string, unknown>
+
 export class GetActivitiesCriteria {
+  private static readonly PUBLIC_SEARCH_PARAMS = [
+    'location',
+    'radius',
+    'page',
+    'perPage',
+    'sortBy',
+    'sortDirection',
+    'maxDateSeconds',
+    'statuses',
+    'sportId',
+    'minDuration',
+    'maxDuration',
+    'minFreeSlots',
+    'levelIds',
+  ]
+
+  private static readonly USER_SEARCH_PARAMS = [
+    'location',
+    'radius',
+    'page',
+    'perPage',
+    'sortBy',
+    'sortDirection',
+    'statuses',
+    'sportId',
+    'hostId',
+    'participantId',
+    'levelIds',
+  ]
+
   private static readonly minRadius = IntegerNumber.create(100)
   private static readonly maxRadius = IntegerNumber.create(50000)
   private static readonly defaultRadius = IntegerNumber.create(10000)
@@ -89,12 +103,12 @@ export class GetActivitiesCriteria {
   private static readonly maxMinFreeSlots = PARTICIPATION_LIMITS.MAX_PLAYERS.subtract(IntegerNumber.create(1))
 
   private constructor(
-    public readonly location: Location,
-    public readonly radius: IntegerNumber,
     public readonly page: IntegerNumber,
     public readonly perPage: IntegerNumber,
     public readonly sortBy: GetActivitiesCriteriaSortBy,
     public readonly sortDirection: GetActivitiesCriteriaSortDirection,
+    public readonly location?: Location,
+    public readonly radius?: IntegerNumber,
     public readonly statuses?: Array<ActivityStatus>,
     public readonly maxDateSeconds?: IntegerNumber,
     public readonly sportId?: Identifier,
@@ -132,24 +146,28 @@ export class GetActivitiesCriteria {
   }
 
   public static fromQuery(query: GetActivitiesCriteriaQuery): Result<GetActivitiesCriteria, GetActivitiesCriteriaError> {
-    const locationResult = Location.safeCreate({ lat: query.lat, lng: query.lng })
+    const unsupportedParamsResult = this.checkForUnsupportedParams(query, this.PUBLIC_SEARCH_PARAMS)
 
+    if (!unsupportedParamsResult.success) {
+      return unsupportedParamsResult
+    }
+
+    if (!query.location) {
+      return fail({ errors: [{ param: 'location', message: 'Missing param', type: 'missing' }] })
+    }
+
+    const locationResult = this.validateLocationString(query.location)
     if (!locationResult.success) {
-      return fail({
-        errors: [
-          { param: 'lat', message: locationResult.error.message },
-          { param: 'lng', message: locationResult.error.message },
-        ],
-      })
+      const error = locationResult.error
+
+      return fail({ errors: [error] })
     }
 
     const location = locationResult.value
-
     const radius = this.validateIntegerNumber(this.defaultRadius, this.minRadius, this.maxRadius, query.radius)
 
     const page = this.validateIntegerNumber(this.defaultPage, this.minPage, this.maxPage, query.page)
     const perPage = this.validateIntegerNumber(this.defaultPerPage, this.minPerPage, this.maxPerPage, query.perPage)
-
     const sortDirection = this.validateSortDirection(query.sortDirection)
     const sortBy = this.validateSortBy(query.sortBy)
 
@@ -158,39 +176,33 @@ export class GetActivitiesCriteria {
       this.maxMaxDateSeconds,
       query.maxDateSeconds,
     )
-
-    const hasStrongFilter = Boolean(query.hostId || query.participantId)
-
-    const statuses = this.validateStatuses(hasStrongFilter, query.statuses)
-
-    const sportId = this.validateIdentifier(query.sportId)
-    const hostId = this.validateIdentifier(query.hostId)
-    const participantId = this.validateIdentifier(query.participantId)
-
-    const { minDuration, maxDuration } = this.validateDuration(query.minDuration, query.maxDuration)
-
     const minFreeSlots = this.validateIntegerNumber(
       this.defaultMinFreeSlots,
       this.minMinFreeSlots,
       this.maxMinFreeSlots,
       query.minFreeSlots,
     )
+    const { minDuration, maxDuration } = this.validateDuration(query.minDuration, query.maxDuration)
 
+    const isUserSearch = false
+    const statuses = this.validateStatuses(isUserSearch, query.statuses)
+
+    const sportId = this.validateIdentifier(query.sportId)
     const levelIds = this.validateIdentifierArray(query.levelIds)
 
     return success(
       new GetActivitiesCriteria(
-        location,
-        radius,
         page,
         perPage,
         sortBy,
         sortDirection,
+        location,
+        radius,
         statuses,
         maxDateSeconds,
         sportId,
-        hostId,
-        participantId,
+        undefined,
+        undefined,
         minDuration,
         maxDuration,
         minFreeSlots,
@@ -199,17 +211,130 @@ export class GetActivitiesCriteria {
     )
   }
 
+  public static fromUserQuery(query: GetActivitiesCriteriaQuery): Result<GetActivitiesCriteria, GetActivitiesCriteriaError> {
+    const unsupportedParamsResult = this.checkForUnsupportedParams(query, this.USER_SEARCH_PARAMS)
+
+    if (!unsupportedParamsResult.success) {
+      return unsupportedParamsResult
+    }
+
+    let location: Location | undefined = undefined
+    let radius: IntegerNumber | undefined = undefined
+
+    if (query.location !== undefined && query.location !== null) {
+      const locationResult = this.validateLocationString(query.location)
+
+      if (!locationResult.success) {
+        const error = locationResult.error
+
+        return fail({ errors: [error] })
+      }
+
+      location = locationResult.value
+      radius = this.validateIntegerNumber(this.defaultRadius, this.minRadius, this.maxRadius, query.radius)
+    }
+
+    const hostId = this.validateIdentifier(query.hostId)
+    const participantId = this.validateIdentifier(query.participantId)
+
+    if (!hostId && !participantId) {
+      return fail({
+        errors: [
+          { param: 'hostId', message: 'At least one of the following params: [hostId, participantId] is required', type: 'missing' },
+          {
+            param: 'participantId',
+            message: 'At least one of the following params: [participantId, hostId] is required',
+            type: 'missing',
+          },
+        ],
+      })
+    }
+
+    const page = this.validateIntegerNumber(this.defaultPage, this.minPage, this.maxPage, query.page)
+    const perPage = this.validateIntegerNumber(this.defaultPerPage, this.minPerPage, this.maxPerPage, query.perPage)
+    const sortDirection = this.validateSortDirection(query.sortDirection)
+    const sortBy = this.validateSortBy(query.sortBy)
+
+    const isUserSearch = true
+    const statuses = this.validateStatuses(isUserSearch, query.statuses)
+    const sportId = this.validateIdentifier(query.sportId)
+    const levelIds = this.validateIdentifierArray(query.levelIds)
+
+    return success(
+      new GetActivitiesCriteria(
+        page,
+        perPage,
+        sortBy,
+        sortDirection,
+        location,
+        radius,
+        statuses,
+        undefined,
+        sportId,
+        hostId,
+        participantId,
+        undefined,
+        undefined,
+        undefined,
+        levelIds,
+      ),
+    )
+  }
+
+  private static checkForUnsupportedParams(
+    query: Record<string, unknown>,
+    allowedParams: Array<string>,
+  ): Result<void, GetActivitiesCriteriaError> {
+    const queryKeys = Object.keys(query)
+    const errors: Array<CriteriaParamError> = []
+
+    for (const key of queryKeys) {
+      if (!allowedParams.includes(key)) {
+        errors.push({ param: key, message: 'Param is not supported in this context', type: 'unsupported' })
+      }
+    }
+
+    if (errors.length > 0) {
+      return fail({ errors })
+    }
+    return success(undefined)
+  }
+
+  private static validateLocationString(value?: unknown): Result<Location, CriteriaParamError> {
+    if (typeof value !== 'string') {
+      return fail({ param: 'location', message: 'Location must be a string in "lat,lng" format', type: 'validation' })
+    }
+
+    const parts = value.split(',').map((p) => p.trim())
+
+    if (parts.length !== 2) {
+      return fail({ param: 'location', message: 'Location must be a string in "lat,lng" format', type: 'validation' })
+    }
+
+    const [lat, lng] = parts
+
+    const locationResult = Location.safeCreate({ lat, lng })
+
+    if (!locationResult.success) {
+      return fail({ param: 'location', message: locationResult.error.message, type: 'validation' })
+    }
+
+    return success(locationResult.value)
+  }
+
   private static validateIntegerNumber(
     defaultValue: IntegerNumber,
     minValue: IntegerNumber,
     maxValue: IntegerNumber,
-    value?: string,
+    value?: unknown,
   ): IntegerNumber {
-    if (value === null || value === undefined) {
+    const rawValue = this.validateNumericString(value)
+
+    if (!rawValue) {
       return defaultValue
     }
 
-    const integerPageResult = IntegerNumber.safeCreate(value)
+    const integerPageResult = IntegerNumber.safeCreate(rawValue)
 
     if (!integerPageResult.success) {
       return defaultValue
@@ -227,13 +352,15 @@ export class GetActivitiesCriteria {
   private static validateIntegerNumberWithoutDefault(
     minValue: IntegerNumber,
     maxValue: IntegerNumber,
-    value?: string,
+    value?: unknown,
   ): IntegerNumber | undefined {
-    if (value === null || value === undefined) {
+    const rawValue = this.validateNumericString(value)
+
+    if (!rawValue) {
       return undefined
     }
 
-    const integerPageResult = IntegerNumber.safeCreate(value)
+    const integerPageResult = IntegerNumber.safeCreate(rawValue)
 
     if (!integerPageResult.success) {
       return undefined
@@ -248,20 +375,23 @@ export class GetActivitiesCriteria {
     return integerNumber
   }
 
-  private static validateDuration(minValue?: string, maxValue?: string): { minDuration?: Duration; maxDuration?: Duration } {
+  private static validateDuration(minValue?: unknown, maxValue?: unknown): { minDuration?: Duration; maxDuration?: Duration } {
+    const rawMinDuration = this.validateNumericString(minValue)
+    const rawMaxDuration = this.validateNumericString(maxValue)
+
     let minDuration: Duration | undefined = undefined
     let maxDuration: Duration | undefined = undefined
 
-    if (minValue !== undefined && minValue !== null) {
-      const minDurationResult = Duration.safeCreate({ value: minValue, unit: Duration.DEFAULT_UNIT })
+    if (rawMinDuration) {
+      const minDurationResult = Duration.safeCreate({ value: rawMinDuration, unit: Duration.DEFAULT_UNIT })
 
       if (minDurationResult.success) {
         minDuration = minDurationResult.value
       }
     }
 
-    if (maxValue !== undefined && maxValue !== null) {
-      const maxDurationResult = Duration.safeCreate({ value: maxValue, unit: Duration.DEFAULT_UNIT })
+    if (rawMaxDuration) {
+      const maxDurationResult = Duration.safeCreate({ value: String(rawMaxDuration), unit: Duration.DEFAULT_UNIT })
 
       if (maxDurationResult.success) {
         maxDuration = maxDurationResult.value
@@ -275,10 +405,10 @@ export class GetActivitiesCriteria {
     return { minDuration, maxDuration }
   }
 
-  private static validateSortDirection(value?: string): GetActivitiesCriteriaSortDirection {
+  private static validateSortDirection(value?: unknown): GetActivitiesCriteriaSortDirection {
     const defaultValue = this.defaultSortDirection
 
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined || typeof value !== 'string') {
       return defaultValue
     }
 
@@ -289,10 +419,10 @@ export class GetActivitiesCriteria {
     return defaultValue
   }
 
-  private static validateSortBy(value?: string): GetActivitiesCriteriaSortBy {
+  private static validateSortBy(value?: unknown): GetActivitiesCriteriaSortBy {
     const defaultValue = this.defaultSortBy
 
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined || typeof value !== 'string') {
       return defaultValue
     }
 
@@ -303,14 +433,16 @@ export class GetActivitiesCriteria {
     return defaultValue
   }
 
-  private static validateStatuses(hasStrongFilter: boolean, value?: Array<string>): Array<ActivityStatus> | undefined {
+  private static validateStatuses(hasStrongFilter: boolean, value?: unknown): Array<ActivityStatus> | undefined {
     const allowedStatuses = hasStrongFilter ? this.allStatuses : this.joinableStatuses
 
-    if (!value || !Array.isArray(value) || value.length === 0) {
+    const rawValue: Array<string> | undefined = this.validateStringArray(value)
+
+    if (!rawValue) {
       return hasStrongFilter ? undefined : this.defaultJoinableStatuses
     }
 
-    const validStatuses = value
+    const validStatuses = rawValue
       .map((status) => String(status).trim().toLowerCase())
       .filter((status) => allowedStatuses.includes(status as ValidActivityStatus))
       .map((status) => ActivityStatus.fromString(status))
@@ -322,8 +454,8 @@ export class GetActivitiesCriteria {
     return validStatuses
   }
 
-  private static validateIdentifier(value?: string): Identifier | undefined {
-    if (value === null || value === undefined) {
+  private static validateIdentifier(value?: unknown): Identifier | undefined {
+    if (value === null || value === undefined || typeof value !== 'string') {
       return undefined
     }
 
@@ -336,13 +468,41 @@ export class GetActivitiesCriteria {
     return identifierResult.value
   }
 
-  private static validateIdentifierArray(value?: Array<string>): Array<Identifier> | undefined {
-    const defaultValue: Array<Identifier> = []
+  private static validateIdentifierArray(value?: unknown): Array<Identifier> | undefined {
+    const rawValue: Array<string> | undefined = this.validateStringArray(value)
 
-    if (value === null || value === undefined || !Array.isArray(value)) {
-      return defaultValue
+    if (!rawValue) {
+      return undefined
     }
 
-    return value.map((identifier) => this.validateIdentifier(identifier)).filter((identifier) => identifier !== undefined)
+    return rawValue.map((identifier) => this.validateIdentifier(identifier)).filter((identifier) => identifier !== undefined)
+  }
+
+  private static validateNumericString(value?: unknown): string | undefined {
+    if (value === null || value === undefined) {
+      return undefined
+    }
+
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return undefined
+    }
+
+    return String(value)
+  }
+
+  private static validateStringArray(value?: unknown): Array<string> | undefined {
+    if (value === null || value === undefined) {
+      return undefined
+    }
+
+    if (typeof value === 'string') {
+      return value.split(',')
+    } else if (Array.isArray(value)) {
+      const validItems = value.filter((item) => typeof item === 'string')
+
+      return validItems.length > 0 ? validItems : undefined
+    }
+
+    return undefined
   }
 }
