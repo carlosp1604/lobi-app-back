@@ -2,7 +2,7 @@ import { SpeedUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Spe
 import { MagnitudeConverterInterface } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/MagnitudeConverterInterface'
 import { DecimalNumber, DecimalNumberSource } from '~/src/modules/Shared/Domain/ValueObject/Numeric/DecimalNumber'
 
-const SPEED_FACTORS: Record<SpeedUnit, DecimalNumber> = {
+export const SPEED_FACTORS: Record<SpeedUnit, DecimalNumber> = {
   'km/h': DecimalNumber.create('1'),
   'mi/h': DecimalNumber.create('1.609344'),
 }

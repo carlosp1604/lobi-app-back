@@ -12,7 +12,7 @@ export class Identifier extends ValueObject<string> {
   }
 
   static safeCreate(value: string): Result<Identifier, SharedDomainException> {
-    const normalized = value.trim()
+    const normalized = value.trim().toLowerCase()
 
     if (!this.isValidIdentifier(normalized)) {
       return fail(SharedDomainException.invalidIdentifier(value))

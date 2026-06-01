@@ -1,11 +1,15 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { fail, Result, success } from '~/src/modules/Shared/Domain/Result'
 import { ScalarCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
-import { SpeedCapability, SpeedCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/SpeedCapability'
 import {
   CapabilityPayloadValidationError,
   CapabilityPayloadContractInterface,
 } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractInterface'
+import {
+  SpeedCapability,
+  SpeedCapabilityInputProps,
+  SpeedCapabilityUnit,
+} from '~/src/modules/Activity/Domain/Config/Capability/SpeedCapability'
 
 export type SpeedCapabilityRawData = {
   start: string
@@ -51,7 +55,7 @@ export class SpeedCapabilityPayloadContract implements CapabilityPayloadContract
     })
   }
 
-  public getSchema(): ScalarCapabilitySchemaDto {
+  public getSchema(): ScalarCapabilitySchemaDto<SpeedCapabilityUnit> {
     return {
       name: SpeedCapability.capabilityName,
       type: 'scalar_range',
@@ -64,6 +68,14 @@ export class SpeedCapabilityPayloadContract implements CapabilityPayloadContract
         min: SpeedCapability.minSpeed.stringValue,
         max: SpeedCapability.maxSpeed.stringValue,
       },
+      conversionFactors: Object.keys(SpeedCapability.conversionFactors).reduce(
+        (acc, key) => {
+          const unit = key as SpeedCapabilityUnit
+          acc[unit] = SpeedCapability.conversionFactors[unit].toString()
+          return acc
+        },
+        {} as Record<SpeedCapabilityUnit, string>,
+      ),
     }
   }
 }

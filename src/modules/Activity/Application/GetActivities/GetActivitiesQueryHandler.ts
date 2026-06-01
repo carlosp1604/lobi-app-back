@@ -1,15 +1,15 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { GetActivitiesQuery } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQuery'
+import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
+import { GetActivitiesCriteria } from '~/src/modules/Activity/Application/Shared/GetActivitiesCriteria'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivitiesFinderInterface } from '~/src/modules/Activity/Application/Shared/ActivitiesFinderInterface'
 import { GetActivitiesQueryResponseDto } from '~/src/modules/Activity/Application/Shared/GetActivitiesQueryResponseDto'
 import { GetActivitiesQueryResponseDtoTranslator } from '~/src/modules/Activity/Application/Shared/GetActivitiesQueryResponseDtoTranslator'
-import { GetActivitiesCriteria } from '~/src/modules/Activity/Application/Shared/GetActivitiesCriteria'
 import {
   GetActivitiesQueryError,
   GetActivitiesQueryInputError,
 } from '~/src/modules/Activity/Application/GetActivities/GetActivitiesQueryError'
-import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 
 type ValidatedQuery = {
   userId: Identifier | null
@@ -60,15 +60,15 @@ export class GetActivitiesQueryHandler {
     const criteriaResult = GetActivitiesCriteria.fromQuery(query.params)
 
     if (!criteriaResult.success) {
-      const inputErrors = criteriaResult.error.errors.map((err) => {
-        switch (err.type) {
+      const inputErrors = criteriaResult.error.errors.map((error) => {
+        switch (error.type) {
           case 'missing':
-            return GetActivitiesQueryInputError.missingError(err.param, err.message)
+            return GetActivitiesQueryInputError.missingError(error.param, error.message)
           case 'unsupported':
-            return GetActivitiesQueryInputError.unsupportedError(err.param, err.message)
+            return GetActivitiesQueryInputError.unsupportedError(error.param, error.message)
           case 'validation':
           default:
-            return GetActivitiesQueryInputError.validationError(err.param, err.message)
+            return GetActivitiesQueryInputError.validationError(error.param, error.message)
         }
       })
 

@@ -2,7 +2,8 @@ import { PaceUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Pace
 import { MagnitudeConverterInterface } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/MagnitudeConverterInterface'
 import { DecimalNumber, DecimalNumberSource } from '~/src/modules/Shared/Domain/ValueObject/Numeric/DecimalNumber'
 
-const PACE_FACTORS: Record<PaceUnit, DecimalNumber> = {
+export const PACE_FACTORS: Record<PaceUnit, DecimalNumber> = {
+  's/km': DecimalNumber.create('60'),
   'min/km': DecimalNumber.create('1'),
   'min/mi': DecimalNumber.create('1.609344'),
 }

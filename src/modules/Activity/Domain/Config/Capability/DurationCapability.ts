@@ -16,6 +16,7 @@ export type DurationCapabilityInputProps = {
   end: DurationInputProps
 }
 export type DurationCapabilityPrimitives = MagnitudeRangePrimitives<DurationPrimitives>
+export type DurationCapabilityUnit = (typeof DurationCapability.supportedUnits)[number]
 
 export class DurationCapability
   extends ValueObject<MagnitudeRange<Duration, DurationPrimitives>>
@@ -26,6 +27,7 @@ export class DurationCapability
   public static readonly supportedUnits = [...SupportedDurationUnits]
   public static readonly minDuration = Duration.MIN_DURATION_SECONDS
   public static readonly maxDuration = Duration.MAX_DURATION_SECONDS
+  public static readonly conversionFactors = { [this.defaultUnit]: '1' }
 
   private constructor(durationRange: MagnitudeRange<Duration, DurationPrimitives>) {
     super(durationRange)

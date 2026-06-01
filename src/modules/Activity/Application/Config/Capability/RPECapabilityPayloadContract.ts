@@ -2,7 +2,11 @@ import { RPE } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/RPE'
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ScalarCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
-import { RPECapability, RPECapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/RPECapability'
+import {
+  RPECapability,
+  RPECapabilityInputProps,
+  RPECapabilityUnit,
+} from '~/src/modules/Activity/Domain/Config/Capability/RPECapability'
 import {
   CapabilityPayloadValidationError,
   CapabilityPayloadContractInterface,
@@ -50,7 +54,7 @@ export class RPECapabilityPayloadContract implements CapabilityPayloadContractIn
     })
   }
 
-  public getSchema(): ScalarCapabilitySchemaDto {
+  public getSchema(): ScalarCapabilitySchemaDto<RPECapabilityUnit> {
     return {
       name: RPECapability.capabilityName,
       type: 'scalar_range',
@@ -63,6 +67,7 @@ export class RPECapabilityPayloadContract implements CapabilityPayloadContractIn
         min: RPECapability.minRPE,
         max: RPECapability.maxRPE,
       },
+      conversionFactors: RPECapability.conversionFactors,
     }
   }
 }

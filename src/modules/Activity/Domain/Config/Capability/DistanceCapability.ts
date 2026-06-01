@@ -1,4 +1,5 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
+import { DISTANCE_FACTORS } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/DistanceConverter'
 import { CapabilityInterface } from '~/src/modules/Activity/Domain/Config/Capability/CapabilityInterface'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
@@ -8,6 +9,7 @@ import {
   Distance,
   DistanceInputProps,
   DistancePrimitives,
+  DistanceUnit,
   SupportedDistanceUnits,
 } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Distance'
 
@@ -16,16 +18,18 @@ export type DistanceCapabilityInputProps = {
   end: DistanceInputProps
 }
 export type DistanceCapabilityPrimitives = MagnitudeRangePrimitives<DistancePrimitives>
+export type DistanceCapabilityUnit = (typeof DistanceCapability.supportedUnits)[number]
 
 export class DistanceCapability
   extends ValueObject<MagnitudeRange<Distance, DistancePrimitives>>
   implements CapabilityInterface<DistanceCapabilityPrimitives>
 {
   public static readonly capabilityName = 'distance'
-  public static readonly defaultUnit = Distance.DEFAULT_UNIT
+  public static readonly defaultUnit: DistanceUnit = 'km'
   public static readonly supportedUnits = [...SupportedDistanceUnits]
   public static readonly minDistance = Distance.MIN_DISTANCE
   public static readonly maxDistance = Distance.MAX_DISTANCE
+  public static readonly conversionFactors = DISTANCE_FACTORS
 
   private constructor(distanceRange: MagnitudeRange<Distance, DistancePrimitives>) {
     super(distanceRange)

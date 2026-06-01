@@ -13,6 +13,10 @@ export type TeamParticipantsSpecPrimitives = TeamParticipantsConfigPrimitives
 
 export class TeamParticipantsSpec extends ValueObject<TeamParticipantsConfig> implements SpecInterface<TeamParticipantsSpecPrimitives> {
   public static readonly specName = 'team_participants'
+  public static readonly maxPlayersPerTeam = TeamParticipantsConfig.MAX_PLAYERS_PER_TEAM_ALLOWED
+  public static readonly minPlayersPerTeam = TeamParticipantsConfig.MIN_PLAYERS_PER_TEAM_REQUIRED
+  public static readonly maxTeams = TeamParticipantsConfig.MAX_TEAMS_ALLOWED
+  public static readonly minTeams = TeamParticipantsConfig.MIN_TEAMS_REQUIRED
 
   private constructor(teamParticipation: TeamParticipantsConfig) {
     super(teamParticipation)

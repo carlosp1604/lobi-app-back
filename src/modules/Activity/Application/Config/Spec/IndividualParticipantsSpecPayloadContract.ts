@@ -41,8 +41,14 @@ export class IndividualParticipantsSpecPayloadContract
     return {
       allowedSpecs: ['individual_participants', 'team_participants'],
       defaultSpec: 'individual_participants',
+      availableFields: ['minPlayers', 'maxPlayers'],
+      optionalFields: [],
       defaultMinPlayers: context.defaultMinPlayers,
-      defaultMaxPlayers: context.defaultMaxPlayers ?? IndividualParticipantsSpec.defaultMaxPlayers.value,
+      defaultMaxPlayers: context.defaultMaxPlayers ?? IndividualParticipantsSpec.maxPlayers.value,
+      players: {
+        min: IndividualParticipantsSpec.minPlayers.value,
+        max: IndividualParticipantsSpec.maxPlayers.value,
+      },
     }
   }
 }

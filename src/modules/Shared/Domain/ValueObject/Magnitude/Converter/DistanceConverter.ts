@@ -2,7 +2,7 @@ import { DistanceUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/
 import { MagnitudeConverterInterface } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/MagnitudeConverterInterface'
 import { DecimalNumber, DecimalNumberSource } from '~/src/modules/Shared/Domain/ValueObject/Numeric/DecimalNumber'
 
-const DISTANCE_FACTORS: Record<DistanceUnit, DecimalNumber> = {
+export const DISTANCE_FACTORS: Record<DistanceUnit, DecimalNumber> = {
   m: DecimalNumber.create('1'),
   km: DecimalNumber.create('1000'),
   mi: DecimalNumber.create('1609.344'),

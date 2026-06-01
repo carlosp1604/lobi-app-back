@@ -1,22 +1,24 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
+import { ALTITUDE_FACTORS } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/AltitudeConverter'
 import { CapabilityInterface } from '~/src/modules/Activity/Domain/Config/Capability/CapabilityInterface'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
 import { MagnitudeToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Visitor/MagnitudeToRepresentationVisitor'
+import {
+  MagnitudeRange,
+  MagnitudeRangeInputProps,
+  MagnitudeRangePrimitives,
+} from '~/src/modules/Shared/Domain/ValueObject/Magnitude/MagnitudeRange'
 import {
   Altitude,
   AltitudeInputProps,
   AltitudePrimitives,
   SupportedAltitudeUnits,
 } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Altitude'
-import {
-  MagnitudeRange,
-  MagnitudeRangeInputProps,
-  MagnitudeRangePrimitives,
-} from '~/src/modules/Shared/Domain/ValueObject/Magnitude/MagnitudeRange'
 
 export type AltitudeCapabilityInputProps = MagnitudeRangeInputProps<AltitudeInputProps>
 export type AltitudeCapabilityPrimitives = MagnitudeRangePrimitives<AltitudePrimitives>
+export type AltitudeCapabilityUnit = (typeof AltitudeCapability.supportedUnits)[number]
 
 export class AltitudeCapability
   extends ValueObject<MagnitudeRange<Altitude, AltitudePrimitives>>
@@ -26,7 +28,8 @@ export class AltitudeCapability
   public static readonly defaultUnit = Altitude.DEFAULT_UNIT
   public static readonly supportedUnits = [...SupportedAltitudeUnits]
   public static readonly maxAltitude = Altitude.MAX_ALTITUDE
-  public static readonly minAltitude = Altitude.MAX_ALTITUDE
+  public static readonly minAltitude = Altitude.MIN_ALTITUDE
+  public static readonly conversionFactors = ALTITUDE_FACTORS
 
   private constructor(altitudeRange: MagnitudeRange<Altitude, AltitudePrimitives>) {
     super(altitudeRange)

@@ -2,7 +2,7 @@ import { AltitudeUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/
 import { MagnitudeConverterInterface } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/MagnitudeConverterInterface'
 import { DecimalNumber, DecimalNumberSource } from '~/src/modules/Shared/Domain/ValueObject/Numeric/DecimalNumber'
 
-const ALTITUDE_FACTORS: Record<AltitudeUnit, DecimalNumber> = {
+export const ALTITUDE_FACTORS: Record<AltitudeUnit, DecimalNumber> = {
   m: DecimalNumber.create('1'),
   ft: DecimalNumber.create('0.3048'),
 }

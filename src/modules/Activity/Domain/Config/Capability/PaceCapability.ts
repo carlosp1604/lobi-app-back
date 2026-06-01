@@ -1,9 +1,16 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
+import { PACE_FACTORS } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/PaceConverter'
 import { CapabilityInterface } from '~/src/modules/Activity/Domain/Config/Capability/CapabilityInterface'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
 import { MagnitudeToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Visitor/MagnitudeToRepresentationVisitor'
-import { Pace, PaceInputProps, PacePrimitives, SupportedPaceUnits } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Pace'
+import {
+  Pace,
+  PaceInputProps,
+  PacePrimitives,
+  PaceUnit,
+  SupportedPaceUnits,
+} from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Pace'
 import {
   MagnitudeRange,
   MagnitudeRangeInputProps,
@@ -12,16 +19,18 @@ import {
 
 export type PaceCapabilityInputProps = MagnitudeRangeInputProps<PaceInputProps>
 export type PaceCapabilityPrimitives = MagnitudeRangePrimitives<PacePrimitives>
+export type PaceCapabilityUnit = (typeof PaceCapability.supportedUnits)[number]
 
 export class PaceCapability
   extends ValueObject<MagnitudeRange<Pace, PacePrimitives>>
   implements CapabilityInterface<PaceCapabilityPrimitives>
 {
   public static readonly capabilityName = 'pace'
-  public static readonly defaultUnit = Pace.DEFAULT_UNIT
+  public static readonly defaultUnit: PaceUnit = 'min/km'
   public static readonly supportedUnits = [...SupportedPaceUnits]
   public static readonly minPace = Pace.MIN_PACE
   public static readonly maxPace = Pace.MAX_PACE
+  public static readonly conversionFactors = PACE_FACTORS
 
   private constructor(paceRange: MagnitudeRange<Pace, PacePrimitives>) {
     super(paceRange)

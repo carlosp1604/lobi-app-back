@@ -42,8 +42,8 @@ export class RouteCapabilityPayloadContract implements CapabilityPayloadContract
       type: 'route',
       isRequired: false,
       limits: {
-        min: RouteCapability.minPoints.toString(),
-        max: RouteCapability.maxPoints.toString(),
+        min: RouteCapability.minPoints,
+        max: RouteCapability.maxPoints,
       },
     }
   }

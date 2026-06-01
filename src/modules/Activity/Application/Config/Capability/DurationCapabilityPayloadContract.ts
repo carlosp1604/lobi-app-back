@@ -1,11 +1,15 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ScalarCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
-import { DurationCapability, DurationCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/DurationCapability'
 import {
   CapabilityPayloadValidationError,
   CapabilityPayloadContractInterface,
 } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractInterface'
+import {
+  DurationCapability,
+  DurationCapabilityInputProps,
+  DurationCapabilityUnit,
+} from '~/src/modules/Activity/Domain/Config/Capability/DurationCapability'
 
 export type DurationCapabilityRawData = {
   start: string
@@ -41,7 +45,7 @@ export class DurationCapabilityPayloadContract implements CapabilityPayloadContr
     })
   }
 
-  public getSchema(): ScalarCapabilitySchemaDto {
+  public getSchema(): ScalarCapabilitySchemaDto<DurationCapabilityUnit> {
     return {
       name: DurationCapability.capabilityName,
       type: 'scalar_range',
@@ -54,6 +58,7 @@ export class DurationCapabilityPayloadContract implements CapabilityPayloadContr
         min: DurationCapability.minDuration.toString(),
         max: DurationCapability.maxDuration.toString(),
       },
+      conversionFactors: DurationCapability.conversionFactors,
     }
   }
 }

@@ -1,11 +1,15 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { AltitudeCapability, AltitudeCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/AltitudeCapability'
+import { ScalarCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
 import {
   CapabilityPayloadValidationError,
   CapabilityPayloadContractInterface,
 } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractInterface'
-import { ScalarCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
+import {
+  AltitudeCapability,
+  AltitudeCapabilityInputProps,
+  AltitudeCapabilityUnit,
+} from '~/src/modules/Activity/Domain/Config/Capability/AltitudeCapability'
 
 export type AltitudeCapabilityRawData = {
   start: string
@@ -51,7 +55,7 @@ export class AltitudeCapabilityPayloadContract implements CapabilityPayloadContr
     })
   }
 
-  public getSchema(): ScalarCapabilitySchemaDto {
+  public getSchema(): ScalarCapabilitySchemaDto<AltitudeCapabilityUnit> {
     return {
       name: AltitudeCapability.capabilityName,
       type: 'scalar_range',
@@ -64,6 +68,14 @@ export class AltitudeCapabilityPayloadContract implements CapabilityPayloadContr
         min: AltitudeCapability.minAltitude.stringValue,
         max: AltitudeCapability.maxAltitude.stringValue,
       },
+      conversionFactors: Object.keys(AltitudeCapability.conversionFactors).reduce(
+        (accumulator, key) => {
+          const unit = key as AltitudeCapabilityUnit
+          accumulator[unit] = AltitudeCapability.conversionFactors[unit].toString()
+          return accumulator
+        },
+        {} as Record<AltitudeCapabilityUnit, string>,
+      ),
     }
   }
 }

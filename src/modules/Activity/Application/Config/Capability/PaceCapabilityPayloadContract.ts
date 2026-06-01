@@ -1,11 +1,15 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ScalarCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
-import { PaceCapability, PaceCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/PaceCapability'
 import {
   CapabilityPayloadValidationError,
   CapabilityPayloadContractInterface,
 } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractInterface'
+import {
+  PaceCapability,
+  PaceCapabilityInputProps,
+  PaceCapabilityUnit,
+} from '~/src/modules/Activity/Domain/Config/Capability/PaceCapability'
 
 export type PaceCapabilityRawData = {
   start: string
@@ -51,7 +55,7 @@ export class PaceCapabilityPayloadContract implements CapabilityPayloadContractI
     })
   }
 
-  public getSchema(): ScalarCapabilitySchemaDto {
+  public getSchema(): ScalarCapabilitySchemaDto<PaceCapabilityUnit> {
     return {
       name: PaceCapability.capabilityName,
       type: 'scalar_range',
@@ -64,6 +68,14 @@ export class PaceCapabilityPayloadContract implements CapabilityPayloadContractI
         min: PaceCapability.minPace.toString(),
         max: PaceCapability.maxPace.toString(),
       },
+      conversionFactors: Object.keys(PaceCapability.conversionFactors).reduce(
+        (acc, key) => {
+          const unit = key as PaceCapabilityUnit
+          acc[unit] = PaceCapability.conversionFactors[unit].toString()
+          return acc
+        },
+        {} as Record<PaceCapabilityUnit, string>,
+      ),
     }
   }
 }

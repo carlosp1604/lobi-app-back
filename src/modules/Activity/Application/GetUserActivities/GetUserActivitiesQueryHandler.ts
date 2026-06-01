@@ -60,15 +60,15 @@ export class GetUserActivitiesQueryHandler {
     const criteriaResult = GetActivitiesCriteria.fromUserQuery(query.params)
 
     if (!criteriaResult.success) {
-      const inputErrors = criteriaResult.error.errors.map((err) => {
-        switch (err.type) {
+      const inputErrors = criteriaResult.error.errors.map((error) => {
+        switch (error.type) {
           case 'missing':
-            return GetUserActivitiesQueryInputError.missingError(err.param, err.message)
+            return GetUserActivitiesQueryInputError.missingError(error.param, error.message)
           case 'unsupported':
-            return GetUserActivitiesQueryInputError.unsupportedError(err.param, err.message)
+            return GetUserActivitiesQueryInputError.unsupportedError(error.param, error.message)
           case 'validation':
           default:
-            return GetUserActivitiesQueryInputError.validationError(err.param, err.message)
+            return GetUserActivitiesQueryInputError.validationError(error.param, error.message)
         }
       })
 

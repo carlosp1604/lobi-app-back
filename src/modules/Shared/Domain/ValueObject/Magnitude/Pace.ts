@@ -8,7 +8,7 @@ import { OrderableMagnitudeInterface } from '~/src/modules/Shared/Domain/ValueOb
 import { MagnitudeValueVisitorInterface } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Visitor/MagnitudeValueVisitorInterface'
 import { VisitableMagnitudeValueInterface } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Visitor/VisitableMagnitudeValueInterface'
 
-export const SupportedPaceUnits = ['min/km', 'min/mi'] as const
+export const SupportedPaceUnits = ['s/km', 'min/km', 'min/mi'] as const
 export type PaceUnit = (typeof SupportedPaceUnits)[number]
 
 export type PaceProps = {
@@ -34,7 +34,7 @@ export class Pace
 {
   private __paceBrand: void
 
-  public static readonly DEFAULT_UNIT: PaceUnit = 'min/km'
+  public static readonly DEFAULT_UNIT: PaceUnit = 's/km'
   public static readonly MIN_PACE = BoundedNumber.create('1')
   public static readonly MAX_PACE = BoundedNumber.create('86400')
 

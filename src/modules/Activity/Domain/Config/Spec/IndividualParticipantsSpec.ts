@@ -16,7 +16,8 @@ export class IndividualParticipantsSpec
   implements SpecInterface<IndividualParticipantsSpecPrimitives>
 {
   public static readonly specName = 'individual_participants'
-  public static readonly defaultMaxPlayers = IndividualParticipantsConfig.MAX_PLAYERS_ALLOWED
+  public static readonly maxPlayers = IndividualParticipantsConfig.MAX_PLAYERS_ALLOWED
+  public static readonly minPlayers = IndividualParticipantsConfig.MIN_PLAYERS_REQUIRED
 
   private constructor(individualParticipation: IndividualParticipantsConfig) {
     super(individualParticipation)

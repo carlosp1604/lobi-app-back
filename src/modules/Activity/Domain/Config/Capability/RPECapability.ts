@@ -12,6 +12,7 @@ import {
 
 export type RPECapabilityInputProps = MagnitudeRangeInputProps<RPEInputProps>
 export type RPECapabilityPrimitives = MagnitudeRangePrimitives<RPEPrimitives>
+export type RPECapabilityUnit = (typeof RPECapability.supportedUnits)[number]
 
 export class RPECapability
   extends ValueObject<MagnitudeRange<RPE, RPEPrimitives>>
@@ -22,6 +23,7 @@ export class RPECapability
   public static readonly supportedUnits = [RPE.DEFAULT_UNIT]
   public static readonly minRPE = ValidRPEValue.ONE
   public static readonly maxRPE = ValidRPEValue.TEN
+  public static readonly conversionFactors = { [this.defaultUnit]: '1' }
 
   private constructor(rpeRange: MagnitudeRange<RPE, RPEPrimitives>) {
     super(rpeRange)

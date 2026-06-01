@@ -14,16 +14,17 @@ export interface BaseCapabilitySchemaDto {
   isRequired: boolean
 }
 
-export interface ScalarCapabilitySchemaDto extends BaseCapabilitySchemaDto {
+export interface ScalarCapabilitySchemaDto<U extends string> extends BaseCapabilitySchemaDto {
   type: 'scalar_range' | 'scalar_point'
-  defaultUnit: string
-  supportedUnits: Array<string>
+  defaultUnit: U
+  supportedUnits: Array<U>
   availableFields: Array<string>
   optionalFields: Array<string>
   limits: {
     min: string
     max: string
   }
+  conversionFactors: Record<U, string>
 }
 
 export interface GeographicCapabilitySchemaDto extends BaseCapabilitySchemaDto {
@@ -33,14 +34,14 @@ export interface GeographicCapabilitySchemaDto extends BaseCapabilitySchemaDto {
 export interface RouteCapabilitySchemaDto extends BaseCapabilitySchemaDto {
   type: 'route'
   limits: {
-    min: string
-    max: string
+    min: number
+    max: number
   }
 }
 
 export interface MultipleChoiceCapabilitySchemaDto extends BaseCapabilitySchemaDto {
   type: 'multiple_choice'
-  min: string
-  max: string
+  min: number
+  max: number
   options: Array<unknown>
 }

@@ -167,7 +167,7 @@ export class SharedDomainException extends DomainException {
   public static invalidDecimalNumber(value: string) {
     const safeNumberSample = StringFormatter.formatSafe(String(value), 16)
 
-    return new SharedDomainException(`${value} is not a valid decimal number`, this.invalidBoundedNumberId, {
+    return new SharedDomainException(`${value} is not a valid decimal number`, this.invalidDecimalNumberId, {
       decimalNumber: safeNumberSample,
     })
   }

@@ -39,7 +39,7 @@ describe('Identifier', () => {
 
   it('should store the correct value (normalized)', () => {
     const validValue = IdentifierMother.validString()
-    const identifierValueObject = Identifier.create(validValue)
+    const identifierValueObject = Identifier.create(` ${validValue.toUpperCase()} `)
 
     expect(identifierValueObject.value).toBe(validValue)
   })

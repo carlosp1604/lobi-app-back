@@ -43,8 +43,8 @@ export class RankingCapabilityPayloadContract
       type: 'multiple_choice',
       isRequired: false,
       options,
-      min: RankingCapability.minSupportedLevels.toString(),
-      max: options.length.toString(),
+      min: RankingCapability.minSupportedLevels,
+      max: options.length,
     }
   }
 }

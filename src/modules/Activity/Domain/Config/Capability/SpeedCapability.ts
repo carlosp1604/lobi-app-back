@@ -1,4 +1,5 @@
 import { ValueObject } from '~/src/modules/Shared/Domain/ValueObject/ValueObject'
+import { SPEED_FACTORS } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/SpeedConverter'
 import { CapabilityInterface } from '~/src/modules/Activity/Domain/Config/Capability/CapabilityInterface'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
@@ -12,6 +13,7 @@ import {
 
 export type SpeedCapabilityInputProps = MagnitudeRangeInputProps<SpeedInputProps>
 export type SpeedCapabilityPrimitives = MagnitudeRangePrimitives<SpeedPrimitives>
+export type SpeedCapabilityUnit = (typeof SpeedCapability.supportedUnits)[number]
 
 export class SpeedCapability
   extends ValueObject<MagnitudeRange<Speed, SpeedPrimitives>>
@@ -22,6 +24,7 @@ export class SpeedCapability
   public static readonly supportedUnits = [...SupportedSpeedUnits]
   public static readonly minSpeed = Speed.MIN_SPEED
   public static readonly maxSpeed = Speed.MAX_SPEED
+  public static readonly conversionFactors = SPEED_FACTORS
 
   private constructor(speedRange: MagnitudeRange<Speed, SpeedPrimitives>) {
     super(speedRange)

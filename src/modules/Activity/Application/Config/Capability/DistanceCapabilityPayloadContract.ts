@@ -1,11 +1,15 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ScalarCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
-import { DistanceCapability, DistanceCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/DistanceCapability'
 import {
   CapabilityPayloadValidationError,
   CapabilityPayloadContractInterface,
 } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractInterface'
+import {
+  DistanceCapability,
+  DistanceCapabilityInputProps,
+  DistanceCapabilityUnit,
+} from '~/src/modules/Activity/Domain/Config/Capability/DistanceCapability'
 
 export type DistanceCapabilityRawData = {
   start: string
@@ -41,7 +45,7 @@ export class DistanceCapabilityPayloadContract implements CapabilityPayloadContr
     })
   }
 
-  public getSchema(): ScalarCapabilitySchemaDto {
+  public getSchema(): ScalarCapabilitySchemaDto<DistanceCapabilityUnit> {
     return {
       name: DistanceCapability.capabilityName,
       type: 'scalar_range',
@@ -54,6 +58,14 @@ export class DistanceCapabilityPayloadContract implements CapabilityPayloadContr
         min: DistanceCapability.minDistance.stringValue,
         max: DistanceCapability.maxDistance.stringValue,
       },
+      conversionFactors: Object.keys(DistanceCapability.conversionFactors).reduce(
+        (acc, key) => {
+          const unit = key as DistanceCapabilityUnit
+          acc[unit] = DistanceCapability.conversionFactors[unit].toString()
+          return acc
+        },
+        {} as Record<DistanceCapabilityUnit, string>,
+      ),
     }
   }
 }
