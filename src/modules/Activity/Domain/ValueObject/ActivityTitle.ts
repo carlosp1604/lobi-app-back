@@ -8,7 +8,7 @@ export class ActivityTitle extends ValueObject<string> implements SerializableIn
 
   public static readonly MIN_LENGTH = 4
   public static readonly MAX_LENGTH = 100
-  public static readonly REGEX = new RegExp(`^.{${ActivityTitle.MIN_LENGTH},${ActivityTitle.MAX_LENGTH}}$`)
+  private static readonly FORBIDDEN_CHARS_REGEX = /\p{Cc}/u
 
   private constructor(value: string) {
     super(value)
@@ -25,17 +25,19 @@ export class ActivityTitle extends ValueObject<string> implements SerializableIn
   }
 
   static safeCreate(value: string): Result<ActivityTitle, ActivityDomainException> {
-    const normalized = value.replace(/\s+/g, ' ').trim()
+    if (this.FORBIDDEN_CHARS_REGEX.test(value)) {
+      return fail(ActivityDomainException.invalidActivityTitle(value, this.MIN_LENGTH, this.MAX_LENGTH))
+    }
 
-    if (!ActivityTitle.isValid(normalized)) {
+    const normalized = value.replace(/ +/g, ' ').trim()
+
+    const trueLength = [...normalized].length
+
+    if (trueLength < this.MIN_LENGTH || trueLength > this.MAX_LENGTH) {
       return fail(ActivityDomainException.invalidActivityTitle(value, this.MIN_LENGTH, this.MAX_LENGTH))
     }
 
     return success(new ActivityTitle(normalized))
-  }
-
-  private static isValid(value: string): boolean {
-    return this.REGEX.test(value)
   }
 
   public toPrimitives(): string {

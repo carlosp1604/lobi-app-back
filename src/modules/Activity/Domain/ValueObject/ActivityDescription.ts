@@ -28,7 +28,9 @@ export class ActivityDescription extends ValueObject<string> implements Serializ
   static safeCreate(value: string): Result<ActivityDescription, ActivityDomainException> {
     const normalized = value.trim()
 
-    if (!ActivityDescription.isValid(normalized)) {
+    const trueLength = [...normalized].length
+
+    if (trueLength < this.MIN_LENGTH || trueLength > this.MAX_LENGTH) {
       return fail(ActivityDomainException.invalidActivityDescription(value, this.MIN_LENGTH, this.MAX_LENGTH))
     }
 
