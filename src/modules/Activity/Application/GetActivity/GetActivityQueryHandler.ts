@@ -5,7 +5,7 @@ import { Result, fail, success } from '~/src/modules/Shared/Domain/Result'
 import { SpecTranslatorFactory } from '~/src/modules/Activity/Application/Translator/Config/Spec/SpecTranslatorFactory'
 import { ActivityFinderInterface } from '~/src/modules/Activity/Application/GetActivity/ActivityFinderInterface'
 import { CapabilityTranslatorFactory } from '~/src/modules/Activity/Application/Translator/Config/Capability/CapabilityTranslatorFactory'
-import { GetActivityQueryResponseDto } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryResponseDto'
+import { GetActivityResponseDto } from '~/src/modules/Activity/Application/GetActivity/GetActivityResponseDto'
 import { GetActivityQueryResponseDtoTranslator } from '~/src/modules/Activity/Application/GetActivity/GetActivityQueryResponseDtoTranslator'
 
 type ValidatedQuery = {
@@ -20,7 +20,7 @@ export class GetActivityQueryHandler {
     private readonly specTranslatorFactory: SpecTranslatorFactory,
   ) {}
 
-  public async execute(query: GetActivityQuery): Promise<Result<GetActivityQueryResponseDto, GetActivityQueryError>> {
+  public async execute(query: GetActivityQuery): Promise<Result<GetActivityResponseDto, GetActivityQueryError>> {
     const validatedQueryDataResult = this.validateQueryData(query)
 
     if (!validatedQueryDataResult.success) {

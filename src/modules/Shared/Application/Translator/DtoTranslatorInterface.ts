@@ -1,3 +1,3 @@
-export interface ApplicationDtoTranslatorInterface<DataType, DtoType> {
+export interface DtoTranslatorInterface<DataType, DtoType> {
   translate(data: DataType): DtoType
 }

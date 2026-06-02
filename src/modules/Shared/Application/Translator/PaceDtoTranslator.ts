@@ -1,33 +1,32 @@
+import { MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
 import { DecimalNumber } from '~/src/modules/Shared/Domain/ValueObject/Numeric/DecimalNumber'
 import { PaceConverter } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/PaceConverter'
-import { MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
-import { PacePrimitives, PaceUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Pace'
 import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
+import { PacePrimitives, PaceUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Pace'
 
-export class PaceQueryDtoTranslator implements DtoTranslatorInterface<PacePrimitives, MagnitudeDto> {
+export class PaceDtoTranslator implements DtoTranslatorInterface<PacePrimitives, MagnitudeDto> {
   public translate(primitives: PacePrimitives): MagnitudeDto {
     const value = primitives.value
     const unit = primitives.unit as PaceUnit
 
-    const paceInKm = PaceConverter.convert(value, unit, 'min/km')
-    const paceInMi = PaceConverter.convert(value, unit, 'min/mi')
+    const paceInMinKm = PaceConverter.convert(value, unit, 'min/km')
+    const paceInMinMi = PaceConverter.convert(value, unit, 'min/mi')
 
     return {
-      type: 'scalar',
-      value: paceInKm.toFixed(),
+      value: paceInMinKm.toFixed(),
       unit: 'min/km',
       conversions: {
-        'min/km': paceInKm.round(3).toFixed(),
-        'min/mi': paceInMi.round(3).toFixed(),
+        'min/km': paceInMinKm.round(3).toFixed(),
+        'min/mi': paceInMinMi.round(3).toFixed(),
       },
       formatted: {
         'min/km': {
-          long: `${this.formatPaceFromSeconds(paceInKm, true)} min/km`,
-          short: `${this.formatPaceFromSeconds(paceInKm)} min/km`,
+          long: `${this.formatPaceFromSeconds(paceInMinKm, true)} min/km`,
+          short: `${this.formatPaceFromSeconds(paceInMinKm)} min/km`,
         },
         'min/mi': {
-          long: `${this.formatPaceFromSeconds(paceInMi, true)} min/mi`,
-          short: `${this.formatPaceFromSeconds(paceInMi)} min/mi`,
+          long: `${this.formatPaceFromSeconds(paceInMinKm, true)} min/mi`,
+          short: `${this.formatPaceFromSeconds(paceInMinKm)} min/mi`,
         },
       },
     }

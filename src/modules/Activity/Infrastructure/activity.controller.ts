@@ -1,6 +1,6 @@
+import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { AccessToken } from '~/src/modules/Auth/Infrastructure/Decorators/access-token.decorator'
 import { LOGGER_FACTORY } from '~/src/modules/Shared/Infrastructure/logger.module'
-import type { JwtPayload } from '~/src/modules/Auth/Infrastructure/jwt-payload.schema'
 import { AccessTokenGuard } from '~/src/modules/Auth/Infrastructure/Guards/access-token.guard'
 import { UNAUTHORIZED_ACCESS } from '~/src/modules/Shared/Infrastructure/ApiCodes'
 import { CreateActivityBodyDto } from '~/src/modules/Activity/Infrastructure/Dtos/create-activity-body.dto'
@@ -179,15 +179,22 @@ export class ActivityController {
       }
 
       case JoinActivityCommandError.userDisabledId:
-      case JoinActivityCommandError.userNotFoundId:
+      case JoinActivityCommandError.userNotFoundId: {
+        this.loggerService.warn('Inconsistent state', {
+          reason: 'Active access token presented for a deleted or inactive user',
+          userId: accessToken.sub,
+          sessionId: accessToken.sid,
+        })
+
         throw new UnauthorizedException({
           code: UNAUTHORIZED_ACCESS,
           message: 'Unauthorized access',
         })
+      }
 
       case JoinActivityCommandError.invalidActivityIdId:
       case JoinActivityCommandError.activityNotFoundId:
-        throw new UnprocessableEntityException({
+        throw new NotFoundException({
           code: JOIN_ACTIVITY_ACTIVITY_NOT_FOUND,
           message: error.message,
         })
@@ -249,15 +256,22 @@ export class ActivityController {
       }
 
       case LeaveActivityCommandError.userDisabledId:
-      case LeaveActivityCommandError.userNotFoundId:
+      case LeaveActivityCommandError.userNotFoundId: {
+        this.loggerService.warn('Inconsistent state', {
+          reason: 'Active access token presented for a deleted or inactive user',
+          userId: accessToken.sub,
+          sessionId: accessToken.sid,
+        })
+
         throw new UnauthorizedException({
           code: UNAUTHORIZED_ACCESS,
           message: 'Unauthorized access',
         })
+      }
 
       case LeaveActivityCommandError.invalidActivityIdId:
       case LeaveActivityCommandError.activityNotFoundId:
-        throw new UnprocessableEntityException({
+        throw new NotFoundException({
           code: LEAVE_ACTIVITY_ACTIVITY_NOT_FOUND,
           message: error.message,
         })
@@ -313,15 +327,22 @@ export class ActivityController {
       }
 
       case CancelActivityCommandError.userDisabledId:
-      case CancelActivityCommandError.userNotFoundId:
+      case CancelActivityCommandError.userNotFoundId: {
+        this.loggerService.warn('Inconsistent state', {
+          reason: 'Active access token presented for a deleted or inactive user',
+          userId: accessToken.sub,
+          sessionId: accessToken.sid,
+        })
+
         throw new UnauthorizedException({
           code: UNAUTHORIZED_ACCESS,
           message: 'Unauthorized access',
         })
+      }
 
       case CancelActivityCommandError.invalidActivityIdId:
       case CancelActivityCommandError.activityNotFoundId:
-        throw new UnprocessableEntityException({
+        throw new NotFoundException({
           code: CANCEL_ACTIVITY_ACTIVITY_NOT_FOUND,
           message: error.message,
         })

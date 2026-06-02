@@ -1,6 +1,6 @@
 import { Result } from '~/src/modules/Shared/Domain/Result'
 import { AvailableSpec } from '~/src/modules/Activity/Domain/Config/Spec/AvailableSpecs'
-import { BaseParticipantsSpecSchemaDto } from '~/src/modules/Activity/Application/Dto/Config/Spec/ParticipantsSpecSchemaDto'
+import { BaseParticipantsSpecSchemaDto } from '~/src/modules/Activity/Application/Config/Spec/ParticipantsSpecSchemaDto'
 
 export interface SpecPayloadValidationError {
   errors: Array<string>

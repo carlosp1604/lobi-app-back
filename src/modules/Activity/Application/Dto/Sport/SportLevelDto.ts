@@ -1,4 +1,4 @@
-export interface SportLevelQueryDto {
+export interface SportLevelDto {
   readonly id: string
   readonly slug: string
   readonly order: number

@@ -3,7 +3,7 @@ export type DisplayValue = {
   short: string
 }
 
-export interface MagnitudeQueryDto {
+export interface MagnitudeDto {
   readonly value: string
   readonly unit: string
   readonly conversions?: Record<string, string>
@@ -11,20 +11,20 @@ export interface MagnitudeQueryDto {
   readonly format?: string | Array<string>
 }
 
-export interface MagnitudeRangeQueryDto {
-  readonly start: MagnitudeQueryDto
-  readonly end: MagnitudeQueryDto
-  readonly average?: MagnitudeQueryDto
+export interface MagnitudeRangeDto {
+  readonly start: MagnitudeDto
+  readonly end: MagnitudeDto
+  readonly average?: MagnitudeDto
   readonly isSingleValue: boolean
   readonly unit: string
 }
 
-export interface LocationQueryDto {
+export interface LocationDto {
   readonly lat: string
   readonly lng: string
 }
 
-export interface LocationRangeQueryDto {
-  readonly start: LocationQueryDto
-  readonly end: LocationQueryDto
+export interface LocationRangeDto {
+  readonly start: LocationDto
+  readonly end: LocationDto
 }

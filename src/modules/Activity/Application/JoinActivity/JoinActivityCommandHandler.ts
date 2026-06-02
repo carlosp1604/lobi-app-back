@@ -4,7 +4,6 @@ import { Participation } from '~/src/modules/Activity/Domain/Participation/Parti
 import { JoinActivityCommand } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommand'
 import { ClockServiceInterface } from '~/src/modules/Shared/Domain/ClockServiceInterface'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
-import { LoggerServiceInterface } from '~/src/modules/Shared/Domain/LoggerServiceInterface'
 import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
 import { JoinActivityCommandError } from '~/src/modules/Activity/Application/JoinActivity/JoinActivityCommandError'
 import { ActivityRepositoryInterface } from '~/src/modules/Activity/Domain/ActivityRepositoryInterface'
@@ -25,7 +24,6 @@ export class JoinActivityCommandHandler {
     private participationRepository: ParticipationRepositoryInterface,
     private clockService: ClockServiceInterface,
     private unitOfWork: UnitOfWork,
-    private loggerService: LoggerServiceInterface,
     private idGeneratorService: IdGeneratorServiceInterface,
   ) {}
 
@@ -44,20 +42,10 @@ export class JoinActivityCommandHandler {
       const participant = await this.participantRepository.findById(userId, context)
 
       if (!participant) {
-        this.loggerService.warn('Inconsistent state', {
-          id: userId.value,
-          reason: 'Participant not found (user)',
-        })
-
         return fail(JoinActivityCommandError.userNotFound())
       }
 
       if (!participant.isActive()) {
-        this.loggerService.warn('Inconsistent state', {
-          id: userId.value,
-          reason: 'Participant is disabled (user)',
-        })
-
         return fail(JoinActivityCommandError.userDisabled())
       }
 

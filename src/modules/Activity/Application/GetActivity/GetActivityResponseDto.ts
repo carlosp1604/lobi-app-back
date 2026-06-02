@@ -1,8 +1,8 @@
 import { SportDto } from '~/src/modules/Activity/Application/Dto/Sport/SportDto'
 import { SportLevelDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelDto'
 import { ActivityHostDto } from '~/src/modules/Activity/Application/Dto/ActivityHostDto'
+import { ActivityParticipationDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationDto'
 import { LocationDto, MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
-import { ActivityParticipationQueryDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationQueryDto'
 
 export interface ActivityConfigDto {
   readonly capabilities: Record<string, unknown>
@@ -30,9 +30,9 @@ export interface ActivityDetailsDto {
   readonly levels: Array<SportLevelDto>
 }
 
-export interface GetActivityQueryResponseDto {
+export interface GetActivityResponseDto {
   readonly activity: ActivityDetailsDto
-  readonly participation: ActivityParticipationQueryDto | null
+  readonly participation: ActivityParticipationDto | null
   readonly host: ActivityHostDto | null
   readonly sport: SportDto
   readonly isHost: boolean

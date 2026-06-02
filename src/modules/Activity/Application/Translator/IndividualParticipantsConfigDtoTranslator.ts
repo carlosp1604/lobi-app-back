@@ -1,11 +1,11 @@
 import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
-import { IndividualParticipantsConfigQueryDto } from '~/src/modules/Activity/Application/Dto/ParticipantsConfigQueryDto'
+import { IndividualParticipantsConfigDto } from '~/src/modules/Activity/Application/Dto/ParticipantsConfigDto'
 import { IndividualParticipantsConfigPrimitives } from '~/src/modules/Activity/Domain/Config/Spec/IndividualParticipantsConfig'
 
-export class IndividualParticipantsConfigQueryDtoTranslator
-  implements DtoTranslatorInterface<IndividualParticipantsConfigPrimitives, IndividualParticipantsConfigQueryDto>
+export class IndividualParticipantsConfigDtoTranslator
+  implements DtoTranslatorInterface<IndividualParticipantsConfigPrimitives, IndividualParticipantsConfigDto>
 {
-  public translate(primitives: IndividualParticipantsConfigPrimitives): IndividualParticipantsConfigQueryDto {
+  public translate(primitives: IndividualParticipantsConfigPrimitives): IndividualParticipantsConfigDto {
     return {
       type: 'individual',
       maxPlayers: primitives.maxPlayers,

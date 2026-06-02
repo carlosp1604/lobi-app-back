@@ -1,6 +1,6 @@
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
 import { UserSecurityDetailsReadModel } from '~/src/modules/Auth/Application/ReadModel/UserSecurityDetailsReadModel'
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import {
   GetUserSecurityDetailsQueryResponseDto,
   RelativeDateDto,
@@ -15,7 +15,7 @@ export type GetUserSecurityDetailsResponseContext = {
 }
 
 export class GetUserSecurityDetailsQueryResponseDtoTranslator
-  implements ApplicationDtoTranslatorInterface<GetUserSecurityDetailsResponseContext, GetUserSecurityDetailsQueryResponseDto>
+  implements DtoTranslatorInterface<GetUserSecurityDetailsResponseContext, GetUserSecurityDetailsQueryResponseDto>
 {
   public translate(context: GetUserSecurityDetailsResponseContext): GetUserSecurityDetailsQueryResponseDto {
     const { currentSessionId, readModel, now } = context

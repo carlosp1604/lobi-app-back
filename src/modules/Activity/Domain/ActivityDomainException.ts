@@ -118,7 +118,7 @@ export class ActivityDomainException extends DomainException {
   ): ActivityDomainException {
     return new ActivityDomainException(
       `Cannot join the activity. The start time passed without meeting the minimum of ${minimumCapacity.value} participants`,
-      this.activityAlreadyStartedId,
+      this.activityNotAvailableToJoinId,
       {
         activityId: activityId.value,
         currentParticipants: currentParticipants.value,

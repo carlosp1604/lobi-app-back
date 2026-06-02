@@ -4,7 +4,7 @@ import { AvailableCapability } from '~/src/modules/Activity/Domain/Config/Capabi
 import { SpeedCapabilityPrimitives } from '~/src/modules/Activity/Domain/Config/Capability/SpeedCapability'
 import { BaseMagnitudeRangeCapabilityDtoTranslator } from '~/src/modules/Activity/Application/Translator/Config/Capability/BaseMagnitudeRangeCapabilityDtoTranslator'
 
-export class SpeedCapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<SpeedCapabilityPrimitives> {
+export class SpeedCapabilityDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<SpeedCapabilityPrimitives> {
   public static readonly capabilityName = 'speed'
 
   protected translateScalar(primitives: SpeedCapabilityPrimitives['start']): MagnitudeDto {
@@ -16,6 +16,6 @@ export class SpeedCapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapabil
   }
 
   protected getCapabilityName(): AvailableCapability {
-    return SpeedCapabilityQueryDtoTranslator.capabilityName
+    return SpeedCapabilityDtoTranslator.capabilityName
   }
 }

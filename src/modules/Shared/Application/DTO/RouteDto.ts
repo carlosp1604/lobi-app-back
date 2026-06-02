@@ -1,5 +1,5 @@
-import { LocationQueryDto } from '~/src/modules/Shared/Application/DTO/MagnitudeQueryDto'
+import { LocationDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
 
-export interface RouteQueryDto {
-  readonly points: Array<LocationQueryDto>
+export interface RouteDto {
+  readonly points: Array<LocationDto>
 }

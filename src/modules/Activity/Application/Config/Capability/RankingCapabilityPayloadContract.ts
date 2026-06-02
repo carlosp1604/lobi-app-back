@@ -1,5 +1,5 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
-import { SportLevelQueryDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelQueryDto'
+import { SportLevelDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelDto'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { MultipleChoiceCapabilitySchemaDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilitySchemaDto'
 import { RankingCapability, RankingCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/RankingCapability'
@@ -13,7 +13,7 @@ export type RankingCapabilityRawData = {
 }
 
 export class RankingCapabilityPayloadContract
-  implements CapabilityPayloadContractInterface<RankingCapabilityInputProps, Array<SportLevelQueryDto>>
+  implements CapabilityPayloadContractInterface<RankingCapabilityInputProps, Array<SportLevelDto>>
 {
   public static readonly capabilityName = 'ranking'
 
@@ -37,7 +37,7 @@ export class RankingCapabilityPayloadContract
     return success({ ids })
   }
 
-  public getSchema(options: Array<SportLevelQueryDto>): MultipleChoiceCapabilitySchemaDto {
+  public getSchema(options: Array<SportLevelDto>): MultipleChoiceCapabilitySchemaDto {
     return {
       name: RankingCapability.capabilityName,
       type: 'multiple_choice',

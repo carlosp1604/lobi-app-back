@@ -1,9 +1,9 @@
-import { SportLevelQueryDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelQueryDto'
+import { SportLevelDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelDto'
 import { SportLevelReadModel } from '~/src/modules/Activity/Application/ReadModel/Sport/SportLevelReadModel'
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 
-export class SportLevelQueryDtoTranslator implements ApplicationDtoTranslatorInterface<SportLevelReadModel, SportLevelQueryDto> {
-  public translate(readModel: SportLevelReadModel): SportLevelQueryDto {
+export class SportLevelDtoTranslator implements DtoTranslatorInterface<SportLevelReadModel, SportLevelDto> {
+  public translate(readModel: SportLevelReadModel): SportLevelDto {
     return {
       id: readModel.id,
       slug: readModel.slug,

@@ -1,7 +1,7 @@
 import { AvailableCapability } from '~/src/modules/Activity/Domain/Config/Capability/AvailableCapabilities'
 import { SportDetailsReadModel } from '~/src/modules/Activity/Application/ReadModel/Sport/SportDetailsReadModel'
 import { RankingCapabilityPayloadContract } from '~/src/modules/Activity/Application/Config/Capability/RankingCapabilityPayloadContract'
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import { CapabilityPayloadContractFactory } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractFactory'
 import { GetSportsQueryResponseDto, SportDetailsQueryDto } from '~/src/modules/Activity/Application/GetSports/GetSportsQueryResponseDto'
 import { SpecPayloadContractFactory } from '~/src/modules/Activity/Application/Config/Spec/SpecPayloadContractFactory'
@@ -13,7 +13,7 @@ export interface GetSportsResponseContext {
 }
 
 export class GetSportsQueryResponseDtoTranslator
-  implements ApplicationDtoTranslatorInterface<GetSportsResponseContext, GetSportsQueryResponseDto>
+  implements DtoTranslatorInterface<GetSportsResponseContext, GetSportsQueryResponseDto>
 {
   constructor(
     private readonly capabilityPayloadContractFactory: CapabilityPayloadContractFactory,

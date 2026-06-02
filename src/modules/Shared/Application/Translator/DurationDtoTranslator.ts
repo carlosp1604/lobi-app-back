@@ -1,8 +1,8 @@
 import { MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
-import { Duration, DurationPrimitives } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Duration'
 import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
+import { Duration, DurationPrimitives } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Duration'
 
-export class DurationQueryDtoTranslator implements DtoTranslatorInterface<DurationPrimitives, MagnitudeDto> {
+export class DurationDtoTranslator implements DtoTranslatorInterface<DurationPrimitives, MagnitudeDto> {
   public translate(primitives: DurationPrimitives): MagnitudeDto {
     const totalSeconds = Number(primitives.value)
     const formatted = this.formatDuration(totalSeconds)

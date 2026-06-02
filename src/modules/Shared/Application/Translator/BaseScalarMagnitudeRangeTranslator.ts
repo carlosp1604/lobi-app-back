@@ -1,11 +1,11 @@
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import { MagnitudeRangePrimitives } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/MagnitudeRange'
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
-import { MagnitudeQueryDto, MagnitudeRangeQueryDto } from '~/src/modules/Shared/Application/DTO/MagnitudeQueryDto'
+import { MagnitudeDto, MagnitudeRangeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
 
 export abstract class BaseScalarMagnitudeRangeTranslator<T extends MagnitudeRangePrimitives<unknown>>
-  implements ApplicationDtoTranslatorInterface<T, MagnitudeRangeQueryDto>
+  implements DtoTranslatorInterface<T, MagnitudeRangeDto>
 {
-  public translate(primitives: T): MagnitudeRangeQueryDto {
+  public translate(primitives: T): MagnitudeRangeDto {
     const { start, end, average } = primitives
 
     const translatedStart = this.translateScalar(start)
@@ -16,7 +16,6 @@ export abstract class BaseScalarMagnitudeRangeTranslator<T extends MagnitudeRang
     const isSingleValue = this.isSingleValue(start, end)
 
     return {
-      type: 'range',
       start: translatedStart,
       end: translatedEnd,
       average: translatedAvg,
@@ -25,6 +24,6 @@ export abstract class BaseScalarMagnitudeRangeTranslator<T extends MagnitudeRang
     }
   }
 
-  protected abstract translateScalar(raw: T['start']): MagnitudeQueryDto
+  protected abstract translateScalar(raw: T['start']): MagnitudeDto
   protected abstract isSingleValue(start: T['start'], end: T['end']): boolean
 }

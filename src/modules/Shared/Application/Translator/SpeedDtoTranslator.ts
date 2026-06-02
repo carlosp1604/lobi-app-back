@@ -1,9 +1,9 @@
-import { SpeedConverter } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/SpeedConverter'
 import { MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
+import { SpeedConverter } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/SpeedConverter'
 import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import { Speed, SpeedPrimitives, SpeedUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Speed'
 
-export class SpeedQueryDtoTranslator implements DtoTranslatorInterface<SpeedPrimitives, MagnitudeDto> {
+export class SpeedDtoTranslator implements DtoTranslatorInterface<SpeedPrimitives, MagnitudeDto> {
   public translate(primitives: SpeedPrimitives): MagnitudeDto {
     const value = primitives.value
     const unit = primitives.unit as SpeedUnit
@@ -15,7 +15,6 @@ export class SpeedQueryDtoTranslator implements DtoTranslatorInterface<SpeedPrim
     const formattedMph = `${speedInMph.round(2).toFixed()} mi/h`
 
     return {
-      type: 'scalar',
       value: speedInKmh.toFixed(),
       unit: Speed.DEFAULT_UNIT,
       conversions: {

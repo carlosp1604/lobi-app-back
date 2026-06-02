@@ -43,20 +43,10 @@ export class LeaveActivityCommandHandler {
       const participant = await this.participantRepository.findById(userId, context)
 
       if (!participant) {
-        this.loggerService.warn('Inconsistent state', {
-          id: userId.value,
-          reason: 'Participant not found (user)',
-        })
-
         return fail(LeaveActivityCommandError.userNotFound())
       }
 
       if (!participant.isActive()) {
-        this.loggerService.warn('Inconsistent state', {
-          id: userId.value,
-          reason: 'Participant is disabled (user)',
-        })
-
         return fail(LeaveActivityCommandError.userDisabled())
       }
 

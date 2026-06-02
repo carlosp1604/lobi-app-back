@@ -1,3 +1,3 @@
-import { BaseCapabilityDto } from '~/src/modules/Activity/Application/Config/Capability/CapabilityDto'
+import { MagnitudeRangePrimitives } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/MagnitudeRange'
 
-export interface MagnitudeRangeCapability extends BaseCapabilityDto {}
+export type MagnitudeRangeCapabilityPrimitives<T> = MagnitudeRangePrimitives<T>

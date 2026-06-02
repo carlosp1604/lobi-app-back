@@ -1,4 +1,4 @@
-import { SportLevelQueryDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelQueryDto'
+import { SportLevelDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelDto'
 import { RPECapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/RPECapability'
 import { PaceCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/PaceCapability'
 import { RouteCapabilityInputProps } from '~/src/modules/Activity/Domain/Config/Capability/RouteCapability'
@@ -34,7 +34,7 @@ export type CapabilityPayloadContractTypeMap = EnforceAvailableCapabilityKeys<{
   location: CapabilityPayloadContractTypes<LocationCapabilityInputProps>
   location_range: CapabilityPayloadContractTypes<LocationRangeCapabilityInputProps>
   pace: CapabilityPayloadContractTypes<PaceCapabilityInputProps>
-  ranking: CapabilityPayloadContractTypes<RankingCapabilityInputProps, Array<SportLevelQueryDto>>
+  ranking: CapabilityPayloadContractTypes<RankingCapabilityInputProps, Array<SportLevelDto>>
   route: CapabilityPayloadContractTypes<RouteCapabilityInputProps>
   rpe: CapabilityPayloadContractTypes<RPECapabilityInputProps>
   speed: CapabilityPayloadContractTypes<SpeedCapabilityInputProps>

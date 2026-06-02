@@ -4,7 +4,7 @@ import { AvailableCapability } from '~/src/modules/Activity/Domain/Config/Capabi
 import { PaceCapabilityPrimitives } from '~/src/modules/Activity/Domain/Config/Capability/PaceCapability'
 import { BaseMagnitudeRangeCapabilityDtoTranslator } from '~/src/modules/Activity/Application/Translator/Config/Capability/BaseMagnitudeRangeCapabilityDtoTranslator'
 
-export class PaceCapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<PaceCapabilityPrimitives> {
+export class PaceCapabilityDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<PaceCapabilityPrimitives> {
   public static readonly capabilityName = 'pace'
 
   protected translateScalar(primitives: PaceCapabilityPrimitives['start']): MagnitudeDto {
@@ -16,6 +16,6 @@ export class PaceCapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapabili
   }
 
   protected getCapabilityName(): AvailableCapability {
-    return PaceCapabilityQueryDtoTranslator.capabilityName
+    return PaceCapabilityDtoTranslator.capabilityName
   }
 }

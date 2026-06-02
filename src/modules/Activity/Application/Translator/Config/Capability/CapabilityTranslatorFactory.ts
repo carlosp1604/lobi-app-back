@@ -1,4 +1,4 @@
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import {
   CapabilityTranslatorRegistry,
   CapabilityTranslatorTypeMap,
@@ -7,7 +7,7 @@ import {
 export class CapabilityTranslatorFactory {
   public getTranslator<K extends keyof CapabilityTranslatorTypeMap>(
     capability: K,
-  ): ApplicationDtoTranslatorInterface<CapabilityTranslatorTypeMap[K]['input'], CapabilityTranslatorTypeMap[K]['output']> {
+  ): DtoTranslatorInterface<CapabilityTranslatorTypeMap[K]['input'], CapabilityTranslatorTypeMap[K]['output']> {
     return CapabilityTranslatorRegistry.getTranslator(capability)
   }
 }

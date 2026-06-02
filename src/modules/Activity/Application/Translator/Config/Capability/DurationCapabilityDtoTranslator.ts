@@ -4,7 +4,7 @@ import { DurationDtoTranslator } from '~/src/modules/Shared/Application/Translat
 import { DurationCapabilityPrimitives } from '~/src/modules/Activity/Domain/Config/Capability/DurationCapability'
 import { BaseMagnitudeRangeCapabilityDtoTranslator } from '~/src/modules/Activity/Application/Translator/Config/Capability/BaseMagnitudeRangeCapabilityDtoTranslator'
 
-export class DurationCapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<DurationCapabilityPrimitives> {
+export class DurationCapabilityDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<DurationCapabilityPrimitives> {
   public static readonly capabilityName = 'duration'
 
   protected translateScalar(primitives: DurationCapabilityPrimitives['start']): MagnitudeDto {
@@ -16,6 +16,6 @@ export class DurationCapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapa
   }
 
   protected getCapabilityName(): AvailableCapability {
-    return DurationCapabilityQueryDtoTranslator.capabilityName
+    return DurationCapabilityDtoTranslator.capabilityName
   }
 }

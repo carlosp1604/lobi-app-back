@@ -37,7 +37,11 @@ export class PostgreSqlActivityFinder implements ActivityFinderInterface {
           END as host,
 
           (
-            SELECT json_build_object('id', p.id, 'joinedAt', p.joined_at, 'leftAt', p.left_at)
+            SELECT json_build_object(
+              'id', p.id,
+              'joinedAt', to_char(p.joined_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+              'userId', p.user_id
+            )
             FROM participations p
             WHERE p.activity_id = a.id
               AND p.user_id = $2

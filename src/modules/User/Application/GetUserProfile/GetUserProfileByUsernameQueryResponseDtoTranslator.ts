@@ -1,9 +1,9 @@
 import { UserProfileDetailsReadModel } from '~/src/modules/User/Application/ReadModel/UserProfileDetailsReadModel'
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import { GetUserProfileByUsernameQueryResponseDto } from '~/src/modules/User/Application/GetUserProfile/GetUserProfileByUsernameQueryResponseDto'
 
 export class GetUserProfileByUsernameQueryResponseDtoTranslator
-  implements ApplicationDtoTranslatorInterface<UserProfileDetailsReadModel, GetUserProfileByUsernameQueryResponseDto>
+  implements DtoTranslatorInterface<UserProfileDetailsReadModel, GetUserProfileByUsernameQueryResponseDto>
 {
   public translate(data: UserProfileDetailsReadModel): GetUserProfileByUsernameQueryResponseDto {
     return {

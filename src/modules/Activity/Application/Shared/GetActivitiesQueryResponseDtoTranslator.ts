@@ -1,16 +1,15 @@
 import { Duration } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Duration'
 import { Identifier } from '~/src/modules/Shared/Domain/ValueObject/Identifier'
-import { ActivityHostQueryDto } from '~/src/modules/Activity/Application/Dto/ActivityHostQueryDto'
+import { ActivityHostDto } from '~/src/modules/Activity/Application/Dto/ActivityHostDto'
 import { ActivityListReadModel } from '~/src/modules/Activity/Application/ReadModel/ActivityListReadModel'
-import { SportQueryDtoTranslator } from '~/src/modules/Activity/Application/Translator/Sport/SportQueryDtoTranslator'
-import { DurationQueryDtoTranslator } from '~/src/modules/Shared/Application/Translator/DurationQueryDtoTranslator'
-import { LocationQueryDtoTranslator } from '~/src/modules/Shared/Application/Translator/LocationQueryDtoTranslator'
-import { ActivityParticipationQueryDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationQueryDto'
-import { ActivityHostQueryDtoTranslator } from '~/src/modules/Activity/Application/Translator/ActivityHostQueryDtoTranslator'
-import { RankingChoiceQueryDtoTranslator } from '~/src/modules/Activity/Application/Translator/Sport/RankingChoiceQueryDtoTranslator'
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
-import { LocationQueryDto, MagnitudeQueryDto } from '~/src/modules/Shared/Application/DTO/MagnitudeQueryDto'
-import { ActivityParticipationQueryDtoTranslator } from '~/src/modules/Activity/Application/Translator/Participation/ActivityParticipationQueryDtoTranslator'
+import { DurationDtoTranslator } from '~/src/modules/Shared/Application/Translator/DurationDtoTranslator'
+import { LocationDtoTranslator } from '~/src/modules/Shared/Application/Translator/LocationDtoTranslator'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
+import { SportDtoTranslator } from '~/src/modules/Activity/Application/Translator/Sport/SportDtoTranslator'
+import { LocationDto, MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
+import { ActivityParticipationDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationDto'
+import { ActivityHostDtoTranslator } from '~/src/modules/Activity/Application/Translator/ActivityHostDtoTranslator'
+import { ActivityParticipationDtoTranslator } from '~/src/modules/Activity/Application/Translator/Participation/ActivityParticipationDtoTranslator'
 import {
   GetActivitiesCriteria,
   GetActivitiesCriteriaActiveFilters,
@@ -21,6 +20,7 @@ import {
   GetActivitiesQueryResponseDto,
   TeamConfigQueryDto,
 } from '~/src/modules/Activity/Application/Shared/GetActivitiesQueryResponseDto'
+import { SportLevelDtoTranslator } from '~/src/modules/Activity/Application/Translator/Sport/SportLevelDtoTranslator'
 
 export interface GetActivitiesResponseContext {
   activityList: ActivityListReadModel
@@ -29,7 +29,7 @@ export interface GetActivitiesResponseContext {
 }
 
 export class GetActivitiesQueryResponseDtoTranslator
-  implements ApplicationDtoTranslatorInterface<GetActivitiesResponseContext, GetActivitiesQueryResponseDto>
+  implements DtoTranslatorInterface<GetActivitiesResponseContext, GetActivitiesQueryResponseDto>
 {
   public translate(context: GetActivitiesResponseContext): GetActivitiesQueryResponseDto {
     const { activityList, criteria, userId } = context
@@ -46,25 +46,25 @@ export class GetActivitiesQueryResponseDtoTranslator
         isParticipant = true
       }
 
-      let location: LocationQueryDto | null = null
+      let location: LocationDto | null = null
 
       if (rawData.location_geojson) {
-        location = new LocationQueryDtoTranslator().translate({
+        location = new LocationDtoTranslator().translate({
           lng: String(rawData.location_geojson.coordinates[0]),
           lat: String(rawData.location_geojson.coordinates[1]),
         })
       }
 
-      let duration: { min: MagnitudeQueryDto; max: MagnitudeQueryDto } | null = null
+      let duration: { min: MagnitudeDto; max: MagnitudeDto } | null = null
 
       if (rawData.min_duration && rawData.max_duration) {
         duration = {
-          min: new DurationQueryDtoTranslator().translate({
+          min: new DurationDtoTranslator().translate({
             value: String(rawData.min_duration),
             normalizedValue: String(rawData.min_duration),
             unit: Duration.DEFAULT_UNIT,
           }),
-          max: new DurationQueryDtoTranslator().translate({
+          max: new DurationDtoTranslator().translate({
             value: String(rawData.max_duration),
             normalizedValue: String(rawData.max_duration),
             unit: Duration.DEFAULT_UNIT,
@@ -72,15 +72,15 @@ export class GetActivitiesQueryResponseDtoTranslator
         }
       }
 
-      let activityHost: ActivityHostQueryDto | null = null
-      let currentParticipation: ActivityParticipationQueryDto | null = null
+      let activityHost: ActivityHostDto | null = null
+      let currentParticipation: ActivityParticipationDto | null = null
 
       if (rawData.host) {
-        activityHost = new ActivityHostQueryDtoTranslator().translate(rawData.host)
+        activityHost = new ActivityHostDtoTranslator().translate(rawData.host)
       }
 
       if (rawData.current_participation) {
-        currentParticipation = new ActivityParticipationQueryDtoTranslator().translate(rawData.current_participation)
+        currentParticipation = new ActivityParticipationDtoTranslator().translate(rawData.current_participation)
       }
 
       let teamConfig: TeamConfigQueryDto | null = null
@@ -92,6 +92,8 @@ export class GetActivitiesQueryResponseDtoTranslator
           playersPerTeam: rawData.team_config.playersPerTeam,
         }
       }
+
+      const levels = rawData.levels.map((level) => new SportLevelDtoTranslator().translate(level))
 
       return {
         id: rawData.id,
@@ -107,11 +109,11 @@ export class GetActivitiesQueryResponseDtoTranslator
         currentParticipants: rawData.current_participants,
         createdAt: rawData.created_at,
         scheduledAt: rawData.scheduled_at,
-        levels: new RankingChoiceQueryDtoTranslator().translate(rawData.levels),
+        levels,
         teamConfig,
         participation: currentParticipation,
         host: activityHost,
-        sport: new SportQueryDtoTranslator().translate(rawData.sport),
+        sport: new SportDtoTranslator().translate(rawData.sport),
         isHost,
         isParticipant,
       }

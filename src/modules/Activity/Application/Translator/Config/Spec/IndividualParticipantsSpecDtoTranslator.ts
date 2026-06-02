@@ -1,12 +1,17 @@
 import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
-import { IndividualParticipantsConfigDto } from '~/src/modules/Activity/Application/Dto/ParticipantsConfigDto'
+import { IndividualParticipantsSpecDto } from '~/src/modules/Activity/Application/Dto/Config/Spec/SpecDto'
 import { IndividualParticipantsSpecPrimitives } from '~/src/modules/Activity/Domain/Config/Spec/IndividualParticipantsSpec'
 import { IndividualParticipantsConfigDtoTranslator } from '~/src/modules/Activity/Application/Translator/IndividualParticipantsConfigDtoTranslator'
 
-export class IndividualParticipantsSpecQueryDtoTranslator
-  implements DtoTranslatorInterface<IndividualParticipantsSpecPrimitives, IndividualParticipantsConfigDto>
+export class IndividualParticipantsSpecDtoTranslator
+  implements DtoTranslatorInterface<IndividualParticipantsSpecPrimitives, IndividualParticipantsSpecDto>
 {
-  public translate(primitives: IndividualParticipantsSpecPrimitives): IndividualParticipantsConfigDto {
-    return new IndividualParticipantsConfigDtoTranslator().translate(primitives)
+  public static readonly specName = 'individual_participants'
+
+  public translate(primitives: IndividualParticipantsSpecPrimitives): IndividualParticipantsSpecDto {
+    return {
+      name: IndividualParticipantsSpecDtoTranslator.specName,
+      data: new IndividualParticipantsConfigDtoTranslator().translate(primitives),
+    }
   }
 }

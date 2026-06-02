@@ -1,7 +1,7 @@
 import { TypeValidator } from '~/src/modules/Shared/Domain/TypeValidator'
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { SpecPayloadContractInterface } from '~/src/modules/Activity/Application/Config/Spec/SpecPayloadContractInterface'
-import { TeamParticipantsSpecSchemaDto } from '~/src/modules/Activity/Application/Dto/Config/Spec/ParticipantsSpecSchemaDto'
+import { TeamParticipantsSpecSchemaDto } from '~/src/modules/Activity/Application/Config/Spec/ParticipantsSpecSchemaDto'
 import { TeamParticipantsSpec, TeamParticipantsSpecInputProps } from '~/src/modules/Activity/Domain/Config/Spec/TeamParticipantsSpec'
 import { CapabilityPayloadValidationError } from '~/src/modules/Activity/Application/Config/Capability/CapabilityPayloadContractInterface'
 import { TeamParticipantsDefinitionReadModel } from '~/src/modules/Activity/Application/ReadModel/Sport/SportDetailsReadModel'

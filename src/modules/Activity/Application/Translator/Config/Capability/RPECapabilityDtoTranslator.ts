@@ -4,7 +4,7 @@ import { AvailableCapability } from '~/src/modules/Activity/Domain/Config/Capabi
 import { RPECapabilityPrimitives } from '~/src/modules/Activity/Domain/Config/Capability/RPECapability'
 import { BaseMagnitudeRangeCapabilityDtoTranslator } from '~/src/modules/Activity/Application/Translator/Config/Capability/BaseMagnitudeRangeCapabilityDtoTranslator'
 
-export class RPECapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<RPECapabilityPrimitives> {
+export class RPECapabilityDtoTranslator extends BaseMagnitudeRangeCapabilityDtoTranslator<RPECapabilityPrimitives> {
   public static readonly capabilityName = 'rpe'
 
   protected translateScalar(primitives: RPECapabilityPrimitives['start']): MagnitudeDto {
@@ -16,6 +16,6 @@ export class RPECapabilityQueryDtoTranslator extends BaseMagnitudeRangeCapabilit
   }
 
   protected getCapabilityName(): AvailableCapability {
-    return RPECapabilityQueryDtoTranslator.capabilityName
+    return RPECapabilityDtoTranslator.capabilityName
   }
 }

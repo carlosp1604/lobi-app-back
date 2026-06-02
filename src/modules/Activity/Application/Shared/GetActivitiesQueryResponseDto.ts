@@ -1,8 +1,8 @@
-import { SportQueryDto } from '~/src/modules/Activity/Application/Dto/Sport/SportQueryDto'
-import { ActivityHostQueryDto } from '~/src/modules/Activity/Application/Dto/ActivityHostQueryDto'
-import { RankingChoiceQueryDto } from '~/src/modules/Activity/Application/Dto/Sport/RankingQueryDto'
-import { ActivityParticipationQueryDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationQueryDto'
-import { LocationQueryDto, MagnitudeQueryDto } from '~/src/modules/Shared/Application/DTO/MagnitudeQueryDto'
+import { SportDto } from '~/src/modules/Activity/Application/Dto/Sport/SportDto'
+import { SportLevelDto } from '~/src/modules/Activity/Application/Dto/Sport/SportLevelDto'
+import { ActivityHostDto } from '~/src/modules/Activity/Application/Dto/ActivityHostDto'
+import { ActivityParticipationDto } from '~/src/modules/Activity/Application/Dto/ActivityParticipationDto'
+import { LocationDto, MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
 
 export type GetActivitiesQueryActiveFiltersDto = Record<string, unknown>
 export interface GetActivitiesQueryPaginationDto {
@@ -25,23 +25,23 @@ export interface ActivityListItemQueryDto {
   readonly title: string
   readonly description: string | null
   readonly status: string
-  readonly location: LocationQueryDto | null
+  readonly location: LocationDto | null
   readonly capacity: {
     readonly min: number
     readonly max: number
   }
   readonly duration: {
-    readonly min: MagnitudeQueryDto
-    readonly max: MagnitudeQueryDto
+    readonly min: MagnitudeDto
+    readonly max: MagnitudeDto
   } | null
   readonly currentParticipants: number
   readonly createdAt: string
   readonly scheduledAt: string
-  readonly levels: RankingChoiceQueryDto
+  readonly levels: Array<SportLevelDto>
   readonly teamConfig: TeamConfigQueryDto | null
-  readonly participation: ActivityParticipationQueryDto | null
-  readonly host: ActivityHostQueryDto | null
-  readonly sport: SportQueryDto
+  readonly participation: ActivityParticipationDto | null
+  readonly host: ActivityHostDto | null
+  readonly sport: SportDto
   readonly isHost: boolean
   readonly isParticipant: boolean
 }

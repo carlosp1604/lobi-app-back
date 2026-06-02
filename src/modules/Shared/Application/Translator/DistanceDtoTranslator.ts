@@ -3,7 +3,7 @@ import { DistanceConverter } from '~/src/modules/Shared/Domain/ValueObject/Magni
 import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import { Distance, DistancePrimitives, DistanceUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Distance'
 
-export class DistanceQueryDtoTranslator implements DtoTranslatorInterface<DistancePrimitives, MagnitudeDto> {
+export class DistanceDtoTranslator implements DtoTranslatorInterface<DistancePrimitives, MagnitudeDto> {
   public translate(primitives: DistancePrimitives): MagnitudeDto {
     const value = primitives.value
     const unit = primitives.unit as DistanceUnit

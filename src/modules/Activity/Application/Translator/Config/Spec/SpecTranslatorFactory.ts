@@ -1,4 +1,4 @@
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import {
   SpecTranslatorRegistry,
   SpecTranslatorTypeMap,
@@ -7,7 +7,7 @@ import {
 export class SpecTranslatorFactory {
   public getTranslator<K extends keyof SpecTranslatorTypeMap>(
     spec: K,
-  ): ApplicationDtoTranslatorInterface<SpecTranslatorTypeMap[K]['input'], SpecTranslatorTypeMap[K]['output']> {
+  ): DtoTranslatorInterface<SpecTranslatorTypeMap[K]['input'], SpecTranslatorTypeMap[K]['output']> {
     return SpecTranslatorRegistry.getTranslator(spec)
   }
 }

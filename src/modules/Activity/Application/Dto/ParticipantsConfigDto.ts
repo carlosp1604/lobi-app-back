@@ -1,12 +1,12 @@
 export type ParticipationConfigType = 'individual' | 'team'
 
-export interface IndividualParticipantsConfigQueryDto {
+export interface IndividualParticipantsConfigDto {
   readonly type: ParticipationConfigType
   readonly minPlayers: number
   readonly maxPlayers: number
 }
 
-export interface TeamParticipantsConfigQueryDto {
+export interface TeamParticipantsConfigDto {
   readonly type: ParticipationConfigType
   readonly minPlayers: number
   readonly minTeams: number

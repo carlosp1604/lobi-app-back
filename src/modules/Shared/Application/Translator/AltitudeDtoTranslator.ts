@@ -1,9 +1,9 @@
-import { AltitudeConverter } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/AltitudeConverter'
 import { MagnitudeDto } from '~/src/modules/Shared/Application/DTO/MagnitudeDto'
-import { ApplicationDtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/ApplicationDtoTranslatorInterface'
+import { AltitudeConverter } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Converter/AltitudeConverter'
+import { DtoTranslatorInterface } from '~/src/modules/Shared/Application/Translator/DtoTranslatorInterface'
 import { Altitude, AltitudePrimitives, AltitudeUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Altitude'
 
-export class AltitudeQueryDtoTranslator implements ApplicationDtoTranslatorInterface<AltitudePrimitives, MagnitudeDto> {
+export class AltitudeDtoTranslator implements DtoTranslatorInterface<AltitudePrimitives, MagnitudeDto> {
   public translate(primitives: AltitudePrimitives): MagnitudeDto {
     const value = primitives.value
     const unit = primitives.unit as AltitudeUnit

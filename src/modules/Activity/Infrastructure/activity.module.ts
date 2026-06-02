@@ -239,7 +239,6 @@ import {
         participationRepository: ParticipationRepositoryInterface,
         clockService: ClockServiceInterface,
         unitOfWork: UnitOfWork,
-        loggerFactory: LoggerFactoryInterface,
         idGenerator: IdGeneratorServiceInterface,
       ) => {
         return new JoinActivityCommandHandler(
@@ -248,19 +247,10 @@ import {
           participationRepository,
           clockService,
           unitOfWork,
-          loggerFactory.createLogger(JoinActivityCommandHandler.name),
           idGenerator,
         )
       },
-      inject: [
-        PARTICIPANT_REPOSITORY,
-        ACTIVITY_REPOSITORY,
-        PARTICIPATION_REPOSITORY,
-        CLOCK_SERVICE,
-        UNIT_OF_WORK,
-        LOGGER_FACTORY,
-        ID_GENERATOR,
-      ],
+      inject: [PARTICIPANT_REPOSITORY, ACTIVITY_REPOSITORY, PARTICIPATION_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, ID_GENERATOR],
     },
     {
       provide: LEAVE_ACTIVITY_COMMAND_HANDLER,
@@ -300,19 +290,11 @@ import {
         activityRepository: ActivityRepositoryInterface,
         clockService: ClockServiceInterface,
         unitOfWork: UnitOfWork,
-        loggerFactory: LoggerFactoryInterface,
         idGenerator: IdGeneratorServiceInterface,
       ) => {
-        return new CancelActivityCommandHandler(
-          participantRepository,
-          activityRepository,
-          clockService,
-          unitOfWork,
-          loggerFactory.createLogger(CancelActivityCommandHandler.name),
-          idGenerator,
-        )
+        return new CancelActivityCommandHandler(participantRepository, activityRepository, clockService, unitOfWork, idGenerator)
       },
-      inject: [PARTICIPANT_REPOSITORY, ACTIVITY_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, LOGGER_FACTORY, ID_GENERATOR],
+      inject: [PARTICIPANT_REPOSITORY, ACTIVITY_REPOSITORY, CLOCK_SERVICE, UNIT_OF_WORK, ID_GENERATOR],
     },
   ],
   exports: [
