@@ -49,6 +49,8 @@ export const EnvSchema = z
     API_DOCS_DESCRIPTION: z.string(),
     API_DOCS_VERSION: z.string(),
 
+    AUTH_COOKIE_SECURE: envBoolean().optional().default(false),
+    AUTH_COOKIE_DOMAIN: z.string().optional().default(''),
     ACCESS_TTL_MS: z.coerce
       .number()
       .int()

@@ -131,7 +131,7 @@ export class ActivityModelTranslator {
 
   private locationToDomain(rawLocation: RawLocation): Location {
     const lng = rawLocation.coordinates[0]
-    const lat = rawLocation.coordinates[0]
+    const lat = rawLocation.coordinates[1]
 
     return Location.fromPrimitives({ lng: String(lng), lat: String(lat) })
   }

@@ -712,7 +712,8 @@ export class AuthController {
       path: '/',
       sameSite: 'lax' as const,
       httpOnly: true,
-      secure: this.configService.get('isProduction', { infer: true }),
+      secure: this.configService.get('AUTH_COOKIE_SECURE', { infer: true }),
+      domain: this.configService.get('AUTH_COOKIE_DOMAIN', { infer: true }) || undefined,
     }
 
     const refreshTokenCookieName = this.configService.get('REFRESH_COOKIE_NAME', { infer: true })
@@ -733,7 +734,8 @@ export class AuthController {
       path: '/',
       sameSite: 'lax' as const,
       httpOnly: true,
-      secure: this.configService.get('isProduction', { infer: true }),
+      secure: this.configService.get('AUTH_COOKIE_SECURE', { infer: true }),
+      domain: this.configService.get('AUTH_COOKIE_DOMAIN', { infer: true }) || undefined,
     }
 
     const refreshTokenCookieName = this.configService.get('REFRESH_COOKIE_NAME', { infer: true })

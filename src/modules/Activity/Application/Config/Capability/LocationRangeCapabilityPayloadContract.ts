@@ -23,7 +23,7 @@ export class LocationRangeCapabilityPayloadContract implements CapabilityPayload
   public validate(rawData: unknown): Result<LocationRangeCapabilityInputProps, CapabilityPayloadValidationError> {
     const typeCheck = TypeValidator.validate<LocationRangeCapabilityRawData>(rawData, {
       start: { schema: { lat: 'string', lng: 'string' }, type: 'object' },
-      end: { schema: { lat: 'string', lng: 'string' }, type: 'object', optional: true },
+      end: { schema: { lat: 'string', lng: 'string' }, type: 'object' },
     })
 
     if (!typeCheck.success) {

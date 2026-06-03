@@ -104,7 +104,8 @@ describe('AuthController', () => {
     REFRESH_COOKIE_NAME: 'x-refresh-token',
     ACCESS_COOKIE_NAME: 'x-access-token',
     INVALIDATED_SESSION_HEADER_NAME: 'x-session-invalidated',
-    isProduction: false,
+    AUTH_COOKIE_SECURE: false,
+    AUTH_COOKIE_DOMAIN: '',
   })
 
   const expectedLoginRefreshResponse = {
@@ -156,8 +157,9 @@ describe('AuthController', () => {
   }
 
   const assertAuthCookiesWereSet = (accessCookieValue: string, refreshCookieValue: string) => {
-    expect(mockedConfigService.get).toHaveBeenCalledTimes(3)
-    expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledTimes(4)
+    expect(mockedConfigService.get).toHaveBeenCalledWith('AUTH_COOKIE_SECURE', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledWith('AUTH_COOKIE_DOMAIN', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('ACCESS_COOKIE_NAME', { infer: true })
     expect(mockedResponse.setCookie).toHaveBeenCalledTimes(2)
@@ -178,8 +180,9 @@ describe('AuthController', () => {
   }
 
   const assertAuthCookiesWereCleared = () => {
-    expect(mockedConfigService.get).toHaveBeenCalledTimes(4)
-    expect(mockedConfigService.get).toHaveBeenCalledWith('isProduction', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledTimes(5)
+    expect(mockedConfigService.get).toHaveBeenCalledWith('AUTH_COOKIE_SECURE', { infer: true })
+    expect(mockedConfigService.get).toHaveBeenCalledWith('AUTH_COOKIE_DOMAIN', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('REFRESH_COOKIE_NAME', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('ACCESS_COOKIE_NAME', { infer: true })
     expect(mockedConfigService.get).toHaveBeenCalledWith('INVALIDATED_SESSION_HEADER_NAME', { infer: true })
