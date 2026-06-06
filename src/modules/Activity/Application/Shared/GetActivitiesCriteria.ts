@@ -7,7 +7,7 @@ import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivityStatus, ValidActivityStatus } from '~/src/modules/Activity/Domain/ValueObject/ActivityStatus'
 
 export const GetActivitiesCriteriaValidSortDirection = ['asc', 'desc'] as const
-export const GetActivitiesCriteriaValidSortBy = ['date', 'capacity', 'level'] as const
+export const GetActivitiesCriteriaValidSortBy = ['date', 'capacity'] as const
 
 export type GetActivitiesCriteriaSortDirection = (typeof GetActivitiesCriteriaValidSortDirection)[number]
 export type GetActivitiesCriteriaSortBy = (typeof GetActivitiesCriteriaValidSortBy)[number]
@@ -91,6 +91,7 @@ export class GetActivitiesCriteria {
   private static readonly defaultSortDirection: GetActivitiesCriteriaSortDirection = 'desc'
   private static readonly defaultSortBy: GetActivitiesCriteriaSortBy = 'date'
 
+  private static readonly defaultMaxDateSeconds = IntegerNumber.create(604800)
   private static readonly minMaxDateSeconds = IntegerNumber.create(900)
   private static readonly maxMaxDateSeconds = IntegerNumber.create(604800)
 
@@ -157,6 +158,7 @@ export class GetActivitiesCriteria {
     }
 
     const locationResult = this.validateLocationString(query.location)
+
     if (!locationResult.success) {
       const error = locationResult.error
 
@@ -171,7 +173,8 @@ export class GetActivitiesCriteria {
     const sortDirection = this.validateSortDirection(query.sortDirection)
     const sortBy = this.validateSortBy(query.sortBy)
 
-    const maxDateSeconds = this.validateIntegerNumberWithoutDefault(
+    const maxDateSeconds = this.validateIntegerNumber(
+      this.defaultMaxDateSeconds,
       this.minMaxDateSeconds,
       this.maxMaxDateSeconds,
       query.maxDateSeconds,
@@ -305,7 +308,7 @@ export class GetActivitiesCriteria {
       return fail({ param: 'location', message: 'Location must be a string in "lat,lng" format', type: 'validation' })
     }
 
-    const parts = value.split(',').map((p) => p.trim())
+    const parts = value.split(',').map((p) => p.trim().replace('"', ''))
 
     if (parts.length !== 2) {
       return fail({ param: 'location', message: 'Location must be a string in "lat,lng" format', type: 'validation' })

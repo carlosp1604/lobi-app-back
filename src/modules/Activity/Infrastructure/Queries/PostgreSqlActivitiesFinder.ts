@@ -142,7 +142,7 @@ export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
             'minTeams',       (a.activity_config->'specs'->'team_participants'->>'minTeams')::int,
             'maxTeams',       (a.activity_config->'specs'->'team_participants'->>'maxTeams')::int,
             'playersPerTeam', (a.activity_config->'specs'->'team_participants'->>'playersPerTeam')::int
-                 )
+            )
           ELSE NULL
           END as team_config,
 
@@ -164,7 +164,7 @@ export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
           SELECT json_build_object(
             'id', p.id,
             'userId', p.user_id,
-            'joinedAt', to_char(p.joined_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+            'joinedAt', to_char(p.joined_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
           )
           FROM participations p
           WHERE p.activity_id = a.id
@@ -179,7 +179,7 @@ export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
       INNER JOIN sports s ON s.id = a.sport_id
       LEFT JOIN users h ON h.id = a.host_id
       ${whereSQL}
-      ORDER BY ${sortColumn} ${sortDir}
+      ORDER BY ${sortColumn} ${sortDir}, a.id DESC
       ${limitSQL}
     `
 

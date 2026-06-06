@@ -32,8 +32,6 @@ export class TeamParticipantsSpecPayloadContract
 
     const dataValue = typeCheck.value
 
-    console.log(dataValue)
-
     return success({
       minPlayers: dataValue.minPlayers,
       minTeams: dataValue.minTeams,
