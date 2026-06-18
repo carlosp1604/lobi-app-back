@@ -57,28 +57,41 @@ export class PostgreSqlActivitiesFinder implements ActivitiesFinderInterface {
       whereClauses.push(`a.sport_id = $${values.length}`)
     }
 
-    const userClauses: string[] = []
-
-    if (criteria.hostId) {
+    if (criteria.hostId && criteria.participantId) {
       values.push(criteria.hostId.value)
-      userClauses.push(`a.host_id = $${values.length}`)
-    }
+      const hostIdIndex = values.length
 
-    if (criteria.participantId) {
       values.push(criteria.participantId.value)
-      userClauses.push(`
+      const participantIdIndex = values.length
+
+      whereClauses.push(`(
+        a.host_id = $${hostIdIndex}
+        OR
         EXISTS (
           SELECT 1
           FROM participations p
           WHERE p.activity_id = a.id
-            AND p.user_id = $${values.length}
+            AND p.user_id = $${participantIdIndex}
+            AND p.left_at IS NULL
+        )
+      )`)
+    } else if (criteria.participantId) {
+      values.push(criteria.participantId.value)
+      const participantIndex = values.length
+
+      whereClauses.push(`
+        EXISTS (
+          SELECT 1
+          FROM participations p
+          WHERE p.activity_id = a.id
+            AND p.user_id = $${participantIndex}
             AND p.left_at IS NULL
         )
       `)
-    }
-
-    if (userClauses.length > 0) {
-      whereClauses.push(`(${userClauses.join(' OR ')})`)
+      whereClauses.push(`a.host_id != $${participantIndex}`)
+    } else if (criteria.hostId) {
+      values.push(criteria.hostId.value)
+      whereClauses.push(`a.host_id = $${values.length}`)
     }
 
     if (criteria.minDuration) {
