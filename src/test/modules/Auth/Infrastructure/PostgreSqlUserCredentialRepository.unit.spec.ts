@@ -40,6 +40,7 @@ describe('PostgreSqlUserCredentialRepository', () => {
       updated_at: now,
       failed_attempts: 0,
       locked_until: null,
+      last_modified_at: null,
       last_login_at: null,
     })
 

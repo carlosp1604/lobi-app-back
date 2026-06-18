@@ -62,9 +62,10 @@ describe('PostgreSqlUserCredentialRepository', () => {
       expect(savedRow!.failed_attempts).toBe(userCredential.failedAttempts)
       expect(savedRow!.locked_until).toEqual(userCredential.lockedUntil)
       expect(savedRow!.last_login_at).toEqual(userCredential.lastLoginAt)
+      expect(savedRow!.last_modified_at).toEqual(userCredential.lastModifiedAt)
     })
 
-    it('should throw error and not insert if credential already exists', async () => {
+    it('should throw error and not insert when credential already exists', async () => {
       const repository = new PostgreSqlUserCredentialRepository({ resolve: () => runner.manager } as TypeOrmManagerResolver)
       const context = new TypeOrmTxContext(runner.manager)
 

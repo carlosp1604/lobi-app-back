@@ -10,6 +10,7 @@ export class UserCredentialTestBuilder {
   private _failedAttempts = 0
   private _lockedUntil: Date | null = null
   private _lastLoginAt: Date | null = null
+  private _lastModifiedAt: Date | null = null
   private _createdAt = new Date()
   private _updatedAt = new Date()
 
@@ -38,6 +39,11 @@ export class UserCredentialTestBuilder {
     return this
   }
 
+  withLastModifiedAt(date: Date | null) {
+    this._lastModifiedAt = date
+    return this
+  }
+
   withCreatedAt(date: Date) {
     this._createdAt = date
     return this
@@ -55,6 +61,7 @@ export class UserCredentialTestBuilder {
       this._failedAttempts,
       this._lockedUntil,
       this._lastLoginAt,
+      this._lastModifiedAt,
       this._createdAt,
       this._updatedAt,
     )

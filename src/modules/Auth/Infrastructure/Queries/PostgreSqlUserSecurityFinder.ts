@@ -17,8 +17,7 @@ export class PostgreSqlUserSecurityFinder implements UserSecurityFinderInterface
       `
         SELECT
           json_build_object(
-            'created_at', uc.created_at,
-            'updated_at', uc.updated_at
+            'last_modified_at', uc.last_modified_at
           ) AS credential,
           COALESCE(
             (

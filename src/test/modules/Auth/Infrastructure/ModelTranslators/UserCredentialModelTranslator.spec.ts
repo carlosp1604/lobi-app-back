@@ -16,6 +16,7 @@ describe('UserCredentialModelTranslator', () => {
   const baseRaw = makeRawUserCredential({
     locked_until: now,
     last_login_at: now,
+    last_modified_at: now,
     created_at: now,
     updated_at: now,
   })
@@ -30,6 +31,7 @@ describe('UserCredentialModelTranslator', () => {
       expect(result.failedAttempts).toBe(raw.failed_attempts)
       expect(result.lockedUntil).toEqual(raw.locked_until)
       expect(result.lastLoginAt).toEqual(raw.last_login_at)
+      expect(result.lastModifiedAt).toEqual(raw.last_modified_at)
       expect(result.createdAt).toEqual(raw.created_at)
       expect(result.updatedAt).toEqual(raw.updated_at)
     }
@@ -43,13 +45,14 @@ describe('UserCredentialModelTranslator', () => {
     })
 
     it('should return the correct domain object when nullable fields are NULL', () => {
-      const raw = { ...baseRaw, locked_until: now, last_login_at: null }
+      const raw = { ...baseRaw, locked_until: null, last_login_at: null, last_modified_at: null }
 
       const result = UserCredentialModelTranslator.toDomain(raw)
 
       checkResult(result, raw)
-      expect(result.lockedUntil).toEqual(now)
+      expect(result.lockedUntil).toBeNull()
       expect(result.lastLoginAt).toBeNull()
+      expect(result.lastModifiedAt).toBeNull()
     })
 
     it('should propagate errors from ValueObject', () => {
@@ -77,6 +80,7 @@ describe('UserCredentialModelTranslator', () => {
       expect(result.failed_attempts).toBe(domain.failedAttempts)
       expect(result.locked_until).toEqual(domain.lockedUntil)
       expect(result.last_login_at).toEqual(domain.lastLoginAt)
+      expect(result.last_modified_at).toEqual(domain.lastModifiedAt)
       expect(result.created_at).toEqual(domain.createdAt)
       expect(result.updated_at).toEqual(domain.updatedAt)
     }
@@ -93,13 +97,14 @@ describe('UserCredentialModelTranslator', () => {
     })
 
     it('should return the correct raw model when nullable fields are not NULL', () => {
-      const userCredential = userCredentialTestBuilder.withLockedUntil(now).withLastLoginAt(now).build()
+      const userCredential = userCredentialTestBuilder.withLockedUntil(now).withLastLoginAt(now).withLastModifiedAt(now).build()
 
       const result = UserCredentialModelTranslator.toDatabase(userCredential)
 
       checkDatabaseResult(result, userCredential)
       expect(result.locked_until).toEqual(now)
       expect(result.last_login_at).toEqual(now)
+      expect(result.last_modified_at).toEqual(now)
     })
 
     it('returns the correct raw model when nullable fields are NULL', () => {
@@ -110,6 +115,7 @@ describe('UserCredentialModelTranslator', () => {
       checkDatabaseResult(result, userCredential)
       expect(result.locked_until).toBeNull()
       expect(result.last_login_at).toBeNull()
+      expect(result.last_modified_at).toBeNull()
     })
 
     it('does not mutate the input domain object', () => {
@@ -121,6 +127,7 @@ describe('UserCredentialModelTranslator', () => {
         failedAttempts: userCredential.failedAttempts,
         lockedUntil: userCredential.lockedUntil,
         lastLoginAt: userCredential.lastLoginAt,
+        lastModifiedAt: userCredential.lastModifiedAt,
         createdAt: userCredential.createdAt,
         updatedAt: userCredential.updatedAt,
       }
@@ -132,6 +139,7 @@ describe('UserCredentialModelTranslator', () => {
       expect(userCredential.failedAttempts).toBe(snapshot.failedAttempts)
       expect(userCredential.lockedUntil).toEqual(snapshot.lockedUntil)
       expect(userCredential.lastLoginAt).toEqual(snapshot.lastLoginAt)
+      expect(userCredential.lastModifiedAt).toEqual(snapshot.lastModifiedAt)
       expect(userCredential.createdAt).toEqual(snapshot.createdAt)
       expect(userCredential.updatedAt).toEqual(snapshot.updatedAt)
     })

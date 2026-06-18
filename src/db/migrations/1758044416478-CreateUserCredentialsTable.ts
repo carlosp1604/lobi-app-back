@@ -34,6 +34,11 @@ export class CreateUserCredentialsTable1758044416478 implements MigrationInterfa
             isNullable: true,
           },
           {
+            name: 'last_modified_at',
+            type: 'timestamptz',
+            isNullable: true,
+          },
+          {
             name: 'created_at',
             type: 'timestamptz',
             isNullable: false,

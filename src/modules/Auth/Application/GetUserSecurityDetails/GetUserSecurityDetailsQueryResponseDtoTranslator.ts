@@ -44,21 +44,15 @@ export class GetUserSecurityDetailsQueryResponseDtoTranslator
       }
     })
 
-    const credentialCreatedAt = new Date(readModel.credential.created_at)
-    const credentialUpdatedAt = new Date(readModel.credential.updated_at)
-
     let credential: UserCredentialDto
 
-    if (credentialCreatedAt.getTime() === credentialUpdatedAt.getTime()) {
+    if (readModel.credential.last_modified_at === null) {
       credential = {
-        lastModifiedAt: {
-          quantity: 0,
-          unit: 'minutes',
-        },
+        lastModifiedAt: null,
       }
     } else {
       credential = {
-        lastModifiedAt: this.calculateRelativeDate(now, credentialUpdatedAt),
+        lastModifiedAt: this.calculateRelativeDate(now, new Date(readModel.credential.last_modified_at)),
       }
     }
 

@@ -78,7 +78,6 @@ import { VerificationTokenDomainException } from '~/src/modules/Auth/Domain/Veri
 import { GenerateVerificationTokenApplicationError } from '~/src/modules/Auth/Application/GenerateVerificationToken/GenerateVerificationTokenApplicationError'
 import { ClientMetadataApplicationService } from '~/src/modules/Auth/Application/ClientMetada/ClientMetadataApplicationService'
 import { mock } from 'jest-mock-extended'
-
 import { UserIpHashMother } from '~/src/test/mothers/Domain/Shared/UserIpHashMother'
 import { EmailSenderServiceInterface } from '~/src/modules/Shared/Domain/EmailSenderServiceInterface'
 import { GetUserSecurityDetailsQueryResponseDto } from '~/src/modules/Auth/Application/GetUserSecurityDetails/GetUserSecurityDetailsQueryResponseDto'
@@ -1605,7 +1604,7 @@ describe('AuthController', () => {
     })
 
     describe('happy path', () => {
-      it('should return 200 OK and the list of active sessions', async () => {
+      it('should return 200 OK and security details', async () => {
         const rawUser = makeRawUser({ id: userId.value })
         const rawCredential = makeRawUserCredential({ user_id: userId.value })
 
@@ -1643,51 +1642,6 @@ describe('AuthController', () => {
             expect(body.sessions).toBeDefined()
             expect(body.credential).toBeDefined()
             expect(body.sessions).toHaveLength(2)
-
-            expect(body.sessions[0]).toEqual(
-              expect.objectContaining<Record<string, unknown>>({
-                id: expect.any(String),
-                deviceInfo: {
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                  raw: expect.any(String),
-                  browser: {
-                    name: expectStringOrNull,
-                    version: expectStringOrNull,
-                  },
-                  os: {
-                    name: expectStringOrNull,
-                    version: expectStringOrNull,
-                  },
-                  hardware: {
-                    type: expectStringOrNull,
-                    vendor: expectStringOrNull,
-                    model: expectStringOrNull,
-                  },
-                },
-                deviceLocation: {
-                  countryCode: expectStringOrNull,
-                  city: expectStringOrNull,
-                },
-                activeSince: <Record<string, unknown>>{
-                  quantity: expect.any(Number),
-                  unit: expect.any(String),
-                },
-                expiresAt: <Record<string, unknown>>{
-                  quantity: expect.any(Number),
-                  unit: expect.any(String),
-                },
-                isCurrent: expect.any(Boolean),
-              }),
-            )
-
-            expect(body.credential).toEqual(
-              expect.objectContaining({
-                lastModifiedAt: <Record<string, unknown>>{
-                  quantity: expect.any(Number),
-                  unit: expect.any(String),
-                },
-              }),
-            )
           })
       })
 

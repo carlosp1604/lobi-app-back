@@ -35,7 +35,7 @@ export interface UserActiveSessionsDto {
 }
 
 export interface UserCredentialDto {
-  readonly lastModifiedAt: RelativeDateDto
+  readonly lastModifiedAt: RelativeDateDto | null
 }
 
 export interface GetUserSecurityDetailsQueryResponseDto {

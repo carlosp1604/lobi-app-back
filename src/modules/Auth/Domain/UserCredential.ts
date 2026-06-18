@@ -7,6 +7,7 @@ export class UserCredential {
   private _failedAttempts: number
   private _lockedUntil: Date | null
   private _lastLoginAt: Date | null
+  private _lastModifiedAt: Date | null
   public readonly createdAt: Date
   private _updatedAt: Date
 
@@ -16,6 +17,7 @@ export class UserCredential {
     failedAttempts: number,
     lockedUntil: Date | null,
     lastLoginAt: Date | null,
+    lastModifiedAt: Date | null,
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -24,6 +26,7 @@ export class UserCredential {
     this._failedAttempts = failedAttempts
     this._lockedUntil = lockedUntil
     this._lastLoginAt = lastLoginAt
+    this._lastModifiedAt = lastModifiedAt
     this.createdAt = createdAt
     this._updatedAt = updatedAt
   }
@@ -34,6 +37,10 @@ export class UserCredential {
 
   public get lastLoginAt(): Date | null {
     return this._lastLoginAt
+  }
+
+  public get lastModifiedAt(): Date | null {
+    return this._lastModifiedAt
   }
 
   public get lockedUntil(): Date | null {
@@ -80,9 +87,10 @@ export class UserCredential {
     this._updatedAt = now
     this._failedAttempts = 0
     this._lockedUntil = null
+    this._lastModifiedAt = now
   }
 
   public static create(userId: Identifier, passwordHash: PasswordHash, now: Date): UserCredential {
-    return new UserCredential(userId, passwordHash, 0, null, null, now, now)
+    return new UserCredential(userId, passwordHash, 0, null, null, null, now, now)
   }
 }

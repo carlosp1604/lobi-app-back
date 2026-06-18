@@ -27,7 +27,7 @@ export class UserController {
 
   @Get('profile/:username')
   @HttpCode(HttpStatus.OK)
-  async activeSessions(@Param('username') username: string) {
+  async userProfile(@Param('username') username: string) {
     const query = new GetUserProfileByUsernameQuery(username)
 
     const result = await this.getUserProfileByUsernameQueryHandler.execute(query)

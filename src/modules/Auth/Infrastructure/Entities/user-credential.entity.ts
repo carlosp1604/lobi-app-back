@@ -7,6 +7,7 @@ export type UserCredentialRawModel = {
   failed_attempts: number
   locked_until: Date | null
   last_login_at: Date | null
+  last_modified_at: Date | null
   created_at: Date
   updated_at: Date
 }
@@ -36,6 +37,10 @@ export const UserCredentialEntity = new EntitySchema<UserCredentialRawWitRelatio
       nullable: true,
     },
     last_login_at: {
+      type: 'timestamptz',
+      nullable: true,
+    },
+    last_modified_at: {
       type: 'timestamptz',
       nullable: true,
     },

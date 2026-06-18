@@ -1,6 +1,5 @@
 export interface LocalCredentialDetailsReadModel {
-  created_at: string
-  updated_at: string
+  last_modified_at: string | null
 }
 
 export interface UserSessionDetailsReadModel {

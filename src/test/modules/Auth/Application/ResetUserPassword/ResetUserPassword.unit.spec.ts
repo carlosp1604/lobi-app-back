@@ -173,6 +173,7 @@ describe('ResetUserPassword', () => {
       expect(updatedCredential.userId.equals(validUserId)).toBe(true)
       expect(updatedCredential.passwordHash.equals(newPasswordHash)).toBe(true)
       expect(updatedCredential.updatedAt).toEqual(now)
+      expect(updatedCredential.lastModifiedAt).toEqual(now)
       expect(credentialCtx).toBe(fakeContext)
 
       const [tokenAfterUpdate, tokenCtx] = mockedVerificationTokenRepository.update.mock.calls[0]

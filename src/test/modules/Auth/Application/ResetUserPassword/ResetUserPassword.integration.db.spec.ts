@@ -105,6 +105,7 @@ describe('ResetUserPassword', () => {
       password_hash: oldPasswordHash,
       created_at: now,
       updated_at: now,
+      last_modified_at: null,
     })
 
     baseRequest = {
@@ -180,6 +181,7 @@ describe('ResetUserPassword', () => {
       const isPasswordCorrect = await passwordHasher.compare(newPassword.value, updatedCredential!.password_hash)
       expect(isPasswordCorrect).toBe(true)
       expect(updatedCredential!.updated_at).toEqual(now)
+      expect(updatedCredential!.last_modified_at).toEqual(now)
 
       const updatedToken = await verificationTokenDatabaseHelper.findOneByEmail(email.value)
       expect(updatedToken).not.toBeNull()

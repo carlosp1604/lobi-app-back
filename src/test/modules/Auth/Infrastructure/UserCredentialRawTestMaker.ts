@@ -11,6 +11,7 @@ export const makeRawUserCredential = (overrides: Partial<UserCredentialRawModel>
     failed_attempts: overrides.failed_attempts ?? 0,
     locked_until: overrides.locked_until ?? null,
     last_login_at: overrides.last_login_at ?? null,
+    last_modified_at: overrides.last_modified_at ?? null,
     created_at: overrides.created_at ?? now,
     updated_at: overrides.updated_at ?? now,
   }

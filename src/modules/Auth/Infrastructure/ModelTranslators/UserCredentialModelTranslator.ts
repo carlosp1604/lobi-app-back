@@ -11,6 +11,7 @@ export class UserCredentialModelTranslator {
       raw.failed_attempts,
       raw.locked_until,
       raw.last_login_at,
+      raw.last_modified_at,
       raw.created_at,
       raw.updated_at,
     )
@@ -23,6 +24,7 @@ export class UserCredentialModelTranslator {
       failed_attempts: domain.failedAttempts,
       locked_until: domain.lockedUntil,
       last_login_at: domain.lastLoginAt,
+      last_modified_at: domain.lastModifiedAt,
       created_at: domain.createdAt,
       updated_at: domain.updatedAt,
     }

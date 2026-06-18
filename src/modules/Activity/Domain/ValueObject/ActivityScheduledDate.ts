@@ -7,7 +7,7 @@ export class ActivityScheduledDate extends ValueObject<Date> implements Serializ
   private __activityScheduledDateBrand: void
 
   public static readonly MIN_MARGIN_MINUTES = 90
-  public static readonly MAX_FUTURE_DAYS = 7
+  public static readonly MAX_FUTURE_DAYS = 30
   public static readonly JOIN_TOLERANCE_MINUTES = 10
   public static readonly LEAVE_TOLERANCE_MINUTES = 60
 
