@@ -4,13 +4,7 @@ import { CapabilityInterface } from '~/src/modules/Activity/Domain/Config/Capabi
 import { Result, success, fail } from '~/src/modules/Shared/Domain/Result'
 import { ActivityDomainException } from '~/src/modules/Activity/Domain/ActivityDomainException'
 import { MagnitudeToRepresentationVisitor } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Visitor/MagnitudeToRepresentationVisitor'
-import {
-  Pace,
-  PaceInputProps,
-  PacePrimitives,
-  PaceUnit,
-  SupportedPaceUnits,
-} from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Pace'
+import { Pace, PaceInputProps, PacePrimitives, PaceUnit } from '~/src/modules/Shared/Domain/ValueObject/Magnitude/Pace'
 import {
   MagnitudeRange,
   MagnitudeRangeInputProps,
@@ -27,7 +21,7 @@ export class PaceCapability
 {
   public static readonly capabilityName = 'pace'
   public static readonly defaultUnit: PaceUnit = 'min/km'
-  public static readonly supportedUnits = [...SupportedPaceUnits]
+  public static readonly supportedUnits: Array<PaceUnit> = ['min/km', 'min/mi']
   public static readonly minPace = Pace.MIN_PACE
   public static readonly maxPace = Pace.MAX_PACE
   public static readonly conversionFactors = PACE_FACTORS

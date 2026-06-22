@@ -25,15 +25,15 @@ export class PaceDtoTranslator implements DtoTranslatorInterface<PacePrimitives,
           short: `${this.formatPaceFromSeconds(paceInMinKm)} min/km`,
         },
         'min/mi': {
-          long: `${this.formatPaceFromSeconds(paceInMinKm, true)} min/mi`,
-          short: `${this.formatPaceFromSeconds(paceInMinKm)} min/mi`,
+          long: `${this.formatPaceFromSeconds(paceInMinMi, true)} min/mi`,
+          short: `${this.formatPaceFromSeconds(paceInMinMi)} min/mi`,
         },
       },
     }
   }
 
   private formatPaceFromSeconds(magnitude: DecimalNumber, withMillis: boolean = false): string {
-    const absolute = magnitude.absolute()
+    const absolute = withMillis ? magnitude.absolute() : magnitude.round(0).absolute()
 
     const sixty = DecimalNumber.create('60')
     const minutes = absolute.divide(sixty).floor(0)
