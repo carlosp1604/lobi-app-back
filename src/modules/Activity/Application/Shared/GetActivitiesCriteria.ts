@@ -173,12 +173,6 @@ export class GetActivitiesCriteria {
     const sortDirection = this.validateSortDirection(query.sortDirection)
     const sortBy = this.validateSortBy(query.sortBy)
 
-    const maxDateSeconds = this.validateIntegerNumber(
-      this.defaultMaxDateSeconds,
-      this.minMaxDateSeconds,
-      this.maxMaxDateSeconds,
-      query.maxDateSeconds,
-    )
     const minFreeSlots = this.validateIntegerNumber(
       this.defaultMinFreeSlots,
       this.minMinFreeSlots,
@@ -202,7 +196,7 @@ export class GetActivitiesCriteria {
         location,
         radius,
         statuses,
-        maxDateSeconds,
+        undefined,
         sportId,
         undefined,
         undefined,

@@ -37,7 +37,7 @@ export class LocationRange extends ValueObject<LocationRangeProps> implements Se
 
   public static fromPrimitives(primitives: LocationRangePrimitives): LocationRange {
     const start = Location.create({ lng: primitives.start.lng, lat: primitives.start.lat })
-    const end = Location.create({ lng: primitives.end.lng, lat: primitives.end.lng })
+    const end = Location.create({ lng: primitives.end.lng, lat: primitives.end.lat })
 
     return LocationRange.create({ start, end })
   }
